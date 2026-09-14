@@ -24,7 +24,8 @@ import {
   setDoc,
   getDoc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  deleteField
 } from 'firebase/firestore';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -100,6 +101,75 @@ describe('firestore.rules — users/{uid}/assets/{assetId} update', () => {
 
   it('blocks client from mutating size (quota spoofing)', async () => {
     await assertFails(updateDoc(assetRef(ownerDb()), { size: 1 }));
+  });
+
+  it('blocks client from mutating storagePath', async () => {
+    await assertFails(
+      updateDoc(assetRef(ownerDb()), {
+        storagePath: `users/${UID}/assets/images/elsewhere.jpg`
+      })
+    );
+  });
+
+  // The "Reoptimize" action repoints the doc at a freshly optimized GLB, so
+  // both optimized-variant fields must be writable after create. Neither can
+  // spoof quota: the tally reads `size`, and asset-quota.js excludes
+  // optimizedSourceSize.
+  it('allows repointing the optimized variant (reoptimize)', async () => {
+    await assertSucceeds(
+      updateDoc(assetRef(ownerDb()), {
+        optimizedSourcePath: `users/${UID}/assets/meshes/${ASSET_ID}-optimized-2.glb`,
+        optimizedSourceUrl: 'https://example.test/opt-2.glb',
+        optimizedSourceSize: 4242,
+        updatedAt: serverTimestamp()
+      })
+    );
+  });
+
+  it('blocks a traversal segment in the optimized path', async () => {
+    // Passes the `^users/<uid>/` prefix check but escapes the folder; such a
+    // reference would also keep a file the orphan GC should reclaim alive.
+    await assertFails(
+      updateDoc(assetRef(ownerDb()), {
+        optimizedSourcePath: `users/${UID}/../${OTHER_UID}/assets/meshes/x.glb`
+      })
+    );
+  });
+
+  it('still allows a normal optimized path containing dots', async () => {
+    await assertSucceeds(
+      updateDoc(assetRef(ownerDb()), {
+        optimizedSourcePath: `users/${UID}/assets/meshes/my..model.glb`
+      })
+    );
+  });
+
+  // "Remove optimized" reverses a lossy optimization by deleting the variant
+  // fields, so the served URL falls back to the original.
+  it('allows removing the optimized variant fields', async () => {
+    await assertSucceeds(
+      updateDoc(assetRef(ownerDb()), {
+        optimizedSourcePath: deleteField(),
+        optimizedSourceUrl: deleteField(),
+        optimizedSourceSize: deleteField(),
+        optimizationMetadata: deleteField(),
+        updatedAt: serverTimestamp()
+      })
+    );
+  });
+
+  it('blocks nulling the optimized path (must be absent or a string)', async () => {
+    await assertFails(
+      updateDoc(assetRef(ownerDb()), { optimizedSourcePath: null })
+    );
+  });
+
+  it('blocks pointing the optimized variant outside the owner folder', async () => {
+    await assertFails(
+      updateDoc(assetRef(ownerDb()), {
+        optimizedSourcePath: `users/${OTHER_UID}/assets/meshes/stolen.glb`
+      })
+    );
   });
 
   it('blocks non-owner from updating', async () => {

@@ -145,3 +145,90 @@ describe('featuresToElements', () => {
     assert.strictEqual(maxY, 15);
   });
 });
+
+describe('transportationFeaturesToWays', () => {
+  const line = (coordinates, properties = {}, id) => {
+    const f = feature({ type: 'LineString', coordinates }, properties);
+    if (id !== undefined) f.id = id;
+    return f;
+  };
+
+  it('maps a LineString to one way with lat/lon polyline and class fields', async () => {
+    const { transportationFeaturesToWays } =
+      await import('../../src/tested/vector-tile-buildings.js');
+    const ways = transportationFeaturesToWays([
+      line(
+        [
+          [-122.4, 37.78],
+          [-122.39, 37.781]
+        ],
+        { class: 'minor', subclass: 'residential', oneway: 1 },
+        4242
+      )
+    ]);
+    assert.strictEqual(ways.length, 1);
+    assert.strictEqual(ways[0].wayId, '4242');
+    assert.strictEqual(ways[0].class, 'minor');
+    assert.strictEqual(ways[0].oneway, 1);
+    assert.deepStrictEqual(ways[0].polylines, [
+      [
+        { lat: 37.78, lon: -122.4 },
+        { lat: 37.781, lon: -122.39 }
+      ]
+    ]);
+  });
+
+  it('splits MultiLineString into several polylines on one way record', async () => {
+    const { transportationFeaturesToWays } =
+      await import('../../src/tested/vector-tile-buildings.js');
+    const ways = transportationFeaturesToWays([
+      feature(
+        {
+          type: 'MultiLineString',
+          coordinates: [
+            [
+              [0, 0],
+              [0.001, 0]
+            ],
+            [
+              [0.002, 0],
+              [0.003, 0]
+            ]
+          ]
+        },
+        { class: 'primary' }
+      )
+    ]);
+    assert.strictEqual(ways.length, 1);
+    assert.strictEqual(ways[0].polylines.length, 2);
+  });
+
+  it('synthesizes tile-scoped ids when the feature has none', async () => {
+    const { transportationFeaturesToWays } =
+      await import('../../src/tested/vector-tile-buildings.js');
+    const ways = transportationFeaturesToWays(
+      [
+        line(
+          [
+            [0, 0],
+            [0.001, 0]
+          ],
+          { class: 'service' }
+        )
+      ],
+      { tileKey: '14/2621/6331' }
+    );
+    assert.strictEqual(ways[0].wayId, '14/2621/6331#0');
+  });
+
+  it('drops degenerate lines and non-line geometry', async () => {
+    const { transportationFeaturesToWays } =
+      await import('../../src/tested/vector-tile-buildings.js');
+    const ways = transportationFeaturesToWays([
+      line([[0, 0]], { class: 'minor' }),
+      feature({ type: 'Point', coordinates: [0, 0] }, {}),
+      feature(null, {})
+    ]);
+    assert.deepStrictEqual(ways, []);
+  });
+});

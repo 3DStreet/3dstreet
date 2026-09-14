@@ -5,7 +5,7 @@
  * which aren't loaded in the generator or bollardbuddy bundles.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -21,7 +21,54 @@ import {
   getServedUrl
 } from '../utils.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
+import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
+import {
+  clearReoptimizeRun,
+  getReoptimizeRun,
+  startReoptimizeRun,
+  subscribeReoptimizeRuns
+} from '../reoptimizeRuns.js';
+import { getCopyRun, startCopyRun, subscribeCopyRuns } from '../copyRuns.js';
 import styles from './MeshDetailsModal.module.scss';
+
+// RAD transcode job statuses, mapped to their shared-message ids.
+const JOB_STATUS_MESSAGE = {
+  queued: 'meshJobQueued',
+  running: 'meshJobRunning',
+  saving: 'meshJobSaving'
+};
+
+// Stages reported by reoptimizeAsset(), mapped to their shared-message ids
+// so the button can say what it is doing in the user's language.
+const REOPTIMIZE_STAGE_MESSAGE = {
+  downloading: 'reoptimizePreparing',
+  optimizing: 'reoptimizeOptimizing',
+  uploading: 'reoptimizeUploading'
+};
+
+// `ok: false` reasons from reoptimizeAsset, mapped to copy. The pipeline
+// reports them as snake_case codes; they never reach the user verbatim.
+// Anything unmapped falls back to the generic reoptimizeNoChange line.
+const REOPTIMIZE_NO_WIN_MESSAGE = {
+  not_smaller_than_current: 'reoptimizeAlreadyOptimal',
+  not_smaller: 'reoptimizeAlreadyOptimal',
+  already_optimized: 'reoptimizeAlreadyOptimized',
+  timeout: 'reoptimizeTimedOut',
+  worker_error: 'reoptimizeWorkerError'
+};
+// These are the pipeline giving up, not a verdict on the model, so they
+// render in the error style like a thrown failure would.
+const REOPTIMIZE_PIPELINE_FAILURES = new Set(['timeout', 'worker_error']);
+
+// Stages reported by copyAssetToLibrary (its own 'downloading', then
+// uploadAsset's), mapped to shared-message ids for the operation indicator.
+const COPY_STAGE_MESSAGE = {
+  downloading: 'copyStagePreparing',
+  validating: 'copyStagePreparing',
+  optimizing: 'copyStageOptimizing',
+  uploading: 'copyStageUploading',
+  thumbnailing: 'copyStageFinishing'
+};
 
 // User-editable attribution fields. `title` deliberately is NOT here — the
 // asset doc's `name` (Display name) is the single source of truth for the
@@ -101,6 +148,7 @@ const MeshDetailsModal = ({
   ownerUid,
   onClose,
   onPlace,
+  onCopied,
   currentIndex,
   totalItems,
   onNavigate
@@ -113,6 +161,22 @@ const MeshDetailsModal = ({
   // Briefly true after a successful "Recapture thumbnail" click, to flash a
   // checkmark on the button as feedback (the live capture is otherwise silent).
   const [thumbCaptured, setThumbCaptured] = useState(false);
+  // Reoptimize status lives in a module-level registry (reoptimizeRuns.js),
+  // keyed by asset, rather than in this component: a run keeps going after
+  // the modal closes or navigates to another asset, and work that keeps
+  // going must stay visible. Any instance showing that asset — including
+  // one opened later — reads the same progress and outcome.
+  const reoptimizeRun = useSyncExternalStore(subscribeReoptimizeRuns, () =>
+    getReoptimizeRun(assetId)
+  );
+  // Outcome of the "Remove optimized" action; local because it is instant.
+  const [removeStatus, setRemoveStatus] = useState(null);
+  // "Copy to my library" (non-owners). Registry-backed like reoptimize: the
+  // copy outlives the modal, and a reopened modal must show where it got to.
+  const copyRun = useSyncExternalStore(subscribeCopyRuns, () =>
+    getCopyRun(assetId)
+  );
+  const t = useSharedMessages();
 
   const [name, setName] = useState('');
   const [savedName, setSavedName] = useState('');
@@ -352,7 +416,7 @@ const MeshDetailsModal = ({
       setEditingAttribution(false);
     } catch (err) {
       console.error('[MeshDetailsModal] save failed', err);
-      setError(err.message || 'Save failed');
+      setError(err.message || t('meshSaveFailed'));
     } finally {
       setSaving(false);
     }
@@ -383,7 +447,8 @@ const MeshDetailsModal = ({
 
   const onDelete = async () => {
     if (!isOwner || !data) return;
-    if (!window.confirm(`Delete "${savedName || data.originalFilename}"?`)) {
+    const label = savedName || data.originalFilename;
+    if (!window.confirm(t('meshDeleteConfirm', { name: label }))) {
       return;
     }
     try {
@@ -391,7 +456,7 @@ const MeshDetailsModal = ({
       onClose();
     } catch (err) {
       console.error('[MeshDetailsModal] delete failed', err);
-      setError(err.message || 'Delete failed');
+      setError(err.message || t('meshDeleteFailed'));
     }
   };
 
@@ -411,7 +476,11 @@ const MeshDetailsModal = ({
           const limitMb = Math.round((quota.planLimit || 0) / 1000 / 1000);
           const restoreMb = (proposedBytes / 1000 / 1000).toFixed(1);
           setError(
-            `Not enough storage to restore (${restoreMb} MB needed; ${usedMb} / ${limitMb} MB used). Delete other assets or upgrade.`
+            t('meshRestoreQuota', {
+              needed: restoreMb,
+              used: usedMb,
+              limit: limitMb
+            })
           );
           return;
         }
@@ -430,7 +499,7 @@ const MeshDetailsModal = ({
       setData((prev) => (prev ? { ...prev, deleted: false } : prev));
     } catch (err) {
       console.error('[MeshDetailsModal] restore failed', err);
-      setError(err.message || 'Restore failed');
+      setError(err.message || t('meshRestoreFailed'));
     }
   };
 
@@ -459,13 +528,177 @@ const MeshDetailsModal = ({
     thumbUploadedRef.current = null;
     const result = uploadLiveCanvasThumbnail();
     if (result !== 'ok') {
-      setError(
-        'Could not capture the current view — wait for the splat to finish rendering, then try again.'
-      );
+      setError(t('meshCaptureFailed'));
       return;
     }
     setThumbCaptured(true);
     setTimeout(() => setThumbCaptured(false), 1500);
+  };
+
+  // Re-run the current optimization pipeline over the ORIGINAL and repoint the
+  // doc at the result. Useful when the asset was uploaded before a pipeline
+  // improvement, or when its optimization was skipped (worker timeout) and it
+  // has been serving the unoptimized original ever since. A "no win" outcome
+  // (pipeline skipped, or nothing smaller than what's already served) is
+  // reported as a message, not an error — the asset is left exactly as it was.
+  const onReoptimize = () => {
+    if (!isOwner || !data || reoptimizeRun?.stage) return;
+    setRemoveStatus(null);
+    startReoptimizeRun(data, { ownerUid });
+  };
+
+  // When a run for the asset on screen finishes, reflect the new variant
+  // without closing: the Size row reads optimizedSourceSize, and the
+  // preview/download use optimizedSourceUrl. Keyed on the new path so a
+  // modal opened after the run already carries the values from its own doc
+  // read, and a stale outcome from an earlier run is not re-applied.
+  useEffect(() => {
+    const result = reoptimizeRun?.result;
+    if (!result?.ok || !data || data.optimizedSourcePath === result.newPath) {
+      return;
+    }
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            optimizedSourceUrl: result.newUrl,
+            optimizedSourcePath: result.newPath,
+            optimizedSourceSize: result.bytesAfter,
+            optimizationMetadata: result.metadata
+          }
+        : prev
+    );
+  }, [reoptimizeRun, data]);
+
+  // The status line under the Size row. A "Remove optimized" outcome is the
+  // most recent thing that happened (onReoptimize clears it when a new run
+  // starts), so it wins over whatever the run registry still holds; then
+  // progress, outcome or failure of the run for this asset.
+  const noWinResult =
+    reoptimizeRun?.result && !reoptimizeRun.result.ok
+      ? reoptimizeRun.result
+      : null;
+  const noWinIsFailure =
+    !!noWinResult && REOPTIMIZE_PIPELINE_FAILURES.has(noWinResult.reason);
+  const reoptimizeStatusText = (() => {
+    if (removeStatus) return removeStatus.text;
+    if (!reoptimizeRun) return null;
+    if (reoptimizeRun.stage) {
+      return t(REOPTIMIZE_STAGE_MESSAGE[reoptimizeRun.stage]);
+    }
+    if (reoptimizeRun.error !== undefined) {
+      return reoptimizeRun.error || t('reoptimizeFailed');
+    }
+    const result = reoptimizeRun.result;
+    if (!result) return null;
+    if (!result.ok) {
+      return t(
+        REOPTIMIZE_NO_WIN_MESSAGE[result.reason] || 'reoptimizeNoChange'
+      );
+    }
+    return t('reoptimizeDone', {
+      size: formatBytes(result.bytesAfter),
+      saved: formatBytes(Math.max(0, result.bytesBefore - result.bytesAfter))
+    });
+  })();
+  const reoptimizeStatusIsError = removeStatus
+    ? !!removeStatus.error
+    : reoptimizeRun?.error !== undefined || noWinIsFailure;
+
+  // Reverse a lossy optimization: drop the optimized fields from the doc so
+  // everything serves the untouched original again. The optimized object is
+  // orphaned for the storage GC; Optimize brings a variant back.
+  const onRemoveOptimized = async () => {
+    if (!isOwner || !data?.optimizedSourceUrl || reoptimizeRun?.stage) return;
+    try {
+      const { removeOptimizedVariant } = await import('@shared/asset-upload');
+      await removeOptimizedVariant(data, { ownerUid });
+      clearReoptimizeRun(assetId);
+      setData((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        delete next.optimizedSourceUrl;
+        delete next.optimizedSourcePath;
+        delete next.optimizedSourceSize;
+        delete next.optimizationMetadata;
+        return next;
+      });
+      setRemoveStatus({ text: t('reoptimizeRemoved') });
+    } catch (err) {
+      console.error('[MeshDetailsModal] remove optimized failed', err);
+      setRemoveStatus({
+        error: true,
+        text: err.message || t('reoptimizeRemoveFailed')
+      });
+    }
+  };
+
+  // Non-owner path to the same outcome as Reoptimize: make an own copy of
+  // the original through the normal upload pipeline. GLB only (see
+  // copyAsset.js). Signed-out viewers do not get the button.
+  const canCopyToLibrary =
+    !isOwner &&
+    !!auth.currentUser &&
+    !loading &&
+    !!data &&
+    data.type !== 'splat' &&
+    !data.deleted;
+  const onCopyToLibrary = () => {
+    if (!canCopyToLibrary || copyRun?.stage) return;
+    startCopyRun(data, { onCopied });
+  };
+  const copyStatus = (() => {
+    if (!copyRun) return null;
+    if (copyRun.stage) return { stage: copyRun.stage };
+    if (copyRun.error !== undefined) {
+      return { error: true, text: copyRun.error || t('copyToLibraryFailed') };
+    }
+    return {
+      done: true,
+      text: t(
+        copyRun.swapped ? 'copyToLibraryDoneSwapped' : 'copyToLibraryDone'
+      )
+    };
+  })();
+  const copyStatusText = copyStatus?.stage
+    ? t(COPY_STAGE_MESSAGE[copyStatus.stage] || 'copyToLibraryCopying')
+    : (copyStatus?.text ?? null);
+
+  // Inline "re-run the pipeline" control, rendered inside the Size row next
+  // to whatever that row says about the current optimization. Owner-only and
+  // GLB-only (splats are transcoded server-side by the RAD job instead), and
+  // it reports its own progress in place while running.
+  const reoptimizeButton = (label) => {
+    const isGlb = !!data && data.type !== 'splat';
+    if (!isOwner || loading || !isGlb || data?.deleted) return null;
+    // Spacing comes from the button's own margin.
+    return (
+      <button
+        type="button"
+        onClick={onReoptimize}
+        disabled={!!reoptimizeRun?.stage}
+        className={styles.retryOptimizeBtn}
+      >
+        {label}
+      </button>
+    );
+  };
+
+  // Sibling of the button above, only offered while a variant is served.
+  const removeOptimizedButton = () => {
+    if (!isOwner || loading || !data?.optimizedSourceUrl || data?.deleted) {
+      return null;
+    }
+    return (
+      <button
+        type="button"
+        onClick={onRemoveOptimized}
+        disabled={!!reoptimizeRun?.stage}
+        className={styles.retryOptimizeBtn}
+      >
+        {t('reoptimizeRemove')}
+      </button>
+    );
   };
 
   // Use mousedown, not click: a `click` fires on the common ancestor of
@@ -513,17 +746,23 @@ const MeshDetailsModal = ({
   const optimizationLabel = hasOptimizedVariant
     ? isSplat
       ? KNOWN_FORMATS.rad
-      : 'Optimized variant ready'
+      : t('meshOptimizedReady')
     : activeOptimizeJob
-      ? `Optimizing… (${activeOptimizeJob.status})`
+      ? t('meshOptimizingJob', {
+          // Unknown statuses fall through untranslated rather than render a
+          // message id — the job's own vocabulary can outgrow this map.
+          status: JOB_STATUS_MESSAGE[activeOptimizeJob.status]
+            ? t(JOB_STATUS_MESSAGE[activeOptimizeJob.status])
+            : activeOptimizeJob.status
+        })
       : null;
 
   // Canonical "{Type} · {Source}" title — matches the gallery card overlay
   // and the image/video modal. The source label is the editable display name,
   // so the live `savedName` takes precedence over `data.name` (which only
   // refreshes after the doc reloads).
-  const title = `${isSplat ? 'Splat' : 'Model'} · ${
-    savedName || data?.name || data?.originalFilename || 'Untitled'
+  const title = `${isSplat ? t('meshTypeSplat') : t('meshTypeModel')} · ${
+    savedName || data?.name || data?.originalFilename || t('meshUntitled')
   }`;
   const showNav = onNavigate && totalItems > 1;
   const hasPrev = showNav && currentIndex > 0;
@@ -539,8 +778,8 @@ const MeshDetailsModal = ({
             e.stopPropagation();
             onNavigate('prev');
           }}
-          title="Previous (←)"
-          aria-label="Previous item"
+          title={`${t('meshPreviousItem')} (←)`}
+          aria-label={t('meshPreviousItem')}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -565,8 +804,8 @@ const MeshDetailsModal = ({
             e.stopPropagation();
             onNavigate('next');
           }}
-          title="Next (→)"
-          aria-label="Next item"
+          title={`${t('meshNextItem')} (→)`}
+          aria-label={t('meshNextItem')}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -608,7 +847,7 @@ const MeshDetailsModal = ({
             type="button"
             className={styles.closeBtn}
             onClick={handleClose}
-            aria-label="Close"
+            aria-label={t('close')}
           >
             <Cross24Icon />
           </button>
@@ -618,14 +857,16 @@ const MeshDetailsModal = ({
           <div className={styles.viewerArea}>
             {!loading && !data && (
               <div className={`${styles.placeholder} ${styles.error}`}>
-                Asset not available
+                {t('meshNotAvailable')}
               </div>
             )}
             {data && (
               <iframe
                 ref={iframeRef}
                 className={styles.viewerFrame}
-                title={savedName || data.originalFilename || '3D model'}
+                title={
+                  savedName || data.originalFilename || t('meshViewerTitle')
+                }
                 // Don't put the editable name in the iframe URL — the src
                 // string drives the iframe's load; baking savedName in
                 // would cause the viewer to reload on every Save name
@@ -638,16 +879,13 @@ const MeshDetailsModal = ({
           <div className={styles.sidebar}>
             {data?.deleted && (
               <div className={styles.deletedBanner} role="alert">
-                <strong>Marked for deletion</strong>
-                <span>
-                  This model will be permanently purged on the next cleanup
-                  pass. Restore it to keep using it in your scenes.
-                </span>
+                <strong>{t('meshDeletedTitle')}</strong>
+                <span>{t('meshDeletedBody')}</span>
               </div>
             )}
             <div className={styles.field}>
               <label className={styles.fieldLabel} htmlFor="meshAssetName">
-                Display name
+                {t('meshDisplayName')}
               </label>
               <input
                 id="meshAssetName"
@@ -678,19 +916,23 @@ const MeshDetailsModal = ({
                 disabled={saving}
                 className={styles.saveNameBtn}
               >
-                {saving ? 'Saving…' : 'Save changes'}
+                {saving ? t('meshSaving') : t('meshSaveChanges')}
               </button>
             )}
 
             <div className={styles.metaList}>
               <div>
-                <span className={styles.metaLabel}>File:</span>
+                <span className={styles.metaLabel}>{t('meshFieldFile')}</span>
                 {data?.originalFilename || '—'}
               </div>
               <div>
-                <span className={styles.metaLabel}>Size:</span>
+                <span className={styles.metaLabel}>{t('meshFieldSize')}</span>
                 {(() => {
                   const opt = getOptimizationDisplay(data);
+                  // The re-run affordance lives in this row because this row
+                  // is the reason to press it: it states what the asset is
+                  // serving today ("Optimization skipped", "−42%", or nothing
+                  // at all for a pre-pipeline upload).
                   if (opt.skipReason) {
                     return (
                       <>
@@ -698,6 +940,7 @@ const MeshDetailsModal = ({
                         <span className={styles.optimizationNote}>
                           ({opt.skipReason})
                         </span>
+                        {reoptimizeButton(t('reoptimizeRetry'))}
                       </>
                     );
                   }
@@ -708,50 +951,112 @@ const MeshDetailsModal = ({
                         <span className={styles.optimizationSaved}>
                           (−{opt.savePct}%)
                         </span>
+                        {reoptimizeButton(t('reoptimizeAgain'))}
+                        {removeOptimizedButton()}
                       </>
                     );
                   }
-                  return formatBytes(opt.origSize);
+                  // No optimization metadata at all — a GLB uploaded before
+                  // the pipeline existed, so there is no note to follow.
+                  return (
+                    <>
+                      {formatBytes(opt.origSize)}
+                      {reoptimizeButton(t('reoptimizeStart'))}
+                    </>
+                  );
                 })()}
               </div>
+              {reoptimizeStatusText && (
+                <div
+                  className={
+                    reoptimizeStatusIsError
+                      ? styles.reoptimizeStatusError
+                      : styles.reoptimizeStatus
+                  }
+                >
+                  {reoptimizeStatusText}
+                </div>
+              )}
               {optimizationLabel && (
                 <div>
-                  <span className={styles.metaLabel}>Optimization:</span>
+                  <span className={styles.metaLabel}>
+                    {t('meshFieldOptimization')}
+                  </span>
                   {optimizationLabel}
                 </div>
               )}
               <div>
-                <span className={styles.metaLabel}>Format:</span>
+                <span className={styles.metaLabel}>{t('meshFieldFormat')}</span>
                 {formatLabel}
               </div>
               <div>
-                <span className={styles.metaLabel}>Uploaded:</span>
+                <span className={styles.metaLabel}>
+                  {t('meshFieldUploaded')}
+                </span>
                 {formatDate(data?.uploadedAt || data?.createdAt)}
               </div>
               <div>
-                <span className={styles.metaLabel}>Asset ID:</span>
+                <span className={styles.metaLabel}>
+                  {t('meshFieldAssetId')}
+                </span>
                 {assetId}
               </div>
               <div>
-                <span className={styles.metaLabel}>Owner:</span>
-                {isOwner ? 'you' : 'another user'}
+                <span className={styles.metaLabel}>{t('meshFieldOwner')}</span>
+                {isOwner ? t('meshOwnerYou') : t('meshOwnerOther')}
               </div>
             </div>
 
             {error && <div className={styles.error}>{error}</div>}
+            {copyStatusText && (
+              <div
+                className={`${styles.opStatus} ${
+                  copyStatus?.error
+                    ? styles.opStatusError
+                    : copyStatus?.done
+                      ? styles.opStatusDone
+                      : styles.opStatusRunning
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                {copyStatus?.stage ? (
+                  <span className={styles.opSpinner} aria-hidden="true" />
+                ) : (
+                  <span className={styles.opGlyph} aria-hidden="true">
+                    {copyStatus?.error ? '!' : '✓'}
+                  </span>
+                )}
+                <span>{copyStatusText}</span>
+              </div>
+            )}
 
             <Tooltip.Provider>
               <div className={styles.controlButtons}>
+                {canCopyToLibrary && (
+                  <IconTooltip label={t('copyToLibraryHint')}>
+                    <button
+                      type="button"
+                      onClick={onCopyToLibrary}
+                      disabled={!!copyStatus?.stage}
+                      className={styles.secondaryButton}
+                    >
+                      {copyStatus?.stage
+                        ? t('copyToLibraryCopying')
+                        : t('copyToLibrary')}
+                    </button>
+                  </IconTooltip>
+                )}
                 {isOwner &&
                   !loading &&
                   (data?.deleted ? (
-                    <IconTooltip label="Restore">
+                    <IconTooltip label={t('meshRestore')}>
                       <button
                         type="button"
                         onClick={onRestore}
                         disabled={!data}
                         className={`${styles.iconButton} ${styles.restoreBtn}`}
-                        aria-label="Restore"
+                        aria-label={t('meshRestore')}
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -770,13 +1075,13 @@ const MeshDetailsModal = ({
                       </button>
                     </IconTooltip>
                   ) : (
-                    <IconTooltip label="Delete">
+                    <IconTooltip label={t('meshDelete')}>
                       <button
                         type="button"
                         onClick={onDelete}
                         disabled={!data}
                         className={`${styles.iconButton} ${styles.deleteBtn}`}
-                        aria-label="Delete"
+                        aria-label={t('meshDelete')}
                       >
                         <TrashIcon />
                       </button>
@@ -786,8 +1091,8 @@ const MeshDetailsModal = ({
                   <IconTooltip
                     label={
                       thumbCaptured
-                        ? 'Thumbnail updated'
-                        : 'Set thumbnail from current view'
+                        ? t('meshThumbnailUpdated')
+                        : t('meshSetThumbnail')
                     }
                   >
                     <button
@@ -795,7 +1100,7 @@ const MeshDetailsModal = ({
                       onClick={onRegenerateThumbnail}
                       disabled={!data}
                       className={styles.iconButton}
-                      aria-label="Set thumbnail from current view"
+                      aria-label={t('meshSetThumbnail')}
                     >
                       {thumbCaptured ? (
                         // Brief confirmation: checkmark
@@ -832,39 +1137,37 @@ const MeshDetailsModal = ({
                 )}
                 {data?.optimizedSourceUrl ? (
                   <>
-                    <IconTooltip label="Download original">
-                      <button
-                        type="button"
-                        onClick={onDownloadOriginal}
-                        disabled={!data}
-                        className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
-                        aria-label="Download original"
-                      >
-                        <DownloadIcon />
-                        <span className={styles.downloadBtnLabel}>Orig</span>
-                      </button>
-                    </IconTooltip>
-                    <IconTooltip label="Download optimized">
-                      <button
-                        type="button"
-                        onClick={onDownloadOptimized}
-                        disabled={!data}
-                        className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
-                        aria-label="Download optimized"
-                      >
-                        <DownloadIcon />
-                        <span className={styles.downloadBtnLabel}>Opt</span>
-                      </button>
-                    </IconTooltip>
+                    <button
+                      type="button"
+                      onClick={onDownloadOriginal}
+                      disabled={!data}
+                      className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
+                    >
+                      <DownloadIcon />
+                      <span className={styles.downloadBtnLabel}>
+                        {t('meshDownloadOriginal')}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDownloadOptimized}
+                      disabled={!data}
+                      className={`${styles.iconButton} ${styles.downloadLabelBtn}`}
+                    >
+                      <DownloadIcon />
+                      <span className={styles.downloadBtnLabel}>
+                        {t('meshDownloadOptimized')}
+                      </span>
+                    </button>
                   </>
                 ) : (
-                  <IconTooltip label="Download">
+                  <IconTooltip label={t('meshDownload')}>
                     <button
                       type="button"
                       onClick={onDownloadOriginal}
                       disabled={!data}
                       className={styles.iconButton}
-                      aria-label="Download"
+                      aria-label={t('meshDownload')}
                     >
                       <DownloadIcon />
                     </button>
@@ -877,7 +1180,7 @@ const MeshDetailsModal = ({
                     disabled={!data}
                     className={styles.primaryButton}
                   >
-                    Place in scene
+                    {t('meshPlaceInScene')}
                   </button>
                 )}
               </div>
@@ -904,6 +1207,7 @@ const AttributionBlock = ({
   isOwner,
   disabled
 }) => {
+  const t = useSharedMessages();
   const composed = composeAttributionString(attribution);
   const hasAnything =
     composed ||
@@ -915,7 +1219,7 @@ const AttributionBlock = ({
     return (
       <div className={styles.attributionGroup}>
         <div className={styles.attributionHeader}>
-          <span>Attribution</span>
+          <span>{t('meshAttribution')}</span>
           {isOwner && (
             <button
               type="button"
@@ -923,7 +1227,7 @@ const AttributionBlock = ({
               onClick={onEnterEdit}
               disabled={disabled}
             >
-              Edit
+              {t('meshEdit')}
             </button>
           )}
         </div>
@@ -931,8 +1235,8 @@ const AttributionBlock = ({
           <AttributionView attribution={attribution} composed={composed} />
         ) : (
           <div className={styles.attributionEmpty}>
-            No attribution info.
-            {isOwner && ' Click Edit to add one.'}
+            {t('meshNoAttribution')}
+            {isOwner && ` ${t('meshNoAttributionHint')}`}
           </div>
         )}
       </div>
@@ -945,20 +1249,20 @@ const AttributionBlock = ({
   return (
     <div className={styles.attributionGroup}>
       <div className={styles.attributionHeader}>
-        <span>Attribution</span>
+        <span>{t('meshAttribution')}</span>
         <button
           type="button"
           className={styles.attributionEditBtn}
           onClick={onCancel}
           disabled={disabled}
         >
-          Cancel
+          {t('cancel')}
         </button>
       </div>
       <div className={styles.attributionFields}>
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor="meshAttrAuthor">
-            Author
+            {t('meshAuthor')}
           </label>
           <input
             id="meshAttrAuthor"
@@ -972,7 +1276,7 @@ const AttributionBlock = ({
         </div>
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor="meshAttrLicense">
-            License
+            {t('meshLicense')}
           </label>
           <input
             id="meshAttrLicense"
@@ -982,12 +1286,12 @@ const AttributionBlock = ({
             onChange={setField('license')}
             onKeyDown={onFieldKeyDown}
             disabled={disabled}
-            placeholder="e.g. CC-BY-4.0"
+            placeholder={t('meshLicensePlaceholder')}
           />
         </div>
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor="meshAttrSource">
-            Source URL
+            {t('meshSourceUrl')}
           </label>
           <input
             id="meshAttrSource"
@@ -1008,13 +1312,15 @@ const AttributionBlock = ({
         <div className={styles.attributionContext}>
           {attribution.sourceName && (
             <span>
-              <span className={styles.metaLabel}>Source:</span>
+              <span className={styles.metaLabel}>{t('meshFieldSource')}</span>
               {attribution.sourceName}
             </span>
           )}
           {attribution.generator && (
             <span>
-              <span className={styles.metaLabel}>Generator:</span>
+              <span className={styles.metaLabel}>
+                {t('meshFieldGenerator')}
+              </span>
               {attribution.generator}
             </span>
           )}
@@ -1055,8 +1361,11 @@ const safeHref = (url) => {
 };
 
 const AttributionView = ({ attribution, composed }) => {
+  const t = useSharedMessages();
   const { source, sourceName } = attribution;
-  const linkLabel = sourceName ? `View on ${sourceName}` : 'View source';
+  const linkLabel = sourceName
+    ? t('meshViewOn', { source: sourceName })
+    : t('meshViewSource');
   const href = safeHref(source);
   return (
     <div className={styles.attributionView}>
@@ -1087,6 +1396,12 @@ MeshDetailsModal.propTypes = {
   assetId: PropTypes.string.isRequired,
   ownerUid: PropTypes.string.isRequired,
   onClose: PropTypes.func.isRequired,
+  // Optional: called with the new asset doc after "Copy to my library"
+  // succeeds, from the run registry (copyRuns.js) so it fires whether or
+  // not the modal is still open. The editor's entity panel uses it to swap
+  // the copy into the scene; the gallery leaves it undefined (nothing to
+  // swap). A truthy return switches the success copy.
+  onCopied: PropTypes.func,
   // Optional: when provided, renders a "Place in scene" CTA. Called with
   // { assetId, ownerUid, storageUrl, name, type } when the user clicks it;
   // the modal closes itself after invoking. Only the gallery card open

@@ -1,14 +1,12 @@
 /**
  * Client-side GLB optimization, runs in a Web Worker.
  *
- * The heavy gltf-transform pipeline (dedup → instance → flatten → join →
- * weld → resample → prune → sparse → palette → textureCompress(webp) →
- * draco(edgebreaker)) lives in
- * optimizeGlb.worker.js. This file is the main-thread shim: it spawns the
- * worker, transfers the bytes in zero-copy, and races the result against
- * a wall-clock timeout. On timeout / abort / worker error we
- * `worker.terminate()` and return the original File so the upload still
- * proceeds, server-side compression catches what we gave up on.
+ * Main-thread shim: spawns the worker, transfers the bytes in zero-copy,
+ * and races the result against a wall-clock timeout. On timeout / abort /
+ * worker error we `worker.terminate()` and return the original File so the
+ * upload still proceeds, server-side compression catches what we gave up
+ * on. The pipeline itself, and the message protocol, are documented in
+ * optimizeGlb.worker.js.
  *
  * Why a worker:
  *   - gltf-transform's transform() is a single main-thread monolith. With
@@ -21,18 +19,35 @@
  * (uploadAsset.js, uploadAndPlaceAsset.js) don't change:
  *   { blob, metadata: { optimizationSkipped, reason?, inputBytes,
  *                       outputBytes, hadDraco?, hadWebP? } }
- *
- * `draco3dgltf` is a Node-only module (it imports `fs`); the webpack
- * resolve.fallback in the parent config handles the static-analysis
- * shim for the worker bundle too.
  */
 
-const DEFAULT_TIMEOUT_MS = 15000;
+/**
+ * Wall-clock budget for everything that happens worker-side, because the
+ * timer starts with the postMessage below and only the result stops it:
+ *
+ *   1. worker bundle + the lazy dep chunks (@gltf-transform/core,
+ *      /extensions, /functions, draco3dgltf, meshoptimizer/simplifier)
+ *   2. WASM instantiation — Draco decoder + encoder, meshopt simplifier.
+ *      Each optimizeGlb() call spawns a fresh Worker, so this is paid on
+ *      every upload, not once per session
+ *   3. readBinary() parsing the GLB into a gltf-transform Document
+ *   4. all 12 transform steps (simplify and textureCompress dominate on
+ *      dense/heavily-textured models; draco scales with the post-simplify
+ *      triangle count)
+ *   5. writeBinary() and the transfer back
+ *
+ * Reading the File into an ArrayBuffer happens before the timer starts and
+ * is not counted. Raised 15s → 30s: a real 113 MB photogrammetry GLB
+ * measured 9.4s on a fast machine, which left far too little headroom —
+ * a slower CPU or a cold dep/WASM load pushed past 15s and silently fell
+ * back to the unoptimized original.
+ */
+const DEFAULT_TIMEOUT_MS = 30000;
 
 /**
  * @param {File|Blob} file - Source GLB.
  * @param {object} [opts]
- * @param {number} [opts.timeoutMs=15000] - Worker is terminated if it
+ * @param {number} [opts.timeoutMs=30000] - Worker is terminated if it
  *   hasn't returned in this many ms; original file is used instead.
  * @param {AbortSignal} [opts.signal] - Same: terminates and falls back.
  * @returns {Promise<{ blob: Blob, metadata: object }>}

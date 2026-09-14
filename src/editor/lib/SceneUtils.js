@@ -103,7 +103,7 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
     memoryData
   );
   STREET.utils.createEntities(correctedStreetData, streetContainerEl);
-  STREET.utils.resolveSplatAssetUrls(streetContainerEl);
+  STREET.utils.resolveCloudAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(80, 'Finalizing scene...');
 
   STREET.utils.emitNewScene({

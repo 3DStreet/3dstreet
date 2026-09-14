@@ -136,3 +136,81 @@ export function decodeBuildings(
   }
   return featuresToElements(features, { heightKeys, minHeightKeys });
 }
+
+/**
+ * Convert transportation-layer GeoJSON features into street way records.
+ * Testable core of `decodeTransportation` (mirrors featuresToElements).
+ *
+ * Each record: { wayId, class, subclass, brunnel, oneway, polylines }
+ * where polylines is an array of [{lat, lon}, ...] runs (a MultiLineString
+ * feature yields several runs). OpenMapTiles does not expose OSM way ids on
+ * transportation features reliably, so `wayId` falls back to a synthetic
+ * tile-scoped id — stable for a given tile revision, which is all the
+ * click-to-upgrade idempotency guard needs.
+ *
+ * @param {Array} features GeoJSON LineString/MultiLineString features.
+ * @param {Object} [options] { tileKey = '' } prefix for synthetic ids.
+ */
+export function transportationFeaturesToWays(features, { tileKey = '' } = {}) {
+  const ways = [];
+  for (let i = 0; i < (features || []).length; i++) {
+    const feature = features[i];
+    const props = feature.properties || {};
+    const geometry = feature.geometry;
+    if (!geometry) continue;
+    const lines =
+      geometry.type === 'LineString'
+        ? [geometry.coordinates]
+        : geometry.type === 'MultiLineString'
+          ? geometry.coordinates
+          : [];
+    const polylines = lines
+      .filter((line) => line && line.length >= 2)
+      .map((line) => line.map(([lon, lat]) => ({ lat, lon })));
+    if (polylines.length === 0) continue;
+    ways.push({
+      wayId:
+        feature.id !== undefined && feature.id !== null && feature.id !== 0
+          ? String(feature.id)
+          : `${tileKey}#${i}`,
+      class: props.class,
+      subclass: props.subclass,
+      brunnel: props.brunnel,
+      oneway: props.oneway,
+      polylines
+    });
+  }
+  return ways;
+}
+
+/**
+ * Decode one MVT tile buffer's transportation layer into street way
+ * records with lat/lon polylines (#1930 click-to-upgrade data source).
+ *
+ * @param {ArrayBuffer|Uint8Array} buffer raw .pbf/.mvt bytes.
+ * @param {Object} tile { x, y, zoom } of the buffer (for tile → lat/lon).
+ * @param {Object} [options] { transportationLayer = 'transportation' }
+ */
+export function decodeTransportation(
+  buffer,
+  { x, y, zoom },
+  { transportationLayer = 'transportation' } = {}
+) {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  const tile = new VectorTile(new PbfReader(bytes));
+  const layer = tile.layers[transportationLayer];
+  if (!layer) return [];
+  const features = [];
+  for (let i = 0; i < layer.length; i++) {
+    const feature = layer.feature(i);
+    // 2 = LineString in the MVT spec; plazas etc. ship as polygons and are
+    // not upgradeable street centerlines.
+    if (feature.type !== 2) continue;
+    const geo = feature.toGeoJSON(x, y, zoom);
+    if (feature.id !== undefined) geo.id = feature.id;
+    features.push(geo);
+  }
+  return transportationFeaturesToWays(features, {
+    tileKey: `${zoom}/${x}/${y}`
+  });
+}

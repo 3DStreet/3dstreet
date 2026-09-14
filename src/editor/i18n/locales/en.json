@@ -89,6 +89,12 @@
   "addLayer.card.highlightRing.name": {
     "defaultMessage": "Highlight Ring"
   },
+  "addLayer.card.managedIntersection.desc": {
+    "defaultMessage": "Auto-generate intersection geometry from nearby managed street ends."
+  },
+  "addLayer.card.managedIntersection.name": {
+    "defaultMessage": "(Beta) Managed Intersection"
+  },
   "addLayer.card.managedStreet150124.desc": {
     "defaultMessage": "Premade Street 150ft Right of Way / 124ft Roadway Width"
   },
@@ -1583,6 +1589,12 @@
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
   },
+  "managedIntersectionSidebar.awaitingStreets": {
+    "defaultMessage": "No streets connected yet — move managed street ends within the snap radius."
+  },
+  "managedIntersectionSidebar.connectedStreets": {
+    "defaultMessage": "{count,plural,one{# connected street} other{# connected streets}}"
+  },
   "managedStreetSidebar.changePath": {
     "defaultMessage": "Change path…"
   },
@@ -1625,6 +1637,9 @@
   "managedStreetSidebar.flattening": {
     "defaultMessage": "Flattening"
   },
+  "managedStreetSidebar.generatedFrom": {
+    "defaultMessage": "Generated from"
+  },
   "managedStreetSidebar.importedFrom": {
     "defaultMessage": "Imported from"
   },
@@ -1633,6 +1648,12 @@
   },
   "managedStreetSidebar.openInSource": {
     "defaultMessage": "Open in {source}"
+  },
+  "managedStreetSidebar.osmGeneratedRef": {
+    "defaultMessage": "{cls} road, class preset via MapTiler tiles"
+  },
+  "managedStreetSidebar.osmHydratedRef": {
+    "defaultMessage": "{name}, cross-section from OSM tags"
   },
   "managedStreetSidebar.path": {
     "defaultMessage": "Path"

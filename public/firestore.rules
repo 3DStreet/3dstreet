@@ -83,14 +83,45 @@ service cloud.firestore {
       // Long-term, `size` should be set server-side from the actual Storage
       // object; this rule is the short-term guard.
       //
+      // The optimized-variant fields (optimizedSourcePath / optimizedSourceSize)
+      // are deliberately NOT frozen: the "Reoptimize" action re-runs the client
+      // optimization pipeline over the original and repoints the doc at a new
+      // optimized file. Neither field can be used to spoof quota — the tally
+      // reads `size` only and asset-quota.js explicitly excludes
+      // optimizedSourceSize as a platform-derived artifact. The old optimized
+      // object is left unreferenced and reclaimed by the monthly
+      // cleanupOrphanedStorage job once the asset is purged. optimizedSourcePath
+      // is constrained to the user's own folder so a client can't repoint the
+      // doc at another user's bytes and keep them alive. (The create rule does
+      // not check this field; a bad reference there only pins a Storage
+      // object against the orphan GC, it grants no access.)
+      //
       // Uses diff().affectedKeys() so legacy docs missing optional fields
       // (e.g. AI-generated images without optimizedSourceSize) update cleanly:
       // a field absent from both before and after never appears in affectedKeys.
       allow update: if request.auth != null
         && request.auth.uid == userId
         && !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['size', 'optimizedSourceSize', 'storagePath',
-                     'optimizedSourcePath', 'userId'])
+            .hasAny(['size', 'storagePath', 'userId'])
+        // Only validated when actually changed, so an untouched legacy value
+        // can never block an unrelated update (e.g. a soft delete). Removing
+        // the field is allowed: "Remove optimized" reverses a lossy
+        // optimization by dropping the variant fields so the original is
+        // served again (removeOptimizedVariant). A null is still denied —
+        // `is string` fails on it rather than erroring the rule. The second
+        // pattern rejects any `..` path segment, which the prefix check alone
+        // would let through (`users/<uid>/../elsewhere.glb`) — storage.rules
+        // already stops the client writing there, but such a reference would
+        // keep a file the orphan GC should have reclaimed alive and skew its
+        // audit.
+        && (!request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['optimizedSourcePath'])
+            || !('optimizedSourcePath' in request.resource.data)
+            || (request.resource.data.optimizedSourcePath is string
+                && request.resource.data.optimizedSourcePath
+                    .matches('^users/' + userId + '/.*')
+                && !request.resource.data.optimizedSourcePath
+                    .matches('.*/[.][.](/.*)?')))
         // visibility is mutable (privacy toggle, future feature) but must
         // remain a valid enum value when present.
         && (!('visibility' in request.resource.data.keys())
