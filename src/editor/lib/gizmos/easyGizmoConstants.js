@@ -175,9 +175,10 @@ export const CHEVRON_MAX = 8;
 /** One full slide of the chevron stack on hover, in milliseconds. */
 export const CHEVRON_CYCLE_MS = 900;
 
-/** Fixed world dimensions, independent of move-square size and regime. */
-export const CHEVRON_BASE_METRES = 0.25;
-export const CHEVRON_LEN_METRES = 0.2;
+/** Chevron dimensions as fractions of the move-square side, keeping the
+ * landing cue proportional to the control at every zoom level. */
+export const CHEVRON_BASE_FRAC = 0.25;
+export const CHEVRON_LEN_FRAC = 0.2;
 
 // --- drag models ---------------------------------------------------------
 

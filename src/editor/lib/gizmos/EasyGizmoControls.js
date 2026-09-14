@@ -63,9 +63,9 @@ import {
   ARC_STEP_DEG,
   ARC_TUBE_RADIUS,
   ARC_TUBULAR_SEGMENTS,
-  CHEVRON_BASE_METRES,
+  CHEVRON_BASE_FRAC,
   CHEVRON_CYCLE_MS,
-  CHEVRON_LEN_METRES,
+  CHEVRON_LEN_FRAC,
   CHEVRON_MAX,
   CHEVRON_SPACING_FRAC,
   COLOR_MOVE,
@@ -1785,10 +1785,10 @@ class EasyGizmoControls extends GizmoPointerControls {
       ud.chevronCount
     );
     ud.chevronCount = count;
-    const headBase = CHEVRON_BASE_METRES;
+    const headBase = S * CHEVRON_BASE_FRAC;
     // Capped against the STEP, not the span, so they do not run into each other
     // on a short hop.
-    const headLen = Math.min(CHEVRON_LEN_METRES, step * 0.8);
+    const headLen = Math.min(S * CHEVRON_LEN_FRAC, step * 0.8);
 
     // Hovered, or held: the stack slides toward the target. Motion is the one
     // cue for "down" that survives being seen from directly overhead, where

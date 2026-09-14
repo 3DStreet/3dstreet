@@ -691,7 +691,7 @@ describe('release, touch and attachment lifecycle', () => {
     });
   }
 
-  it('clamps the final chevron at the viewport edge without adding a hit target', () => {
+  it('clamps the final chevron without a hit target and scales it with the move square', () => {
     const f = fixture({ base: 2 });
     f.surface(-20);
     f.attach();
@@ -707,7 +707,7 @@ describe('release, touch and attachment lifecycle', () => {
     const hits = [];
     chevrons.forEach((c) => c.raycast(f.controls.raycaster, hits));
     expect(hits).toHaveLength(0);
-    const width = chevrons[0].scale.x;
+    const size = chevrons[0].scale.clone();
     f.controls._layoutChevrons(
       target,
       -20,
@@ -716,7 +716,8 @@ describe('release, touch and attachment lifecycle', () => {
       0,
       100
     );
-    expect(target.userData.chevrons[0].scale.x).toBe(width);
+    expect(target.userData.chevrons[0].scale.x).toBe(size.x * 4);
+    expect(target.userData.chevrons[0].scale.y).toBe(size.y * 4);
   });
 
   it('returning to the press on pointerup preserves the no-op history comparison', () => {
