@@ -198,7 +198,7 @@ function pointAtArcLength(points, cumulative, s) {
 export function stretchForWindow(
   polylines,
   nearPoint,
-  { windowM = 200, maxDeviationM = 1.5, minLengthM = 20 } = {}
+  { windowM = 200, maxDeviationM = 1.5, minLengthM = 20, covered = null } = {}
 ) {
   const lines = (polylines || []).filter((line) => line && line.length >= 2);
   if (lines.length === 0) return null;
@@ -220,13 +220,125 @@ export function stretchForWindow(
   const total = cumulative[line.length - 1];
   const sStart = Math.max(0, s0 - windowM);
   const sEnd = Math.min(total, s0 + windowM);
-  const lengthM = sEnd - sStart;
-  if (lengthM < minLengthM) return null;
+  if (sEnd - sStart < minLengthM) return null;
 
-  const clipped = slicePolylineByArc(line, cumulative, sStart, sEnd);
+  let clipped = slicePolylineByArc(line, cumulative, sStart, sEnd);
+  if (covered && covered.length > 0) {
+    // Extending a partially generated way (#2006): only the stretch NOT
+    // already covered by earlier generates becomes a street.
+    clipped = clipStretchToUncovered(clipped, covered, { minLengthM });
+    if (!clipped) return null;
+  }
+  const clippedCumulative = cumulativeArcLengths(clipped);
+  const lengthM = clippedCumulative[clipped.length - 1];
+  if (lengthM < minLengthM) return null;
   const points = simplifyPolyline(clipped, maxDeviationM);
   if (points.length < 2) return null;
   return { points, lengthM: Math.round(lengthM * 100) / 100 };
+}
+
+/**
+ * The longest run of `points` NOT already covered by previously
+ * generated stretches of the same way (#2006): the old boolean per-way
+ * gate made the first ±window generate permanent, so a long way could
+ * never be completed — clicking the remainder now extends it.
+ *
+ * The line is resampled at `stepM` so coverage transitions resolve even
+ * between far-apart vertices; a sample is covered within `toleranceM` of
+ * any covered polyline (loose enough for tile-fragment quantization
+ * differences). Runs shorter than `minLengthM` are dropped, so the
+ * junction cut gaps between a generate's own pieces never re-trigger. A
+ * run boundary that borders coverage snaps to the nearest covered-stretch
+ * ENDPOINT within `snapM`, so the new street butts flush against the
+ * piece it extends.
+ *
+ * @param {Array<{x,z}>} points the window-clipped centerline.
+ * @param {Array<Array<{x,z}>>} covered previously generated centerlines.
+ * @returns {Array<{x,z}>|null} densified run (callers simplify), or null
+ *   when nothing generatable remains.
+ */
+export function clipStretchToUncovered(
+  points,
+  covered,
+  { toleranceM = 5, minLengthM = 20, stepM = 5, snapM = 15 } = {}
+) {
+  if (!points || points.length < 2) return null;
+  if (!covered || covered.length === 0) return points.slice();
+
+  const cumulative = cumulativeArcLengths(points);
+  const total = cumulative[points.length - 1];
+  const n = Math.max(1, Math.ceil(total / stepM));
+  const samples = [];
+  for (let i = 0; i <= n; i++) {
+    samples.push(pointAtArcLength(points, cumulative, (total * i) / n));
+  }
+  const tolSq = toleranceM * toleranceM;
+  const isCovered = (p) => {
+    for (const line of covered) {
+      for (let i = 0; i < line.length - 1; i++) {
+        if (pointToSegment(p, line[i], line[i + 1]).distSq <= tolSq) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  const flags = samples.map(isCovered);
+
+  let best = null;
+  let runStart = null;
+  for (let i = 0; i <= samples.length; i++) {
+    const cov = i === samples.length ? true : flags[i];
+    if (!cov && runStart === null) runStart = i;
+    if (cov && runStart !== null) {
+      const lenM = ((i - 1 - runStart) * total) / n;
+      if (!best || lenM > best.lenM) {
+        best = { from: runStart, to: i - 1, lenM };
+      }
+      runStart = null;
+    }
+  }
+  if (!best || best.lenM < minLengthM) return null;
+
+  const run = samples.slice(best.from, best.to + 1);
+  const endpoints = [];
+  for (const line of covered) {
+    if (line.length > 0) endpoints.push(line[0], line[line.length - 1]);
+  }
+  const snapSq = snapM * snapM;
+  const snapBoundary = (idx, bordersCoverage) => {
+    if (!bordersCoverage) return;
+    let bestEp = null;
+    let bestD = snapSq;
+    for (const ep of endpoints) {
+      const d = distSq(ep, run[idx]);
+      if (d <= bestD) {
+        bestD = d;
+        bestEp = ep;
+      }
+    }
+    if (bestEp) run[idx] = { x: bestEp.x, z: bestEp.z };
+  };
+  snapBoundary(0, best.from > 0);
+  snapBoundary(run.length - 1, best.to < samples.length - 1);
+  return run;
+}
+
+/** Compact "x,z;x,z" (dm precision) for the data-osm-stretch stamp. */
+export function encodeStretchPoints(points) {
+  return points.map((p) => `${p.x.toFixed(1)},${p.z.toFixed(1)}`).join(';');
+}
+
+/** Inverse of encodeStretchPoints; null for anything malformed. */
+export function decodeStretchPoints(str) {
+  if (!str) return null;
+  const pts = [];
+  for (const pair of String(str).split(';')) {
+    const [x, z] = pair.split(',').map(parseFloat);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+    pts.push({ x, z });
+  }
+  return pts.length >= 2 ? pts : null;
 }
 
 /** Cumulative arc lengths for [{x, z}, ...], starting at 0. */
@@ -306,7 +418,7 @@ export function junctionsAlongStretch(
   const found = [];
   const record = (s, point, cls) => {
     if (s < endClearanceM || s > total - endClearanceM) return;
-    found.push({ s, point, crossWidthM: importedWidthMeters(cls) });
+    found.push({ s, point, crossWidthM: importedCarriagewayMeters(cls) });
   };
 
   for (const other of otherWays || []) {
@@ -382,7 +494,10 @@ export function junctionsAlongStretch(
 export function splitStretchAtJunctions(
   stretchPoints,
   junctions,
-  { insetPadM = 4, minLengthM = 20 } = {}
+  // insetPadM 4 → 2 (#2006): with carriageway-based crossing widths the
+  // curb returns need less slack, and every meter of inset is a meter of
+  // visible gap at the junction.
+  { insetPadM = 2, minLengthM = 20 } = {}
 ) {
   const cumulative = cumulativeArcLengths(stretchPoints);
   const total = cumulative[cumulative.length - 1];
@@ -762,4 +877,17 @@ export function streetJsonForClass(cls, lengthM, label) {
 /** Rough total width used for pre-import footprint hints. */
 export function importedWidthMeters(cls) {
   return streetJsonForClass(cls, 1).width || roadWidthMeters(cls);
+}
+
+/**
+ * Carriageway-only width (sidewalks excluded) of a crossing street —
+ * what a junction cut through it must clear. Full-street widths doubled
+ * every junction gap (#2006): a residential crossing is 14 m
+ * sidewalk-to-sidewalk but only 10.4 m of it is roadway.
+ */
+export function importedCarriagewayMeters(cls) {
+  const carriageway = streetJsonForClass(cls, 1)
+    .segments.filter((s) => s.type !== 'sidewalk')
+    .reduce((sum, s) => sum + s.width, 0);
+  return carriageway || roadWidthMeters(cls);
 }

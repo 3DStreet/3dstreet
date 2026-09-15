@@ -10,7 +10,12 @@
 
 import assert from 'assert';
 import {
+  clipStretchToUncovered,
+  decodeStretchPoints,
   eastMPerDeg,
+  encodeStretchPoints,
+  importedCarriagewayMeters,
+  importedWidthMeters,
   latLonToLocal,
   localPolylineFromLatLon,
   nearestWay,
@@ -517,5 +522,129 @@ describe('streetJsonForWay', () => {
     const t = types(streetJsonForWay({ class: 'motorway' }, 60));
     assert.ok(!t.includes('sidewalk') && !t.includes('parking-lane'));
     assert.ok(t.includes('divider'));
+  });
+});
+
+describe('generation continuity (#2006)', () => {
+  // A straight 400 m north-south test line at x=0.
+  const line = (z0, z1, step = 10) => {
+    const pts = [];
+    const n = Math.round((z1 - z0) / step);
+    for (let i = 0; i <= n; i++) pts.push({ x: 0, z: z0 + i * step });
+    return pts;
+  };
+
+  describe('importedCarriagewayMeters', () => {
+    it('excludes sidewalks from the crossing width', () => {
+      const full = importedWidthMeters('minor');
+      const carriageway = importedCarriagewayMeters('minor');
+      assert.ok(carriageway < full);
+      // residential: 2 × 3 m drive + 2 × 2.2 m parking = 10.4 m.
+      assert.ok(Math.abs(carriageway - 10.4) < 1e-9);
+    });
+
+    it('junctionsAlongStretch reports carriageway widths', () => {
+      const stretch = line(0, 400);
+      const crosser = {
+        class: 'minor',
+        polylines: [
+          [
+            { x: -50, z: 200 },
+            { x: 50, z: 200 }
+          ]
+        ]
+      };
+      const [j] = junctionsAlongStretch(stretch, [crosser]);
+      assert.ok(Math.abs(j.crossWidthM - 10.4) < 1e-9);
+    });
+  });
+
+  it('default inset pad is 2 m', () => {
+    const stretch = line(0, 400);
+    const j = { s: 200, point: { x: 0, z: 200 }, crossWidthM: 10 };
+    const { pieces } = splitStretchAtJunctions(stretch, [j]);
+    // Inset = 10/2 + 2 = 7 m each side of s=200.
+    assert.strictEqual(pieces[0].points[pieces[0].points.length - 1].z, 193);
+    assert.strictEqual(pieces[1].points[0].z, 207);
+  });
+
+  describe('clipStretchToUncovered', () => {
+    it('passes through untouched with no coverage', () => {
+      const pts = line(0, 100);
+      assert.deepStrictEqual(clipStretchToUncovered(pts, []), pts);
+    });
+
+    it('returns null when fully covered', () => {
+      const pts = line(0, 100);
+      assert.strictEqual(clipStretchToUncovered(pts, [line(-20, 120)]), null);
+    });
+
+    it('keeps the longest uncovered run and snaps to the covered end', () => {
+      // Coverage over the first 150 m; window runs 0–400 m.
+      const covered = [line(0, 150)];
+      const run = clipStretchToUncovered(line(0, 400), covered);
+      assert.ok(run);
+      // Boundary snapped exactly onto the covered stretch's endpoint.
+      assert.deepStrictEqual(run[0], { x: 0, z: 150 });
+      const end = run[run.length - 1];
+      assert.ok(Math.abs(end.z - 400) < 1e-6);
+    });
+
+    it('drops a remainder below the minimum length', () => {
+      const covered = [line(0, 390)];
+      assert.strictEqual(
+        clipStretchToUncovered(line(0, 400), covered, { minLengthM: 20 }),
+        null
+      );
+    });
+
+    it('ignores junction-cut-sized gaps between covered pieces', () => {
+      // Two pieces with a 14 m cut gap between them: nothing to extend.
+      const covered = [line(0, 193, 10.16), line(207, 400, 10.16)];
+      assert.strictEqual(clipStretchToUncovered(line(0, 400), covered), null);
+    });
+  });
+
+  it('stretchForWindow clips against coverage and re-derives length', () => {
+    const polylines = [line(0, 400)];
+    const covered = [line(0, 200)];
+    const stretch = stretchForWindow(
+      polylines,
+      { x: 0, z: 200 },
+      {
+        windowM: 200,
+        covered
+      }
+    );
+    assert.ok(stretch);
+    assert.strictEqual(stretch.points[0].z, 200); // snapped to covered end
+    assert.ok(Math.abs(stretch.lengthM - 200) < 5);
+    // Fully covered window → null.
+    assert.strictEqual(
+      stretchForWindow(
+        polylines,
+        { x: 0, z: 100 },
+        {
+          windowM: 90,
+          covered: [line(0, 400)]
+        }
+      ),
+      null
+    );
+  });
+
+  it('encode/decode stretch points round-trips at dm precision', () => {
+    const pts = [
+      { x: 1.234, z: -5.678 },
+      { x: 100, z: 200.05 }
+    ];
+    const decoded = decodeStretchPoints(encodeStretchPoints(pts));
+    assert.deepStrictEqual(decoded, [
+      { x: 1.2, z: -5.7 },
+      { x: 100, z: 200.1 }
+    ]);
+    assert.strictEqual(decodeStretchPoints(''), null);
+    assert.strictEqual(decodeStretchPoints('1,2;bogus'), null);
+    assert.strictEqual(decodeStretchPoints('1,2'), null); // needs ≥2 points
   });
 });
