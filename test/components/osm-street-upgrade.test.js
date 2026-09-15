@@ -262,8 +262,24 @@ describe('osm-streets upgrade (viewer creation path)', () => {
     // with only ONE bordering street end the pad must still fill the cut
     // (the old ≥2 rule left a bare hole here).
     expect(comp.upgradeWay(main, { x: 0, z: 300 })).toBe(1);
-    expect(scene.querySelectorAll('[managed-intersection]')).toHaveLength(1);
-  });
+    const intersections = scene.querySelectorAll('[managed-intersection]');
+    expect(intersections).toHaveLength(1);
+
+    // With exactly one arm the pad renders as a PARTIAL intersection —
+    // asphalt stub + that arm's crosswalk — not the zero-arm disc, and
+    // no full geometry yet (plan exporter sees none).
+    const mi = intersections[0];
+    await vi.waitFor(
+      () => {
+        const comp2 = mi.components['managed-intersection'];
+        expect(comp2).toBeTruthy();
+        expect(comp2.lastGeometry).toBeNull();
+        const crosswalk = mi.querySelector('[data-layer-name^="Crosswalk"]');
+        expect(crosswalk).toBeTruthy();
+      },
+      { timeout: 15000 }
+    );
+  }, 30000);
 
   it('returns 0 for a stretch below the generate minimum', async () => {
     const comp = await osmStreetsComponent();
