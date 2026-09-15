@@ -93,14 +93,25 @@ one attempt per endpoint, IndexedDB-cached per bbox, memoized per way id)
 and `pickOverpassWay` matches the way by geometry — the tiles don't carry
 OSM ids — preferring drivable ways so a footway hugging the road never
 shadows it. `crossSectionFromTags` (`src/tested/osm-way-tags.js`, pure +
-tested) builds the segments: `lanes` / `lanes:forward` / `lanes:backward`
-exact when tagged, `oneway` (motorways and roundabouts default one-way),
-`sidewalk`, `parking:lane:*` / `parking:*`, `cycleway:*` on the tagged
-side, `name`; every missing field falls back to the class rules, and
-`facts` records `osm` vs `default` per field so the chip can say
-"Market St · 4 lanes · sidewalks both sides" or "lanes not mapped (2
-assumed)". Generate waits up to 1.5 s for an in-flight answer, else uses
-the rules. Side convention: segments[0] is the way's forward-RIGHT side
+tested) builds the segments — tag coverage tracks #2004
+(strassenraumkarte parity; defaults ported from osmberlin/
+strassenraumkarte's `lanes.lua` lane model, Apache-2.0): `lanes` /
+`lanes:forward` / `lanes:backward` exact when tagged, `oneway` (motorways
+and roundabouts default one-way), `width` / `width:carriageway` (drive
+widths derived carriageway-minus-extras) and per-lane `width:lanes:*`,
+`sidewalk` sides + `sidewalk:*:width`, street parking old and new schema
+(`parking:lane:*` / `parking:*` with `:orientation` — parallel/diagonal/
+perpendicular at 2.2/4.5/5 m with matching parked-car spacing and facing —
+`:width`, and `:restriction` suppression), `cycleway:*` with `:width` and
+protection (`track` / `:separation` / `:buffer` insert a raised buffer
+divider), `turn:lanes*` (stencil arrows on the right lanes, `*:lanes`
+entries mapped driver-left-first), bus/PSV lanes inside ordinary roads
+(`bus:lanes*` designated positions or `lanes:bus*` curbside counts),
+`surface` (carriageway segments only), `name`; every missing field falls
+back to the class rules, and `facts` records `osm` vs `default` per field
+so the chip can say "Market St · 4 lanes · width 12 m · sidewalks both
+sides" or "lanes not mapped (2 assumed)". Generate waits up to 1.5 s for
+an in-flight answer, else uses the rules. Side convention: segments[0] is the way's forward-RIGHT side
 (managed-street lays segments out -x → +x and +z is forward). Tunnels and ferries are
 filtered. Real lane data arrives with the Overpass-backed hydrator
 (phase 6 below; `src/osm/overpass-fetch.js` is kept for exactly that).
@@ -157,8 +168,9 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
   insets to 0 — streets pop back intact. Then upgraded-street junctions
   get real intersections automatically.
 - **Phase 6 — full hydration + pinning.** The on-generate slice above
-  ships; remaining: osm2lanes-grade tag coverage (#826: `width`,
-  `turn:lanes`, `busway`, `shoulder`), hydrating ribbons ahead of the
+  ships; remaining: the rest of #2004's tag coverage (`shoulder`,
+  `placement`/`dual_carriageway`, crossing/signal nodes — #826 is
+  absorbed there), hydrating ribbons ahead of the
   click so the highlight shows real widths, provenance
   `{source: 'osm', wayId}` serialized per street (today:
   `data-osm-way-id` / `data-osm-source` / `data-osm-name` attributes); any
@@ -174,7 +186,9 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
 
 ## Related
 
-- #1930 (umbrella), #138 (OSM import), #826 (osm2streets), #1927
+- #1930 (umbrella), #2004 (cross-section fidelity / strassenraumkarte
+  parity), #2005 (lane-model tile service), #138 (OSM import), #826
+  (osm2streets, absorbed by #2004), #1927
   (managed-intersection prototype), `docs/managed-intersection.md`,
   `docs/curved-street-path.md`, `docs/geospatial-2d-25d-upgrade-plan.md`
   §5 (shared OSM fetch service; no architectural dependency between the

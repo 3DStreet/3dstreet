@@ -494,17 +494,50 @@ const sidewalk = (width = 2) => ({
   generated: { pedestrians: [{ density: 'normal' }] }
 });
 
-const parking = (direction, width = 2.2) => ({
-  name: 'Parking',
-  type: 'parking-lane',
+// Street-parking orientation → lane width and parked-car placement.
+// Widths and per-car spacing are the strassenraumkarte lane-model values
+// (osmberlin/strassenraumkarte data/lua/lanes.lua + proc_cars, validated
+// against the Neukölln parking census); `facing` angles the parked clones
+// off the travel axis for diagonal/perpendicular bays.
+export const PARKING_BY_ORIENTATION = {
+  parallel: { width: 2.2, spacing: 5.2, facing: 0 },
+  diagonal: { width: 4.5, spacing: 3.1, facing: 55 },
+  perpendicular: { width: 5, spacing: 2.5, facing: 90 }
+};
+
+const parking = (direction, orientation = 'parallel', width = null) => {
+  const o =
+    PARKING_BY_ORIENTATION[orientation] ?? PARKING_BY_ORIENTATION.parallel;
+  const clone = {
+    mode: 'random',
+    modelsArray: 'sedan-rig',
+    spacing: o.spacing,
+    count: 4
+  };
+  if (o.facing) clone.facing = o.facing;
+  return {
+    name: 'Parking',
+    type: 'parking-lane',
+    width: width ?? o.width,
+    elevation: 0,
+    direction,
+    color: '#ffffff',
+    surface: 'concrete',
+    generated: { clones: [clone] }
+  };
+};
+
+// Physical separation between a protected cycle lane and traffic
+// (cycleway=track / cycleway:*:separation / :buffer): a narrow raised
+// divider between the bike lane and the drive lanes.
+const buffer = (width = 0.6) => ({
+  name: 'Buffer',
+  type: 'divider',
   width,
-  elevation: 0,
-  direction,
+  elevation: 0.15,
+  direction: 'none',
   color: '#ffffff',
-  surface: 'concrete',
-  generated: {
-    clones: [{ mode: 'random', modelsArray: 'sedan-rig', spacing: 6, count: 4 }]
-  }
+  surface: 'concrete'
 });
 
 const median = (width = 1.2) => ({
@@ -689,7 +722,15 @@ export function segmentsForWay({ class: cls, subclass, oneway }) {
 
 // Segment factories + lane tables, shared with the Overpass tag mapper
 // (osm-way-tags.js) so hydrated and rule-based streets look alike.
-export const segmentBuilders = { drive, sidewalk, parking, median, bike, bus };
+export const segmentBuilders = {
+  drive,
+  sidewalk,
+  parking,
+  median,
+  bike,
+  bus,
+  buffer
+};
 export const LANE_TABLES = { LANES_PER_DIRECTION, ONEWAY_LANES, LANE_WIDTH_M };
 export const DRIVABLE_CLASSES = new Set(Object.keys(LANE_WIDTH_M));
 

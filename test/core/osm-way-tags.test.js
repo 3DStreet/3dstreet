@@ -278,3 +278,280 @@ describe('streetJsonFromTags / describeFacts', () => {
     assert.strictEqual(describeFacts(null), '');
   });
 });
+
+describe('crossSectionFromTags — strassenraumkarte-parity tags (#2004)', () => {
+  const bare = {
+    // Quiet the class-rule dressing so lane-level assertions stay readable.
+    sidewalk: 'no',
+    'parking:both': 'no'
+  };
+
+  it('derives drive-lane width from the carriageway width tag', () => {
+    const { segments, facts } = crossSectionFromTags({
+      highway: 'residential',
+      sidewalk: 'no',
+      lanes: '2',
+      width: '12',
+      'parking:both': 'lane'
+    });
+    // 12 m minus two 2.2 m parallel parking lanes over 2 drive lanes.
+    const d = drives(segments);
+    assert.strictEqual(d.length, 2);
+    for (const lane of d) assert.ok(Math.abs(lane.width - 3.8) < 1e-9);
+    assert.deepStrictEqual(facts.width, { value: 12, source: 'osm' });
+  });
+
+  it('clamps an implausible derived lane width', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      lanes: '2',
+      width: '2'
+    });
+    for (const lane of drives(segments)) assert.strictEqual(lane.width, 2);
+  });
+
+  it('applies width:lanes per lane, leftmost entry first', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      'lanes:forward': '2',
+      'lanes:backward': '1',
+      'width:lanes:forward': '3|4',
+      'width:lanes:backward': '2.5'
+    });
+    // Forward lanes are laid curbside-first (segments[0] = driver's
+    // right), so the leftmost width:lanes entry (3) lands on the SECOND
+    // forward lane.
+    const d = drives(segments);
+    assert.deepStrictEqual(
+      d.map((l) => l.width),
+      [4, 3, 2.5]
+    );
+  });
+
+  it('reads parking orientation from the new schema', () => {
+    const { segments, facts } = crossSectionFromTags({
+      highway: 'residential',
+      sidewalk: 'no',
+      'parking:right': 'lane',
+      'parking:right:orientation': 'perpendicular',
+      'parking:left': 'no'
+    });
+    const p = segments.filter((s) => s.type === 'parking-lane');
+    assert.strictEqual(p.length, 1);
+    assert.strictEqual(p[0].width, 5);
+    const clone = p[0].generated.clones[0];
+    assert.strictEqual(clone.spacing, 2.5);
+    assert.strictEqual(clone.facing, 90);
+    assert.strictEqual(facts.parking.orientation.right, 'perpendicular');
+  });
+
+  it('reads orientation straight off the old parking:lane schema', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      sidewalk: 'no',
+      'parking:lane:both': 'diagonal'
+    });
+    const p = segments.filter((s) => s.type === 'parking-lane');
+    assert.strictEqual(p.length, 2);
+    for (const lane of p) {
+      assert.strictEqual(lane.width, 4.5);
+      assert.strictEqual(lane.generated.clones[0].spacing, 3.1);
+      assert.strictEqual(lane.generated.clones[0].facing, 55);
+    }
+  });
+
+  it('honors a mapped parking width and a no_stopping restriction', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      sidewalk: 'no',
+      'parking:both': 'lane',
+      'parking:left:width': '1.8',
+      'parking:right:restriction': 'no_stopping'
+    });
+    const p = segments.filter((s) => s.type === 'parking-lane');
+    assert.strictEqual(p.length, 1);
+    assert.strictEqual(p[0].direction, 'outbound'); // left side survives
+    assert.strictEqual(p[0].width, 1.8);
+  });
+
+  it('separates a protected track with a buffer divider', () => {
+    const { segments, facts } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      'cycleway:right': 'track'
+    });
+    assert.deepStrictEqual(types(segments), [
+      'bike-lane',
+      'divider',
+      'drive-lane',
+      'drive-lane'
+    ]);
+    assert.strictEqual(facts.bike.protected.right, true);
+  });
+
+  it('keeps a painted lane flush and reads its width', () => {
+    const { segments, facts } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      'cycleway:right': 'lane',
+      'cycleway:right:width': '2.5'
+    });
+    assert.deepStrictEqual(types(segments), [
+      'bike-lane',
+      'drive-lane',
+      'drive-lane'
+    ]);
+    assert.strictEqual(segments[0].width, 2.5);
+    assert.strictEqual(facts.bike.protected.right, false);
+  });
+
+  it('treats tagged separation as protection', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      'cycleway:right': 'lane',
+      'cycleway:right:separation:left': 'bollard'
+    });
+    assert.ok(types(segments).includes('divider'));
+  });
+
+  it('stamps turn:lanes arrows on a one-way, curbside entry last', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'secondary',
+      ...bare,
+      oneway: 'yes',
+      lanes: '3',
+      'turn:lanes': 'left|through|through;right'
+    });
+    const stencil = (s) => s.generated.stencil?.[0].modelsArray ?? null;
+    // Leftmost tag entry → last lane; curbside lane gets through;right.
+    assert.deepStrictEqual(drives(segments).map(stencil), [
+      'right-straight',
+      'straight',
+      'left'
+    ]);
+  });
+
+  it('maps turn:lanes:forward onto the forward lanes only', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      'lanes:forward': '1',
+      'lanes:backward': '1',
+      'turn:lanes:forward': 'left;through'
+    });
+    const d = drives(segments);
+    assert.strictEqual(d[0].generated.stencil[0].modelsArray, 'left-straight');
+    assert.strictEqual(d[0].generated.stencil[0].direction, 'inbound');
+    assert.strictEqual(d[1].generated.stencil, undefined);
+  });
+
+  it('ignores movements with no stencil rather than guessing', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      oneway: 'yes',
+      lanes: '2',
+      'turn:lanes': 'merge_to_left|none'
+    });
+    for (const lane of drives(segments)) {
+      assert.strictEqual(lane.generated.stencil, undefined);
+    }
+  });
+
+  it('converts designated bus:lanes entries to bus lanes', () => {
+    const { segments, facts } = crossSectionFromTags({
+      highway: 'secondary',
+      ...bare,
+      'lanes:forward': '2',
+      'lanes:backward': '2',
+      'bus:lanes:forward': 'no|designated'
+    });
+    // Rightmost forward entry = curbside = first segment.
+    assert.deepStrictEqual(types(segments), [
+      'bus-lane',
+      'drive-lane',
+      'drive-lane',
+      'drive-lane'
+    ]);
+    assert.deepStrictEqual(facts.busLanes, { value: 1, source: 'osm' });
+  });
+
+  it('puts count-only lanes:bus at the curb of each direction', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'secondary',
+      ...bare,
+      'lanes:forward': '2',
+      'lanes:backward': '2',
+      'lanes:bus:forward': '1',
+      'lanes:bus:backward': '1'
+    });
+    assert.deepStrictEqual(types(segments), [
+      'bus-lane',
+      'drive-lane',
+      'drive-lane',
+      'bus-lane'
+    ]);
+  });
+
+  it('maps surface onto carriageway segments only', () => {
+    const { segments, facts } = crossSectionFromTags({
+      highway: 'residential',
+      surface: 'sett',
+      'parking:both': 'lane'
+    });
+    for (const s of segments) {
+      if (s.type === 'drive-lane') assert.strictEqual(s.surface, 'sidewalk');
+      if (s.type === 'parking-lane') assert.strictEqual(s.surface, 'concrete');
+      if (s.type === 'sidewalk') assert.strictEqual(s.surface, 'sidewalk');
+    }
+    assert.deepStrictEqual(facts.surface, { value: 'sett', source: 'osm' });
+  });
+
+  it('leaves an unknown surface value on the class default', () => {
+    const { segments, facts } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      surface: 'metal'
+    });
+    for (const lane of drives(segments)) {
+      assert.strictEqual(lane.surface, 'asphalt');
+    }
+    assert.strictEqual(facts.surface, undefined);
+  });
+
+  it('reads per-side sidewalk widths', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      sidewalk: 'both',
+      'sidewalk:left:width': '3',
+      'parking:both': 'no'
+    });
+    const walks = segments.filter((s) => s.type === 'sidewalk');
+    assert.strictEqual(walks[0].width, 1.8); // right: class default
+    assert.strictEqual(walks[walks.length - 1].width, 3); // left: mapped
+  });
+
+  it('describes the new facts in the chip line', () => {
+    const { facts } = crossSectionFromTags({
+      highway: 'residential',
+      name: 'Karl-Marx-Straße',
+      lanes: '2',
+      width: '11',
+      sidewalk: 'both',
+      surface: 'sett',
+      'parking:both': 'lane',
+      'parking:both:orientation': 'diagonal',
+      'cycleway:right': 'track',
+      'lanes:bus:forward': '1'
+    });
+    assert.strictEqual(
+      describeFacts(facts),
+      'Karl-Marx-Straße · 2 lanes · width 11 m · 1 bus lane · ' +
+        'sidewalks both sides · parking both sides (diagonal) · ' +
+        'protected bike lanes right · sett surface'
+    );
+  });
+});

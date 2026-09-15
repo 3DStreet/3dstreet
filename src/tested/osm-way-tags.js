@@ -9,6 +9,14 @@
  * it and falls back to the class rules in osm-street-import.js where it
  * doesn't; `facts` records which is which so the UI can say so.
  *
+ * Tag coverage tracks #2004 (strassenraumkarte parity): lane counts,
+ * widths (`width`/`width:carriageway`/`width:lanes*`), the street-parking
+ * schema old and new (side, orientation, width, restriction), cycleway
+ * width/separation/buffer (painted lane vs protected track), `turn:lanes*`
+ * (surface arrows), bus/PSV lanes inside ordinary roads, `surface`, and
+ * sidewalk sides/widths. Width defaults mirror the strassenraumkarte lane
+ * model (osmberlin/strassenraumkarte, data/lua/lanes.lua, Apache-2.0).
+ *
  * Side convention: managed-street lays segments out from -x to +x, and
  * street-local +z is the way's forward direction, so segments[0] is the
  * way's RIGHT side (OSM `*:right`) and the last segment its LEFT.
@@ -19,6 +27,7 @@
 import {
   DRIVABLE_CLASSES,
   LANE_TABLES,
+  PARKING_BY_ORIENTATION,
   latLonToLocal,
   localToLatLon,
   nearestWay,
@@ -26,7 +35,7 @@ import {
   segmentsForWay
 } from './osm-street-import.js';
 
-const { drive, sidewalk, parking, median, bike } = segmentBuilders;
+const { drive, sidewalk, parking, median, bike, bus, buffer } = segmentBuilders;
 const { LANES_PER_DIRECTION, ONEWAY_LANES, LANE_WIDTH_M } = LANE_TABLES;
 
 // OSM highway value → OpenMapTiles class (+ subclass where the rules care).
@@ -132,6 +141,19 @@ function parseInt10(v) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** "5", "5.5", "5 m", "5.5m" → meters. Null for feet/quotes/garbage. */
+function parseWidthM(v) {
+  if (v === undefined || v === null) return null;
+  const m = String(v)
+    .trim()
+    .match(/^(\d+(?:\.\d+)?)\s*m?$/i);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) && n > 0 && n < 100 ? n : null;
+}
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
 function onewayFromTags(tags, cls, fallback) {
   const v = tags.oneway;
   if (v === 'yes' || v === 'true' || v === '1') return 1;
@@ -190,13 +212,169 @@ const CYCLEWAY_YES = (v) =>
     v
   );
 
+const PARKING_ORIENTATIONS = new Set(['parallel', 'diagonal', 'perpendicular']);
+const PARKING_RESTRICTED = new Set([
+  'no_parking',
+  'no_stopping',
+  'no_standing'
+]);
+
+/**
+ * Orientation, mapped width and restriction for one parking side, across
+ * the old (`parking:lane:*` values ARE orientations) and post-2022
+ * (`parking:<side>` + `:orientation`/`:width`/`:restriction` subkeys)
+ * street-parking schemas.
+ */
+function parkingDetail(tags, side) {
+  const oldVal =
+    tags[`parking:lane:${side}`] ??
+    tags['parking:lane:both'] ??
+    tags['parking:lane'];
+  const orientationTag =
+    tags[`parking:${side}:orientation`] ??
+    tags['parking:both:orientation'] ??
+    (PARKING_ORIENTATIONS.has(oldVal) ? oldVal : undefined);
+  const orientation = PARKING_ORIENTATIONS.has(orientationTag)
+    ? orientationTag
+    : 'parallel';
+  const width =
+    parseWidthM(tags[`parking:${side}:width`] ?? tags['parking:both:width']) ??
+    parseWidthM(
+      tags[`parking:lane:${side}:width`] ?? tags['parking:lane:both:width']
+    );
+  const restriction =
+    tags[`parking:${side}:restriction`] ?? tags['parking:both:restriction'];
+  return {
+    orientation,
+    width,
+    restricted: PARKING_RESTRICTED.has(restriction)
+  };
+}
+
+/**
+ * Width and physical protection for one cycleway side. `track` (its own
+ * roadway) and any tagged `separation`/`buffer` count as protected — the
+ * cross-section gets a raised buffer divider between bike and traffic.
+ */
+function bikeDetail(tags, side) {
+  const kind =
+    tags[`cycleway:${side}`] ?? tags['cycleway:both'] ?? tags.cycleway;
+  const width = parseWidthM(
+    tags[`cycleway:${side}:width`] ??
+      tags['cycleway:both:width'] ??
+      tags['cycleway:width']
+  );
+  const detailKeys = (base) => [
+    `cycleway:${side}:${base}`,
+    `cycleway:${side}:${base}:left`,
+    `cycleway:${side}:${base}:right`,
+    `cycleway:${side}:${base}:both`,
+    `cycleway:both:${base}`,
+    `cycleway:${base}`
+  ];
+  const separation = detailKeys('separation')
+    .map((k) => tags[k])
+    .find((v) => v !== undefined && v !== 'no');
+  const bufferVal = detailKeys('buffer')
+    .map((k) => tags[k])
+    .find((v) => v !== undefined && v !== 'no' && v !== '0');
+  return {
+    width: width ?? 1.5,
+    protected:
+      kind === 'track' ||
+      kind === 'opposite_track' ||
+      Boolean(separation) ||
+      Boolean(bufferVal),
+    bufferWidth: parseWidthM(bufferVal) ?? 0.6
+  };
+}
+
+// `turn:lanes` entry (";"-joined movements) → stencil mixin id, or null.
+// The mixins ship in assets.js's stencils group; merge_* and unknown
+// movements match no combo and draw nothing rather than a wrong arrow.
+const TURN_STENCILS = [
+  [['left'], 'left'],
+  [['right'], 'right'],
+  [['through'], 'straight'],
+  [['left', 'through'], 'left-straight'],
+  [['right', 'through'], 'right-straight'],
+  [['left', 'right'], 'both'],
+  [['left', 'right', 'through'], 'all']
+];
+
+function stencilForTurnEntry(entry) {
+  if (!entry) return null;
+  const moves = new Set(
+    entry
+      .split(';')
+      .map((m) => m.trim().replace(/^(slight_|sharp_)/, ''))
+      .filter((m) => m && m !== 'none')
+  );
+  if (moves.size === 0) return null;
+  for (const [combo, id] of TURN_STENCILS) {
+    if (combo.length === moves.size && combo.every((m) => moves.has(m))) {
+      return id;
+    }
+  }
+  return null;
+}
+
+/** `a|b|c` lane-value list → array, or null when untagged. */
+function laneValues(tag) {
+  if (tag === undefined || tag === null) return null;
+  return String(tag)
+    .split('|')
+    .map((v) => v.trim());
+}
+
+/**
+ * Align `*:lanes` entries (listed leftmost-first from the DRIVER's view)
+ * to our lane-array order. Forward/inbound lanes are built rightmost
+ * (curbside) first — segments run -x → +x and segments[0] is the way's
+ * forward-RIGHT — so their entries map reversed; backward lanes already
+ * run driver-left-first in array order and map directly.
+ */
+function mapLaneEntries(entries, laneCount, reversed) {
+  const out = new Array(laneCount).fill(null);
+  if (!entries) return out;
+  for (let i = 0; i < Math.min(entries.length, laneCount); i++) {
+    out[reversed ? laneCount - 1 - i : i] = entries[i];
+  }
+  return out;
+}
+
+// OSM `surface=*` → street-segment surface. Only values with a matching
+// texture map; anything else keeps the class default.
+const SURFACE_MAP = {
+  asphalt: 'asphalt',
+  chipseal: 'asphalt',
+  concrete: 'concrete',
+  'concrete:plates': 'concrete',
+  'concrete:lanes': 'concrete',
+  paving_stones: 'sidewalk',
+  sett: 'sidewalk',
+  cobblestone: 'sidewalk',
+  unhewn_cobblestone: 'sidewalk',
+  bricks: 'sidewalk',
+  gravel: 'gravel',
+  fine_gravel: 'gravel',
+  compacted: 'gravel',
+  unpaved: 'gravel',
+  dirt: 'gravel',
+  ground: 'gravel',
+  earth: 'gravel',
+  grass: 'grass',
+  sand: 'sand'
+};
+
 /**
  * @param {Object} tags OSM tags of the matched way.
  * @param {Object} way tile record ({ class, subclass, oneway }) — the
  *   fallback for anything the tags omit.
  * @returns {{ segments: Array, facts: Object }} `facts` fields are
  *   `{ value, source: 'osm' | 'default' }` (or absent when n/a) for
- *   lanes, sidewalk, parking, bike, plus `name`, `class`, `oneway`.
+ *   lanes, sidewalk, parking, bike, width, busLanes, surface, plus
+ *   `name`, `class`, `oneway`.
  */
 export function crossSectionFromTags(tags = {}, way = {}) {
   const mapped = classForHighway(tags.highway);
@@ -248,10 +426,149 @@ export function crossSectionFromTags(tags = {}, way = {}) {
       facts.lanes = { value: fwd + bwd, source: 'default' };
     }
   }
-  const lanes = [
-    ...Array.from({ length: fwd }, () => drive('inbound', laneW)),
-    ...Array.from({ length: bwd }, () => drive('outbound', laneW))
-  ];
+
+  // Dressing: OSM sides where tagged, class rules where not.
+  const rules = segmentsForWay({ class: cls, subclass, oneway });
+  const ruleHas = (type) => rules.some((s) => s.type === type);
+  const sidewalkTagged = sides(tags, 'sidewalk', SIDEWALK_YES);
+  const sidewalks = sidewalkTagged ?? {
+    left: ruleHas('sidewalk'),
+    right: ruleHas('sidewalk')
+  };
+  facts.sidewalk = {
+    value: sidewalks,
+    source: sidewalkTagged ? 'osm' : 'default'
+  };
+  const parkingTagged =
+    sides(tags, 'parking:lane', PARKING_YES) ??
+    sides(tags, 'parking', PARKING_YES);
+  const parkings = {
+    ...(parkingTagged ?? {
+      left: ruleHas('parking-lane'),
+      right: ruleHas('parking-lane')
+    })
+  };
+  const parkDetail = {
+    left: parkingDetail(tags, 'left'),
+    right: parkingDetail(tags, 'right')
+  };
+  // A tagged restriction (no_parking/no_stopping) beats presence — the
+  // kerb exists but nobody may park there, so no parking lane renders.
+  if (parkDetail.left.restricted) parkings.left = false;
+  if (parkDetail.right.restricted) parkings.right = false;
+  facts.parking = {
+    value: parkings,
+    source: parkingTagged ? 'osm' : 'default',
+    orientation: {
+      left: parkDetail.left.orientation,
+      right: parkDetail.right.orientation
+    }
+  };
+  const bikeTagged = sides(tags, 'cycleway', CYCLEWAY_YES);
+  const bikes = bikeTagged ?? { left: false, right: false };
+  const bikeDet = {
+    left: bikeDetail(tags, 'left'),
+    right: bikeDetail(tags, 'right')
+  };
+  facts.bike = {
+    value: bikes,
+    source: bikeTagged ? 'osm' : 'default',
+    protected: {
+      left: bikes.left && bikeDet.left.protected,
+      right: bikes.right && bikeDet.right.protected
+    }
+  };
+
+  // Carriageway width: mapped `width:carriageway`/`width` minus the
+  // on-carriageway extras (parking lanes, painted bike lanes) spread over
+  // the drive lanes — the strassenraumkarte `width:effective` derivation.
+  // Protected tracks sit off the carriageway and don't subtract.
+  const carriagewayW =
+    parseWidthM(tags['width:carriageway']) ?? parseWidthM(tags.width);
+  let derivedLaneW = null;
+  if (carriagewayW && fwd + bwd > 0) {
+    let extras = 0;
+    for (const side of ['left', 'right']) {
+      if (parkings[side]) {
+        extras +=
+          parkDetail[side].width ??
+          PARKING_BY_ORIENTATION[parkDetail[side].orientation].width;
+      }
+      if (bikes[side] && !bikeDet[side].protected) {
+        extras += bikeDet[side].width;
+      }
+    }
+    derivedLaneW = clamp((carriagewayW - extras) / (fwd + bwd), 2, 4.5);
+    facts.width = { value: carriagewayW, source: 'osm' };
+  }
+
+  // One direction's drive/bus lanes with per-lane widths, turn arrows and
+  // bus designation. `dirSuffix` is ':forward'/':backward' on two-way
+  // ways, '' on one-ways (whose plain `turn:lanes`/`width:lanes` apply).
+  const buildDirection = (count, direction, dirSuffix) => {
+    if (count === 0) return { lanes: [], busCount: 0 };
+    const reversed = direction === 'inbound';
+    const widths = mapLaneEntries(
+      laneValues(tags[`width:lanes${dirSuffix}`]),
+      count,
+      reversed
+    ).map(parseWidthM);
+    const stencils = mapLaneEntries(
+      laneValues(tags[`turn:lanes${dirSuffix}`]),
+      count,
+      reversed
+    ).map(stencilForTurnEntry);
+    const busEntries = laneValues(
+      tags[`bus:lanes${dirSuffix}`] ?? tags[`psv:lanes${dirSuffix}`]
+    );
+    const busFlags = mapLaneEntries(busEntries, count, reversed).map(
+      (v) => v === 'designated' || v === 'yes'
+    );
+    if (!busEntries) {
+      // Count-only tagging: bus lanes hug the curb — the driver's right,
+      // which is index 0 for forward lanes and count-1 for backward.
+      const n = Math.min(
+        parseInt10(tags[`lanes:bus${dirSuffix}`]) ??
+          parseInt10(tags[`lanes:psv${dirSuffix}`]) ??
+          0,
+        count
+      );
+      for (let i = 0; i < n; i++) {
+        busFlags[reversed ? i : count - 1 - i] = true;
+      }
+    }
+    const lanes = [];
+    let busCount = 0;
+    for (let i = 0; i < count; i++) {
+      const w = widths[i] ?? derivedLaneW ?? laneW;
+      if (busFlags[i]) {
+        busCount++;
+        lanes.push(bus(direction, widths[i] ?? 3.2));
+        continue;
+      }
+      const lane = drive(direction, w);
+      if (stencils[i]) {
+        lane.generated = {
+          ...lane.generated,
+          stencil: [{ modelsArray: stencils[i], spacing: 20, direction }]
+        };
+      }
+      lanes.push(lane);
+    }
+    return { lanes, busCount };
+  };
+
+  const fwdBuilt = buildDirection(
+    fwd,
+    'inbound',
+    oneway && flowDir === 'inbound' ? '' : ':forward'
+  );
+  const bwdBuilt = buildDirection(
+    bwd,
+    'outbound',
+    oneway && flowDir === 'outbound' ? '' : ':backward'
+  );
+  const lanes = [...fwdBuilt.lanes, ...bwdBuilt.lanes];
   if (
     !oneway &&
     (cls === 'motorway' || cls === 'trunk' || cls === 'primary') &&
@@ -260,47 +577,58 @@ export function crossSectionFromTags(tags = {}, way = {}) {
   ) {
     lanes.splice(fwd, 0, median());
   }
+  const busTotal = fwdBuilt.busCount + bwdBuilt.busCount;
+  if (busTotal > 0) facts.busLanes = { value: busTotal, source: 'osm' };
 
-  // Dressing: OSM sides where tagged, class rules where not.
-  const rules = segmentsForWay({ class: cls, subclass, oneway });
-  const ruleHas = (type) => rules.some((s) => s.type === type);
-  const sidewalks = sides(tags, 'sidewalk', SIDEWALK_YES) ?? {
-    left: ruleHas('sidewalk'),
-    right: ruleHas('sidewalk')
-  };
-  facts.sidewalk = {
-    value: sidewalks,
-    source: sides(tags, 'sidewalk', SIDEWALK_YES) ? 'osm' : 'default'
-  };
-  const parkingTagged =
-    sides(tags, 'parking:lane', PARKING_YES) ??
-    sides(tags, 'parking', PARKING_YES);
-  const parkings = parkingTagged ?? {
-    left: ruleHas('parking-lane'),
-    right: ruleHas('parking-lane')
-  };
-  facts.parking = {
-    value: parkings,
-    source: parkingTagged ? 'osm' : 'default'
-  };
-  const bikes = sides(tags, 'cycleway', CYCLEWAY_YES) ?? {
-    left: false,
-    right: false
-  };
-  facts.bike = {
-    value: bikes,
-    source: sides(tags, 'cycleway', CYCLEWAY_YES) ? 'osm' : 'default'
-  };
+  const swDefault = cls === 'primary' || cls === 'secondary' ? 2.5 : 1.8;
+  const sidewalkWidth = (side) =>
+    parseWidthM(
+      tags[`sidewalk:${side}:width`] ??
+        tags['sidewalk:both:width'] ??
+        tags['sidewalk:width']
+    ) ?? swDefault;
 
-  const sw = cls === 'primary' || cls === 'secondary' ? 2.5 : 1.8;
   const segments = [];
-  if (sidewalks.right) segments.push(sidewalk(sw));
-  if (parkings.right) segments.push(parking('inbound'));
-  if (bikes.right) segments.push(bike('inbound'));
+  if (sidewalks.right) segments.push(sidewalk(sidewalkWidth('right')));
+  if (parkings.right) {
+    segments.push(
+      parking('inbound', parkDetail.right.orientation, parkDetail.right.width)
+    );
+  }
+  if (bikes.right) {
+    segments.push(bike('inbound', bikeDet.right.width));
+    if (bikeDet.right.protected) {
+      segments.push(buffer(bikeDet.right.bufferWidth));
+    }
+  }
   segments.push(...lanes);
-  if (bikes.left) segments.push(bike('outbound'));
-  if (parkings.left) segments.push(parking('outbound'));
-  if (sidewalks.left) segments.push(sidewalk(sw));
+  if (bikes.left) {
+    if (bikeDet.left.protected) {
+      segments.push(buffer(bikeDet.left.bufferWidth));
+    }
+    segments.push(bike('outbound', bikeDet.left.width));
+  }
+  if (parkings.left) {
+    segments.push(
+      parking('outbound', parkDetail.left.orientation, parkDetail.left.width)
+    );
+  }
+  if (sidewalks.left) segments.push(sidewalk(sidewalkWidth('left')));
+
+  const surfaceMapped = SURFACE_MAP[tags.surface];
+  if (surfaceMapped) {
+    for (const s of segments) {
+      if (
+        s.type === 'drive-lane' ||
+        s.type === 'bus-lane' ||
+        s.type === 'bike-lane'
+      ) {
+        s.surface = surfaceMapped;
+      }
+    }
+    facts.surface = { value: tags.surface, source: 'osm' };
+  }
+
   return { segments, facts };
 }
 
@@ -328,8 +656,8 @@ function sidesWord(v) {
 
 /**
  * One-line human summary for the chip, e.g.
- * "Main St · 4 lanes · sidewalks both sides · parking right".
- * Defaults are flagged: "lanes not mapped (2 assumed)".
+ * "Main St · 4 lanes · width 12 m · sidewalks both sides · parking right
+ * (diagonal)". Defaults are flagged: "lanes not mapped (2 assumed)".
  */
 export function describeFacts(facts) {
   if (!facts) return '';
@@ -343,14 +671,40 @@ export function describeFacts(facts) {
         : `lanes not mapped (${facts.lanes.value} assumed)`
     );
   }
+  if (facts.width?.source === 'osm') {
+    parts.push(`width ${facts.width.value} m`);
+  }
+  if (facts.busLanes?.value) {
+    parts.push(
+      `${facts.busLanes.value} bus ${facts.busLanes.value === 1 ? 'lane' : 'lanes'}`
+    );
+  }
   if (facts.sidewalk?.source === 'osm') {
     parts.push(`sidewalks ${sidesWord(facts.sidewalk.value)}`);
   }
   if (facts.parking?.source === 'osm') {
-    parts.push(`parking ${sidesWord(facts.parking.value)}`);
+    let label = `parking ${sidesWord(facts.parking.value)}`;
+    const o = facts.parking.orientation;
+    const tagged = ['left', 'right'].filter((s) => facts.parking.value[s]);
+    if (
+      tagged.length > 0 &&
+      tagged.every((s) => o?.[s] === o?.[tagged[0]]) &&
+      o?.[tagged[0]] !== 'parallel'
+    ) {
+      label += ` (${o[tagged[0]]})`;
+    }
+    parts.push(label);
   }
   if (facts.bike?.source === 'osm' && sidesWord(facts.bike.value) !== 'none') {
-    parts.push(`bike lanes ${sidesWord(facts.bike.value)}`);
+    const tagged = ['left', 'right'].filter((s) => facts.bike.value[s]);
+    const allProtected =
+      tagged.length > 0 && tagged.every((s) => facts.bike.protected?.[s]);
+    parts.push(
+      `${allProtected ? 'protected ' : ''}bike lanes ${sidesWord(facts.bike.value)}`
+    );
+  }
+  if (facts.surface?.source === 'osm' && facts.surface.value !== 'asphalt') {
+    parts.push(`${facts.surface.value} surface`);
   }
   return parts.join(' · ');
 }
