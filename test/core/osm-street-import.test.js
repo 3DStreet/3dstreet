@@ -9,6 +9,7 @@
  */
 
 import assert from 'assert';
+import { crossSectionFromTags } from '../../src/tested/osm-way-tags.js';
 import {
   clipStretchToUncovered,
   decodeStretchPoints,
@@ -646,5 +647,45 @@ describe('generation continuity (#2006)', () => {
     assert.strictEqual(decodeStretchPoints(''), null);
     assert.strictEqual(decodeStretchPoints('1,2;bogus'), null);
     assert.strictEqual(decodeStretchPoints('1,2'), null); // needs ≥2 points
+  });
+});
+
+describe('rail and transit presets (#2004)', () => {
+  it('generates heavy rail as a ballasted track between berms', () => {
+    const json = streetJsonForClass('rail', 100, 'OSM rail');
+    const t = json.segments.map((s) => s.type);
+    assert.deepStrictEqual(t, ['grass', 'rail', 'grass']);
+    // No residential fallback artifacts.
+    assert.ok(!t.includes('drive-lane') && !t.includes('parking-lane'));
+    const [left, track, right] = json.segments;
+    assert.strictEqual(track.width, 3.6576); // 12 ft bed
+    assert.strictEqual(track.elevation, 0.3048); // 1 ft ballast
+    assert.deepStrictEqual(track.generated.rail, [{ gauge: 1435 }]);
+    assert.strictEqual(track.variant, 'custom'); // no tram-clone preset
+    // Berms ramp up to the bed and back down.
+    assert.strictEqual(left.slopeStart, 0);
+    assert.strictEqual(left.slopeEnd, 0.3048);
+    assert.strictEqual(right.slopeStart, 0.3048);
+    assert.strictEqual(right.slopeEnd, 0);
+    assert.ok(Math.abs(json.width - 6.7056) < 1e-9);
+  });
+
+  it('generates transit as a single flush tram track', () => {
+    const json = streetJsonForClass('transit', 50);
+    assert.strictEqual(json.segments.length, 1);
+    const [track] = json.segments;
+    assert.strictEqual(track.type, 'rail');
+    assert.strictEqual(track.elevation, 0);
+    assert.strictEqual(track.surface, 'concrete');
+    assert.deepStrictEqual(track.generated.rail, [{ gauge: 1435 }]);
+  });
+
+  it('crossSectionFromTags routes rail through the preset, not tags', () => {
+    // A railway way has no highway tag; the tile class must win.
+    const { segments } = crossSectionFromTags({}, { class: 'rail' });
+    assert.deepStrictEqual(
+      segments.map((s) => s.type),
+      ['grass', 'rail', 'grass']
+    );
   });
 });

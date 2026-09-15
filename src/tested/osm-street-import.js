@@ -699,6 +699,47 @@ const bus = (direction, width = 3.2) => ({
   }
 });
 
+// Rail corridor preset (#2004): ONE track per OSM way — parallel tracks
+// are parallel ways in OSM — on a raised ballast bed flanked by sloped
+// gravel berms. Dimensions from the reference scene ("OSM rail"
+// managed-street JSON): 12 ft bed at 1 ft elevation, 5 ft berms.
+const RAIL_BED_ELEVATION_M = 0.3048;
+
+const railBerm = (name, rising) => ({
+  name,
+  type: 'grass',
+  width: 1.524,
+  elevation: 0,
+  direction: 'none',
+  color: '#cfcfcf',
+  surface: 'gravel',
+  variant: 'custom',
+  side: 'right',
+  slope: true,
+  slopeStart: rising ? 0 : RAIL_BED_ELEVATION_M,
+  slopeEnd: rising ? RAIL_BED_ELEVATION_M : 0
+});
+
+const railTrack = ({
+  name = 'railway',
+  width = 3.6576,
+  elevation = RAIL_BED_ELEVATION_M,
+  surface = 'gravel'
+} = {}) => ({
+  name,
+  type: 'rail',
+  width,
+  elevation,
+  direction: 'none',
+  color: '#ffffff',
+  surface,
+  // 'custom' keeps this exact generated config — the rail TYPE preset's
+  // tram clones don't belong on a heavy-rail corridor.
+  variant: 'custom',
+  side: 'right',
+  generated: { rail: [{ gauge: 1435 }] }
+});
+
 const plaza = (width = 5, density = 'dense') => ({
   name: 'Pedestrian Way',
   type: 'sidewalk',
@@ -739,7 +780,9 @@ const NON_MOTOR_CLASSES = new Set([
   'pedestrian',
   'path',
   'busway',
-  'bus_guideway'
+  'bus_guideway',
+  'rail',
+  'transit'
 ]);
 
 const LANE_WIDTH_M = {
@@ -781,6 +824,29 @@ export function segmentsForWay({ class: cls, subclass, oneway }) {
   if (cls === 'busway' || cls === 'bus_guideway') {
     const lanes = oneWay ? [bus(flowDir)] : [bus('inbound'), bus('outbound')];
     return [sidewalk(), ...lanes, sidewalk()];
+  }
+  if (cls === 'rail') {
+    // Heavy rail: single ballasted track between berms (previously fell
+    // through to the residential fallback — a railway generated as a
+    // two-way road with parking).
+    return [
+      railBerm('left berm', true),
+      railTrack(),
+      railBerm('right berm', false)
+    ];
+  }
+  if (cls === 'transit') {
+    // Urban rail (tram / light_rail): flush track, no berms. Merging
+    // street-running track into the underlying road's cross-section is
+    // tracked in #2004 phase B.
+    return [
+      railTrack({
+        name: 'Tram track',
+        width: 3,
+        elevation: 0,
+        surface: 'concrete'
+      })
+    ];
   }
 
   // Drivable classes: lanes, then dress by class/subclass.

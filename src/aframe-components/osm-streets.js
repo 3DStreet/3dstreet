@@ -21,6 +21,7 @@ import {
 } from '../tested/osm-street-import.js';
 import {
   EXCLUDED_ROAD_CLASSES,
+  EXCLUDED_TRANSIT_SUBCLASSES,
   roadWidthMeters
 } from '../tested/osm-street-style.js';
 import { buildWayRibbons } from '../tested/osm-street-ribbon.js';
@@ -425,7 +426,12 @@ AFRAME.registerComponent('osm-streets', {
             { transportationLayer: this.data.transportationLayer }
           ).filter(
             (way) =>
-              !EXCLUDED_ROAD_CLASSES.has(way.class) && way.brunnel !== 'tunnel'
+              !EXCLUDED_ROAD_CLASSES.has(way.class) &&
+              way.brunnel !== 'tunnel' &&
+              !(
+                way.class === 'transit' &&
+                EXCLUDED_TRANSIT_SUBCLASSES.has(way.subclass)
+              )
           );
     cachePut(cacheKey, ways);
     return ways;
@@ -745,9 +751,14 @@ AFRAME.registerComponent('osm-streets', {
   // The managed-street component config + the `loaded` stamp callback
   // shared by both creation shapes.
   streetDefinitionFor: function (way, stretch, tags) {
-    const hydrated = tags
-      ? streetJsonFromTags(tags, way, stretch.lengthM)
-      : null;
+    // Railways are rules-only: the Overpass query is way["highway"], so a
+    // click on a rail/transit way can only ever have matched a NEARBY
+    // road — whose tags would repaint the railway as that road.
+    const railClass = way.class === 'rail' || way.class === 'transit';
+    const hydrated =
+      tags && !railClass
+        ? streetJsonFromTags(tags, way, stretch.lengthM)
+        : null;
     const streetJson = hydrated
       ? hydrated.json
       : streetJsonForWay(way, stretch.lengthM, `OSM ${way.class || 'street'}`);
