@@ -551,7 +551,91 @@ describe('crossSectionFromTags — strassenraumkarte-parity tags (#2004)', () =>
       describeFacts(facts),
       'Karl-Marx-Straße · 2 lanes · width 11 m · 1 bus lane · ' +
         'sidewalks both sides · parking both sides (diagonal) · ' +
-        'protected bike lanes right · sett surface'
+        'protected bike lane right · sett surface'
     );
+  });
+});
+
+describe('crossSectionFromTags — review follow-ups (#2006)', () => {
+  const bare = { sidewalk: 'no', 'parking:both': 'no' };
+
+  it('orders a left-side protected track after the buffer', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      'cycleway:left': 'track'
+    });
+    assert.deepStrictEqual(types(segments), [
+      'drive-lane',
+      'drive-lane',
+      'divider',
+      'bike-lane'
+    ]);
+  });
+
+  it('maps turn:lanes on a reversed one-way (oneway=-1) directly', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      oneway: '-1',
+      lanes: '2',
+      'turn:lanes': 'left|through'
+    });
+    const d = drives(segments);
+    // Outbound lanes already run driver-left-first in segment order.
+    assert.strictEqual(d[0].generated.stencil[0].modelsArray, 'left');
+    assert.strictEqual(d[0].generated.stencil[0].direction, 'outbound');
+    assert.strictEqual(d[1].generated.stencil[0].modelsArray, 'straight');
+  });
+
+  it('accepts psv:lanes as a bus-lane designation alias', () => {
+    const { segments, facts } = crossSectionFromTags({
+      highway: 'secondary',
+      ...bare,
+      'lanes:forward': '2',
+      'lanes:backward': '1',
+      'psv:lanes:forward': 'no|designated'
+    });
+    assert.strictEqual(segments[0].type, 'bus-lane');
+    assert.deepStrictEqual(facts.busLanes, { value: 1, source: 'osm' });
+  });
+
+  it('paints turn arrows on designated bus lanes too', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'secondary',
+      ...bare,
+      oneway: 'yes',
+      lanes: '2',
+      'bus:lanes': 'designated|no',
+      'turn:lanes': 'through|through;right'
+    });
+    // Leftmost entries map to the last lane: the bus lane sits at index 1
+    // with a straight arrow; the curbside drive lane turns right.
+    assert.strictEqual(segments[0].type, 'drive-lane');
+    assert.strictEqual(
+      segments[0].generated.stencil[0].modelsArray,
+      'right-straight'
+    );
+    assert.strictEqual(segments[1].type, 'bus-lane');
+    const busStencils = segments[1].generated.stencil;
+    assert.strictEqual(
+      busStencils[busStencils.length - 1].modelsArray,
+      'straight'
+    );
+    assert.ok(segments[1].generated.clones); // BUS clones survive the merge
+  });
+
+  it('keeps a protected track off the carriageway surface', () => {
+    const { segments } = crossSectionFromTags({
+      highway: 'residential',
+      ...bare,
+      surface: 'sett',
+      'cycleway:right': 'track',
+      'cycleway:left': 'lane'
+    });
+    const bikesSegs = segments.filter((s) => s.type === 'bike-lane');
+    assert.strictEqual(bikesSegs[0].surface, 'asphalt'); // right: protected
+    assert.strictEqual(bikesSegs[1].surface, 'sidewalk'); // left: painted
+    for (const s of drives(segments)) assert.strictEqual(s.surface, 'sidewalk');
   });
 });

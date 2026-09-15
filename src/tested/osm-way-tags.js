@@ -35,7 +35,15 @@ import {
   segmentsForWay
 } from './osm-street-import.js';
 
-const { drive, sidewalk, parking, median, bike, bus, buffer } = segmentBuilders;
+const {
+  drive,
+  sidewalk,
+  parking,
+  median,
+  bike,
+  bus,
+  buffer: bikeBuffer
+} = segmentBuilders;
 const { LANES_PER_DIRECTION, ONEWAY_LANES, LANE_WIDTH_M } = LANE_TABLES;
 
 // OSM highway value → OpenMapTiles class (+ subclass where the rules care).
@@ -264,6 +272,9 @@ function bikeDetail(tags, side) {
       tags['cycleway:both:width'] ??
       tags['cycleway:width']
   );
+  // Directional subkeys (:left/:right relative to the cycle lane) are
+  // read permissively: separation on EITHER edge counts as protection,
+  // so `separation:right=no` + `separation:left=bollard` still protects.
   const detailKeys = (base) => [
     `cycleway:${side}:${base}`,
     `cycleway:${side}:${base}:left`,
@@ -290,8 +301,9 @@ function bikeDetail(tags, side) {
 }
 
 // `turn:lanes` entry (";"-joined movements) → stencil mixin id, or null.
-// The mixins ship in assets.js's stencils group; merge_* and unknown
-// movements match no combo and draw nothing rather than a wrong arrow.
+// The mixins ship in assets.js's stencils group; movements with no atlas
+// arrow (merge_to_*, reverse/U-turn, unknown values) match no combo and
+// deliberately draw nothing rather than a wrong arrow.
 const TURN_STENCILS = [
   [['left'], 'left'],
   [['right'], 'right'],
@@ -540,17 +552,25 @@ export function crossSectionFromTags(tags = {}, way = {}) {
     const lanes = [];
     let busCount = 0;
     for (let i = 0; i < count; i++) {
-      const w = widths[i] ?? derivedLaneW ?? laneW;
+      let lane;
       if (busFlags[i]) {
         busCount++;
-        lanes.push(bus(direction, widths[i] ?? 3.2));
-        continue;
+        // Bus lanes keep the standard 3.2 m unless a per-lane width is
+        // mapped — derivedLaneW spreads leftover carriageway across the
+        // general-traffic lanes only.
+        lane = bus(direction, widths[i] ?? 3.2);
+      } else {
+        lane = drive(direction, widths[i] ?? derivedLaneW ?? laneW);
       }
-      const lane = drive(direction, w);
+      // Turn arrows apply to bus lanes too (painted alongside the BUS
+      // lettering), so the stencil rides whichever lane type won.
       if (stencils[i]) {
         lane.generated = {
           ...lane.generated,
-          stencil: [{ modelsArray: stencils[i], spacing: 20, direction }]
+          stencil: [
+            ...(lane.generated?.stencil ?? []),
+            { modelsArray: stencils[i], spacing: 20, direction }
+          ]
         };
       }
       lanes.push(lane);
@@ -589,6 +609,7 @@ export function crossSectionFromTags(tags = {}, way = {}) {
     ) ?? swDefault;
 
   const segments = [];
+  const protectedBikes = new Set();
   if (sidewalks.right) segments.push(sidewalk(sidewalkWidth('right')));
   if (parkings.right) {
     segments.push(
@@ -596,17 +617,21 @@ export function crossSectionFromTags(tags = {}, way = {}) {
     );
   }
   if (bikes.right) {
-    segments.push(bike('inbound', bikeDet.right.width));
+    const b = bike('inbound', bikeDet.right.width);
+    segments.push(b);
     if (bikeDet.right.protected) {
-      segments.push(buffer(bikeDet.right.bufferWidth));
+      protectedBikes.add(b);
+      segments.push(bikeBuffer(bikeDet.right.bufferWidth));
     }
   }
   segments.push(...lanes);
   if (bikes.left) {
     if (bikeDet.left.protected) {
-      segments.push(buffer(bikeDet.left.bufferWidth));
+      segments.push(bikeBuffer(bikeDet.left.bufferWidth));
     }
-    segments.push(bike('outbound', bikeDet.left.width));
+    const b = bike('outbound', bikeDet.left.width);
+    if (bikeDet.left.protected) protectedBikes.add(b);
+    segments.push(b);
   }
   if (parkings.left) {
     segments.push(
@@ -618,6 +643,9 @@ export function crossSectionFromTags(tags = {}, way = {}) {
   const surfaceMapped = SURFACE_MAP[tags.surface];
   if (surfaceMapped) {
     for (const s of segments) {
+      // `surface` describes the carriageway. Protected tracks sit off it
+      // behind their buffer and keep the bike-lane default.
+      if (s.type === 'bike-lane' && protectedBikes.has(s)) continue;
       if (
         s.type === 'drive-lane' ||
         s.type === 'bus-lane' ||
@@ -699,8 +727,9 @@ export function describeFacts(facts) {
     const tagged = ['left', 'right'].filter((s) => facts.bike.value[s]);
     const allProtected =
       tagged.length > 0 && tagged.every((s) => facts.bike.protected?.[s]);
+    const noun = tagged.length === 1 ? 'bike lane' : 'bike lanes';
     parts.push(
-      `${allProtected ? 'protected ' : ''}bike lanes ${sidesWord(facts.bike.value)}`
+      `${allProtected ? 'protected ' : ''}${noun} ${sidesWord(facts.bike.value)}`
     );
   }
   if (facts.surface?.source === 'osm' && facts.surface.value !== 'asphalt') {

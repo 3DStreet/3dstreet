@@ -529,8 +529,9 @@ const parking = (direction, orientation = 'parallel', width = null) => {
 
 // Physical separation between a protected cycle lane and traffic
 // (cycleway=track / cycleway:*:separation / :buffer): a narrow raised
-// divider between the bike lane and the drive lanes.
-const buffer = (width = 0.6) => ({
+// divider between the bike lane and the drive lanes. (Named to avoid
+// shadowing Node's global Buffer; exported as `buffer`.)
+const bikeBuffer = (width = 0.6) => ({
   name: 'Buffer',
   type: 'divider',
   width,
@@ -729,7 +730,7 @@ export const segmentBuilders = {
   median,
   bike,
   bus,
-  buffer
+  buffer: bikeBuffer
 };
 export const LANE_TABLES = { LANES_PER_DIRECTION, ONEWAY_LANES, LANE_WIDTH_M };
 export const DRIVABLE_CLASSES = new Set(Object.keys(LANE_WIDTH_M));
