@@ -16,6 +16,7 @@ let PagedSplats = null;
 // enum value rather than the bare extension, since the two can differ.
 let getSplatFileTypeFromPath = null;
 let sparkLoadPromise = null;
+const BOUNDS_SIGNS = [-1, 1];
 
 /**
  * Dynamically loads the Spark library for Gaussian Splat rendering.
@@ -97,6 +98,10 @@ AFRAME.registerComponent('splat', {
 
   init: function () {
     this.splatMesh = null;
+    this._boundsCorner = new AFRAME.THREE.Vector3();
+    this._boundsTarget = null;
+    this._boundsBusy = false;
+    this._expandSplatBounds = this._expandSplatBounds.bind(this);
     // True only after a load has fully rendered (its `initialized` resolved).
     // The blob→cloud no-reload guard keys off this — not the mere existence of
     // a SplatMesh object — so a FAILED local preview still reloads the cloud
@@ -417,18 +422,48 @@ AFRAME.registerComponent('splat', {
 
   /**
    * Get the bounding box of the splat mesh.
-   * Uses Spark's getBoundingBox method for accurate bounds.
    * @param {boolean} centersOnly - If true, only considers splat centers (faster, default: true)
+   * @param {THREE.Box3} [target] Caller-owned output, reused when supplied.
    * @returns {THREE.Box3|null} The bounding box or null if not loaded
    */
-  getBoundingBox: function (centersOnly = true) {
-    if (!this.splatMesh) {
+  getBoundingBox: function (centersOnly = true, target) {
+    if (!this.splatMesh?.initialized || this._boundsBusy) {
       return null;
     }
+    const box = target || new AFRAME.THREE.Box3();
+    this._boundsBusy = true;
+    this._boundsTarget = box.makeEmpty();
+    this._boundsCentersOnly = centersOnly;
     try {
-      return this.splatMesh.getBoundingBox(centersOnly);
+      // Revisit decoded splats so newly streamed pages are included in the bounds.
+      this.splatMesh.forEachSplat(this._expandSplatBounds);
+      return box;
     } catch (e) {
       return null;
+    } finally {
+      this._boundsTarget = null;
+      this._boundsBusy = false;
+    }
+  },
+
+  _expandSplatBounds: function (_index, center, scales, quaternion) {
+    const box = this._boundsTarget;
+    if (this._boundsCentersOnly) {
+      box.expandByPoint(center);
+      return;
+    }
+    // Spark reuses decoded values; copy each corner without changing those values.
+    const corner = this._boundsCorner;
+    for (const x of BOUNDS_SIGNS) {
+      for (const y of BOUNDS_SIGNS) {
+        for (const z of BOUNDS_SIGNS) {
+          corner
+            .set(x * scales.x, y * scales.y, z * scales.z)
+            .applyQuaternion(quaternion)
+            .add(center);
+          box.expandByPoint(corner);
+        }
+      }
     }
   }
 });

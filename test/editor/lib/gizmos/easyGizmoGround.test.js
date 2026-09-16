@@ -3,6 +3,7 @@ import {
   evaluatePath,
   isGizmoGroundHit,
   isUserImportedMeshHit,
+  owningPlacementEntity,
   placementKindOf,
   pickSupportBelow,
   pickSurfaceAbove
@@ -74,6 +75,33 @@ function tiles(y) {
 }
 
 describe('what the gizmo counts as ground', () => {
+  it('classifies batched instances by their original identity and mesh visibility', () => {
+    const roof = building(6);
+    const imported = cloudMesh(7);
+    const host = hitOn({}, 0).object.el;
+    const object = {
+      el: host,
+      material: { visible: true },
+      visible: true,
+      _batchIdToEl: [roof.object.el, imported.object.el]
+    };
+    const hit = { object, batchId: 0, point: { y: 6 } };
+    expect(owningPlacementEntity(hit)).toBe(roof.object.el);
+    expect(isGizmoGroundHit(hit, 'furniture')).toBe(true);
+    expect(isGizmoGroundHit(hit, 'building')).toBe(false);
+    expect(pickSurfaceAbove([hit], 0).entity).toBe(roof.object.el);
+    expect(pickSupportBelow([hit], 10).entity).toBe(roof.object.el);
+    object.material.visible = false;
+    expect(isGizmoGroundHit(hit, 'furniture')).toBe(false);
+    object.material.visible = true;
+    const importedHit = { ...hit, batchId: 1 };
+    expect(isUserImportedMeshHit(importedHit)).toBe(true);
+    expect(isGizmoGroundHit(importedHit, 'furniture')).toBe(true);
+    expect(isGizmoGroundHit(importedHit, 'import')).toBe(false);
+    delete object._batchIdToEl[0];
+    expect(isGizmoGroundHit(hit)).toBe(false);
+  });
+
   it('passes the three surfaces the camera already stands on', () => {
     expect(isGizmoGroundHit(segment(0))).toBe(true);
     expect(isGizmoGroundHit(tiles(0))).toBe(true);

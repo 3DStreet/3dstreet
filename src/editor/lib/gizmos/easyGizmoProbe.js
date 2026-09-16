@@ -16,11 +16,9 @@ import {
   ProbeTargets
 } from '../nav-experimental/probeTargets.js';
 import {
-  classifyHitEntity,
-  owningEntity
-} from '../nav-experimental/cursorAnchor.js';
-import {
+  classifyPlacementHit,
   isGizmoGroundHit,
+  owningPlacementEntity,
   placementKindOf,
   pickSupportBelow,
   pickSurfaceAbove
@@ -135,11 +133,11 @@ export class EasyGizmoProbe {
     for (let i = 0; i < hits.length; i++) {
       const hit = hits[i];
       if (exclude) {
-        const el = owningEntity(hit.object);
+        const el = owningPlacementEntity(hit);
         if (el && (el === exclude || exclude.contains(el))) continue;
       }
       if (!isGizmoGroundHit(hit, selectedKind)) continue;
-      if (!tilesReady && classifyHitEntity(hit) === 'tiles') continue;
+      if (!tilesReady && classifyPlacementHit(hit) === 'tiles') continue;
       qualifying.push(hit);
     }
 

@@ -33,6 +33,40 @@ afterEach(() => {
 });
 
 describe('selection bounds transform preservation', () => {
+  it('reuses the splat bounds output across movement and fresh streamed extrema', () => {
+    const scene = new THREE.Scene();
+    const object = new THREE.Group();
+    scene.add(object);
+    const el = document.createElement('a-entity');
+    el.setAttribute('splat', '');
+    object.el = el;
+    const min = new THREE.Vector3(-1, -2, -3);
+    const max = new THREE.Vector3(1, 2, 3);
+    let output;
+    const getBoundingBox = vi.fn((centersOnly, target) => {
+      expect(centersOnly).toBe(true);
+      expect(target?.isBox3).toBe(true);
+      if (output) expect(target).toBe(output);
+      output = target;
+      return target.set(min, max);
+    });
+    el.components = { splat: { getBoundingBox } };
+    const helper = new OrientedBoxHelper();
+
+    for (const x of [5, 10, 20]) {
+      object.position.x = x;
+      min.y -= 1;
+      scene.updateMatrixWorld(true);
+      helper.setFromObject(object);
+      const positions = helper.geometry.attributes.position;
+      expect(positions.getX(0)).toBe(x + max.x);
+      expect(positions.getY(7)).toBe(min.y);
+    }
+
+    expect(getBoundingBox).toHaveBeenCalledTimes(3);
+    helper.dispose();
+  });
+
   it('leaves nested mesh world matrices ready for rendering after moving a group', () => {
     const scene = new THREE.Scene();
     const parent = new THREE.Group();

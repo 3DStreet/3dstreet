@@ -34,6 +34,30 @@ const SPLIT_EPSILON = 1e-3;
 // An item can rest only on an item earlier in this list. Tiles are terrain.
 const PLACEMENT_ORDER = ['street', 'building', 'import', 'furniture'];
 
+/** Batched hits belong to the instance's entity, not the shared batch host. */
+export function owningPlacementEntity(hit) {
+  return hit?.object?._batchIdToEl?.[hit.batchId] || owningEntity(hit?.object);
+}
+
+function placementHitOf(hit) {
+  const object = hit?.object;
+  const el = object?._batchIdToEl?.[hit.batchId];
+  if (!el) return hit;
+  // Keep visibility on the real mesh and the original hit available to callers.
+  return {
+    object: {
+      el,
+      parent: object,
+      material: object.material,
+      visible: object.visible
+    }
+  };
+}
+
+export function classifyPlacementHit(hit) {
+  return classifyHitEntity(placementHitOf(hit));
+}
+
 export function isStreetEntity(el) {
   return (
     !!el &&
@@ -69,7 +93,7 @@ export function placementKindOf(el) {
  */
 export function isUserImportedMeshHit(hit) {
   if (!hit || !hit.object) return false;
-  const el = owningEntity(hit.object);
+  const el = owningPlacementEntity(hit);
   if (!el || typeof el.hasAttribute !== 'function') return false;
   if (!el.hasAttribute('gltf-model')) return false;
   return (
@@ -80,8 +104,9 @@ export function isUserImportedMeshHit(hit) {
 /** Eligible support for this selection; furniture preserves the widest policy. */
 export function isGizmoGroundHit(hit, selectedKind = 'furniture') {
   const imported = isUserImportedMeshHit(hit);
-  if (!isSolidFloorHit(hit) && !imported) return false;
-  const kind = classifyHitEntity(hit);
+  const identityHit = placementHitOf(hit);
+  if (!isSolidFloorHit(identityHit) && !imported) return false;
+  const kind = classifyHitEntity(identityHit);
   if (kind === 'tiles') return true;
   const supportKind =
     kind === 'segment' ? 'street' : imported ? 'import' : 'building';
@@ -95,7 +120,7 @@ export function isGizmoGroundHit(hit, selectedKind = 'furniture') {
  * User imports rank with segments and buildings rather than with tiles.
  */
 export function groundHitClass(hit) {
-  const kind = classifyHitEntity(hit);
+  const kind = classifyPlacementHit(hit);
   if (kind === 'tiles') return 'tiles';
   return 'solid';
 }
@@ -123,7 +148,7 @@ export function pickSupportBelow(hits, refY) {
       (cls === 'solid' && best.cls === 'tiles') ||
       (cls === best.cls && y > best.y)
     ) {
-      best = { y, cls, hit, entity: owningEntity(hit.object) };
+      best = { y, cls, hit, entity: owningPlacementEntity(hit) };
     }
   }
   return best;
@@ -151,7 +176,7 @@ export function pickSurfaceAbove(hits, refY) {
         y,
         cls: groundHitClass(hit),
         hit,
-        entity: owningEntity(hit.object)
+        entity: owningPlacementEntity(hit)
       };
     }
   }

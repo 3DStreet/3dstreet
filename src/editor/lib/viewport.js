@@ -360,7 +360,7 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
       }
     } else if (this.object !== undefined && isSplatEntity) {
       const splatComponent = this.object.el.components['splat'];
-      const splatBox = splatComponent?.getBoundingBox?.();
+      const splatBox = splatComponent?.getBoundingBox?.(true, tempBox3);
       if (splatBox) {
         tempBox3.copy(splatBox);
         // Transform the box to world space

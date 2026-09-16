@@ -1,6 +1,7 @@
 /* global THREE */
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EasyGizmoControls } from '@/editor/lib/gizmos/EasyGizmoControls.js';
+import catalog from '@/catalog.json';
 import { evaluatePath } from '@/editor/lib/gizmos/easyGizmoGround.js';
 import { _internals as cursorInternals } from '@/editor/lib/nav-experimental/cursorAnchor.js';
 import {
@@ -494,6 +495,53 @@ describe('classified rays composed with real move gestures', () => {
 });
 
 describe('placement hierarchy composed with rays and landing gestures', () => {
+  it('lands a stop sign on a batched catalog building rather than its shared host', () => {
+    const f = fixture({ base: 0.15 });
+    vi.stubGlobal('STREET', { catalog });
+    f.el.setAttribute('mixin', 'stop_sign');
+    const geometry = new THREE.BoxGeometry(6, 6, 6).translate(0, 3.15, 0);
+    const material = new THREE.MeshBasicMaterial();
+    const batch = new THREE.BatchedMesh(2, 24, 36, material);
+    const geometryId = batch.addGeometry(geometry);
+    const host = document.createElement('div');
+    host.id = 'batch-models-root';
+    f.sceneEl.append(host);
+    batch.el = host;
+    batch._batchIdToEl = [];
+    for (const x of [0, 10]) {
+      const el = document.createElement('div');
+      el.setAttribute('mixin', 'SM3D_Bld_Mixed_Corner_4fl');
+      f.sceneEl.append(el);
+      const instanceId = batch.addInstance(geometryId);
+      batch.setMatrixAt(
+        instanceId,
+        new THREE.Matrix4().makeTranslation(x, 0, 0)
+      );
+      batch._batchIdToEl[instanceId] = el;
+    }
+    f.sceneEl.object3D.add(batch);
+    f.attach();
+
+    expect(f.controls.landingUpY).toBeCloseTo(6.15);
+    expect(f.controls._landingUpEntity).toBe(batch._batchIdToEl[0]);
+    expect(f.controls.probe.lastHits[0].object).toBe(batch);
+    f.el.append(batch._batchIdToEl[0]);
+    f.controls._refreshSupport();
+    expect(f.controls.landingUpY).toBeNull();
+    f.sceneEl.append(batch._batchIdToEl[0]);
+    f.controls._refreshSupport();
+    expect(f.controls.landingUpY).toBeCloseTo(6.15);
+    f.controls.axis = 'landingUp';
+    f.controls.startDrag('landingUp', {});
+    f.controls.endGesture('pointerup');
+    expect(f.controls.currentBaseY()).toBeCloseTo(6.15);
+    expect(f.commits).toHaveLength(1);
+
+    batch.dispose();
+    geometry.dispose();
+    material.dispose();
+  });
+
   function selectKind(f, kind) {
     if (kind === 'street') f.el.setAttribute('managed-street', '');
     if (kind === 'building') f.el.setAttribute('mixin', 'building-1');
