@@ -5,6 +5,25 @@ rotation and explicit landing buttons. Its implementation lives in
 `src/editor/lib/gizmos/`. The viewport routes selection and camera changes;
 the controller owns gesture state, presentation and ground queries.
 
+## Placement surfaces
+
+Placement ranks streets, buildings, imported meshes and furniture in that order.
+An item can use only item surfaces earlier in the list. Google 3D Tiles count as
+terrain for every class, including rooftops embedded in the photogrammetric mesh.
+Imported mesh identity takes precedence over the catalog building category.
+
+The column probe filters hits before support picking, path evaluation and landing
+rechecks, keeping continuous following and explicit landings under one policy.
+Street height uses its road reference: managed streets transform the existing
+material-depth offset above their dirt origin; legacy streets and standalone
+segments use their origin. Other items retain bounding-box-base alignment.
+
+Easy mode temporarily suspends the selected subtree's terrain flatten volumes
+without changing serialized settings. Terrain is sampled after the selected
+shapes are removed and tile regeneration finishes. This avoids sampling terrain
+modified by the item being placed. Detach, disposal and editor close release the
+runtime suspension; unrelated flatten volumes remain active.
+
 ## Pointer ownership
 
 Listeners attach at window capture so a claimed press is handled before canvas

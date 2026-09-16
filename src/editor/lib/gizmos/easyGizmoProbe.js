@@ -15,9 +15,13 @@ import {
   intersectProbeTargets,
   ProbeTargets
 } from '../nav-experimental/probeTargets.js';
-import { owningEntity } from '../nav-experimental/cursorAnchor.js';
+import {
+  classifyHitEntity,
+  owningEntity
+} from '../nav-experimental/cursorAnchor.js';
 import {
   isGizmoGroundHit,
+  placementKindOf,
   pickSupportBelow,
   pickSurfaceAbove
 } from './easyGizmoGround.js';
@@ -46,6 +50,57 @@ export class EasyGizmoProbe {
     /** Set while attached; hits inside this
      * entity's subtree are not surfaces it can rest on. */
     this.excludeEl = null;
+    this._suspendedFlatteners = new Set();
+    this._pendingFlatteningLayers = [];
+  }
+
+  /** Expose terrain beneath the selection without changing saved flatten settings. */
+  setFlatteningSuspended(suspended) {
+    const desired = new Set();
+    const exclude = this.excludeEl;
+    if (suspended && exclude) {
+      const add = (el) => {
+        const component = el.components?.['geo-flatten'];
+        if (component) desired.add(component);
+      };
+      add(exclude);
+      exclude.querySelectorAll?.('[geo-flatten]').forEach(add);
+    }
+    let changed = false;
+    for (const component of this._suspendedFlatteners) {
+      if (!desired.has(component)) {
+        component.setSuspended(this, false);
+        changed = true;
+      }
+    }
+    for (const component of desired) {
+      if (!this._suspendedFlatteners.has(component)) {
+        component.setSuspended(this, true);
+        changed = true;
+      }
+    }
+    this._suspendedFlatteners = desired;
+    if (changed) {
+      this._pendingFlatteningLayers = Array.from(
+        this.sceneEl?.querySelectorAll('[google-maps-aerial]') || []
+      )
+        .map((el) => el.components?.['google-maps-aerial'])
+        .filter(Boolean);
+    }
+  }
+
+  _tilesReady() {
+    // Shape removal regenerates tiles on their next update, not synchronously.
+    for (const layer of this._pendingFlatteningLayers) {
+      if (!layer.flattenEntries || layer.flatteningPlugin?.needsUpdate) {
+        return false;
+      }
+      for (const component of this._suspendedFlatteners) {
+        if (layer.flattenEntries.has(component)) return false;
+      }
+    }
+    this._pendingFlatteningLayers.length = 0;
+    return true;
   }
 
   /**
@@ -75,13 +130,16 @@ export class EasyGizmoProbe {
     const qualifying = this._qualifying;
     qualifying.length = 0;
     const exclude = this.excludeEl;
+    const selectedKind = placementKindOf(exclude);
+    const tilesReady = this._tilesReady();
     for (let i = 0; i < hits.length; i++) {
       const hit = hits[i];
       if (exclude) {
         const el = owningEntity(hit.object);
         if (el && (el === exclude || exclude.contains(el))) continue;
       }
-      if (!isGizmoGroundHit(hit)) continue;
+      if (!isGizmoGroundHit(hit, selectedKind)) continue;
+      if (!tilesReady && classifyHitEntity(hit) === 'tiles') continue;
       qualifying.push(hit);
     }
 
@@ -92,6 +150,7 @@ export class EasyGizmoProbe {
   }
 
   dispose() {
+    this.setFlatteningSuspended(false);
     this.probeTargets.dispose();
     this._qualifying.length = 0;
     this.sceneEl = null;

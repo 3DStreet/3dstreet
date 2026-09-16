@@ -27,8 +27,13 @@
 import { GizmoPointerControls } from './GizmoPointerControls.js';
 import { metresPerPixel } from '../shapeEditRules.js';
 import Events from '../Events.js';
+import { calculateHeight } from '../../../tested/street-segment-utils.js';
 import { EasyGizmoProbe } from './easyGizmoProbe.js';
-import { evaluatePath, resplitColumn } from './easyGizmoGround.js';
+import {
+  evaluatePath,
+  isStreetEntity,
+  resplitColumn
+} from './easyGizmoGround.js';
 import {
   computeDodge,
   decideEasyPress,
@@ -705,6 +710,7 @@ class EasyGizmoControls extends GizmoPointerControls {
       this._idleTimer = null;
     }
     this._removeListeners();
+    this.probe.setFlatteningSuspended(false);
     if (this._frameSystem?.controls === this) {
       this._frameSystem.controls = null;
     }
@@ -1226,8 +1232,10 @@ class EasyGizmoControls extends GizmoPointerControls {
     if (this._wasOpen && !open) {
       if (this.isDragging) this.endGesture('editorclosed');
       this._removeListeners();
+      this.probe.setFlatteningSuspended(false);
     } else if (!this._wasOpen && open && this.el) {
       this._addListeners();
+      this.probe.setFlatteningSuspended(true);
     }
     this._wasOpen = open;
   }
@@ -1253,9 +1261,19 @@ class EasyGizmoControls extends GizmoPointerControls {
   _updateBase() {
     this.object.updateWorldMatrix(true, false);
     this.object.matrixWorld.decompose(_p, _q, _s);
-    this.baseY = this.localBox
-      ? _box.copy(this.localBox).applyMatrix4(this.object.matrixWorld).min.y
-      : _p.y;
+    if (isStreetEntity(this.el)) {
+      // Managed roads sit above the dirt origin; standalone segments use local zero.
+      const localY = this.el.hasAttribute('managed-street')
+        ? calculateHeight(0)
+        : 0;
+      this.baseY = _v2
+        .set(0, localY, 0)
+        .applyMatrix4(this.object.matrixWorld).y;
+    } else {
+      this.baseY = this.localBox
+        ? _box.copy(this.localBox).applyMatrix4(this.object.matrixWorld).min.y
+        : _p.y;
+    }
     this.baseOffset = this.baseY - _p.y;
     this._anchor.set(_p.x, this.baseY, _p.z);
   }
@@ -1290,6 +1308,7 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   _refreshSupport() {
+    this.probe.setFlatteningSuspended(this._inspectorOpen());
     if (!this.object || !this._inspectorOpen()) return;
     this._updateBase();
     const baseY = this.currentBaseY();

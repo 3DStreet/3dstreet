@@ -31,6 +31,28 @@ import { SUBSTEP_METRES } from './easyGizmoConstants.js';
 /** Heights within this of the base are treated as level with it. */
 const SPLIT_EPSILON = 1e-3;
 
+// An item can rest only on an item earlier in this list. Tiles are terrain.
+const PLACEMENT_ORDER = ['street', 'building', 'import', 'furniture'];
+
+export function isStreetEntity(el) {
+  return (
+    !!el &&
+    typeof el.hasAttribute === 'function' &&
+    (el.hasAttribute('managed-street') ||
+      el.hasAttribute('street') ||
+      el.hasAttribute('street-segment'))
+  );
+}
+
+/** Placement identity belongs to the selected entity, not its child geometry. */
+export function placementKindOf(el) {
+  if (isStreetEntity(el)) return 'street';
+  const hit = { object: { el } };
+  if (isUserImportedMeshHit(hit)) return 'import';
+  if (classifyHitEntity(hit) === 'building') return 'building';
+  return 'furniture';
+}
+
 /**
  * A surface the user imported themselves.
  *
@@ -55,9 +77,17 @@ export function isUserImportedMeshHit(hit) {
   );
 }
 
-/** The gizmo's ground predicate: the three navigation branches, plus imports. */
-export function isGizmoGroundHit(hit) {
-  return isSolidFloorHit(hit) || isUserImportedMeshHit(hit);
+/** Eligible support for this selection; furniture preserves the widest policy. */
+export function isGizmoGroundHit(hit, selectedKind = 'furniture') {
+  const imported = isUserImportedMeshHit(hit);
+  if (!isSolidFloorHit(hit) && !imported) return false;
+  const kind = classifyHitEntity(hit);
+  if (kind === 'tiles') return true;
+  const supportKind =
+    kind === 'segment' ? 'street' : imported ? 'import' : 'building';
+  return (
+    PLACEMENT_ORDER.indexOf(supportKind) < PLACEMENT_ORDER.indexOf(selectedKind)
+  );
 }
 
 /**

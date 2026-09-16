@@ -95,6 +95,12 @@ function fixture({ base = 0, cameraY = 10 } = {}) {
     const groundEl = document.createElement('div');
     if (kind === 'segment') groundEl.setAttribute('street-segment', '');
     if (kind === 'tiles') groundEl.id = 'google3d';
+    if (kind === 'building') {
+      vi.stubGlobal('STREET', {
+        catalog: [{ id: 'building-1', category: 'buildings' }]
+      });
+      groundEl.setAttribute('mixin', 'building-1');
+    }
     if (kind === 'import') {
       groundEl.setAttribute('gltf-model', 'url(mesh)');
       groundEl.setAttribute('data-asset-id', 'mesh');
@@ -484,6 +490,211 @@ describe('classified rays composed with real move gestures', () => {
     expect(f.object.position.y).toBe(0);
     expect(f.controls.landingUpY).toBeCloseTo(3, 6);
     expect(f.controls._landingUpEntity).toBe(roof.el);
+  });
+});
+
+describe('placement hierarchy composed with rays and landing gestures', () => {
+  function selectKind(f, kind) {
+    if (kind === 'street') f.el.setAttribute('managed-street', '');
+    if (kind === 'building') f.el.setAttribute('mixin', 'building-1');
+    if (kind === 'import') {
+      f.el.setAttribute('gltf-model', 'url(selected)');
+      f.el.setAttribute('data-asset-id', 'selected');
+    }
+  }
+
+  function addStreetSlab(f) {
+    f.mesh.geometry.dispose();
+    f.mesh.geometry = new THREE.BoxGeometry(0.2, 0.15, 0.2);
+    f.mesh.position.y = 0.075;
+    const slab = new THREE.Mesh(
+      new THREE.BoxGeometry(2, 2, 2),
+      new THREE.MeshBasicMaterial()
+    );
+    slab.position.y = -1;
+    f.object.add(slab);
+  }
+
+  it.each([
+    ['street', 0, 5],
+    ['building', 0.5, 4],
+    ['import', 1, 3],
+    ['furniture', 1.5, 2.5]
+  ])(
+    'filters %s support and targets in both directions',
+    (kind, below, above) => {
+      const f = fixture({ base: 2 });
+      f.surface(0, { kind: 'tiles' });
+      f.surface(5, { kind: 'tiles' });
+      f.surface(0.5);
+      f.surface(4);
+      f.surface(1, { kind: 'building' });
+      f.surface(3, { kind: 'building' });
+      f.surface(1.5, { kind: 'import' });
+      f.surface(2.5, { kind: 'import' });
+      selectKind(f, kind);
+      f.attach();
+      // An unfiltered probe or one filtering only above targets picks different heights.
+      expect(f.controls.supportY).toBeCloseTo(below, 6);
+      expect(f.controls.landingDownY).toBeCloseTo(below, 6);
+      expect(f.controls.landingUpY).toBeCloseTo(above, 6);
+      const expectedHeights = {
+        street: [0, 5],
+        building: [0, 0.5, 4, 5],
+        import: [0, 0.5, 1, 3, 4, 5],
+        furniture: [0, 0.5, 1, 1.5, 2.5, 3, 4, 5]
+      };
+      expect(
+        [...new Set(f.controls.probe.lastHits.map((hit) => hit.point.y))].sort(
+          (a, b) => a - b
+        )
+      ).toEqual(expectedHeights[kind]);
+    }
+  );
+
+  it.each([
+    ['street', 'segment'],
+    ['street', 'building'],
+    ['street', 'import'],
+    ['building', 'building'],
+    ['building', 'import'],
+    ['import', 'import']
+  ])('does not lift a %s onto a sub-step %s surface', (kind, supportKind) => {
+    const f = fixture();
+    vi.stubGlobal('STREET', {
+      catalog: [{ id: 'building-1', category: 'buildings' }]
+    });
+    f.surface(0, { kind: 'tiles' });
+    f.surface(0.15, { kind: supportKind, x: 0.3, width: 0.4 });
+    selectKind(f, kind);
+    f.attach();
+    f.start();
+    f.pointer(
+      'pointerup',
+      new THREE.Vector3(0.3, f.controls.currentBaseY(), 0)
+    );
+    f.frame();
+    // The 0.15 m step is normally continuous; only hierarchy filtering prevents the lift.
+    expect(f.object.position.x).toBeCloseTo(0.3, 3);
+    expect(f.object.position.y).toBeCloseTo(0, 6);
+    expect(f.controls.landingUpY).toBeNull();
+  });
+
+  it.each([
+    ['building', 'segment'],
+    ['import', 'building'],
+    ['furniture', 'import']
+  ])('lands a %s on an eligible %s surface', (kind, supportKind) => {
+    const f = fixture({ base: 5 });
+    const support = f.surface(0, { kind: supportKind });
+    selectKind(f, kind);
+    f.attach();
+    const target = f.controls.landingDownGroup.position.clone();
+    f.pointer('pointerdown', target);
+    expect(f.controls.axis).toBe('landingDown');
+    f.pointer('pointerup', target);
+    f.frame();
+    expect(f.object.position.y).toBeCloseTo(0, 6);
+    expect(f.controls.supportY).toBeCloseTo(0, 6);
+    expect(f.commits).toHaveLength(1);
+    expect(f.controls.probe.excludeEl).toBe(f.el);
+    expect(support.el).not.toBe(f.el);
+  });
+
+  it.each([1, 2])(
+    'lands street road level with Y scale %s on tiles',
+    (scaleY) => {
+      const f = fixture({ base: 5 });
+      selectKind(f, 'street');
+      addStreetSlab(f);
+      f.object.scale.y = scaleY;
+      f.surface(0, { kind: 'tiles' });
+      f.attach();
+      // Origin or bounding-box anchoring leaves the actual road surface above terrain.
+      expect(f.controls.baseY).toBeCloseTo(5 + 0.15 * scaleY, 6);
+      expect(f.controls.baseOffset).toBeCloseTo(0.15 * scaleY, 6);
+      const target = f.controls.landingDownGroup.position.clone();
+      f.pointer('pointerdown', target);
+      expect(f.controls.axis).toBe('landingDown');
+      f.pointer('pointerup', target);
+      f.frame();
+      expect(f.object.position.y).toBeCloseTo(-0.15 * scaleY, 6);
+      expect(new THREE.Box3().setFromObject(f.mesh).max.y).toBeCloseTo(0, 6);
+      expect(new THREE.Box3().setFromObject(f.object).min.y).toBeCloseTo(
+        -2.15 * scaleY,
+        6
+      );
+      expect(f.commits).toHaveLength(1);
+    }
+  );
+
+  it('follows tiles slopes using road level despite the underground slab', () => {
+    const f = fixture({ base: -0.15 });
+    selectKind(f, 'street');
+    addStreetSlab(f);
+    f.surface(0, { kind: 'tiles', slope: 0.8 });
+    f.attach();
+    f.start();
+    f.pointer('pointerup', new THREE.Vector3(1, 0, 0));
+    f.frame();
+    expect(f.object.position.x).toBeCloseTo(1, 3);
+    expect(f.object.position.y).toBeCloseTo(0.65, 3);
+    expect(f.controls.currentBaseY()).toBeCloseTo(0.8, 3);
+  });
+
+  it('recomputes eligibility when the selected entity becomes an imported mesh', () => {
+    const f = fixture();
+    f.surface(2, { kind: 'import' });
+    f.attach();
+    expect(f.controls.landingUpY).toBeCloseTo(2, 6);
+    selectKind(f, 'import');
+    f.controls._refreshSupport();
+    expect(f.controls.landingUpY).toBeNull();
+    f.controls.detach();
+    f.el.removeAttribute('gltf-model');
+    f.el.removeAttribute('data-asset-id');
+    f.attach();
+    expect(f.controls.landingUpY).toBeCloseTo(2, 6);
+  });
+
+  it('suspends only selected-subtree flatteners and restores them on close and detach', () => {
+    const f = fixture();
+    const own = { setSuspended: vi.fn() };
+    f.el.components = { 'geo-flatten': own };
+    const child = document.createElement('div');
+    child.setAttribute('geo-flatten', '');
+    const nested = { setSuspended: vi.fn() };
+    child.components = { 'geo-flatten': nested };
+    f.el.append(child);
+    const outside = document.createElement('div');
+    outside.setAttribute('geo-flatten', '');
+    const other = { setSuspended: vi.fn() };
+    outside.components = { 'geo-flatten': other };
+    f.sceneEl.append(outside);
+    f.attach();
+    expect(own.setSuspended).toHaveBeenLastCalledWith(f.controls.probe, true);
+    expect(nested.setSuspended).toHaveBeenLastCalledWith(
+      f.controls.probe,
+      true
+    );
+    expect(other.setSuspended).not.toHaveBeenCalled();
+    f.inspector.opened = false;
+    f.frame();
+    expect(own.setSuspended).toHaveBeenLastCalledWith(f.controls.probe, false);
+    expect(nested.setSuspended).toHaveBeenLastCalledWith(
+      f.controls.probe,
+      false
+    );
+    f.inspector.opened = true;
+    f.frame();
+    expect(own.setSuspended).toHaveBeenLastCalledWith(f.controls.probe, true);
+    f.controls.detach();
+    expect(own.setSuspended).toHaveBeenLastCalledWith(f.controls.probe, false);
+    expect(nested.setSuspended).toHaveBeenLastCalledWith(
+      f.controls.probe,
+      false
+    );
+    expect(other.setSuspended).not.toHaveBeenCalled();
   });
 });
 

@@ -1,8 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import {
   evaluatePath,
   isGizmoGroundHit,
   isUserImportedMeshHit,
+  placementKindOf,
   pickSupportBelow,
   pickSurfaceAbove
 } from '@/editor/lib/gizmos/easyGizmoGround.js';
@@ -43,6 +44,15 @@ const importedImage = (y) =>
   );
 const importedSplat = (y) =>
   hitOn({ splat: 'src: x', 'data-temporary-file': 'true' }, y);
+
+afterEach(() => vi.unstubAllGlobals());
+
+function building(y) {
+  vi.stubGlobal('STREET', {
+    catalog: [{ id: 'building-1', category: 'buildings' }]
+  });
+  return hitOn({ mixin: 'building-1' }, y);
+}
 
 /** A tiles hit: the owning entity's ancestor chain carries the tiles marker. */
 function tiles(y) {
@@ -91,6 +101,53 @@ describe('what the gizmo counts as ground', () => {
     expect(isGizmoGroundHit({ object: {}, point: { x: 0, y: 0, z: 0 } })).toBe(
       false
     );
+  });
+});
+
+describe('placement support hierarchy', () => {
+  const cases = [
+    ['street', [false, false, false, false, true]],
+    ['building', [true, false, false, false, true]],
+    ['import', [true, true, false, false, true]],
+    ['furniture', [true, true, true, false, true]]
+  ];
+  for (const [selectedKind, allowed] of cases) {
+    it(`${selectedKind} accepts only higher item classes and tiles terrain`, () => {
+      const surfaces = [
+        segment(0),
+        building(0),
+        cloudMesh(0),
+        scatter(0),
+        tiles(0)
+      ];
+      // Removing rank filtering, allowing equality or excluding tiles changes this matrix.
+      expect(
+        surfaces.map((hit) => isGizmoGroundHit(hit, selectedKind))
+      ).toEqual(allowed);
+    });
+  }
+
+  it('recognizes whole streets, legacy streets and independent segments', () => {
+    for (const name of ['managed-street', 'street', 'street-segment']) {
+      expect(placementKindOf(hitOn({ [name]: '' }, 0).object.el)).toBe(
+        'street'
+      );
+    }
+  });
+
+  it('uses import identity even when the mesh also has a building mixin', () => {
+    const catalogBuilding = building(0);
+    expect(placementKindOf(catalogBuilding.object.el)).toBe('building');
+    const importedBuilding = hitOn(
+      { mixin: 'building-1', 'gltf-model': 'url(x)', 'data-asset-id': 'a' },
+      0
+    );
+    expect(placementKindOf(importedBuilding.object.el)).toBe('import');
+    expect(isGizmoGroundHit(importedBuilding, 'import')).toBe(false);
+    expect(isGizmoGroundHit(importedBuilding, 'furniture')).toBe(true);
+    expect(placementKindOf(localMesh(0).object.el)).toBe('import');
+    expect(placementKindOf(importedImage(0).object.el)).toBe('furniture');
+    expect(placementKindOf(importedSplat(0).object.el)).toBe('furniture');
   });
 });
 
