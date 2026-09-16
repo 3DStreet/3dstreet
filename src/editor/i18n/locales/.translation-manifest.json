@@ -3,7 +3,7 @@
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
     "actionBar.rotateTool": "Rotate Tool (e) - Select and rotate objects",
     "actionBar.shapeTool": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point",
-    "actionBar.translateTool": "Translate Tool (w) - Select and move objects",
+    "actionBar.translateTool": "Translate Tool (t) - Select and move objects",
     "actionBar.zoomIn": "Zoom In",
     "actionBar.zoomOut": "Zoom Out",
     "addLayer.card.asphaltCircle.desc": "Add a large flat asphalt circle on the ground. Geometry and material can be changed in the properties panel.",
@@ -859,13 +859,20 @@
     "advancedComponents.warning": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk.",
     "sidebar.geolocSwitchToPosition": "Click to show position instead.",
     "sidebar.positionSwitchToGeoloc": "Click to show geolocated position (lat/lon) instead.",
-    "sidebar.transform": "Transform"
+    "sidebar.transform": "Transform",
+    "actionBar.easyTool.move": "Move",
+    "actionBar.easyTool.place": "Place",
+    "actionBar.easyTool.rotate": "Rotate",
+    "actionBar.transformMenu.easy": "Move and rotate",
+    "actionBar.transformMenu.rotate": "Rotate",
+    "actionBar.transformMenu.translate": "Move",
+    "actionBar.transformTool": "Transform Tool - move and rotate the selected object"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
     "actionBar.rotateTool": "Rotate Tool (e) - Select and rotate objects",
     "actionBar.shapeTool": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point",
-    "actionBar.translateTool": "Translate Tool (w) - Select and move objects",
+    "actionBar.translateTool": "Translate Tool (t) - Select and move objects",
     "actionBar.zoomIn": "Zoom In",
     "actionBar.zoomOut": "Zoom Out",
     "addLayer.card.asphaltCircle.desc": "Add a large flat asphalt circle on the ground. Geometry and material can be changed in the properties panel.",
@@ -1721,13 +1728,20 @@
     "advancedComponents.warning": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk.",
     "sidebar.geolocSwitchToPosition": "Click to show position instead.",
     "sidebar.positionSwitchToGeoloc": "Click to show geolocated position (lat/lon) instead.",
-    "sidebar.transform": "Transform"
+    "sidebar.transform": "Transform",
+    "actionBar.easyTool.move": "Move",
+    "actionBar.easyTool.place": "Place",
+    "actionBar.easyTool.rotate": "Rotate",
+    "actionBar.transformMenu.easy": "Move and rotate",
+    "actionBar.transformMenu.rotate": "Rotate",
+    "actionBar.transformMenu.translate": "Move",
+    "actionBar.transformTool": "Transform Tool - move and rotate the selected object"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
     "actionBar.rotateTool": "Rotate Tool (e) - Select and rotate objects",
     "actionBar.shapeTool": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point",
-    "actionBar.translateTool": "Translate Tool (w) - Select and move objects",
+    "actionBar.translateTool": "Translate Tool (t) - Select and move objects",
     "actionBar.zoomIn": "Zoom In",
     "actionBar.zoomOut": "Zoom Out",
     "addLayer.card.asphaltCircle.desc": "Add a large flat asphalt circle on the ground. Geometry and material can be changed in the properties panel.",
@@ -2583,6 +2597,13 @@
     "advancedComponents.warning": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk.",
     "sidebar.geolocSwitchToPosition": "Click to show position instead.",
     "sidebar.positionSwitchToGeoloc": "Click to show geolocated position (lat/lon) instead.",
-    "sidebar.transform": "Transform"
+    "sidebar.transform": "Transform",
+    "actionBar.easyTool.move": "Move",
+    "actionBar.easyTool.place": "Place",
+    "actionBar.easyTool.rotate": "Rotate",
+    "actionBar.transformMenu.easy": "Move and rotate",
+    "actionBar.transformMenu.rotate": "Rotate",
+    "actionBar.transformMenu.translate": "Move",
+    "actionBar.transformTool": "Transform Tool - move and rotate the selected object"
   }
 }
