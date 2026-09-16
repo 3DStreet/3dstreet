@@ -495,6 +495,91 @@ describe('classified rays composed with real move gestures', () => {
 });
 
 describe('placement hierarchy composed with rays and landing gestures', () => {
+  it('offers successive roofs of separate buildings, skipping their intermediate floors', () => {
+    const f = fixture();
+    f.surface(0);
+    const lower = f.surface(3, { kind: 'building' });
+    const lowerRoof = f.surface(6, { kind: 'building' });
+    lower.mesh.el = lowerRoof.el;
+    const upper = f.surface(9, { kind: 'building' });
+    const upperRoof = f.surface(12, { kind: 'building' });
+    upper.mesh.el = upperRoof.el;
+    f.attach();
+    // Retaining all floors picks 3; collapsing the column globally picks 12.
+    expect(f.controls.landingUpY).toBeCloseTo(6);
+    expect(f.controls._landingUpEntity).toBe(lowerRoof.el);
+    for (const y of [6, 12]) {
+      expect(f.controls.landingUpY).toBeCloseTo(y);
+      f.controls.axis = 'landingUp';
+      f.controls.startDrag('landingUp', {});
+      f.controls.endGesture('pointerup');
+      expect(f.controls.currentBaseY()).toBeCloseTo(y);
+    }
+    expect(f.controls.landingUpY).toBeNull();
+    expect(f.controls.landingDownY).toBeNull();
+    f.object.position.y = 11;
+    f.controls._refreshSupport();
+    // Applying roof filtering only above would still offer the 9 m floor below.
+    expect(f.controls.landingDownY).toBeCloseTo(6);
+    expect(f.commits).toHaveLength(2);
+    // Reusing a previous column's roof would discard this lower exposed surface.
+    lowerRoof.mesh.visible = false;
+    upper.mesh.visible = false;
+    upperRoof.mesh.visible = false;
+    f.controls._refreshSupport();
+    expect(f.controls.landingDownY).toBeCloseTo(3);
+  });
+
+  it('keeps stacked building roofs distinct inside one BatchedMesh', () => {
+    const f = fixture();
+    vi.stubGlobal('STREET', { catalog });
+    const geometry = new THREE.PlaneGeometry(6, 6).rotateX(-Math.PI / 2);
+    const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+    const batch = new THREE.BatchedMesh(4, 4, 6, material);
+    const geometryId = batch.addGeometry(geometry);
+    const owners = [0, 1].map(() => {
+      const el = document.createElement('div');
+      el.setAttribute('mixin', 'SM3D_Bld_Mixed_Corner_4fl');
+      f.sceneEl.append(el);
+      return el;
+    });
+    batch.el = document.createElement('div');
+    f.sceneEl.append(batch.el);
+    batch._batchIdToEl = [];
+    for (const [i, y] of [3, 6, 9, 12].entries()) {
+      const id = batch.addInstance(geometryId);
+      batch.setMatrixAt(id, new THREE.Matrix4().makeTranslation(0, y, 0));
+      batch._batchIdToEl[id] = owners[Math.floor(i / 2)];
+    }
+    f.sceneEl.object3D.add(batch);
+    f.attach();
+    // Grouping by mesh instead of mapped owner would keep only the upper roof.
+    expect(f.controls.landingUpY).toBeCloseTo(6);
+    expect(f.controls._landingUpEntity).toBe(owners[0]);
+    f.controls.axis = 'landingUp';
+    f.controls.startDrag('landingUp', {});
+    f.controls.endGesture('pointerup');
+    expect(f.controls.currentBaseY()).toBeCloseTo(6);
+    expect(f.controls.landingUpY).toBeCloseTo(12);
+    expect(f.controls._landingUpEntity).toBe(owners[1]);
+    batch.dispose();
+    geometry.dispose();
+    material.dispose();
+  });
+
+  it('preserves intermediate imported-mesh surfaces even with a building mixin', () => {
+    const f = fixture();
+    const low = f.surface(3, { kind: 'building' });
+    const high = f.surface(6, { kind: 'building' });
+    high.mesh.el = low.el;
+    low.el.setAttribute('gltf-model', 'url(imported)');
+    low.el.setAttribute('data-asset-id', 'imported');
+    f.attach();
+    // Applying the catalog roof restriction to imports would pick 6 instead.
+    expect(f.controls.landingUpY).toBeCloseTo(3);
+    expect(f.controls.probe.lastHits.map((h) => h.point.y)).toContain(6);
+  });
+
   it('lands a stop sign on a batched catalog building rather than its shared host', () => {
     const f = fixture({ base: 0.15 });
     vi.stubGlobal('STREET', { catalog });

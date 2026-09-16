@@ -18,6 +18,7 @@ import {
 import {
   classifyPlacementHit,
   isGizmoGroundHit,
+  isUserImportedMeshHit,
   owningPlacementEntity,
   placementKindOf,
   pickSupportBelow,
@@ -45,6 +46,7 @@ export class EasyGizmoProbe {
      */
     this.lastHits = [];
     this._qualifying = this.lastHits;
+    this._buildingRoofs = new Map();
     /** Set while attached; hits inside this
      * entity's subtree are not surfaces it can rest on. */
     this.excludeEl = null;
@@ -127,6 +129,8 @@ export class EasyGizmoProbe {
 
     const qualifying = this._qualifying;
     qualifying.length = 0;
+    const roofs = this._buildingRoofs;
+    roofs.clear();
     const exclude = this.excludeEl;
     const selectedKind = placementKindOf(exclude);
     const tilesReady = this._tilesReady();
@@ -139,7 +143,27 @@ export class EasyGizmoProbe {
       if (!isGizmoGroundHit(hit, selectedKind)) continue;
       if (!tilesReady && classifyPlacementHit(hit) === 'tiles') continue;
       qualifying.push(hit);
+      if (
+        classifyPlacementHit(hit) === 'building' &&
+        !isUserImportedMeshHit(hit)
+      ) {
+        const el = owningPlacementEntity(hit);
+        const y = hit.point.y;
+        if (!roofs.has(el) || y > roofs.get(el)) roofs.set(el, y);
+      }
     }
+
+    // Each building contributes only its roof in this column; stacked entities
+    // retain separate roofs even when their geometry shares a batch host.
+    let count = 0;
+    for (let i = 0; i < qualifying.length; i++) {
+      const hit = qualifying[i];
+      const roofY = roofs.get(owningPlacementEntity(hit));
+      if (roofY !== undefined && hit.point.y < roofY) continue;
+      qualifying[count++] = hit;
+    }
+    qualifying.length = count;
+    roofs.clear();
 
     return {
       below: pickSupportBelow(qualifying, baseY),
@@ -151,6 +175,7 @@ export class EasyGizmoProbe {
     this.setFlatteningSuspended(false);
     this.probeTargets.dispose();
     this._qualifying.length = 0;
+    this._buildingRoofs.clear();
     this.sceneEl = null;
   }
 }

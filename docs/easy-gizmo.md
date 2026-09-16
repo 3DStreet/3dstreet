@@ -11,6 +11,9 @@ Placement ranks streets, buildings, imported meshes and furniture in that order.
 An item can use only item surfaces earlier in the list. Google 3D Tiles count as
 terrain for every class, including rooftops embedded in the photogrammetric mesh.
 Imported mesh identity takes precedence over the catalog building category.
+Each catalog building contributes only its highest intersected surface in the
+column. Separate stacked buildings retain separate roof targets. Intermediate
+surfaces within imported meshes and Google 3D Tiles remain eligible.
 
 The column probe filters hits before support picking, path evaluation and landing
 rechecks, keeping continuous following and explicit landings under one policy.
