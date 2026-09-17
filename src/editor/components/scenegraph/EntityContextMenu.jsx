@@ -21,10 +21,10 @@ import { commonMessages } from '@/editor/i18n/commonMessages';
  * classes so both menus look identical, keyboard hints included.
  */
 const EntityContextMenu = ({ entity, onSelectEntity, onRename, children }) => {
-  // Cloud-asset entities are excluded from rename like in EntityLabel: their
-  // displayed name comes from the Firestore asset, so a data-layer-name
-  // rename would not be reflected.
-  const canRename = canRenameEntity(entity) && !entity.dataset.assetId;
+  // Cloud-asset entities rename like any other row: the rename writes a
+  // per-instance data-layer-name, which EntityLabel shows in place of the
+  // shared Firestore asset name (#2000).
+  const canRename = canRenameEntity(entity);
 
   const capture = (event) =>
     posthog.capture(event, { source: 'scenegraph_context_menu' });

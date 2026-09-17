@@ -2,7 +2,10 @@ import { assetsService } from '@shared/assets';
 
 AFRAME.registerSystem('asset-fallback', {
   init() {
-    this._retried = new Set();
+    // Entities that already had their one retry. Keyed per entity, not per
+    // assetId: a scene can place the same asset several times, and after a
+    // reoptimize every one of those copies carries the stale URL.
+    this._retried = new WeakSet();
     this._onModelError = this._onModelError.bind(this);
     this.el.addEventListener('model-error', this._onModelError);
   },
@@ -17,10 +20,10 @@ AFRAME.registerSystem('asset-fallback', {
     const ownerUid = entity.getAttribute('data-asset-owner-uid');
     if (!assetId || !ownerUid) return;
 
-    // One retry attempt per assetId per session — prevents loops if the fresh
-    // URL also fails (URL unchanged, genuine 403, deleted asset, etc.).
-    if (this._retried.has(assetId)) return;
-    this._retried.add(assetId);
+    // One retry attempt per entity — prevents loops if the fresh URL also
+    // fails (URL unchanged, genuine 403, deleted asset, etc.).
+    if (this._retried.has(entity)) return;
+    this._retried.add(entity);
 
     const currentSrc = entity.getAttribute('gltf-model') || '';
     console.warn(

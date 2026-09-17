@@ -43,6 +43,7 @@ const AssetDetailModal = ({
   type,
   onClose,
   onPlace,
+  onCopied,
   onNavigate,
   currentIndex,
   totalItems,
@@ -130,6 +131,7 @@ const AssetDetailModal = ({
         ownerUid={resolvedOwnerUid}
         onClose={onClose}
         onPlace={onPlace}
+        onCopied={onCopied}
         onNavigate={onNavigate}
         currentIndex={currentIndex}
         totalItems={totalItems}
@@ -169,6 +171,7 @@ AssetDetailModal.propTypes = {
   onClose: PropTypes.func.isRequired,
   // 3D-viewer (mesh/splat) only:
   onPlace: PropTypes.func,
+  onCopied: PropTypes.func,
   // Both modals:
   onNavigate: PropTypes.func,
   currentIndex: PropTypes.number,

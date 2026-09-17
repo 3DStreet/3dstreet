@@ -20,6 +20,11 @@ export const streetLayersData = [
     icon: 'ui_assets/cards/icons/3dst24.png',
     handlerFunction: createFunctions.createIntersection
   }),
+  card(m.managedIntersectionName, m.managedIntersectionDesc, {
+    img: '',
+    icon: 'ui_assets/cards/icons/3dst24.png',
+    handlerFunction: createFunctions.createManagedIntersection
+  }),
   card(m.streetmixStreetName, m.streetmixStreetDesc, {
     img: 'ui_assets/cards/streetmix.jpg',
     icon: 'ui_assets/cards/icons/streetmix24.png',

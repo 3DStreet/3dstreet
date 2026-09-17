@@ -25,6 +25,12 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **Security rules:**
 
-- `size`, `storagePath`, `optimizedSourcePath`, `userId` immutable after create — prevents quota spoofing
+- `size`, `storagePath`, `userId` immutable after create — prevents quota spoofing
+- `optimizedSourcePath` / `optimizedSourceSize` / `optimizedSourceUrl` are owner-mutable and removable (Reoptimize repoints the doc at a new optimized file; Remove optimized drops the fields via `deleteField()`). `optimizedSourcePath` must stay under `users/{uid}/` with no `..` segment on both create and update; it cannot spoof quota because the tally reads `size` only. Never cache a served URL by assetId as if it were permanent.
+- A superseded optimized object is not deleted: saved scenes bake the served URL into `gltf-model`. The orphan GC keeps any Storage object tagged `{ assetRole: 'optimized', assetId }` whose doc is still alive and reclaims it after the doc is purged.
+
+**Served URL resolution on scene load:** `resolveCloudAssetUrls` (json-utils) repoints every `splat` and `gltf-model` entity carrying `data-asset-id` + `data-asset-owner-uid` at the doc's current served URL (`optimizedSourceUrl ?? storageUrl`), so Reoptimize / Remove optimized and the async RAD job reach existing scenes on their next load. The baked URL stays as the fallback for a doc that cannot be read.
+
+**Copy to my library (non-owners):** Save As copies scene JSON only; models keep referencing the original owner's assets. `copyAssetToLibrary` (shared/asset-upload/copyAsset.js) downloads the original and runs it through `uploadAsset`, so the copy is quota-counted, optimized by the current pipeline, and carries `copiedFrom: { assetId, ownerUid }` plus the source doc's attribution. GLB only: copying a splat would re-run the paid RAD job. Explicit action, never done implicitly on Save As. Runs live in a module-level registry (`shared/assets/copyRuns.js`, same pattern as `reoptimizeRuns.js`) so a reopened modal shows progress and outcome. When the modal was opened from an entity's info panel, `onCopied` runs `swapCloudAssetInScene` (editor/lib/asset-upload), which repoints every entity referencing the source asset at the copy in one undoable MultiCommand, even if the modal was closed while the copy ran; from the gallery there is nothing to swap.
 - Client hard-delete (`deleteDoc`) disallowed; UI soft-deletes (`deleted: true`); GC Cloud Function purges via Admin SDK
 - `users/{uid}/meta/usage` owner-readable, write-only via Cloud Functions

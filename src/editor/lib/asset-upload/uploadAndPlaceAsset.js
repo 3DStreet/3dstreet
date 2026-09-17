@@ -344,7 +344,9 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   const { setUpload, clearUpload } = useAssetUploadStore.getState();
 
   setUpload(entityId, {
-    status: 'uploading',
+    // Nothing is moving yet — quota preflight and the model-load gate come
+    // first. The flow flips this to optimizing/uploading as bytes move.
+    status: 'validating',
     progress: 0,
     reason: null,
     sizeBytes: file.size,
@@ -571,6 +573,10 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     // (preload + entity swap). The pending card keeps showing progress
     // until we call clear() below — atomic swap, no overlap.
     currentUploadStore.markAwaiting(assetId);
+    // Bytes are up and the doc exists; what remains is preload (up to 12s)
+    // and the entity swap. Say so on the properties panel too, rather than
+    // leaving it on "Uploading 100%" while the card says Finishing (#1989).
+    setUpload(entityId, { status: 'finishing', progress: 100 });
 
     const asset = await assetsService.getAsset(assetId, userId);
     // Prefer the optimized GLB when available; fall back to the original source.

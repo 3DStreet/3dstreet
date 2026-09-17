@@ -4,13 +4,26 @@
  * Finds Storage objects under `users/*\/assets/...` that no Firestore asset
  * doc references and deletes them. Sources of orphans: failed uploads (file
  * landed but doc creation never happened), buggy code paths, files from
- * before the asset system existed.
+ * before the asset system existed, and the superseded optimized GLB left
+ * behind every time an owner runs "Reoptimize" or "Remove optimized"
+ * (shared/asset-upload/reoptimizeAsset.js uploads to a new path and repoints
+ * the doc, or drops the variant fields entirely; clients cannot delete
+ * Storage objects, so this job is the only disposal path).
  *
  * Reference fields scanned across every asset doc (including soft-deleted —
- * those get hard-deleted by purgeSoftDeletedAssets):
+ * those get hard-deleted by purgeSoftDeletedAssets). Dropping a field from
+ * this list would make the job delete LIVE files, so treat it as a contract:
  *   - storagePath
  *   - optimizedSourcePath
  *   - thumbnailPath
+ *
+ * Superseded optimized variants are NOT deleted while their asset doc still
+ * exists: saved scenes bake the served URL into `gltf-model`, so the object
+ * a doc pointed at last month may still be what a scene loads today. Every
+ * optimized upload carries customMetadata { assetRole: 'optimized', assetId }
+ * (assetsService.addAsset / reoptimizeAsset), and an object whose assetId
+ * resolves to a live doc is kept. Once the doc is purged (asset-gc.js) the
+ * variant loses its keeper and is reclaimed here on the next run.
  *
  * Safety:
  *   - Objects newer than GRACE_HOURS are skipped to avoid racing with
@@ -39,6 +52,7 @@ const ASSETS_SUBPATH = '/assets/';
 async function collectReferencedPaths() {
   const db = admin.firestore();
   const refs = new Set();
+  const liveAssetIds = new Set();
   let cursor = null;
   let scanned = 0;
   const PAGE_SIZE = 1000;
@@ -55,6 +69,7 @@ async function collectReferencedPaths() {
     for (const docSnap of snap.docs) {
       scanned++;
       const data = docSnap.data();
+      liveAssetIds.add(docSnap.id);
       for (const field of ['storagePath', 'optimizedSourcePath', 'thumbnailPath']) {
         const path = data[field];
         if (path && typeof path === 'string') refs.add(path);
@@ -64,12 +79,16 @@ async function collectReferencedPaths() {
     if (snap.size < PAGE_SIZE) break;
   }
 
-  return { refs, scanned };
+  return { refs, liveAssetIds, scanned };
 }
 
 async function cleanup({ dryRun }) {
   const bucket = admin.storage().bucket();
-  const { refs, scanned: assetsScanned } = await collectReferencedPaths();
+  const {
+    refs,
+    liveAssetIds,
+    scanned: assetsScanned
+  } = await collectReferencedPaths();
   const cutoffMs = Date.now() - GRACE_HOURS * 60 * 60 * 1000;
 
   const summary = {
@@ -79,6 +98,7 @@ async function cleanup({ dryRun }) {
     orphans: 0,
     skippedTooNew: 0,
     skippedOutsideAssets: 0,
+    skippedSupersededVariant: 0,
     deleted: 0,
     deleteErrors: 0,
     bytesReclaimed: 0,
@@ -106,6 +126,18 @@ async function cleanup({ dryRun }) {
         continue;
       }
       if (refs.has(name)) continue;
+
+      // Superseded optimized variant of a live asset: scenes may still
+      // reference its URL (see header). Reclaimed once the doc is purged.
+      const custom = file.metadata?.metadata || {};
+      if (
+        custom.assetRole === 'optimized' &&
+        custom.assetId &&
+        liveAssetIds.has(custom.assetId)
+      ) {
+        summary.skippedSupersededVariant++;
+        continue;
+      }
 
       const createdMs = file.metadata?.timeCreated
         ? Date.parse(file.metadata.timeCreated)

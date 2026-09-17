@@ -25,6 +25,7 @@ import {
   FILE_PICKER_ACCEPT
 } from '@shared/asset-upload';
 import { useSharedMessages } from '@shared/i18n/sharedMessages';
+import { getUploadStageLabel } from '../uploadStageLabels.js';
 import styles from './AssetsPanelBody.module.scss';
 
 const FILTERS = [
@@ -96,7 +97,10 @@ const AssetsPanelBody = ({
   const sentinelRef = useRef(null);
   const [filter, setFilter] = useState('all');
   const usage = useStorageUsage(isLoggedIn);
-  const isUploading = useCurrentUploadStore((s) => !!s.upload);
+  // Status only, never the whole upload object: that object is replaced on
+  // every progress tick and this component fans out to every gallery card.
+  const uploadStatus = useCurrentUploadStore((s) => s.upload?.status ?? null);
+  const isUploading = uploadStatus !== null;
 
   // Storage upsell state (#1644). The full-storage card's soft decline
   // ("free up space instead") hides it for this mount only — it returns next
@@ -242,7 +246,10 @@ const AssetsPanelBody = ({
             disabled={isUploading}
             title={isUploading ? t('uploadInProgress') : t('uploadAnAsset')}
           >
-            {isUploading ? t('uploading') : t('upload')}
+            {isUploading
+              ? // Stage only, no percentage: a button label should not tick.
+                getUploadStageLabel(t, uploadStatus) || t('uploading')
+              : t('upload')}
           </button>
           <button
             type="button"

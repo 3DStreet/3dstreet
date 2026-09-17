@@ -184,18 +184,24 @@ AFRAME.registerComponent('street-geo', {
         this[mapType + 'Update']();
       } else if (
         activeMap !== mapType &&
-        (this[mapType] || (mapType === 'osm3d' && this.osm3dBuilding))
+        (this[mapType] ||
+          (mapType === 'osm3d' && (this.osm3dBuilding || this.osm3dStreets)))
       ) {
-        // remove element(s) from DOM and from this object. osm3d is two
-        // elements (tiled ground + extruded buildings) that can exist
-        // independently: the ground is skipped without a provider key.
+        // remove element(s) from DOM and from this object. osm3d is three
+        // elements (tiled ground + extruded buildings + street ribbons)
+        // that can exist independently: the ground is skipped without a
+        // provider key.
         if (this[mapType]) {
           this.el.removeChild(this[mapType]);
           this[mapType] = null;
         }
-        if (mapType === 'osm3d' && this.osm3dBuilding) {
-          this.el.removeChild(this.osm3dBuilding);
-          this.osm3dBuilding = null;
+        if (mapType === 'osm3d') {
+          for (const key of ['osm3dBuilding', 'osm3dStreets']) {
+            if (this[key]) {
+              this.el.removeChild(this[key]);
+              this[key] = null;
+            }
+          }
         }
       }
     }
@@ -367,6 +373,9 @@ AFRAME.registerComponent('street-geo', {
     // cartography to keep the classic 2.5D look under the extruded
     // buildings; `basemapStyle` remains the 2D satellite layer's choice.
     const source = this.resolveTiledSource('streets');
+    // The building vector source doubles as the streets layer's source
+    // (same tiles/v3 pbf tiles, different layer — #1930).
+    const vectorSource = this.resolveBuildingSource();
     if (source) {
       const groundElement = document.createElement('a-entity');
       groundElement.setAttribute('data-layer-name', '2.5D Ground Map Tiles');
@@ -404,7 +413,7 @@ AFRAME.registerComponent('street-geo', {
     // main-thread `osm-geojson`. The component generates geometry directly
     // in the scene frame, so no element rotation, and it handles tile
     // failures itself (#1861).
-    const buildingSource = this.resolveBuildingSource();
+    const buildingSource = vectorSource;
     if (!buildingSource) return;
     const osm3dBuildingElement = document.createElement('a-entity');
     osm3dBuildingElement.setAttribute(
@@ -445,6 +454,39 @@ AFRAME.registerComponent('street-geo', {
     }
     el.appendChild(osm3dBuildingElement);
     self['osm3dBuilding'] = osm3dBuildingElement;
+
+    // Streets layer (#1930): follows the camera, draws the transportation
+    // ways near the focus point as flat ribbons above the ground, answers
+    // "which street is here?" for the click-to-upgrade chip and mints
+    // managed streets on upgrade. data-ignore-raycaster keeps the ribbons
+    // from intercepting the empty-space click the chip relies on.
+    const osmStreetsElement = document.createElement('a-entity');
+    osmStreetsElement.setAttribute('data-layer-name', 'OpenStreetMap Streets');
+    osmStreetsElement.setAttribute('osm-streets', {
+      latitude: data.latitude,
+      longitude: data.longitude,
+      radiusM: 1000,
+      zoom: buildingSource.maxLevel,
+      urlTemplate: buildingSource.urlTemplate,
+      transportationLayer:
+        buildingSource.transportationLayer || 'transportation',
+      opacity: this.opacityFraction()
+    });
+    osmStreetsElement.setAttribute('data-no-pause', '');
+    osmStreetsElement.classList.add('autocreated');
+    osmStreetsElement.setAttribute('data-ignore-raycaster', '');
+    osmStreetsElement.setAttribute('data-no-transform', '');
+    if (AFRAME.INSPECTOR?.opened) {
+      osmStreetsElement.addEventListener(
+        'loaded',
+        () => {
+          osmStreetsElement.play();
+        },
+        { once: true }
+      );
+    }
+    el.appendChild(osmStreetsElement);
+    self['osm3dStreets'] = osmStreetsElement;
   },
   osm3dUpdate: function () {
     const data = this.data;
@@ -468,6 +510,14 @@ AFRAME.registerComponent('street-geo', {
         opacity: this.opacityFraction()
       });
       this.osm3dBuilding.setAttribute('visible', data.opacity > 0);
+    }
+    if (this.osm3dStreets) {
+      this.osm3dStreets.setAttribute('osm-streets', {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        opacity: this.opacityFraction()
+      });
+      this.osm3dStreets.setAttribute('visible', data.opacity > 0);
     }
   }
 });
