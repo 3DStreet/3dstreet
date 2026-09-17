@@ -31,7 +31,11 @@ export const ROAD_WIDTH_M_BY_CLASS = {
   pedestrian: 6,
   raceway: 8,
   busway: 7,
-  bus_guideway: 7
+  bus_guideway: 7,
+  // One track per OSM way (parallel tracks are parallel ways): ballast
+  // corridor for heavy rail, flush tram/light-rail track for transit.
+  rail: 6.7,
+  transit: 3.5
 };
 
 export const DEFAULT_ROAD_WIDTH_M = 9;
@@ -39,6 +43,11 @@ export const DEFAULT_ROAD_WIDTH_M = 9;
 // Classes that are not drivable/walkable street surfaces we want to offer
 // for upgrade or draw as street ribbons.
 export const EXCLUDED_ROAD_CLASSES = new Set(['ferry', 'aerialway']);
+
+// Underground transit mapped at the surface (station stubs, portals,
+// short unmarked runs that slip past the brunnel=tunnel filter) — never
+// street content.
+export const EXCLUDED_TRANSIT_SUBCLASSES = new Set(['subway']);
 
 export function roadWidthMeters(cls) {
   return ROAD_WIDTH_M_BY_CLASS[cls] ?? DEFAULT_ROAD_WIDTH_M;
@@ -65,7 +74,11 @@ const RIBBON_STYLE_BY_CLASS = {
   pedestrian: { color: LIGHT, order: 2 },
   service: { color: LIGHT, order: 2 },
   track: { color: LIGHT, order: 1 },
-  path: { color: LIGHT, order: 1 }
+  path: { color: LIGHT, order: 1 },
+  // Railways tint away from the road blues so a rail corridor never
+  // reads as a gray street before generate.
+  rail: { color: '#9b94b5', order: 2 },
+  transit: { color: '#9b94b5', order: 2 }
 };
 
 const DEFAULT_RIBBON_STYLE = { color: MINOR, order: 1 };
