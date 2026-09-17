@@ -135,7 +135,7 @@ Both are cents/conversion; Cloud Run wins on large files purely via egress:
 - Update `public/cors.json`: add `Accept-Ranges` and `Content-Range` to
   `responseHeader` (cross-origin JS can't read them otherwise; these are exactly
   the headers the Hetzner Caddy config exposed). Apply per project:
-  `gsutil cors set public/cors.json gs://<bucket>`.
+  `gcloud storage buckets update gs://<bucket> --cors-file=public/cors.json`.
 
 ### 4. Deploy / IAM
 
@@ -147,7 +147,7 @@ Both are cents/conversion; Cloud Run wins on large files purely via egress:
 - Cloud Tasks queue: create once (`gcloud tasks queues create`).
 - IAM: Cloud Tasks SA → `run.invoker` on the service; Cloud Run SA → read/write
   the assets bucket + Firestore.
-- Bucket CORS: `gsutil cors set` (above).
+- Bucket CORS: `gcloud storage buckets update --cors-file` (above).
 
 ---
 
