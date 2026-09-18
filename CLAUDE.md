@@ -123,9 +123,10 @@ tool integration**, including callers outside `src/editor/`.
 
 **Loading (#2009):** the scene initializes async (`AFRAME_ASYNC` +
 `emitReady()` in `index.html`) and the splash gates only the app shell.
-Textures are lazy `<img data-src>` assets: read their URL with
-`getAssetImageSrc()` (`src/lazy-textures.js`), never `img.src`, and never
-enumerate `a-assets img` on mount. Scene asset progress is tracked by the
+Textures are lazy `<img data-src data-placeholder>` assets: read their URL
+with `getAssetImageSrc()` (`src/lazy-textures.js`), never `img.src`; never
+enumerate `a-assets img` on mount; every lazy image needs a placeholder
+color (or `transparent` for cutouts) shown until it arrives. Scene asset progress is tracked by the
 `asset-load-status` system and shown by non-blocking indicators in the scene
 graph. **Read [asset loading](docs/asset-loading.md) before changing scene
 init, `<street-assets>`, texture references or load indicators.**

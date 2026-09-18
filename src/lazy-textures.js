@@ -142,6 +142,135 @@ export function installLazyTextureSource(
   return true;
 }
 
+/**
+ * Placeholder color of a lazy asset image while it downloads: a CSS hex from
+ * its `data-placeholder`, or null when it has none or is a cutout
+ * (`transparent`).
+ * @param {Element|null} el
+ * @returns {string|null}
+ */
+export function getAssetPlaceholderColor(el) {
+  const value = el && el.getAttribute && el.getAttribute('data-placeholder');
+  if (!value || value === 'transparent') return null;
+  return value;
+}
+
+// --- Material placeholders -------------------------------------------------
+//
+// A surface whose texture is still downloading otherwise renders its bare
+// material color — bright white for an asphalt lane — which reads as broken.
+// While a material's `src` is a lazy image with a `data-placeholder`, the
+// material is tinted with that average color (times its own color), or hidden
+// when the placeholder is `transparent` (stencil / striping cutouts would
+// render as solid quads). A-Frame emits `materialtextureloaded` on the entity
+// once the real map lands; the placeholder is undone right then, which is
+// also before batch-models clones the material (it waits on the same event).
+// The tint is applied straight to the THREE material, never through
+// setAttribute, so nothing about it is serialized.
+
+function restorePlaceholder(component) {
+  const { material, data } = component;
+  if (!material) return;
+  material.visible = data.visible !== false;
+  if (material.color && data.color) material.color.set(data.color);
+}
+
+function paintPlaceholder(component, placeholder, ColorCtor) {
+  const { material, data } = component;
+  if (!material) return;
+  if (placeholder === 'transparent') {
+    material.visible = false;
+    return;
+  }
+  if (!material.color) return;
+  material.color.set(placeholder);
+  if (data.color && ColorCtor) {
+    material.color.multiply(new ColorCtor(data.color));
+  }
+}
+
+/** Drop the placeholder listeners without touching the material. */
+export function clearLazyPlaceholder(component) {
+  const state = component._lazyPlaceholder;
+  if (!state) return;
+  component.el.removeEventListener('materialtextureloaded', state.onLoaded);
+  if (state.sceneEl) {
+    state.sceneEl.removeEventListener('texture-error', state.onError);
+  }
+  component._lazyPlaceholder = null;
+}
+
+/**
+ * Apply (or re-apply, after the component's own update reset the material)
+ * the placeholder for a material component whose `src` is a pending lazy
+ * image. No-op for ready images and non-asset sources.
+ * @param {object} component A-Frame material component (el, data, material)
+ * @param {Function} [ColorCtor=THREE.Color]
+ */
+export function applyLazyPlaceholder(
+  component,
+  ColorCtor = typeof THREE !== 'undefined' ? THREE.Color : undefined
+) {
+  const src = component.data && component.data.src;
+  const img = src && src.tagName === 'IMG' ? src : null;
+  const placeholder = img && img.getAttribute('data-placeholder');
+  if (!img || !placeholder || isImageReady(img)) {
+    clearLazyPlaceholder(component);
+    return false;
+  }
+  const state = component._lazyPlaceholder;
+  if (!state || state.img !== img) {
+    clearLazyPlaceholder(component);
+    const el = component.el;
+    const sceneEl = el.sceneEl || null;
+    const onLoaded = (event) => {
+      if (event.target !== el) return;
+      clearLazyPlaceholder(component);
+      restorePlaceholder(component);
+    };
+    const onError = (event) => {
+      if (!event.detail || event.detail.id !== img.id) return;
+      // Keep the placeholder: a tint or nothing beats a bare white quad.
+      clearLazyPlaceholder(component);
+    };
+    el.addEventListener('materialtextureloaded', onLoaded);
+    if (sceneEl) sceneEl.addEventListener('texture-error', onError);
+    component._lazyPlaceholder = { img, onLoaded, onError, sceneEl };
+  }
+  paintPlaceholder(component, placeholder, ColorCtor);
+  return true;
+}
+
+/**
+ * Patch A-Frame's material component so every update applies the pending
+ * placeholder after A-Frame has written the authored color/visibility, and
+ * removal drops the listeners. Idempotent; parameterized for tests.
+ * @param {Function} [MaterialComponent=AFRAME.components.material.Component]
+ */
+export function installMaterialPlaceholders(
+  MaterialComponent = typeof AFRAME !== 'undefined'
+    ? AFRAME.components &&
+      AFRAME.components.material &&
+      AFRAME.components.material.Component
+    : undefined
+) {
+  const proto = MaterialComponent && MaterialComponent.prototype;
+  if (!proto || proto._lazyPlaceholdersInstalled) return false;
+  const originalUpdate = proto.update;
+  const originalRemove = proto.remove;
+  proto.update = function (oldData) {
+    originalUpdate.call(this, oldData);
+    applyLazyPlaceholder(this);
+  };
+  proto.remove = function () {
+    clearLazyPlaceholder(this);
+    return originalRemove.call(this);
+  };
+  proto._lazyPlaceholdersInstalled = true;
+  return true;
+}
+
 if (typeof AFRAME !== 'undefined') {
   installLazyTextureSource();
+  installMaterialPlaceholders();
 }

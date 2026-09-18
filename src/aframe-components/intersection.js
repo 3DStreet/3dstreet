@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getAssetImageSrc } from '../lazy-textures';
+import { getAssetImageSrc, getAssetPlaceholderColor } from '../lazy-textures';
 
 export const CROSSWALKS = {
   none: 0,
@@ -93,18 +93,23 @@ AFRAME.registerComponent('intersection', {
     this.el.setAttribute('shadow', '');
 
     // Create the texture for sidewalk that will be re-used
+    const sidewalkImg = document.getElementById('seamless-sidewalk');
+    const sidewalkTint = new THREE.Color(0xcccccc); // Darkens the texture to match existing sidewalk
+    this.sidewalkMaterial = new THREE.MeshStandardMaterial({
+      // Placeholder average until the lazy texture arrives (#2009).
+      color: new THREE.Color(
+        getAssetPlaceholderColor(sidewalkImg) || '#ffffff'
+      ).multiply(sidewalkTint),
+      roughness: 0.8 // Same roughness as sidewalk mixin in src/assets.js
+    });
     const sidewalkTexture = new THREE.TextureLoader().load(
-      getAssetImageSrc(document.getElementById('seamless-sidewalk'))
+      getAssetImageSrc(sidewalkImg),
+      () => this.sidewalkMaterial.color.copy(sidewalkTint)
     );
     sidewalkTexture.wrapS = THREE.RepeatWrapping;
     sidewalkTexture.wrapT = THREE.RepeatWrapping;
     sidewalkTexture.repeat.set(0.5, 0.5); // Scale the texture to repeat twice every meter
-
-    this.sidewalkMaterial = new THREE.MeshStandardMaterial({
-      map: sidewalkTexture,
-      roughness: 0.8, // Same roughness as sidewalk mixin in src/assets.js
-      color: 0xcccccc // Darkens the texture to match existing sidewalk
-    });
+    this.sidewalkMaterial.map = sidewalkTexture;
     this.curbGeoms = [];
 
     const createSidewalkElem = ({

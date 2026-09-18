@@ -50,8 +50,27 @@ pops in and A-Frame's `materialtextureloaded` fires when it is real. The
 material system's `sourceCache` (keyed by element id) still dedupes across
 entities, so each texture downloads once per page.
 
+### Placeholders while a texture is pending
+
+A surface whose texture has not arrived would otherwise render its bare
+material color (bright white for an asphalt lane), which reads as broken. Each
+lazy `<img>` therefore carries `data-placeholder`: the texture's measured
+average color, or `transparent` for the alpha-cutout atlases and striping.
+`installMaterialPlaceholders()` wraps A-Frame's material component `update`:
+while `src` is a pending lazy image, an opaque surface is tinted with the
+placeholder times its own `color`, and a cutout is hidden (`material.visible`)
+instead of rendering as a solid quad. `materialtextureloaded` undoes it, which
+is also before batch-models clones the material (it waits on the same event
+via `waitForMaterialTexture`). The tint is written straight to the THREE
+material, never through `setAttribute`, so nothing about it is serialized. A
+texture that fails keeps its placeholder. Materials built by hand with
+`THREE.TextureLoader` (intersections) do the same with
+`getAssetPlaceholderColor()`.
+
 Rules:
 
+- **A new lazy asset image needs a `data-placeholder`** (canvas average of
+  the image, or `transparent` for cutouts); without one it shows white.
 - **Read an asset image's URL with `getAssetImageSrc(img)`**, never `img.src`
   (empty until first use). `getUrlFromId` / `getIdFromUrl` in
   `src/editor/lib/assetsUtils.js` already do.
