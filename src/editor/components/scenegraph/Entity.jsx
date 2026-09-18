@@ -8,7 +8,7 @@ import { defineMessages } from 'react-intl';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import EntityContextMenu from './EntityContextMenu';
 import EntityLabel from './EntityLabel';
-import EntityLoadBadge from './EntityLoadBadge';
+import EntityLoadSheen from './EntityLoadSheen';
 import {
   faCaretDown,
   faCaretRight,
@@ -321,13 +321,11 @@ class Entity extends React.Component {
       </span>
     ) : null;
 
-    // Right-justified badge/toggle bar overlaid on the row (#1980): load
-    // state first (spinner / check / warning / streaming light, #2009), then
-    // passive badges, then the visibility eye (and future animated-control
+    // Right-justified badge/toggle bar overlaid on the row (#1980): passive
+    // badges first, then the visibility eye (and future animated-control
     // toggles).
     const badgeBar = (
       <span className="entityRowBar">
-        <EntityLoadBadge entity={entity} />
         {badgesNode}
         {visibilityButton}
       </span>
@@ -364,6 +362,8 @@ class Entity extends React.Component {
           onDragLeave={this.onDragLeave}
           onDrop={this.onDrop}
         >
+          {/* Ambient load sheen behind the row content (#2009). */}
+          <EntityLoadSheen entity={entity} />
           <span>
             <span
               style={{

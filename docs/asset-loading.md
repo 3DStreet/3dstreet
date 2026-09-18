@@ -116,17 +116,24 @@ Entries keyed by an element are forgotten by the tick once the element leaves
 the document. Entries are replaced, never mutated, so React can compare them
 by identity through `useSyncExternalStore`.
 
-Editor surfaces (`src/editor/components/scenegraph/`):
+Editor surfaces (`src/editor/components/scenegraph/`) are deliberately
+ambient: no icons, counts, bars or text, so loading is visible to anyone who
+looks and invisible to anyone who does not.
 
-- `EntityLoadBadge.jsx` in each layer row's badge bar: spinner → check (lingers
-  2 s) for deterministic loads, a warning that stays on error / timeout, a
-  pulsing light while a streaming layer is active.
-- `SceneLoadIndicator.jsx` at the foot of the layers panel: "Loading assets
-  N / M" with a thin bar, "Streaming" while any stream is active, a persistent
-  "N assets did not load" line (tooltip lists them), and a brief "All assets
-  loaded". Hidden when idle.
+- `EntityLoadSheen.jsx`, the first child of each layer row, is a layer
+  painted behind the row content (the row isolates its stacking context; the
+  sheen sits at z-index -1). While the row's model downloads a soft sheen
+  sweeps across; once loaded it fades out; a failed load settles to a faint
+  warning wash. Hovering the row shows a tooltip with the state. Streaming
+  layers (splats, tiles) show nothing.
+- `PanelLoadSheen.jsx`, behind the left panel's title + save row: a faint
+  fill tracks overall progress (`--load-progress`) with a sheen across it,
+  fading out once every model and texture has settled. Always mounted so the
+  fade is a CSS transition.
 - `useAssetLoadTracker.js` holds the hooks; the tracker is reachable at
-  `AFRAME.scenes[0].systems['asset-load-status'].tracker`.
+  `AFRAME.scenes[0].systems['asset-load-status'].tracker`, and the store's
+  `assetLoadSummary` carries the counts for tooling (MCP, tests).
+- Both honor `prefers-reduced-motion` (static wash instead of animation).
 
 Per-entity texture state is not tracked (textures are shared across many
 striping / stencil clones); textures count only in the global summary.

@@ -15,7 +15,7 @@ import {
 import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
-import SceneLoadIndicator from './SceneLoadIndicator';
+import PanelLoadSheen from './PanelLoadSheen';
 import GeoSidebar from '../elements/GeoSidebar';
 import AppMenu from './AppMenu';
 import { AppSwitcher } from '@shared/navigation/components';
@@ -517,6 +517,7 @@ class SceneGraph extends React.Component {
         >
           <div id="left-panel-header">
             <div className="left-panel-header-row">
+              {isCollapsed && <PanelLoadSheen />}
               <AppSwitcher />
               {!isCollapsed && <AppMenu currentUser={currentUser} />}
               {isCollapsed && (
@@ -530,6 +531,8 @@ class SceneGraph extends React.Component {
             </div>
             {!isCollapsed && (
               <div className="left-panel-title-row">
+                {/* Ambient scene load sheen behind title + save (#2009). */}
+                <PanelLoadSheen />
                 <div className="scene-title clickable truncate">
                   <SceneEditTitle />
                 </div>
@@ -618,7 +621,6 @@ class SceneGraph extends React.Component {
                   <GeoSidebar entity={this.getEntityById('reference-layers')} />
                 </div>
               )}
-              <SceneLoadIndicator />
             </>
           )}
         </div>

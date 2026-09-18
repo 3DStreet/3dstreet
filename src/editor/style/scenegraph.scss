@@ -127,6 +127,9 @@
     padding: 3px;
     width: 100%;
     white-space: nowrap;
+    // Host for the load sheen layer (painted at z-index -1 behind content).
+    position: relative;
+    isolation: isolate;
 
     &:focus {
       background: variables.$purple-900;
@@ -343,53 +346,52 @@
     background: variables.$purple-900;
   }
 
-  // Per-row asset load state (EntityLoadBadge, #2009): spinner while a GLB
-  // loads, a check that lingers briefly, a warning that stays on error or
-  // timeout, and a pulsing light while a splat / tile layer streams.
-  .entityLoadBadge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    flex: none;
-    color: variables.$lightgray-300;
+  // Ambient per-row load state (EntityLoadSheen, #2009): an absolutely
+  // positioned layer painted behind the row content (the row isolates its
+  // stacking context and the layer sits at z-index -1). While a model loads
+  // a soft sheen sweeps across; once loaded it fades out; a failed load
+  // settles to a faint warning wash. Hovering the row shows the tooltip.
+  .entityLoadSheen {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.6s ease-out;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.09) 45%,
+      rgba(255, 255, 255, 0.14) 50%,
+      rgba(255, 255, 255, 0.09) 55%,
+      transparent 100%
+    );
+    background-size: 220% 100%;
 
-    &.is-pending svg {
-      animation: entity-load-spin 0.9s linear infinite;
+    &.is-pending {
+      opacity: 1;
+      animation: load-sheen 1.8s linear infinite;
     }
-    &.is-loaded {
-      color: variables.$green-200;
+    &.is-slow {
+      animation-duration: 3s;
     }
     &.is-error {
-      color: variables.$red-300;
-    }
-    &.is-timed-out {
-      color: variables.$orange-100;
-    }
-    &.is-streaming::before {
-      content: '';
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: variables.$purple-900;
-      animation: entity-load-pulse 1.2s ease-in-out infinite;
-    }
-  }
-  @keyframes entity-load-spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-  @keyframes entity-load-pulse {
-    0%,
-    100% {
-      opacity: 0.35;
-      transform: scale(0.8);
-    }
-    50% {
       opacity: 1;
-      transform: scale(1.1);
+      animation: none;
+      background: rgba(242, 22, 75, 0.14);
+    }
+  }
+  @keyframes load-sheen {
+    from {
+      background-position: 120% 0;
+    }
+    to {
+      background-position: -120% 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .entityLoadSheen.is-pending {
+      animation: none;
+      background: rgba(255, 255, 255, 0.06);
     }
   }
 
@@ -561,52 +563,46 @@
       }
     }
 
-    // Non-blocking scene asset progress pinned to the panel foot
-    // (SceneLoadIndicator, #2009). Absent when nothing is loading.
-    .scene-load-indicator {
-      flex: none;
-      padding: 6px 12px 8px;
-      border-top: 1px solid variables.$darkgray-800;
-      font-size: 12px;
-      color: variables.$lightgray-300;
+    // Ambient scene-wide load state (PanelLoadSheen, #2009) behind the
+    // title + save row: a faint fill tracks overall progress (--load-progress)
+    // with a sheen sweeping across it, and it fades out once every model and
+    // texture has settled. Always mounted; visibility is the is-loading class.
+    .left-panel-title-row,
+    .left-panel-header-row {
+      position: relative;
+      isolation: isolate;
+    }
+    .panelLoadSheen {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.8s ease-out;
+      pointer-events: none;
+      --load-progress: 0%;
+      background:
+        linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.1) 50%,
+            transparent 100%
+          )
+          0 0 / 220% 100%,
+        linear-gradient(
+          90deg,
+          rgba(106, 74, 195, 0.35) var(--load-progress),
+          rgba(106, 74, 195, 0.12) var(--load-progress)
+        );
 
-      .scene-load-indicator-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-height: 16px;
+      &.is-loading {
+        opacity: 1;
+        animation: load-sheen 2.2s linear infinite;
       }
-      .scene-load-indicator-text.is-done {
-        color: variables.$green-200;
-      }
-      .scene-load-indicator-failures {
-        color: variables.$red-300;
-        cursor: help;
-      }
-      .scene-load-indicator-stream {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        margin-left: auto;
-      }
-      .scene-load-indicator-stream-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: variables.$purple-900;
-        animation: entity-load-pulse 1.2s ease-in-out infinite;
-      }
-      .scene-load-indicator-track {
-        margin-top: 5px;
-        height: 3px;
-        border-radius: 2px;
-        background: variables.$darkgray-800;
-        overflow: hidden;
-      }
-      .scene-load-indicator-bar {
-        height: 100%;
-        background: variables.$purple-900;
-        transition: width 0.2s ease-out;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .panelLoadSheen.is-loading {
+        animation: none;
       }
     }
 
