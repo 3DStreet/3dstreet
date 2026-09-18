@@ -83,7 +83,7 @@ export async function reoptimizeAsset(
     // the request itself returns 200. Note the Download button keeps working
     // either way: window.open() is a navigation, and CORS doesn't apply to
     // navigations. Applying public/cors.json to the bucket is the fix
-    // (`gsutil cors set public/cors.json gs://<bucket>`).
+    // (`gcloud storage buckets update gs://<bucket> --cors-file=public/cors.json`).
     //
     // The user gets the plain sentence; the real cause rides along as
     // `cause` so the console and Sentry still show what happened.

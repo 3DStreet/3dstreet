@@ -601,7 +601,7 @@ full queue plus two things the Replicate kinds don't:
   Cloud Tasks queue + invoker SA + IAM. Full steps in
   [`rad-cloud-run-pipeline.md`](./rad-cloud-run-pipeline.md) and
   `rad-converter/README.md`. Bucket byte-range CORS:
-  `gsutil cors set public/cors.json gs://<bucket>`.
+  `gcloud storage buckets update gs://<bucket> --cors-file=public/cors.json`.
 - **Hosting:** generator bundle, `public/generator/index.html`,
   `public/splat-viewer.html` (covered by `npm run deploy[:staging]`).
 - **Secrets:** none new for splat — reuses `REPLICATE_API_TOKEN` and
