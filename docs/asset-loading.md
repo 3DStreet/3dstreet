@@ -123,8 +123,9 @@ looks and invisible to anyone who does not.
 - `EntityLoadSheen.jsx`, the first child of each layer row, is a layer
   painted behind the row content (the row isolates its stacking context; the
   sheen sits at z-index -1). While the row's model downloads a soft sheen
-  sweeps across; once loaded it fades out; a failed load settles to a faint
-  warning wash. Hovering the row shows a tooltip with the state. Streaming
+  sweeps across; once loaded it fades out; a failed load settles to a thin
+  warning accent on the row's left edge. Hovering the row shows a tooltip
+  with the state. Streaming
   layers (splats, tiles) show nothing.
 - `PanelLoadSheen.jsx`, behind the left panel's title + save row: a faint
   fill tracks overall progress (`--load-progress`) with a sheen across it,

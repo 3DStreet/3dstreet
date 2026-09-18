@@ -351,21 +351,27 @@
   // stacking context and the layer sits at z-index -1). While a model loads
   // a soft sheen sweeps across; once loaded it fades out; a failed load
   // settles to a faint warning wash. Hovering the row shows the tooltip.
-  .entityLoadSheen {
+  // Selector outranks the row's generic `> span` layout rule below.
+  .entity > span.entityLoadSheen {
+    display: block;
     position: absolute;
     inset: 0;
     z-index: -1;
     opacity: 0;
     transition: opacity 0.6s ease-out;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.09) 45%,
-      rgba(255, 255, 255, 0.14) 50%,
-      rgba(255, 255, 255, 0.09) 55%,
-      transparent 100%
-    );
-    background-size: 220% 100%;
+    // A constant faint wash so a pending row is always distinguishable,
+    // plus a wider band sweeping across it.
+    background:
+      linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.12) 35%,
+          rgba(255, 255, 255, 0.2) 50%,
+          rgba(255, 255, 255, 0.12) 65%,
+          transparent 100%
+        )
+        0 0 / 200% 100%,
+      rgba(255, 255, 255, 0.05);
 
     &.is-pending {
       opacity: 1;
@@ -374,10 +380,16 @@
     &.is-slow {
       animation-duration: 3s;
     }
+    // Failed: a thin accent on the row's left edge plus a very faint wash,
+    // quiet enough not to fight the selected row or its right-hand bar.
     &.is-error {
       opacity: 1;
       animation: none;
-      background: rgba(242, 22, 75, 0.14);
+      background: linear-gradient(
+        90deg,
+        rgba(242, 22, 75, 0.85) 0 3px,
+        rgba(242, 22, 75, 0.07) 3px
+      );
     }
   }
   @keyframes load-sheen {
@@ -389,9 +401,9 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    .entityLoadSheen.is-pending {
+    .entity > span.entityLoadSheen.is-pending {
       animation: none;
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.08);
     }
   }
 
