@@ -1043,6 +1043,24 @@
   "entity.dragToReorder": {
     "defaultMessage": "Drag to reorder"
   },
+  "entity.load.error": {
+    "defaultMessage": "Failed to load. The file may be missing or invalid."
+  },
+  "entity.load.loaded": {
+    "defaultMessage": "Loaded"
+  },
+  "entity.load.pending": {
+    "defaultMessage": "Loading 3D model…"
+  },
+  "entity.load.streamingActive": {
+    "defaultMessage": "Streaming…"
+  },
+  "entity.load.streamingIdle": {
+    "defaultMessage": "Streaming layer, idle"
+  },
+  "entity.load.timedOut": {
+    "defaultMessage": "Still loading after 30 s. Slow connection or large file."
+  },
   "entity.removeEntity": {
     "defaultMessage": "Remove entity"
   },
@@ -2014,6 +2032,21 @@
   },
   "sceneGraph.tabLayers": {
     "defaultMessage": "Layers"
+  },
+  "sceneLoad.done": {
+    "defaultMessage": "All assets loaded"
+  },
+  "sceneLoad.failed": {
+    "defaultMessage": "{count,plural,one{# asset did not load} other{# assets did not load}}"
+  },
+  "sceneLoad.failedTitle": {
+    "defaultMessage": "Did not load: {names}"
+  },
+  "sceneLoad.loading": {
+    "defaultMessage": "Loading assets {settled} / {total}"
+  },
+  "sceneLoad.streaming": {
+    "defaultMessage": "Streaming"
   },
   "scenesModal.fetchError": {
     "defaultMessage": "Error fetching scenes: {error}"

@@ -70,6 +70,10 @@ AFRAME.registerComponent('tiled-basemap', {
         this.applyOpacityToObject(scene);
       }
     };
+    // Streaming activity for the editor's asset-load indicators (#2009).
+    this.onTilesLoadStart = () =>
+      this.el.emit('stream-active', { kind: 'tiles' });
+    this.onTilesLoadEnd = () => this.el.emit('stream-idle', { kind: 'tiles' });
 
     // Tiles whose fetch failed while the tab was hidden are marked FAILED
     // and never retried; clear them when the tab becomes visible again so
@@ -111,6 +115,8 @@ AFRAME.registerComponent('tiled-basemap', {
     this.tiles.registerPlugin(new TilesFadePlugin());
     this.tiles.addEventListener('load-root-tileset', this.onLoadRootTileSet);
     this.tiles.addEventListener('load-model', this.onLoadModel);
+    this.tiles.addEventListener('tiles-load-start', this.onTilesLoadStart);
+    this.tiles.addEventListener('tiles-load-end', this.onTilesLoadEnd);
 
     this.el.object3D.add(this.tiles.group);
 
@@ -130,6 +136,9 @@ AFRAME.registerComponent('tiled-basemap', {
     this.rootLoaded = false;
     this.tiles.removeEventListener('load-root-tileset', this.onLoadRootTileSet);
     this.tiles.removeEventListener('load-model', this.onLoadModel);
+    this.tiles.removeEventListener('tiles-load-start', this.onTilesLoadStart);
+    this.tiles.removeEventListener('tiles-load-end', this.onTilesLoadEnd);
+    this.el.emit('stream-idle', { kind: 'tiles' });
     this.el.object3D.remove(this.tiles.group);
     this.tiles.dispose();
     this.tiles = null;

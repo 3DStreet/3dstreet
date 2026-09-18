@@ -15,6 +15,7 @@ import {
 import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
+import SceneLoadIndicator from './SceneLoadIndicator';
 import GeoSidebar from '../elements/GeoSidebar';
 import AppMenu from './AppMenu';
 import { AppSwitcher } from '@shared/navigation/components';
@@ -617,6 +618,7 @@ class SceneGraph extends React.Component {
                   <GeoSidebar entity={this.getEntityById('reference-layers')} />
                 </div>
               )}
+              <SceneLoadIndicator />
             </>
           )}
         </div>

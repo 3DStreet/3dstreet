@@ -6,6 +6,7 @@ import canvasRecorder from './editor/lib/CanvasRecorder';
 import { auth } from '@shared/services/firebase';
 import { saveUserProfile } from '@shared/utils/username';
 import { resolveInitialLocale, persistLocale } from './editor/i18n/config';
+import { EMPTY_ASSET_LOAD_SUMMARY } from './asset-load-tracker';
 
 const firstModal = () => {
   const hash = window.location.hash;
@@ -102,6 +103,13 @@ const useStore = create(
             loadingSceneError: errorMessage,
             loadingSceneMessage: 'Error loading scene'
           }),
+        // Non-blocking scene asset load summary (#2009), mirrored from the
+        // asset-load-status system's tracker (src/asset-load-tracker.js).
+        // Counts deterministic loads (GLBs, textures) and streaming activity
+        // (splats, tiles); it never gates the UI — LoadingSceneModal above is
+        // the only blocking scene-load surface.
+        assetLoadSummary: EMPTY_ASSET_LOAD_SUMMARY,
+        setAssetLoadSummary: (assetLoadSummary) => set({ assetLoadSummary }),
         // Blocking overlay shown while a GLB/glTF export is running (issue
         // #1797). Export work happens on the main thread and can take several
         // seconds on large scenes, so we surface a saving-style indicator.

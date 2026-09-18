@@ -31,6 +31,7 @@
 // (unit-tested, DOM-free).
 
 import { computeIntersectionGeometry } from '../tested/managed-intersection-utils.js';
+import { getAssetImageSrc } from '../lazy-textures';
 import { getTravelledWaySegments } from './street-layout-utils';
 import {
   BASE_SURFACE_DEPTH,
@@ -643,7 +644,7 @@ AFRAME.registerComponent('managed-intersection', {
     if (this.asphaltMaterial) return this.asphaltMaterial;
     const img = document.getElementById('asphalt-texture');
     if (img) {
-      const texture = new THREE.TextureLoader().load(img.src);
+      const texture = new THREE.TextureLoader().load(getAssetImageSrc(img));
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(0.25, 0.25); // ~1 tile per 4m, like the legacy box
@@ -666,7 +667,7 @@ AFRAME.registerComponent('managed-intersection', {
     if (this.sidewalkMaterial) return this.sidewalkMaterial;
     const img = document.getElementById('seamless-sidewalk');
     if (img) {
-      const texture = new THREE.TextureLoader().load(img.src);
+      const texture = new THREE.TextureLoader().load(getAssetImageSrc(img));
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(0.5, 0.5); // match the legacy intersection curbs

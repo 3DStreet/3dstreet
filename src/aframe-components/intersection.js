@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getAssetImageSrc } from '../lazy-textures';
 
 export const CROSSWALKS = {
   none: 0,
@@ -93,7 +94,7 @@ AFRAME.registerComponent('intersection', {
 
     // Create the texture for sidewalk that will be re-used
     const sidewalkTexture = new THREE.TextureLoader().load(
-      document.getElementById('seamless-sidewalk').src
+      getAssetImageSrc(document.getElementById('seamless-sidewalk'))
     );
     sidewalkTexture.wrapS = THREE.RepeatWrapping;
     sidewalkTexture.wrapT = THREE.RepeatWrapping;

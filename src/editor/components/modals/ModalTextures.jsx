@@ -9,6 +9,7 @@ import {
   insertNewAsset,
   isValidId
 } from '../../lib/assetsUtils';
+import { getAssetImageSrc } from '@/lazy-textures';
 
 class ModalTextures extends React.Component {
   static propTypes = {
@@ -51,7 +52,9 @@ class ModalTextures extends React.Component {
 
   componentDidMount() {
     Events.on('assetsimagesload', this.onAssetsImagesLoad);
-    this.generateFromAssets();
+    // The asset gallery is built when the modal opens (componentDidUpdate),
+    // not on mount: doing it here downloaded every <a-assets> texture a second
+    // time on page load, for a modal nobody had opened (#2009).
   }
 
   componentWillUnmount() {
@@ -114,6 +117,10 @@ class ModalTextures extends React.Component {
     Array.prototype.slice
       .call(document.querySelectorAll('a-assets img'))
       .forEach((asset) => {
+        // Asset images are lazy (data-src until first use, see
+        // src/lazy-textures.js); opening the gallery is a use.
+        const assetSrc = getAssetImageSrc(asset);
+        if (!assetSrc) return;
         var image = new Image();
         image.addEventListener('load', () => {
           self.state.assetsImages.push({
@@ -127,7 +134,7 @@ class ModalTextures extends React.Component {
           });
           self.setState({ assetsImages: self.state.assetsImages });
         });
-        image.src = asset.src;
+        image.src = assetSrc;
       });
   };
 
@@ -271,6 +278,9 @@ class ModalTextures extends React.Component {
 
   render() {
     let isOpen = this.state.isOpen;
+    // Modal only hides its children with CSS; the galleries below would still
+    // mount an <img> per texture and fetch them all on page load (#2009).
+    if (!isOpen) return null;
     let loadedTextures = this.state.loadedTextures;
     let preview = this.state.preview;
 
