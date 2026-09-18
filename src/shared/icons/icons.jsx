@@ -391,6 +391,37 @@ export const Translate24Icon = () => (
   </svg>
 );
 
+// Easy mode: the move/rotate gizmo's own glyph — a footprint square with a
+// curved arrow round it, so it reads as "move and turn" rather than as either
+// one alone.
+export const EasyTransform24Icon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M12 8.5L16.5 12L12 15.5L7.5 12L12 8.5Z" fill="white" />
+    <path
+      d="M5.4 8.9A8 8 0 0 1 18.6 8.9"
+      stroke="white"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <path d="M19.9 5.4L19.2 9.6L15.2 8.2L19.9 5.4Z" fill="white" />
+    <path
+      d="M18.6 15.1A8 8 0 0 1 5.4 15.1"
+      stroke="white"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      fill="none"
+    />
+    <path d="M4.1 18.6L4.8 14.4L8.8 15.8L4.1 18.6Z" fill="white" />
+  </svg>
+);
+
 export const Cloud24Icon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"

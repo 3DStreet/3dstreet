@@ -1,4 +1,13 @@
 {
+  "actionBar.easyTool.move": {
+    "defaultMessage": "Move"
+  },
+  "actionBar.easyTool.place": {
+    "defaultMessage": "Place"
+  },
+  "actionBar.easyTool.rotate": {
+    "defaultMessage": "Rotate"
+  },
   "actionBar.handTool": {
     "defaultMessage": "Hand Tool (h) - pan and rotate the view without selecting objects"
   },
@@ -8,8 +17,20 @@
   "actionBar.shapeTool": {
     "defaultMessage": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point"
   },
+  "actionBar.transformMenu.easy": {
+    "defaultMessage": "Move and rotate"
+  },
+  "actionBar.transformMenu.rotate": {
+    "defaultMessage": "Rotate"
+  },
+  "actionBar.transformMenu.translate": {
+    "defaultMessage": "Move"
+  },
+  "actionBar.transformTool": {
+    "defaultMessage": "Transform Tool - move and rotate the selected object"
+  },
   "actionBar.translateTool": {
-    "defaultMessage": "Translate Tool (w) - Select and move objects"
+    "defaultMessage": "Translate Tool (t) - Select and move objects"
   },
   "actionBar.zoomIn": {
     "defaultMessage": "Zoom In"
