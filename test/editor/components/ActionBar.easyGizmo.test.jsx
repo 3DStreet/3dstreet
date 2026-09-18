@@ -5,9 +5,6 @@ import Events from '@/editor/lib/Events';
 import { ActionBar } from '@/editor/components/elements/ActionBar/ActionBar.component.jsx';
 import { Shortcuts } from '@/editor/lib/shortcuts.js';
 
-vi.mock('@/editor/lib/gizmos/easyGizmoFlag.js', () => ({
-  isEasyGizmo: () => true
-}));
 vi.mock('@/editor/lib/nav-experimental/flag.js', () => ({
   isWasdNav: () => false
 }));

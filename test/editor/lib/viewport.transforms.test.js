@@ -12,9 +12,6 @@ vi.mock('@/editor/lib/entity', () => ({ isManagedStreetSegment: vi.fn() }));
 vi.mock('@/editor/lib/navAnalytics.js', () => ({
   captureNavDiscovery: vi.fn()
 }));
-vi.mock('@/editor/lib/gizmos/easyGizmoFlag.js', () => ({
-  isEasyGizmo: () => true
-}));
 vi.mock('@/editor/lib/nav-experimental/index.js', async () => {
   const { EventDispatcher, Vector3 } = await import('three');
   return {

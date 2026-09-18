@@ -288,7 +288,6 @@ class EasyGizmoControls extends GizmoPointerControls {
 
     this._bindHandlers();
     this._build();
-    this._debug = this._readDebugFlag();
     /**
      * Runtime switch for path evaluation, so the same gesture can be driven
      * with it and without it.
@@ -344,13 +343,6 @@ class EasyGizmoControls extends GizmoPointerControls {
     this._onBlur = this._onBlur.bind(this);
     this._onCanvasLeave = this._onCanvasLeave.bind(this);
     this._onModelLoaded = this._onModelLoaded.bind(this);
-  }
-
-  _readDebugFlag() {
-    if (typeof window === 'undefined' || !window.location) return false;
-    return (
-      new URLSearchParams(window.location.search).get('easygizmoDebug') === 'on'
-    );
   }
 
   _material(color, opacity, solid) {
@@ -2156,11 +2148,6 @@ class EasyGizmoControls extends GizmoPointerControls {
     this._pendingXZ = null;
     const baseY = this.currentBaseY();
     const startY = _p.y;
-    const travelled = Math.hypot(
-      target.x - this._lastProcessedXZ.x,
-      target.z - this._lastProcessedXZ.z
-    );
-
     const result = evaluatePath({
       from: this._lastProcessedXZ,
       to: target,
@@ -2195,43 +2182,8 @@ class EasyGizmoControls extends GizmoPointerControls {
     const newBaseY = this.currentBaseY();
     this._applyColumn(resplitColumn(this.probe.lastHits, newBaseY), newBaseY);
 
-    this._logFrame(result, travelled);
     this.dispatchEvent(this.changeEvent);
     this.dispatchEvent(this.objectChangeEvent);
-  }
-
-  /**
-   * The path evaluator's own account of the frame, behind a debug flag.
-   *
-   * Every route out of a gesture produces one of two observations — it
-   * committed, or it reverted — and a frame that held its height looks the same
-   * whether the sampler found a discontinuity or the budget declined to sample
-   * at all. Reporting the numbers is what makes those distinguishable, and it
-   * is cheaper than arguing about them.
-   */
-  _logFrame(result, d) {
-    if (!this._debug) return;
-    const support = result.endColumn && result.endColumn.below;
-    console.log('[easy-gizmo]', {
-      d,
-      demanded: result.demanded,
-      cast: result.cast,
-      overBudget: result.overBudget,
-      continuous: result.continuous,
-      supportY: result.supportY,
-      supportEntity: support && support.entity ? support.entity.id : null,
-      S: this.squareSide,
-      gapBelow:
-        this.landingDownY === null
-          ? null
-          : (this.currentBaseY() - this.landingDownY) / this.squareSide,
-      gapAbove:
-        this.landingUpY === null
-          ? null
-          : (this.landingUpY - this.currentBaseY()) / this.squareSide,
-      dodgeShift: this._dodge.shift / this.squareSide,
-      dodgeFlip: this._dodge.flipArc
-    });
   }
 
   setWorldPosition(x, y, z) {
@@ -2292,7 +2244,6 @@ class EasyGizmoControls extends GizmoPointerControls {
     }
     this._pointerId = null;
 
-    if (this._debug) console.log('[easy-gizmo] endGesture', reason);
     this.dispatchEvent(this.mouseUpEvent);
     if (this._lastPointerType !== 'mouse') {
       this.axis = null;

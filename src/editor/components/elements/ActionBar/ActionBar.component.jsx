@@ -18,25 +18,18 @@ import {
 } from '@shared/icons';
 import { useShapeDrawTool } from './ShapeDrawAction.jsx';
 import { TransformModeMenu } from './TransformModeMenu.jsx';
-import { isEasyGizmo } from '../../../lib/gizmos/easyGizmoFlag.js';
 import { isManagedStreetSegment } from '../../../lib/entity';
 import { commonMessages } from '@/editor/i18n/commonMessages';
-
-// Read at module eval, like the shortcut map's own flags: the flag is decided
-// at load, and freezing it here keeps the bar's markup identical to today's
-// while it is off.
-const easyGizmo = isEasyGizmo();
 
 const ActionBar = ({ selectedEntity }) => {
   const intl = useIntl();
   const [transformMode, setTransformMode] = useState('translate');
   const [newToolMode, setNewToolMode] = useState('off');
   const [easyGizmoReady, setEasyGizmoReady] = useState(
-    () => easyGizmo && !!globalThis.AFRAME?.INSPECTOR?.easyGizmoControls
+    () => !!globalThis.AFRAME?.INSPECTOR?.easyGizmoControls
   );
 
   useEffect(() => {
-    if (!easyGizmo) return;
     const onReady = () => setEasyGizmoReady(true);
     Events.on('easygizmoready', onReady);
     if (globalThis.AFRAME?.INSPECTOR?.easyGizmoControls) onReady();

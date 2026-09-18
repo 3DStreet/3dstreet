@@ -8,7 +8,6 @@ import {
 import { getOS } from './utils';
 import useStore from '@/store';
 import { isWasdNav } from './nav-experimental/flag.js';
-import { isEasyGizmo } from './gizmos/easyGizmoFlag.js';
 import { shouldCaptureKeyEvent } from './keyCapture.js';
 
 const os = getOS();
@@ -18,9 +17,6 @@ const os = getOS();
 // stay live ALONGSIDE their t/l/c replacements — launch keeps the exact
 // legacy keymap, and the eventual flag flip removes only the legacy keys.
 const wasdNav = isWasdNav();
-// Read once, like the WASD flag above: the shortcut map is built at load and
-// does not react to a runtime change.
-const easyGizmo = isEasyGizmo();
 
 export const Shortcuts = {
   enabled: false,
@@ -71,7 +67,7 @@ export const Shortcuts = {
     }
 
     // m: easy-mode move/rotate gizmo
-    if (easyGizmo && keyCode === 77 && AFRAME.INSPECTOR.easyGizmoControls) {
+    if (keyCode === 77 && AFRAME.INSPECTOR.easyGizmoControls) {
       Events.emit('transformmodechange', 'easy');
     }
 

@@ -1,6 +1,6 @@
 # Easy move/rotate gizmo
 
-The experimental `?easygizmo=on` toolbar mode combines horizontal movement, yaw
+The easy toolbar mode combines horizontal movement, yaw
 rotation and explicit landing buttons. Its implementation lives in
 `src/editor/lib/gizmos/`. The viewport routes selection and camera changes;
 the controller owns gesture state, presentation and ground queries.
