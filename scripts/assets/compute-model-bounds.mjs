@@ -25,12 +25,16 @@
  *
  * Usage:
  *   npm run assets:bounds                 # writes src/model-bounds.json
+ *   npm run assets:bounds:check           # exits 1 if the file is stale (CI)
  *   node scripts/assets/compute-model-bounds.mjs --base https://assets.3dstreet.app/ --cache .cache/model-bounds
  *
  * Downloads are cached (default .cache/model-bounds, gitignored). Re-run
  * whenever a model in the assets repo changes shape or a catalog entry is
- * added; a model with no entry simply shows no placeholder. Behind a proxy,
- * run with NODE_USE_ENV_PROXY=1 so Node's fetch honors HTTPS_PROXY.
+ * added; a model with no entry simply shows no placeholder. The model-bounds
+ * workflow runs --check on pull requests that touch the catalog, assets.js,
+ * this script or the table, so a new reference cannot land without its
+ * bounds. Behind a proxy, run with NODE_USE_ENV_PROXY=1 so Node's fetch
+ * honors HTTPS_PROXY.
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -54,6 +58,7 @@ const argValue = (flag, fallback) => {
 };
 const BASE = argValue('--base', 'https://assets.3dstreet.app/');
 const CACHE_DIR = argValue('--cache', join(ROOT, '.cache/model-bounds'));
+const CHECK = args.includes('--check');
 
 // --- collect references ----------------------------------------------------
 
@@ -278,6 +283,28 @@ async function main() {
   const sorted = Object.fromEntries(
     Object.entries(out).sort(([a], [b]) => a.localeCompare(b))
   );
+  if (misses.length) {
+    console.warn(`[bounds] ${misses.length} miss(es):`);
+    for (const m of misses) console.warn('  ' + m);
+  }
+  if (CHECK) {
+    const drift = diffAgainstExisting(sorted);
+    if (drift.length) {
+      console.error(
+        `[bounds] ${OUT_PATH} is out of date (${drift.length} difference(s)):`
+      );
+      for (const line of drift.slice(0, 40)) console.error('  ' + line);
+      if (drift.length > 40) console.error(`  … ${drift.length - 40} more`);
+      console.error(
+        '[bounds] run `npm run assets:bounds` and commit the result'
+      );
+      process.exit(1);
+    }
+    console.log(
+      `[bounds] ${OUT_PATH} is up to date (${Object.keys(sorted).length} entries)`
+    );
+    return;
+  }
   writeFileSync(
     OUT_PATH,
     JSON.stringify(
@@ -295,10 +322,30 @@ async function main() {
   console.log(
     `[bounds] wrote ${Object.keys(sorted).length} entries to ${OUT_PATH}`
   );
-  if (misses.length) {
-    console.warn(`[bounds] ${misses.length} miss(es):`);
-    for (const m of misses) console.warn('  ' + m);
+}
+
+/** Lines describing how `computed` differs from the committed table. */
+function diffAgainstExisting(computed) {
+  let existing = {};
+  try {
+    existing = JSON.parse(readFileSync(OUT_PATH, 'utf8')).bounds || {};
+  } catch {
+    return [`${OUT_PATH} is missing or unreadable`];
   }
+  const lines = [];
+  const same = (a, b) =>
+    Array.isArray(a) &&
+    Array.isArray(b) &&
+    a.length === b.length &&
+    a.every((v, i) => Math.abs(v - b[i]) < 1e-6);
+  for (const key of Object.keys(computed)) {
+    if (!(key in existing)) lines.push(`missing: ${key}`);
+    else if (!same(existing[key], computed[key])) lines.push(`changed: ${key}`);
+  }
+  for (const key of Object.keys(existing)) {
+    if (!(key in computed)) lines.push(`stale: ${key}`);
+  }
+  return lines;
 }
 
 main().catch((err) => {

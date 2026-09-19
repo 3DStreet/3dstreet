@@ -11,33 +11,71 @@ import {
 //
 // A street's props, people and vehicles used to pop into an empty scene as
 // each GLB finished downloading. This system draws a translucent box of the
-// model's known bounds under the entity from the moment its gltf-model /
+// model's known bounds where the entity is from the moment its gltf-model /
 // gltf-part component initializes (that covers batching's deferred
 // duplicates too, which never download on their own) until `model-loaded`
 // or `model-error` for that entity, when the box is removed. Bounds come
 // from src/model-bounds.json for catalog models and legacy mixins, and from
 // the per-entity registry for user uploads (src/model-bounds.js). An entity
-// with no known bounds shows nothing and waits for a registration.
+// with no known bounds shows nothing and waits for a registration. A src or
+// part change while pending swaps the box; clearing the src drops it.
 //
-// The box lives under the entity as the `placeholder` object3D, so it
-// inherits the entity's transform and visibility, sizes the editor's
-// selection/hover box before the mesh exists, and never touches the `mesh`
-// object3D that gltf-model, gltf-part and batch-models own. It is tagged
-// `userData.source = 'INSPECTOR'` so exports hide it like other helpers.
-// Geometry and materials are shared across every placeholder.
+// Every ghost is one instance of a single THREE.InstancedMesh, so a
+// clone-heavy street adds one draw call while it loads instead of thousands.
+// The mesh hangs off an autocreated root entity under the scene (like
+// batch-models' root) so the editor's raycaster still hits it; a hit's
+// `instanceId` maps back to the entity through `mesh._placeholderEls`. Each
+// tick writes every instance matrix from its entity's world matrix, hides
+// instances whose entity is invisible or detached, and drops entries whose
+// entity left the DOM. The box's local bounds are mirrored on
+// `el.object3D._placeholderBbox` so the editor's selection and hover boxes
+// can size from them before the mesh exists (viewport.js). The mesh is
+// tagged `userData.source = 'INSPECTOR'` so exports hide it. Nothing here
+// touches the `mesh` object3D that gltf-model, gltf-part and batch-models own.
 //
 // Backfill: when a user asset loads whose doc has no bounds yet, the
 // signed-in owner's client computes them from the mesh and writes them to
 // the doc once per session, so the next viewer gets a placeholder.
 
 const MODEL_COMPONENTS = new Set(['gltf-model', 'gltf-part']);
+export const PLACEHOLDER_ROOT_ID = 'model-placeholders-root';
 const FILL_COLOR = 0x8f97a3;
 const EDGE_COLOR = 0xc9ced6;
 const FILL_OPACITY = 0.12;
 const EDGE_OPACITY = 0.45;
-// Keep the fill just inside the true box so its bottom face does not
+// Keep the box just inside the true bounds so its bottom face does not
 // z-fight with the ground the model stands on.
-const FILL_INSET = 0.01;
+const INSET = 0.01;
+const INITIAL_CAPACITY = 256;
+
+// Fill and frame in one pass: each box face's UVs run 0..1, so the distance
+// to the nearest face edge in screen pixels (via fwidth) draws a constant
+// ~1.5 px frame whatever the box size or distance.
+const VERTEX_SHADER = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  vec3 transformed = position;
+  #include <project_vertex>
+}
+`;
+const FRAGMENT_SHADER = /* glsl */ `
+uniform vec3 fillColor;
+uniform vec3 edgeColor;
+uniform float fillOpacity;
+uniform float edgeOpacity;
+varying vec2 vUv;
+void main() {
+  vec2 fw = max(fwidth(vUv), vec2(1e-5));
+  vec2 dist = min(vUv, 1.0 - vUv) / fw;
+  float edge = 1.0 - smoothstep(0.6, 1.8, min(dist.x, dist.y));
+  gl_FragColor = vec4(
+    mix(fillColor, edgeColor, edge),
+    mix(fillOpacity, edgeOpacity, edge)
+  );
+  #include <colorspace_fragment>
+}
+`;
 
 /**
  * Bounds of `object` in the local space of `relativeTo` (an ancestor),
@@ -80,31 +118,75 @@ export function boundsForEntity(el) {
   return null;
 }
 
+/**
+ * What the entity's model component currently points at, or null when it
+ * points at nothing (empty gltf-model src, gltf-part without src or part)
+ * and so will never emit model-loaded. Exported for tests.
+ */
+export function placeholderKey(el) {
+  const components = (el && el.components) || {};
+  const gltfModel = components['gltf-model'];
+  if (gltfModel) {
+    return typeof gltfModel.data === 'string' && gltfModel.data
+      ? 'gltf-model:' + gltfModel.data
+      : null;
+  }
+  const gltfPart = components['gltf-part'];
+  if (gltfPart) {
+    const data = gltfPart.data || {};
+    return data.src && data.part ? `gltf-part:${data.src}#${data.part}` : null;
+  }
+  return null;
+}
+
+/** True when `object` and every ancestor up to the scene are visible. */
+function isShownInScene(object) {
+  let node = object;
+  while (node) {
+    if (!node.visible) return false;
+    if (node.isScene) return true;
+    node = node.parent;
+  }
+  return false; // not attached to the scene graph
+}
+
+const tmpMatrix = new THREE.Matrix4();
+const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
+
 AFRAME.registerSystem('model-placeholder', {
   init: function () {
     const sceneEl = this.el;
-    this.unitBox = new THREE.BoxGeometry(1, 1, 1);
-    this.unitEdges = new THREE.EdgesGeometry(this.unitBox);
-    this.fillMaterial = new THREE.MeshBasicMaterial({
-      color: FILL_COLOR,
+    this.geometry = new THREE.BoxGeometry(1, 1, 1);
+    this.material = new THREE.ShaderMaterial({
+      uniforms: {
+        fillColor: { value: new THREE.Color(FILL_COLOR) },
+        edgeColor: { value: new THREE.Color(EDGE_COLOR) },
+        fillOpacity: { value: FILL_OPACITY },
+        edgeOpacity: { value: EDGE_OPACITY }
+      },
+      vertexShader: VERTEX_SHADER,
+      fragmentShader: FRAGMENT_SHADER,
       transparent: true,
-      opacity: FILL_OPACITY,
-      depthWrite: false,
-      toneMapped: false
+      depthWrite: false
     });
-    this.edgeMaterial = new THREE.LineBasicMaterial({
-      color: EDGE_COLOR,
-      transparent: true,
-      opacity: EDGE_OPACITY,
-      depthWrite: false,
-      toneMapped: false
-    });
+    this.material.name = 'model-placeholder';
+    this.rootEl = null;
+    this.mesh = null;
+    // el -> { index, key, local: Matrix4, fresh }
+    this.entries = new Map();
+    // Entity per instance slot; also exposed as mesh._placeholderEls.
+    this.order = [];
     // Entities whose model is pending but whose bounds are not known yet.
     this.awaitingBounds = new Set();
     // Asset ids this session already backfilled (or checked).
     this.backfillChecked = new Set();
 
     this.onComponentInitialized = (e) => {
+      if (MODEL_COMPONENTS.has(e.detail && e.detail.name)) this.show(e.target);
+    };
+    this.onComponentChanged = (e) => {
+      // A src / part swap while pending re-sizes the box; an emptied src
+      // removes the mesh without any model event, so drop the box here.
       if (MODEL_COMPONENTS.has(e.detail && e.detail.name)) this.show(e.target);
     };
     this.onComponentRemoved = (e) => {
@@ -116,12 +198,14 @@ AFRAME.registerSystem('model-placeholder', {
       this.maybeBackfill(e.target);
     };
     this.onModelError = (e) => this.hide(e.target);
-    // componentinitialized / componentremoved do not bubble: capture phase.
+    // componentinitialized / componentchanged / componentremoved do not
+    // bubble: capture phase.
     sceneEl.addEventListener(
       'componentinitialized',
       this.onComponentInitialized,
       true
     );
+    sceneEl.addEventListener('componentchanged', this.onComponentChanged, true);
     sceneEl.addEventListener('componentremoved', this.onComponentRemoved, true);
     sceneEl.addEventListener('model-loading', this.onModelLoading);
     sceneEl.addEventListener('model-loaded', this.onModelLoaded);
@@ -139,6 +223,11 @@ AFRAME.registerSystem('model-placeholder', {
       true
     );
     sceneEl.removeEventListener(
+      'componentchanged',
+      this.onComponentChanged,
+      true
+    );
+    sceneEl.removeEventListener(
       'componentremoved',
       this.onComponentRemoved,
       true
@@ -147,74 +236,164 @@ AFRAME.registerSystem('model-placeholder', {
     sceneEl.removeEventListener('model-loaded', this.onModelLoaded);
     sceneEl.removeEventListener('model-error', this.onModelError);
     if (this.unsubscribeBounds) this.unsubscribeBounds();
-    this.unitBox.dispose();
-    this.unitEdges.dispose();
-    this.fillMaterial.dispose();
-    this.edgeMaterial.dispose();
+    for (const el of Array.from(this.entries.keys())) this.hide(el);
+    if (this.mesh) {
+      this.mesh.dispose();
+      this.mesh = null;
+    }
+    if (this.rootEl && this.rootEl.parentNode) {
+      this.rootEl.parentNode.removeChild(this.rootEl);
+    }
+    this.rootEl = null;
+    this.geometry.dispose();
+    this.material.dispose();
   },
 
-  /** Show a ghost box for `el` if its model is pending and bounds are known. */
+  /** True while `el` shows a ghost box. */
+  has: function (el) {
+    return this.entries.has(el);
+  },
+
+  /**
+   * Show (or re-size) the ghost box for `el` if its model is pending and its
+   * bounds are known; drop it when the entity no longer points at a model.
+   */
   show: function (el) {
     if (!el || !el.object3D || typeof el.getObject3D !== 'function') return;
-    if (el.getObject3D('mesh') || el.getObject3D('placeholder')) return;
+    const key = placeholderKey(el);
+    if (!key || el.getObject3D('mesh')) {
+      this.hide(el);
+      return;
+    }
+    const entry = this.entries.get(el);
+    if (entry && entry.key === key) return;
     const bounds = boundsForEntity(el);
     if (!bounds) {
+      this.hide(el);
       this.awaitingBounds.add(el);
       return;
     }
     this.awaitingBounds.delete(el);
-    el.setObject3D('placeholder', this.buildBox(el, bounds));
+    if (entry) {
+      entry.key = key;
+      this.setBounds(el, entry, bounds);
+      return;
+    }
+    this.ensureMesh(this.order.length + 1);
+    const created = {
+      index: this.order.length,
+      key,
+      local: new THREE.Matrix4(),
+      fresh: true
+    };
+    this.setBounds(el, created, bounds);
+    this.entries.set(el, created);
+    this.order.push(el);
+    this.mesh.count = this.order.length;
   },
 
   hide: function (el) {
     if (!el) return;
     this.awaitingBounds.delete(el);
-    if (typeof el.getObject3D === 'function' && el.getObject3D('placeholder')) {
-      el.removeObject3D('placeholder');
+    const entry = this.entries.get(el);
+    if (!entry) return;
+    this.entries.delete(el);
+    if (el.object3D) delete el.object3D._placeholderBbox;
+    // Swap-remove the slot; tick rewrites every matrix anyway.
+    const last = this.order.pop();
+    if (last !== el) {
+      this.order[entry.index] = last;
+      this.entries.get(last).index = entry.index;
+    }
+    if (this.mesh) {
+      this.mesh.count = this.order.length;
+      this.mesh.boundingSphere = null;
     }
   },
 
-  buildBox: function (el, bounds) {
-    const size = [0, 1, 2].map((i) => bounds.max[i] - bounds.min[i]);
-    const center = [0, 1, 2].map((i) => (bounds.max[i] + bounds.min[i]) / 2);
-    const group = new THREE.Group();
-    group.name = 'model-placeholder';
-    // Hidden from GLB export like the editor's own helpers (exportUtils).
-    group.userData.source = 'INSPECTOR';
-
-    const fill = new THREE.Mesh(this.unitBox, this.fillMaterial);
-    fill.scale.set(
-      Math.max(size[0] - FILL_INSET * 2, 0.001),
-      Math.max(size[1] - FILL_INSET * 2, 0.001),
-      Math.max(size[2] - FILL_INSET * 2, 0.001)
+  setBounds: function (el, entry, bounds) {
+    const size = [0, 1, 2].map((i) =>
+      Math.max(bounds.max[i] - bounds.min[i] - INSET * 2, 0.001)
     );
-    fill.position.set(center[0], center[1], center[2]);
-    fill.renderOrder = 1;
+    const center = [0, 1, 2].map((i) => (bounds.max[i] + bounds.min[i]) / 2);
+    entry.local.makeScale(size[0], size[1], size[2]);
+    entry.local.setPosition(center[0], center[1], center[2]);
+    el.object3D._placeholderBbox = new THREE.Box3(
+      new THREE.Vector3().fromArray(bounds.min),
+      new THREE.Vector3().fromArray(bounds.max)
+    );
+  },
 
-    const edges = new THREE.LineSegments(this.unitEdges, this.edgeMaterial);
-    edges.scale.set(size[0], size[1], size[2]);
-    edges.position.set(center[0], center[1], center[2]);
-    edges.renderOrder = 2;
-
-    // A ghost must never cast or receive shadows, but the entity's `shadow`
-    // component re-tags every new object3D on `object3dset`. Pin the flags
-    // with no-op setters so that pass leaves the ghost alone.
-    for (const obj of [fill, edges]) {
-      for (const flag of ['castShadow', 'receiveShadow']) {
-        Object.defineProperty(obj, flag, {
-          get: () => false,
-          set: () => {},
-          configurable: true
-        });
-      }
+  /** Create the root entity and mesh on first use; grow the mesh as needed. */
+  ensureMesh: function (needed) {
+    if (this.mesh && needed <= this.mesh.instanceMatrix.count) return;
+    let capacity = this.mesh
+      ? this.mesh.instanceMatrix.count
+      : INITIAL_CAPACITY;
+    while (capacity < needed) capacity *= 2;
+    if (!this.rootEl) {
+      const rootEl = document.createElement('a-entity');
+      rootEl.id = PLACEHOLDER_ROOT_ID;
+      // Hidden from the scene graph panel; never serialized (the scene
+      // serializer only walks #street-container and friends).
+      rootEl.className = 'hideFromSceneGraph';
+      this.el.appendChild(rootEl);
+      this.rootEl = rootEl;
     }
+    const mesh = new THREE.InstancedMesh(
+      this.geometry,
+      this.material,
+      capacity
+    );
+    mesh.name = 'model-placeholders';
+    mesh.count = 0;
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    // Instances span the whole street: skip culling rather than keep a
+    // bounding sphere current every tick.
+    mesh.frustumCulled = false;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.renderOrder = 1;
+    // Hidden from GLB export like the editor's own helpers (exportUtils).
+    mesh.userData.source = 'INSPECTOR';
+    // Editor raycaster: an intersection's instanceId indexes this array.
+    mesh._placeholderEls = this.order;
+    const previous = this.mesh;
+    this.mesh = mesh;
+    this.rootEl.setObject3D('placeholders', mesh);
+    if (previous) previous.dispose();
+  },
 
-    // A-Frame's raycaster keeps an intersection only when the object has an
-    // .el, so hovering or clicking the ghost selects its entity.
-    fill.el = el;
-    edges.el = el;
-    group.add(fill, edges);
-    return group;
+  tick: function () {
+    const mesh = this.mesh;
+    if (!mesh || this.order.length === 0) return;
+    // Entities that left the DOM without a componentremoved for us. Reverse
+    // order: hide() swap-removes with the last slot, already visited.
+    for (let i = this.order.length - 1; i >= 0; i--) {
+      if (this.order[i].isConnected === false) this.hide(this.order[i]);
+    }
+    const order = this.order;
+    const count = order.length;
+    for (let i = 0; i < count; i++) {
+      const el = order[i];
+      const entry = this.entries.get(el);
+      const object = el.object3D;
+      if (!object || !isShownInScene(object)) {
+        mesh.setMatrixAt(i, ZERO_MATRIX);
+        continue;
+      }
+      if (entry.fresh) {
+        // First frame: the entity's world matrix may not be computed yet.
+        object.updateWorldMatrix(true, false);
+        entry.fresh = false;
+      }
+      tmpMatrix.multiplyMatrices(object.matrixWorld, entry.local);
+      mesh.setMatrixAt(i, tmpMatrix);
+    }
+    mesh.count = count;
+    mesh.instanceMatrix.needsUpdate = true;
+    // Raycasting recomputes the sphere lazily from the current matrices.
+    mesh.boundingSphere = null;
   },
 
   /**
