@@ -1,4 +1,5 @@
 import { canRenameEntity } from '../../lib/entity';
+import { isDetachableClone } from '../../lib/detachClone.js';
 import { Button } from '../elements';
 import ComponentsContainer from './ComponentsContainer';
 import EntityActionButtons from './EntityActionButtons';
@@ -6,7 +7,7 @@ import Events from '../../lib/Events';
 import Mixins from '../widgets/Mixins';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { FormattedMessage } from 'react-intl';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { ArrowLeftHookIcon } from '@shared/icons';
 import IntersectionSidebar from './IntersectionSidebar';
 import ManagedIntersectionSidebar from './ManagedIntersectionSidebar';
@@ -20,6 +21,30 @@ import UserLayersSidebar from './UserLayersSidebar';
 import PanelFooter from './PanelFooter';
 import AssetInfoPanel from './AssetInfoPanel';
 import EntityLabel from '../scenegraph/EntityLabel';
+// Per-object detach (#2011), offered next to "Edit Clone Settings" on a
+// generated clone whose generator supports slots. Function component so it
+// can read intl for the tooltip (Sidebar is a class without intl injected).
+const DetachCloneButton = ({ onClick }) => {
+  const intl = useIntl();
+  return (
+    <Button
+      variant={'toolbtn'}
+      onClick={onClick}
+      title={intl.formatMessage({
+        id: 'sidebar.detachCloneTitle',
+        defaultMessage:
+          'Make this one object editable on its own: it leaves the generator and becomes a plain model you can move, rotate, duplicate or delete. Dragging it in the viewport does the same.'
+      })}
+    >
+      <FormattedMessage id="sidebar.detachClone" defaultMessage="Detach" />
+    </Button>
+  );
+};
+
+DetachCloneButton.propTypes = {
+  onClick: PropTypes.func.isRequired
+};
+
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object
@@ -39,6 +64,14 @@ export default class Sidebar extends React.Component {
 
   selectParentEntity = (entity) => {
     AFRAME.INSPECTOR.selectEntity(entity.parentElement);
+  };
+
+  // Per-object detach (#2011): the clone's slot is left empty in its
+  // generator and a plain, freely editable entity takes its place (and the
+  // selection). Same result as dragging the clone in the viewport, for
+  // detaching without moving or for hard-to-grab objects.
+  detachClone = (entity) => {
+    AFRAME.INSPECTOR.execute('detachclone', { entity });
   };
 
   onEntityUpdate = (detail) => {
@@ -177,6 +210,11 @@ export default class Sidebar extends React.Component {
                             defaultMessage="Edit Clone Settings"
                           />
                         </Button>
+                        {isDetachableClone(entity) && (
+                          <DetachCloneButton
+                            onClick={() => this.detachClone(entity)}
+                          />
+                        )}
                       </div>
                     </>
                   )}

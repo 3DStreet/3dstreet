@@ -1,6 +1,7 @@
 /* global AFRAME, STREET */
 import { createRNG } from '../lib/rng';
 import { getCurvedPlacement } from './street-path.js';
+import { CLONE_INDEX_ATTR, createSlotCounter } from '../tested/clone-slots.js';
 
 // Helper function to get base rotation from catalog
 function getBaseRotationFromCatalog(mixinId) {
@@ -27,6 +28,13 @@ AFRAME.registerComponent('street-generated-clones', {
       default: 'none',
       oneOf: ['none', 'inbound', 'outbound']
     },
+
+    // Slot indexes (creation order within one regeneration) left empty by a
+    // per-object detach (#2011): the clone that would fill the slot is not
+    // created, and a plain entity the user owns stands where it was. Keyed
+    // by slot, so changing spacing/count/mode later shifts the hole — see
+    // docs/per-object-detach.md.
+    skip: { type: 'array', default: [] },
 
     // Mode-specific properties
     mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single', 'fit'] },
@@ -114,6 +122,9 @@ AFRAME.registerComponent('street-generated-clones', {
 
     // Clear existing entities
     this.clearEntities();
+    // One slot per clone the mode below would create, in creation order;
+    // detached slots (skip) are counted but not created.
+    this.slots = createSlotCounter(this.data.skip);
 
     // Generate new entities based on mode
     switch (this.data.mode) {
@@ -281,6 +292,27 @@ AFRAME.registerComponent('street-generated-clones', {
     if (!mixinId) {
       mixinId = this.getModelMixin();
     }
+
+    // Get base rotation from catalog
+    const baseRotation = getBaseRotationFromCatalog(mixinId);
+
+    let rotationY = data.facing + baseRotation;
+    if (data.direction === 'inbound') {
+      rotationY = 0 + data.facing + baseRotation;
+    }
+    if (data.direction === 'outbound') {
+      rotationY = 180 - data.facing + baseRotation;
+    }
+    if (data.randomFacing) {
+      rotationY = this.rng() * 360 + baseRotation;
+    }
+
+    // Every seeded draw for this clone (model pick, random facing) happens
+    // above, so a detached slot consumes the same RNG calls it would have
+    // and the clones after it keep their layout (#2011).
+    const slot = this.slots.next();
+    if (slot.skipped) return;
+
     const clone = document.createElement('a-entity');
 
     clone.setAttribute('mixin', mixinId);
@@ -304,19 +336,6 @@ AFRAME.registerComponent('street-generated-clones', {
     }
     clone.setAttribute('position', { x, y, z });
 
-    // Get base rotation from catalog
-    const baseRotation = getBaseRotationFromCatalog(mixinId);
-
-    let rotationY = data.facing + baseRotation;
-    if (data.direction === 'inbound') {
-      rotationY = 0 + data.facing + baseRotation;
-    }
-    if (data.direction === 'outbound') {
-      rotationY = 180 - data.facing + baseRotation;
-    }
-    if (data.randomFacing) {
-      rotationY = this.rng() * 360 + baseRotation;
-    }
     if (bent) {
       clone.dataset.straightRotY = rotationY;
     }
@@ -327,6 +346,7 @@ AFRAME.registerComponent('street-generated-clones', {
     clone.setAttribute('data-no-transform', '');
     clone.setAttribute('data-layer-name', 'Cloned Model • ' + mixinId);
     clone.setAttribute('data-parent-component', this.attrName);
+    clone.setAttribute(CLONE_INDEX_ATTR, slot.index);
 
     this.el.appendChild(clone);
     this.createdEntities.push(clone);

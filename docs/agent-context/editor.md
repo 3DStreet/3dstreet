@@ -24,6 +24,15 @@ command layer. Coverage is every command route — properties panel, AI chat,
 gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
 or component code.
 
+**Per-object detach (#2011):** `detachclone` turns one generated clone
+(clones/stencil/pedestrians) into a plain `Detached Model` entity: it appends
+the clone's slot to the generator's `skip` and creates the plain entity, as one
+undo entry composed from `entityupdate` + `entitycreate`. The viewport gizmo
+attaches to such a clone (the only `data-no-transform` entity it accepts) and
+commits the whole drag on `mouseUp` as that one command; the autocreated
+sidebar has a Detach button. Predicate and payload builders live in
+`src/editor/lib/detachClone.js`; doc is [docs/per-object-detach.md](../per-object-detach.md).
+
 **Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
 spans `src/aframe-components/`, `src/editor/components/elements/`, `src/editor/lib/` and
 `src/editor/lib/commands/`; [docs/shapes.md](../shapes.md) is the entry point and carries the file

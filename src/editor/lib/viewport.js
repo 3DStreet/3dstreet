@@ -15,6 +15,7 @@ import {
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
 import { isManagedStreetSegment } from './entity';
+import { isDetachableClone, poseFromObject3D } from './detachClone.js';
 import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import { isBatched, syncBatchedSubtree } from '../../batch-models';
@@ -626,6 +627,13 @@ export function Viewport(inspector) {
   // already post-mutation by the time objectChange fires (#1663).
   let transformPreDragValues = null;
 
+  // Drag-to-detach (#2011): a generated clone under the gizmo is moved live
+  // like any object, but no per-frame entityupdate is recorded against it —
+  // the generator would regenerate it anyway. The drag is committed once on
+  // mouseUp as a single `detachclone` command (skip the slot + create a plain
+  // entity at the dragged pose), so one undo puts the clone back in its slot.
+  let detachDragPending = false;
+
   transformControls.addEventListener('objectChange', () => {
     const object = transformControls.object;
     if (object === undefined) {
@@ -664,6 +672,11 @@ export function Viewport(inspector) {
     selectionBox.setFromObject(object);
 
     updateHelpers(object);
+
+    if (isDetachableClone(object.el)) {
+      detachDragPending = true;
+      return;
+    }
 
     // Emit update event for watcher.
     let component;
@@ -723,6 +736,15 @@ export function Viewport(inspector) {
 
   transformControls.addEventListener('mouseUp', () => {
     controls.enabled = true;
+    if (!detachDragPending) return;
+    detachDragPending = false;
+    const object = transformControls.object;
+    const el = object?.el;
+    if (!el || !isDetachableClone(el)) return;
+    // Pose first: the command's generator update removes this clone element.
+    // The detached entity is selected on create, which re-routes the gizmo.
+    const pose = poseFromObject3D(object);
+    inspector.execute('detachclone', { entity: el, pose });
   });
 
   shapeVertexControls.addEventListener('mouseDown', () => {
@@ -906,10 +928,12 @@ export function Viewport(inspector) {
   function attachControlsForSelection() {
     detachAllTransformControls();
     const el = inspector.selectedEntity;
+    // A detachable generated clone is the one no-transform entity that gets
+    // the stock gizmo: dragging it detaches it from its generator (#2011).
     if (
       !el ||
       !inspector.cursor.isPlaying ||
-      el.hasAttribute('data-no-transform')
+      (el.hasAttribute('data-no-transform') && !isDetachableClone(el))
     ) {
       return;
     }

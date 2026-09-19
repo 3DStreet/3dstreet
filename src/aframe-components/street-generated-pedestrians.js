@@ -1,6 +1,7 @@
 /* global AFRAME */
 import { createRNG } from '../lib/rng';
 import { getCurvedPlacement } from './street-path.js';
+import { CLONE_INDEX_ATTR, createSlotCounter } from '../tested/clone-slots.js';
 
 AFRAME.registerComponent('street-generated-pedestrians', {
   multiple: true,
@@ -17,6 +18,12 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     seed: {
       type: 'int',
       default: 0
+    },
+    // Slot indexes (creation order) left empty by a per-object detach
+    // (#2011). See docs/per-object-detach.md.
+    skip: {
+      type: 'array',
+      default: []
     }
   },
 
@@ -103,19 +110,42 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       1.5
     );
 
+    // One slot per pedestrian; detached slots (skip) are counted but not
+    // created (#2011).
+    const slots = createSlotCounter(data.skip);
+
     // Create pedestrians
     for (let i = 0; i < totalPedestrians; i++) {
-      const pedestrian = document.createElement('a-entity');
-      this.el.appendChild(pedestrian);
-
-      // Set seeded random position within bounds (bent onto the street's
-      // path curve when one is active; RNG call order is unchanged so a
-      // given seed lays out identically straight or curved)
+      // Seeded draws first — position, model variant, then facing — in the
+      // same order as before so a given seed lays out identically, and so a
+      // detached slot consumes the draws it would have (the pedestrians
+      // after it keep their layout).
       const position = {
         x: this.getRandomArbitrary(xRange.min, xRange.max),
         y: data.positionY,
         z: zPositions[i]
       };
+      const variantNumber = this.getRandomIntInclusive(1, 16);
+      // Rotation follows the street-generated-clones convention:
+      // inbound = 0, outbound = 180 (#1282).
+      let rotationY = 0;
+      if (this.direction === 'none') {
+        if (this.rng() < 0.5) {
+          rotationY = 180;
+        }
+      } else if (this.direction === 'outbound') {
+        rotationY = 180;
+      }
+
+      const slot = slots.next();
+      if (slot.skipped) continue;
+
+      const pedestrian = document.createElement('a-entity');
+      this.el.appendChild(pedestrian);
+
+      // Straight placement, bent onto the street's path curve when one is
+      // active (RNG call order is unchanged so a given seed lays out
+      // identically straight or curved)
       let curveYaw = 0;
       const bent = getCurvedPlacement(this.el, position.x, position.z);
       if (bent) {
@@ -129,22 +159,8 @@ AFRAME.registerComponent('street-generated-pedestrians', {
         curveYaw = bent.yawDeg;
       }
       pedestrian.setAttribute('position', position);
-
-      // Set model variant using seeded random
-      const variantNumber = this.getRandomIntInclusive(1, 16);
       pedestrian.setAttribute('mixin', `char${variantNumber}`);
 
-      // Set rotation based on the segment direction and seeded random.
-      // Rotation follows the street-generated-clones convention:
-      // inbound = 0, outbound = 180 (#1282).
-      let rotationY = 0;
-      if (this.direction === 'none') {
-        if (this.rng() < 0.5) {
-          rotationY = 180;
-        }
-      } else if (this.direction === 'outbound') {
-        rotationY = 180;
-      }
       if (bent) {
         pedestrian.dataset.straightRotY = rotationY;
       }
@@ -157,6 +173,7 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       pedestrian.setAttribute('data-no-transform', '');
       pedestrian.setAttribute('data-layer-name', 'Cloned Pedestrian');
       pedestrian.setAttribute('data-parent-component', this.attrName);
+      pedestrian.setAttribute(CLONE_INDEX_ATTR, slot.index);
 
       this.createdEntities.push(pedestrian);
     }

@@ -2,6 +2,8 @@ import CommonComponents from './CommonComponents';
 import FeaturedComponents from './FeaturedComponents';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { FormattedMessage } from 'react-intl';
+import { isDetachableClone } from '../../lib/detachClone.js';
 import Events from '../../lib/Events';
 import MixinMetadata from './MixinMetadata';
 import PanelFooter from './PanelFooter';
@@ -84,7 +86,21 @@ export default class ComponentsContainer extends React.Component {
         {entity.hasAttribute('data-no-transform') ? (
           <div className="sidepanelContent">
             <br />
-            <p>⚠️ Transformations disabled for this layer.</p>
+            {isDetachableClone(entity) ? (
+              <p>
+                <FormattedMessage
+                  id="componentsContainer.detachableCloneHint"
+                  defaultMessage="This object is placed by its generator. Drag it in the viewport or press Detach to edit it on its own."
+                />
+              </p>
+            ) : (
+              <p>
+                <FormattedMessage
+                  id="componentsContainer.transformsDisabled"
+                  defaultMessage="⚠️ Transformations disabled for this layer."
+                />
+              </p>
+            )}
           </div>
         ) : (
           <CommonComponents entity={entity} />
