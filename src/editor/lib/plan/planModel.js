@@ -30,7 +30,8 @@
 //   open or closed polylines on an annotation layer, from their live
 //   shape-vertex children.
 // - clones (opt-in, includeClones): generated/baked striping, stencil, and
-//   flat model clones as footprints on the markings layer.
+//   flat model clones as footprints on the markings layer, plus clones the
+//   user detached from their generator (#2011), which keep the same layer.
 // Parametric striping and blocks for trees/furniture remain out of scope —
 // see the option stubs below for where they will hook in.
 
@@ -44,6 +45,7 @@ import {
   buildCenterlinePoints,
   computeRibbonOutline
 } from '../../../tested/street-path-utils.js';
+import { DETACHED_LAYER_PREFIX } from '../detachClone.js';
 
 // AutoCAD Color Index — 1-based palette baked into every AutoCAD install.
 // Using ACI (not true RGB) keeps the DXF the smallest possible and lets users
@@ -892,7 +894,8 @@ function collectGeometryShapes(ctx) {
   const shapeSelector =
     '[geometry],' +
     ' [data-layer-name^="Cloned "] [mixin],' +
-    ' [mixin][data-layer-name^="Cloned "]';
+    ' [mixin][data-layer-name^="Cloned "],' +
+    ` [mixin][data-layer-name^="${DETACHED_LAYER_PREFIX}"]`;
   for (const el of Array.from(sceneEl.querySelectorAll(shapeSelector))) {
     // Entities only — [geometry] also matches <a-mixin> definitions.
     if (!el.isEntity || !el.object3D) continue;
@@ -903,7 +906,13 @@ function collectGeometryShapes(ctx) {
     // survives, so the name prefix (self or ancestor) is the marker. Clones
     // may live inside street entities (their lane is drawn by the street
     // pass, which never draws markings), so ownership doesn't exclude them.
-    const isClone = !!el.closest('[data-layer-name^="Cloned "]');
+    // A clone the user detached from its generator (#2011) is still that
+    // same marking, now a plain "Detached Model" child of the segment: it
+    // stays on the clones toggle rather than falling through to the shapes
+    // branch, which skips anything owned by a street.
+    const isClone = !!el.closest(
+      `[data-layer-name^="Cloned "], [data-layer-name^="${DETACHED_LAYER_PREFIX}"]`
+    );
     if (isClone) {
       if (!ctx.opts.includeClones) continue;
     } else {

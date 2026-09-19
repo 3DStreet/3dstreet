@@ -77,6 +77,20 @@ Convert to Shapes remains the bulk path.
 - Managed Street JSON export describes generators, not children, so detached
   entities are not part of that export (the scene save carries them).
 
+## Exports
+
+- **Scene JSON / cloud save:** the detached entity is an ordinary segment
+  child and `skip` is a non-default generator property, so both save and
+  reload (`managed-street` only rebuilds segments from its source on an
+  explicit synchronize).
+- **GLB:** the detached entity is a normal object in the scene graph and
+  exports like any hand-placed model.
+- **PDF / DXF plan view:** the plan model (`src/editor/lib/plan/planModel.js`)
+  treats a `Detached Model • …` entity as a clone, so a detached stencil stays
+  on the markings layer behind the export modal's Clones toggle. Without that
+  rule it would vanish: its layer name no longer starts with `Cloned `, and the
+  loose-shapes pass skips anything owned by a street.
+
 ## Follow-up
 
 "Duplicate segment surface as plain shape" on a segment (separate ticket) to
