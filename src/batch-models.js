@@ -446,6 +446,49 @@ function waitForModelLoaded(el) {
   });
 }
 
+// Lazy textures (#2009): a stencil's atlas may still be downloading when batchModels clones
+// its material for the BatchedMesh (cloneMaterialWithTextures). The clone is taken once, so it
+// would never receive the texture and the whole batch would render as solid quads for good.
+// Wait (bounded, like waitForModelLoaded) for a geometry-material member's map to land. A
+// texture that fails to load never fires materialtextureloaded; the lazy hook's scene-level
+// texture-error settles the wait instead.
+function waitForMaterialTexture(el) {
+  const src = el.components?.material?.data?.src;
+  if (!src || src.tagName !== 'IMG') return Promise.resolve();
+  if (el.getObject3D('mesh')?.material?.map) return Promise.resolve();
+  const sceneEl = el.sceneEl;
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      console.warn(
+        `[batch-models] ${describeEl(el)} texture #${src.id} did not load in ${LOAD_TIMEOUT_MS}ms; proceeding without it`
+      );
+      done();
+    }, LOAD_TIMEOUT_MS);
+    const done = () => {
+      clearTimeout(timer);
+      el.removeEventListener('materialtextureloaded', onLoaded);
+      sceneEl?.removeEventListener('texture-error', onError);
+      resolve();
+    };
+    const onLoaded = (event) => {
+      if (event.target !== el) return; // event from a child entity, ignore
+      done();
+    };
+    const onError = (event) => {
+      if (event.detail?.id !== src.id) return;
+      done();
+    };
+    el.addEventListener('materialtextureloaded', onLoaded);
+    sceneEl?.addEventListener('texture-error', onError);
+  });
+}
+
+// Everything a member needs before it can be batched: its model (gltf providers) and its
+// material texture (geometry-material provider).
+function waitForMemberReady(el) {
+  return Promise.all([waitForModelLoaded(el), waitForMaterialTexture(el)]);
+}
+
 export async function waitForAllModelsLoaded() {
   for (let i = 0; i < 5; i++) {
     await new Promise((resolve) => setTimeout(resolve));
@@ -1387,7 +1430,7 @@ export async function batchModels(sceneEl) {
   // flip `component.deferLoad = false; component.update()` so each gets its own parse.
   const isDeferred = (el) => !!el.components?.['gltf-model']?.deferLoad;
   await Promise.all(
-    gltfEntities.filter((el) => !isDeferred(el)).map(waitForModelLoaded)
+    gltfEntities.filter((el) => !isDeferred(el)).map(waitForMemberReady)
   );
 
   // Decide which deferred members to release before batching. Two reasons to release:
@@ -1426,7 +1469,7 @@ export async function batchModels(sceneEl) {
     }
   }
   await Promise.all(
-    gltfEntities.filter((el) => !isDeferred(el)).map(waitForModelLoaded)
+    gltfEntities.filter((el) => !isDeferred(el)).map(waitForMemberReady)
   );
 
   // If the tab was backgrounded during load, the render loop was throttled and

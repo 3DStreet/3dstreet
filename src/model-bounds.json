@@ -1,0 +1,1575 @@
+{
+ "generatedBy": "scripts/assets/compute-model-bounds.mjs",
+ "base": "https://assets.3dstreet.app/",
+ "units": "meters, glTF model space (Y up); [minX, minY, minZ, maxX, maxY, maxZ]",
+ "bounds": {
+  "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-01.glb": [
+   -4.596,
+   0,
+   -4.596,
+   4.596,
+   22.665,
+   4.596
+  ],
+  "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-02.glb": [
+   -5.596,
+   0,
+   -4.596,
+   5.595,
+   16.691,
+   4.595
+  ],
+  "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-03.glb": [
+   -6.596,
+   0,
+   -4.596,
+   6.596,
+   13.704,
+   4.596
+  ],
+  "sets/arcade-style-buildings/gltf-exports/draco/v2-buildings-arched-04.glb": [
+   -7.596,
+   0,
+   -4.596,
+   7.596,
+   10.717,
+   4.595
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/bb-bollard.glb": [
+   -0.106,
+   0,
+   -0.106,
+   0.106,
+   0.85,
+   0.106
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/concrete-bollard.glb": [
+   -0.123,
+   0,
+   -0.124,
+   0.123,
+   0.75,
+   0.123
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/cone.glb": [
+   -0.214,
+   0,
+   -0.214,
+   0.214,
+   0.61,
+   0.214
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/fixture-bench-modern.glb": [
+   -0.938,
+   -0.166,
+   -0.331,
+   0.938,
+   0.276,
+   0.331
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/fixture-bike-rack.glb": [
+   -0.22,
+   0,
+   -0.07,
+   0.22,
+   0.92,
+   0.07
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/fixture-bus-stop.glb": [
+   -100,
+   -210.486,
+   -92.512,
+   110.314,
+   210.486,
+   92.512
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/fixture-picnic-table.glb": [
+   -0.902,
+   -0.055,
+   -0.885,
+   0.901,
+   0.697,
+   0.885
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/fixture-trash-can.glb": [
+   -0.196,
+   -0.243,
+   -0.199,
+   0.201,
+   0.429,
+   0.198
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/green-flowers.glb": [
+   -35.991,
+   -74.375,
+   -79.977,
+   35.992,
+   74.375,
+   0.257
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/green-garden-urn.glb": [
+   -0.417,
+   0,
+   -0.417,
+   0.417,
+   1.5,
+   0.466
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/green-planter-cactus.glb": [
+   -0.169,
+   0.001,
+   -0.169,
+   0.169,
+   1.225,
+   0.169
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/green-planter-fan-palm.glb": [
+   -0.821,
+   0.002,
+   -0.705,
+   0.78,
+   1.531,
+   0.749
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/green-planter-snake-plant.glb": [
+   -0.642,
+   -0.001,
+   -0.76,
+   0.715,
+   1.199,
+   0.629
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/green-planter-tree.glb": [
+   -0.517,
+   0.002,
+   -0.485,
+   0.464,
+   1.951,
+   0.45
+  ],
+  "sets/bollard-buddy/gltf-exports/draco/royal-bollard.glb": [
+   -0.112,
+   -0.5,
+   -0.112,
+   0.112,
+   0.5,
+   0.112
+  ],
+  "sets/brt-station/gltf-exports/draco/brt-station.glb": [
+   -2.241,
+   0.009,
+   -6,
+   2.241,
+   3.334,
+   6
+  ],
+  "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_4fl_2.glb": [
+   -2.652,
+   0,
+   -3.34,
+   2.658,
+   12.743,
+   2.655
+  ],
+  "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_4fl.glb": [
+   -2.625,
+   0,
+   -3.24,
+   2.627,
+   12.743,
+   2.651
+  ],
+  "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_5fl.glb": [
+   -2.662,
+   0,
+   -3.314,
+   3.242,
+   15.5,
+   2.644
+  ],
+  "sets/buildings/gltf-exports/draco/v2-buildings-SM3D_Bld_Mixed_Double_5fl.glb": [
+   -5.686,
+   0,
+   -3.4,
+   5.218,
+   15.5,
+   2.517
+  ],
+  "sets/buildings/gltf-exports/draco/v2-buildings-suburban-SM_Bld_House_Preset_03_1800.glb": [
+   -6.936,
+   -0.099,
+   -6.936,
+   6.936,
+   6.359,
+   6.936
+  ],
+  "sets/buildings/gltf-exports/draco/v2-buildings-suburban-SM_Bld_House_Preset_08_1809.glb": [
+   -9.436,
+   -0.05,
+   -6.936,
+   9.436,
+   6.36,
+   6.935
+  ],
+  "sets/buildings/gltf-exports/draco/v2-buildings-suburban-SM_Bld_House_Preset_09_1845.glb": [
+   -5.686,
+   0,
+   -4.436,
+   5.686,
+   8.671,
+   4.436
+  ],
+  "sets/bus-shelter-alt-1/gltf-exports/draco/bus-shelter-alt-1.glb": [
+   -3.04,
+   0,
+   -1.508,
+   3.04,
+   3.533,
+   1.508
+  ],
+  "sets/c02-scrubber/gltf-exports/draco/co2-scrubber.glb": [
+   -0.287,
+   0,
+   -0.208,
+   0.291,
+   0.641,
+   0.22
+  ],
+  "sets/cargo-bike-animation/gltf-exports/draco/cargo_bike_animation_v1.glb": [
+   -0.972,
+   -0.019,
+   -1.281,
+   0.984,
+   1.865,
+   1.245
+  ],
+  "sets/cycle-horn/gltf-exports/draco/loud-bicycle-classic-horn.glb": [
+   -0.087,
+   0.012,
+   -0.039,
+   0.087,
+   0.106,
+   0.045
+  ],
+  "sets/cycle-horn/gltf-exports/draco/loud-bicycle-mini-horn.glb": [
+   -0.09,
+   0,
+   -0.047,
+   0.09,
+   0.159,
+   0.022
+  ],
+  "sets/cyclist-animation/gltf-exports/draco/cyclist-1-animation-v1.glb": [
+   -0.977,
+   -0.015,
+   -0.986,
+   0.974,
+   1.996,
+   1.032
+  ],
+  "sets/cyclist-animation/gltf-exports/draco/cyclist-2-animation-v1.glb": [
+   -0.982,
+   -0.015,
+   -0.986,
+   0.984,
+   1.845,
+   1.032
+  ],
+  "sets/cyclist-animation/gltf-exports/draco/cyclist-3-animation-v1.glb": [
+   -0.972,
+   -0.015,
+   -0.986,
+   0.984,
+   1.881,
+   1.032
+  ],
+  "sets/cyclist-animation/gltf-exports/draco/Dutch_cyclist_animation_v01.glb": [
+   -0.972,
+   -0.015,
+   -1.057,
+   0.972,
+   1.881,
+   1.032
+  ],
+  "sets/cyclist-animation/gltf-exports/draco/Kid_cyclist_animation_v01.glb": [
+   -0.296,
+   0.001,
+   -0.591,
+   0.296,
+   1.061,
+   0.549
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-barricade.glb": [
+   -0.332,
+   0,
+   -0.717,
+   0.332,
+   0.983,
+   0.717
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-bollard.glb": [
+   -0.101,
+   0,
+   -0.101,
+   0.101,
+   1.016,
+   0.101
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-bush.glb": [
+   -0.3,
+   0,
+   -0.292,
+   0.3,
+   0.436,
+   0.292
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-dome.glb": [
+   -0.051,
+   0,
+   -0.051,
+   0.051,
+   0.027,
+   0.051
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-flowers.glb": [
+   -0.292,
+   0,
+   -0.73,
+   0.292,
+   0.346,
+   0.793
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-jersey-barrier-concrete.glb": [
+   -0.327,
+   0,
+   -1.145,
+   0.327,
+   1.018,
+   1.145
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-jersey-barrier-plastic.glb": [
+   -0.327,
+   0,
+   -0.902,
+   0.327,
+   1.018,
+   0.898
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-planter-box.glb": [
+   -0.247,
+   0,
+   -1.133,
+   0.307,
+   0.892,
+   1.227
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-planting-strip.glb": [
+   -0.19,
+   0,
+   -0.846,
+   0.19,
+   0.202,
+   0.734
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-safehit.glb": [
+   -0.099,
+   0,
+   -0.1,
+   0.099,
+   1.281,
+   0.1
+  ],
+  "sets/dividers/gltf-exports/draco/dividers-traffic-cone.glb": [
+   -0.158,
+   0,
+   -0.158,
+   0.158,
+   0.574,
+   0.158
+  ],
+  "sets/fences/gltf-exports/draco/fence4.glb": [
+   -46.854,
+   -0.003,
+   -0.321,
+   46.572,
+   12.708,
+   0.293
+  ],
+  "sets/flyer-bus/gltf-exports/draco/new-flyer-bus.glb": [
+   -1.305,
+   0.004,
+   -5.575,
+   1.336,
+   3.09,
+   5.772
+  ],
+  "sets/human-characters-animation-seperated/gltf-exports/draco/character-1-walk.glb": [
+   -1.024,
+   -0.164,
+   -0.003,
+   1.024,
+   0.198,
+   1.837
+  ],
+  "sets/human-characters-animation-seperated/gltf-exports/draco/character-2-walk.glb": [
+   -1.021,
+   -0.147,
+   -0.003,
+   1.021,
+   0.223,
+   1.839
+  ],
+  "sets/human-characters-animation-seperated/gltf-exports/draco/character-3-walk.glb": [
+   -1.021,
+   -0.156,
+   -0.008,
+   1.021,
+   0.217,
+   1.809
+  ],
+  "sets/human-characters-animation-seperated/gltf-exports/draco/character-4-walk.glb": [
+   -1.024,
+   -0.257,
+   -0.003,
+   1.024,
+   0.16,
+   1.845
+  ],
+  "sets/human-characters-animation-seperated/gltf-exports/draco/character-5-walk.glb": [
+   -1.024,
+   -0.189,
+   -0.003,
+   1.024,
+   0.204,
+   1.805
+  ],
+  "sets/human-characters-animation-seperated/gltf-exports/draco/character-6-walk.glb": [
+   -1.024,
+   -0.175,
+   0,
+   1.024,
+   0.182,
+   1.802
+  ],
+  "sets/human-characters-animation-seperated/gltf-exports/draco/character-7-walk.glb": [
+   -1.021,
+   -0.154,
+   0.002,
+   1.021,
+   0.178,
+   1.808
+  ],
+  "sets/human-characters-animation-seperated/gltf-exports/draco/character-8-walk.glb": [
+   -1.021,
+   -0.16,
+   0,
+   1.021,
+   0.213,
+   1.867
+  ],
+  "sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb#Character_1": [
+   -0.313,
+   -0.002,
+   -0.408,
+   0.273,
+   1.808,
+   0.39
+  ],
+  "sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb#Character_2": [
+   -0.291,
+   -0.002,
+   -0.35,
+   0.314,
+   1.808,
+   0.372
+  ],
+  "sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb#Character_3": [
+   -0.317,
+   -0.005,
+   -0.198,
+   0.328,
+   1.801,
+   0.262
+  ],
+  "sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb#Character_4": [
+   -0.314,
+   -0.006,
+   -0.139,
+   0.331,
+   1.836,
+   0.295
+  ],
+  "sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb#Character_5": [
+   -0.305,
+   -0.005,
+   -0.492,
+   0.323,
+   1.762,
+   0.489
+  ],
+  "sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb#Character_6": [
+   -0.328,
+   -0.036,
+   -0.461,
+   0.317,
+   1.738,
+   0.475
+  ],
+  "sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb#Character_7": [
+   -0.338,
+   0.001,
+   -0.276,
+   0.359,
+   1.782,
+   0.28
+  ],
+  "sets/human-characters-poses-1/gltf-exports/draco/human-characters-poses-1.glb#Character_8": [
+   -0.276,
+   0,
+   -0.169,
+   0.298,
+   1.855,
+   0.241
+  ],
+  "sets/human-characters-poses-2/gltf-exports/draco/human-characters-poses-2.glb#Character_10": [
+   -0.29,
+   -0.003,
+   -0.229,
+   0.327,
+   1.844,
+   1.319
+  ],
+  "sets/human-characters-poses-2/gltf-exports/draco/human-characters-poses-2.glb#Character_11": [
+   -0.454,
+   0.001,
+   -0.693,
+   0.461,
+   1.383,
+   0.516
+  ],
+  "sets/human-characters-poses-2/gltf-exports/draco/human-characters-poses-2.glb#Character_12": [
+   -0.347,
+   -0.01,
+   -0.26,
+   0.372,
+   1.751,
+   0.837
+  ],
+  "sets/human-characters-poses-2/gltf-exports/draco/human-characters-poses-2.glb#Character_13": [
+   -0.276,
+   -0.015,
+   -0.244,
+   0.21,
+   1.231,
+   0.348
+  ],
+  "sets/human-characters-poses-2/gltf-exports/draco/human-characters-poses-2.glb#Character_14": [
+   -0.254,
+   -0.011,
+   -0.355,
+   0.248,
+   1.162,
+   0.196
+  ],
+  "sets/human-characters-poses-2/gltf-exports/draco/human-characters-poses-2.glb#Character_15": [
+   -0.334,
+   -0.005,
+   -0.197,
+   0.385,
+   1.812,
+   0.997
+  ],
+  "sets/human-characters-poses-2/gltf-exports/draco/human-characters-poses-2.glb#Character_16": [
+   -0.403,
+   -0.008,
+   -0.47,
+   0.403,
+   1.714,
+   1.7
+  ],
+  "sets/human-characters-poses-2/gltf-exports/draco/human-characters-poses-2.glb#Character_9": [
+   -0.31,
+   -0.001,
+   -0.415,
+   0.299,
+   1.737,
+   0.522
+  ],
+  "sets/irish-bar-building/gltf-exports/draco/irish-bar-building.glb": [
+   -5.64,
+   0,
+   -3.854,
+   5.014,
+   10.25,
+   5.395
+  ],
+  "sets/light-rail-vehicle/gltf-exports/draco/light_rail_vehicle.glb": [
+   -1.325,
+   0,
+   -11.434,
+   1.325,
+   5.642,
+   11.426
+  ],
+  "sets/magic-carpet/gltf-exports/draco/magic-carpet.glb#Character_1_M": [
+   -0.335,
+   0.958,
+   -0.151,
+   0.266,
+   2.208,
+   0.426
+  ],
+  "sets/magic-carpet/gltf-exports/draco/magic-carpet.glb#magic-carpet": [
+   -1.155,
+   0.927,
+   -1.655,
+   1.155,
+   1.132,
+   1.655
+  ],
+  "sets/micro-mobility-devices/gltf-exports/draco/bike-only-cargo.glb": [
+   -0.372,
+   0.003,
+   -1.281,
+   0.4,
+   1.065,
+   1.245
+  ],
+  "sets/micro-mobility-devices/gltf-exports/draco/bike-only-dutch.glb": [
+   -0.33,
+   -0.015,
+   -1.057,
+   0.358,
+   1.181,
+   1.032
+  ],
+  "sets/micro-mobility-devices/gltf-exports/draco/bike-only-hybrid.glb": [
+   -0.33,
+   -0.015,
+   -0.986,
+   0.358,
+   1.109,
+   1.032
+  ],
+  "sets/micro-mobility-devices/gltf-exports/draco/micro-mobility-devices_v01.glb#Bicycle_1": [
+   -0.33,
+   -0.014,
+   -0.991,
+   0.358,
+   1.955,
+   1.033
+  ],
+  "sets/micro-mobility-devices/gltf-exports/draco/micro-mobility-devices_v01.glb#ElectricScooter_1": [
+   -0.313,
+   -0.005,
+   -0.624,
+   0.313,
+   1.965,
+   0.51
+  ],
+  "sets/ray-gun/gltf-exports/draco/rayGun.glb": [
+   -0.199,
+   0.001,
+   -0.142,
+   0.228,
+   0.344,
+   0.142
+  ],
+  "sets/road-signs/gltf-exports/draco/stop-sign.glb": [
+   -0.287,
+   0,
+   -0.041,
+   0.288,
+   2.419,
+   0.051
+  ],
+  "sets/sanfrancisco-cablecar/gltf-exports/draco/sanfrancisco-cablecar_v01.glb": [
+   -1.234,
+   0.002,
+   -4.068,
+   1.234,
+   3.178,
+   4.284
+  ],
+  "sets/school-building/gltf-exports/draco/school-building.glb": [
+   -8.46,
+   0,
+   -8.824,
+   8.46,
+   8.193,
+   5.181
+  ],
+  "sets/signals/gltf-exports/draco/signal1.glb": [
+   -0.183,
+   0,
+   -0.151,
+   0.378,
+   4.592,
+   0.826
+  ],
+  "sets/signals/gltf-exports/draco/signal2.glb": [
+   -8.445,
+   0,
+   -0.212,
+   0.384,
+   7.748,
+   0.893
+  ],
+  "sets/street-props-separated/gltf-exports/draco/wayfinding.glb": [
+   -0.84,
+   0,
+   -0.1,
+   0.84,
+   4,
+   0.1
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#bench_orientation_center": [
+   -0.989,
+   0,
+   -0.323,
+   1.09,
+   0.742,
+   0.323
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#bike_rack": [
+   -0.489,
+   0.006,
+   -0.106,
+   0.489,
+   0.956,
+   0.106
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#bike_share": [
+   -3.831,
+   0,
+   -0.539,
+   5.011,
+   3.434,
+   0.459
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#lamp_post_traditional": [
+   -0.117,
+   0.005,
+   -0.117,
+   0.117,
+   2.23,
+   0.117
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#outdoor_dining": [
+   -1.284,
+   0,
+   -1.134,
+   1.284,
+   2.647,
+   1.135
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#palmtree": [
+   -1.649,
+   0,
+   -1.66,
+   1.46,
+   3.452,
+   1.653
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#park_bench": [
+   -1.038,
+   0,
+   -0.334,
+   1.042,
+   1.048,
+   0.286
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#parklet": [
+   -2.564,
+   -0.003,
+   -1.312,
+   2.787,
+   2.399,
+   1.249
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#sea_wall": [
+   -7.463,
+   -5.099,
+   0.02,
+   7.537,
+   1.261,
+   4.725
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#street-light": [
+   -0.207,
+   0,
+   -0.189,
+   2.064,
+   8.577,
+   0.188
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#street-light-double": [
+   -2.064,
+   0,
+   -0.189,
+   2.063,
+   8.577,
+   0.188
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#track": [
+   -1.295,
+   0,
+   0,
+   1.307,
+   0.307,
+   20.25
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#transit-shelter-1": [
+   -2.256,
+   -0.01,
+   -0.917,
+   2.256,
+   3.062,
+   0.655
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#tree-01": [
+   -1.383,
+   0,
+   -0.826,
+   0.834,
+   3.845,
+   1.068
+  ],
+  "sets/street-props/gltf-exports/draco/street-props.glb#utility_pole": [
+   -1.014,
+   0.007,
+   -0.328,
+   1.016,
+   8.595,
+   0.326
+  ],
+  "sets/streetplan/sp-furn-bench1-5x2ft.glb": [
+   -0.472,
+   0,
+   -0.786,
+   0.414,
+   1.163,
+   0.789
+  ],
+  "sets/streetplan/sp-furn-bench2-5x2ft.glb": [
+   -0.421,
+   -0.019,
+   -0.786,
+   0.437,
+   1.144,
+   0.789
+  ],
+  "sets/streetplan/sp-furn-busstop-roundshelter-12x13ft.glb": [
+   -1.981,
+   0,
+   -18,
+   150.406,
+   3.671,
+   55.846
+  ],
+  "sets/streetplan/sp-furn-busstop-shelter-12x4ft.glb": [
+   -0.914,
+   -0.25,
+   -1.829,
+   3.249,
+   3.249,
+   102
+  ],
+  "sets/streetplan/sp-furn-farmertent1-10x10ft.glb": [
+   -1.524,
+   0,
+   -1.524,
+   36,
+   26.448,
+   104.444
+  ],
+  "sets/streetplan/sp-furn-farmertent2-10x10ft.glb": [
+   -1.524,
+   -10.213,
+   -32,
+   119.528,
+   50.661,
+   78.74
+  ],
+  "sets/streetplan/sp-furn-foodcart-5dot5x9ft.glb": [
+   -1.078,
+   0,
+   -1.54,
+   22.187,
+   35.9,
+   38.188
+  ],
+  "sets/streetplan/sp-furn-table-2x7ft.glb": [
+   -0.432,
+   -18.42,
+   -1.389,
+   19.552,
+   23.351,
+   38.207
+  ],
+  "sets/streetplan/sp-furn-table-blue-7x7ft.glb": [
+   -1.072,
+   -18.42,
+   -1.389,
+   19.552,
+   23.351,
+   38.207
+  ],
+  "sets/streetplan/sp-grand-suv.glb": [
+   -184.438,
+   -422.971,
+   -422.971,
+   184.449,
+   422.971,
+   422.971
+  ],
+  "sets/streetplan/sp-Gutter-2.5ft-left.glb": [
+   -0.382,
+   0.003,
+   -1.143,
+   0.37,
+   0.166,
+   1.147
+  ],
+  "sets/streetplan/sp-Gutter-2.5ft-right.glb": [
+   -0.369,
+   0.003,
+   -1.146,
+   0.383,
+   0.166,
+   1.144
+  ],
+  "sets/streetplan/sp-hatchback-yellow.glb": [
+   -122.487,
+   -337.517,
+   -337.517,
+   122.497,
+   337.517,
+   337.517
+  ],
+  "sets/streetplan/sp-light-flowerP-bannerBY-13ft.glb": [
+   -10.238,
+   -21.856,
+   -23.07,
+   106.708,
+   71.561,
+   60.652
+  ],
+  "sets/streetplan/sp-light-flowerY-bannerRG-13ft.glb": [
+   -10.584,
+   -21.856,
+   -23.07,
+   106.708,
+   71.561,
+   60.652
+  ],
+  "sets/streetplan/sp-median-planterbox-tall-06x30ft.glb": [
+   0,
+   -0.314,
+   -9,
+   18.516,
+   15.973,
+   11.287
+  ],
+  "sets/streetplan/sp-median-planterbox-tall-10x30ft.glb": [
+   -1.5,
+   -0.314,
+   -9,
+   18.516,
+   15.973,
+   11.287
+  ],
+  "sets/streetplan/sp-median-tallflower-RYB-10x10ft.glb": [
+   -1.623,
+   -0.314,
+   -1.524,
+   10.407,
+   9.218,
+   2.546
+  ],
+  "sets/streetplan/sp-median-tallflower-RYB-6x10ft.glb": [
+   -1.013,
+   -0.314,
+   -1.524,
+   10.407,
+   9.218,
+   2.546
+  ],
+  "sets/streetplan/sp-parking-planter-5x8ft.glb": [
+   -0.762,
+   -0.314,
+   -1.219,
+   0.985,
+   0.406,
+   1.219
+  ],
+  "sets/streetplan/sp-prop-bigbox-1L-220ft.glb": [
+   -23.165,
+   0.01,
+   -33.496,
+   23.161,
+   15.978,
+   33.496
+  ],
+  "sets/streetplan/sp-prop-bigbox-1L-291ft.glb": [
+   -39.527,
+   0.01,
+   -44.318,
+   39.489,
+   13.269,
+   44.318
+  ],
+  "sets/streetplan/sp-prop-gov-3L-61ft.glb": [
+   -7.75,
+   0,
+   -9.412,
+   7.742,
+   18.663,
+   9.412
+  ],
+  "sets/streetplan/sp-prop-mixeduse-2L-29ft.glb": [
+   -8.521,
+   -6.6,
+   -6,
+   47.104,
+   8.163,
+   81.6
+  ],
+  "sets/streetplan/sp-prop-mixeduse-2L-30ft.glb": [
+   -8.429,
+   -1.541,
+   -4.971,
+   55.029,
+   9.744,
+   109.741
+  ],
+  "sets/streetplan/sp-prop-mixeduse-3L-18ft.glb": [
+   -3.892,
+   0,
+   -2.896,
+   66,
+   11.369,
+   183.6
+  ],
+  "sets/streetplan/sp-prop-mixeduse-3L-22ft.glb": [
+   -4.42,
+   -3.6,
+   -5.069,
+   82.971,
+   12.915,
+   72
+  ],
+  "sets/streetplan/sp-prop-mixeduse-3L-23ft-corner.glb": [
+   -3.674,
+   -1.2,
+   -3.674,
+   75.549,
+   15.751,
+   73.013
+  ],
+  "sets/streetplan/sp-prop-mixeduse-3L-42ft.glb": [
+   -9.129,
+   -6.6,
+   -6.401,
+   123.98,
+   27.183,
+   132
+  ],
+  "sets/streetplan/sp-prop-mixeduse-3L-78ft-corner.glb": [
+   -14.469,
+   -281.004,
+   -33,
+   783.658,
+   119.423,
+   324
+  ],
+  "sets/streetplan/sp-prop-parking-3L-155ft.glb": [
+   -20.172,
+   0.01,
+   -23.569,
+   20.209,
+   14.904,
+   23.569
+  ],
+  "sets/streetplan/sp-prop-parking-3L-97ft-centered.glb": [
+   -20.201,
+   0.01,
+   -14.822,
+   20.201,
+   15.071,
+   14.815
+  ],
+  "sets/streetplan/sp-prop-sf-1L-41ft.glb": [
+   -5.55,
+   0.009,
+   -6.594,
+   5.55,
+   5.649,
+   6.593
+  ],
+  "sets/streetplan/sp-prop-sf-1L-62ft.glb": [
+   -12.545,
+   0.01,
+   -9.389,
+   12.545,
+   8.349,
+   9.389
+  ],
+  "sets/streetplan/sp-prop-sf-2L-62ft.glb": [
+   -9.219,
+   0.01,
+   -9.711,
+   9.219,
+   9.669,
+   9.711
+  ],
+  "sets/streetplan/sp-prop-sf-2L-64ft.glb": [
+   -7.627,
+   0.01,
+   -9.823,
+   7.627,
+   8.324,
+   9.823
+  ],
+  "sets/streetplan/sp-prop-townhouse-3L-20ft.glb": [
+   -5.212,
+   0,
+   -3.299,
+   5.212,
+   10.973,
+   3.299
+  ],
+  "sets/streetplan/sp-prop-townhouse-3L-23ft.glb": [
+   -5.212,
+   0,
+   -3.545,
+   5.212,
+   11.278,
+   3.545
+  ],
+  "sets/streetplan/sp-sign-speed-limit-10mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-15mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-20mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-25mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-30mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-35mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-40mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-45mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-50mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-55mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-60mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-65mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-70mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-75mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-sign-speed-limit-80mph.glb": [
+   -0.384,
+   0,
+   -0.058,
+   0.5,
+   2.743,
+   0.015
+  ],
+  "sets/streetplan/sp-tree-buroak-24ft.glb": [
+   -43.628,
+   -47.038,
+   -3.102,
+   3.645,
+   22.302,
+   19.08
+  ],
+  "sets/streetplan/sp-tree-buroak-28ft.glb": [
+   -43.628,
+   -50.482,
+   -0.679,
+   3.644,
+   23.197,
+   6.308
+  ],
+  "sets/streetplan/sp-tree-honeylocust-24ft.glb": [
+   -19.201,
+   -19.907,
+   -10.71,
+   36.81,
+   37.381,
+   13.494
+  ],
+  "sets/streetplan/sp-tree-japaneselilac-20ft.glb": [
+   -44.25,
+   -56.159,
+   -0.513,
+   15.588,
+   31.614,
+   28.079
+  ],
+  "sets/streetplan/sp-tree-palm-26ft.glb": [
+   -77.796,
+   -7.574,
+   -0.817,
+   19.761,
+   35.627,
+   60.774
+  ],
+  "sets/streetplan/sp-tree-palm-28ft.glb": [
+   -87.772,
+   -0.366,
+   -2.728,
+   18.988,
+   27.69,
+   56.772
+  ],
+  "sets/streetplan/sp-tree-purpleplum-16ft.glb": [
+   -33.578,
+   -25.473,
+   -0.408,
+   37.744,
+   35.039,
+   7.71
+  ],
+  "sets/streetplan/sp-tree-small-15ft.glb": [
+   -15.574,
+   0.467,
+   -0.367,
+   94.64,
+   142.382,
+   369.815
+  ],
+  "sets/suburban-houses/gltf-exports/draco/suburban-houses.glb": [
+   -9.436,
+   -0.099,
+   -6.936,
+   9.436,
+   8.671,
+   6.936
+  ],
+  "sets/uoregon/gltf-exports/draco/bin.glb": [
+   -0.447,
+   0,
+   -0.437,
+   0.45,
+   1.169,
+   0.525
+  ],
+  "sets/uoregon/gltf-exports/draco/corner-island.glb": [
+   -2.581,
+   0,
+   -2.42,
+   2.258,
+   0.242,
+   2.42
+  ],
+  "sets/uoregon/gltf-exports/draco/crosswalk-raised.glb": [
+   -1.65,
+   0,
+   -0.768,
+   1.702,
+   0.206,
+   0.768
+  ],
+  "sets/uoregon/gltf-exports/draco/curb-island-end-rounded.glb": [
+   -0.457,
+   0,
+   -0.305,
+   0.457,
+   0.152,
+   0.305
+  ],
+  "sets/uoregon/gltf-exports/draco/curb-traffic-island.glb": [
+   -1.802,
+   -0.001,
+   -1.783,
+   1.802,
+   0.233,
+   1.783
+  ],
+  "sets/uoregon/gltf-exports/draco/large-parklet-seating.glb": [
+   -1.122,
+   0,
+   -5.324,
+   1.312,
+   0.634,
+   5.324
+  ],
+  "sets/uoregon/gltf-exports/draco/lending-library.glb": [
+   -0.351,
+   0,
+   -0.271,
+   0.351,
+   1.53,
+   0.248
+  ],
+  "sets/uoregon/gltf-exports/draco/picnic-bench.glb": [
+   -0.688,
+   0,
+   -1.109,
+   0.688,
+   0.728,
+   1.109
+  ],
+  "sets/uoregon/gltf-exports/draco/residential-mailbox.glb": [
+   -0.127,
+   0,
+   -0.121,
+   0.152,
+   1.532,
+   0.466
+  ],
+  "sets/uoregon/gltf-exports/draco/sign-warning-ped-rrfb.glb": [
+   -0.322,
+   0,
+   -0.028,
+   0.324,
+   1.875,
+   0.043
+  ],
+  "sets/uoregon/gltf-exports/draco/speed-hump.glb": [
+   -2.144,
+   0,
+   -0.457,
+   2.144,
+   0.065,
+   0.457
+  ],
+  "sets/uoregon/gltf-exports/draco/traffic-calming-bumps.glb": [
+   -1.108,
+   0,
+   -0.151,
+   1.108,
+   0.01,
+   0.155
+  ],
+  "sets/uoregon/gltf-exports/draco/traffic-post-k71.glb": [
+   -0.157,
+   0,
+   -0.157,
+   0.157,
+   0.943,
+   0.157
+  ],
+  "sets/uoregon/gltf-exports/draco/USPS-mailbox.glb": [
+   -0.268,
+   0,
+   -0.281,
+   0.268,
+   1.224,
+   0.281
+  ],
+  "sets/vehicles-rig/gltf-exports/draco/BWM_m2-rig.glb": [
+   -1.066,
+   0,
+   -2.287,
+   1.066,
+   1.537,
+   2.504
+  ],
+  "sets/vehicles-rig/gltf-exports/draco/fire-truck-pumper-rig.glb": [
+   -1.496,
+   0,
+   -4.288,
+   1.608,
+   3.056,
+   4.63
+  ],
+  "sets/vehicles-rig/gltf-exports/draco/food-trailer-rig.glb": [
+   -1.964,
+   -0.008,
+   -2.462,
+   1.214,
+   3.015,
+   4.071
+  ],
+  "sets/vehicles-rig/gltf-exports/draco/isuzu-truck-rig.glb": [
+   -1.241,
+   0.002,
+   -3.629,
+   1.241,
+   3.053,
+   3.733
+  ],
+  "sets/vehicles-rig/gltf-exports/draco/sedan-taxi-rig.glb": [
+   -1.086,
+   0,
+   -2.468,
+   1.086,
+   1.722,
+   2.708
+  ],
+  "sets/vehicles-rig/gltf-exports/draco/self-driving-cruise-car-rig.glb": [
+   -1.09,
+   0.008,
+   -1.72,
+   1.09,
+   1.925,
+   2.285
+  ],
+  "sets/vehicles-rig/gltf-exports/draco/suv-rig.glb": [
+   -1.183,
+   0,
+   -2.442,
+   1.183,
+   1.884,
+   2.532
+  ],
+  "sets/vehicles-rig/gltf-exports/draco/toyota-prius-rig.glb": [
+   -1.059,
+   0.002,
+   -2.016,
+   1.059,
+   1.499,
+   2.456
+  ],
+  "sets/vehicles/gltf-exports/draco/fire_truck_ladder.glb": [
+   -1.402,
+   0,
+   -7.254,
+   1.412,
+   3.436,
+   9.695
+  ],
+  "sets/vehicles/gltf-exports/draco/mini-bus.glb": [
+   -0.967,
+   0.004,
+   -2.491,
+   0.967,
+   2.26,
+   2.663
+  ],
+  "sets/vehicles/gltf-exports/draco/trash-truck-side-loading.glb": [
+   -1.508,
+   -0.001,
+   -5.319,
+   1.508,
+   3.519,
+   4.784
+  ],
+  "sets/vehicles/gltf-exports/draco/tuk-tuk.glb": [
+   -0.687,
+   -0.014,
+   -1.337,
+   0.687,
+   1.768,
+   1.344
+  ],
+  "sets/vehicles/gltf-exports/draco/two-wheeler-with-person.glb": [
+   -0.437,
+   0.005,
+   -1.039,
+   0.43,
+   1.936,
+   1.022
+  ],
+  "sets/vehicles/gltf-exports/draco/waymo-self-driving-car.glb": [
+   -1.071,
+   0.005,
+   -1.812,
+   1.071,
+   1.746,
+   2.357
+  ],
+  "sets/wfh-banner/gltf-exports/draco/wfh-banner.glb": [
+   -0.382,
+   -0.002,
+   -0.132,
+   0.383,
+   0.002,
+   0.133
+  ]
+ }
+}

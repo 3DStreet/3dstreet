@@ -100,6 +100,14 @@ AFRAME.registerComponent('google-maps-aerial', {
     });
     this.tiles.registerPlugin(this.reorientationPlugin);
 
+    // Streaming activity for the editor's asset-load indicators (#2009):
+    // tiles never "finish", so they report active/idle rather than loaded.
+    this.onTilesLoadStart = () =>
+      this.el.emit('stream-active', { kind: 'tiles' });
+    this.onTilesLoadEnd = () => this.el.emit('stream-idle', { kind: 'tiles' });
+    this.tiles.addEventListener('tiles-load-start', this.onTilesLoadStart);
+    this.tiles.addEventListener('tiles-load-end', this.onTilesLoadEnd);
+
     this.tiles.addEventListener('load-model', ({ scene }) => {
       // Apply opacity to each tile as it loads, before its first render —
       // no per-frame traversal, and no flash of opaque tiles popping in.
@@ -380,6 +388,9 @@ AFRAME.registerComponent('google-maps-aerial', {
         this.offsetEl.removeFromParent();
         this.offsetEl = null;
       }
+      this.tiles.removeEventListener('tiles-load-start', this.onTilesLoadStart);
+      this.tiles.removeEventListener('tiles-load-end', this.onTilesLoadEnd);
+      this.el.emit('stream-idle', { kind: 'tiles' });
       this.tiles.dispose();
       this.tiles = null;
       this.reorientationPlugin = null;

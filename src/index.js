@@ -71,6 +71,8 @@ if (process.env.NODE_ENV === 'development') {
 require('./aframe-components/scene-timer.js');
 require('./aframe-components/geojson.js');
 require('./aframe-components/asset-fallback-system.js');
+require('./aframe-components/asset-load-status.js');
+require('./aframe-components/model-placeholder.js');
 require('./editor/index.jsx');
 var firebase = require('./shared/services/firebase.js');
 

@@ -1,5 +1,11 @@
 /* global AFRAME, THREE */
+import { createSkyPlaceholderTexture } from '../sky-placeholder.js';
 
+// Sky presets download an equirect JPEG from the assets CDN. Until it lands
+// the scene shows a generated gradient placeholder for the preset
+// (src/sky-placeholder.js) instead of the renderer's black clear color, and
+// the download is reported to the asset-load-status system as a texture keyed
+// `sky:<preset>` so the panel load sheen tracks it (#2009).
 AFRAME.registerComponent('street-environment', {
   schema: {
     preset: {
@@ -98,6 +104,8 @@ AFRAME.registerComponent('street-environment', {
         break;
       default: // 'color'
         this.setLights(0.8, 2.2);
+        this.backgroundImage = null;
+        this.disposeSceneTexture();
         scene.background = new THREE.Color(this.data.backgroundColor);
         scene.environment = null;
     }
@@ -111,26 +119,75 @@ AFRAME.registerComponent('street-environment', {
     );
   },
 
+  /** Dispose the scene's current texture background (real or placeholder). */
+  disposeSceneTexture: function () {
+    const scene = this.el.sceneEl.object3D;
+    if (scene.background?.isTexture) {
+      scene.background.dispose();
+    }
+    scene.background = null;
+    scene.environment = null;
+  },
+
+  /** Show the preset's gradient placeholder as background and environment. */
+  showSkyPlaceholder: function (preset) {
+    const scene = this.el.sceneEl.object3D;
+    this.disposeSceneTexture();
+    const placeholder = createSkyPlaceholderTexture(preset);
+    scene.background = placeholder;
+    scene.environment = placeholder;
+  },
+
+  notifySky: function (name, preset, imagePath) {
+    this.el.sceneEl.emit(name, { id: 'sky:' + preset, src: imagePath }, false);
+  },
+
   setBackground: function (imagePath) {
     const scene = this.el.sceneEl.object3D;
-    this.textureLoader.load(imagePath, (texture) => {
-      // If we changed to color preset in the meantime or we switched to an other image, ignore this texture
-      if (
-        this.data?.preset === 'color' ||
-        imagePath !== this.backgroundImage ||
-        this.el.parentNode === null
-      ) {
-        texture.dispose();
-      } else {
-        if (scene.background?.isTexture) {
-          scene.background.dispose();
+    const preset = this.data.preset;
+    // Already showing this sky, or already downloading it: nothing to do.
+    if (
+      this.pendingBackground === imagePath ||
+      (scene.background?.isTexture &&
+        scene.background.userData.skySrc === imagePath)
+    ) {
+      return;
+    }
+    this.showSkyPlaceholder(preset);
+    this.pendingBackground = imagePath;
+    this.notifySky('texture-loading', preset, imagePath);
+    this.textureLoader.load(
+      imagePath,
+      (texture) => {
+        if (this.pendingBackground === imagePath) {
+          this.pendingBackground = null;
         }
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-        texture.colorSpace = THREE.SRGBColorSpace;
-        scene.background = texture;
-        scene.environment = texture;
+        this.notifySky('texture-loaded', preset, imagePath);
+        // If we changed to color preset in the meantime or we switched to an other image, ignore this texture
+        if (
+          this.data?.preset === 'color' ||
+          imagePath !== this.backgroundImage ||
+          this.el.parentNode === null
+        ) {
+          texture.dispose();
+        } else {
+          this.disposeSceneTexture();
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.userData.skySrc = imagePath;
+          scene.background = texture;
+          scene.environment = texture;
+        }
+      },
+      undefined,
+      () => {
+        // Keep the placeholder: a gradient beats a black sky.
+        if (this.pendingBackground === imagePath) {
+          this.pendingBackground = null;
+        }
+        this.notifySky('texture-error', preset, imagePath);
       }
-    });
+    );
   },
 
   createLight: function (id, attributes) {

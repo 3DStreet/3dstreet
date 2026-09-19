@@ -8,6 +8,7 @@ import { defineMessages } from 'react-intl';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import EntityContextMenu from './EntityContextMenu';
 import EntityLabel from './EntityLabel';
+import EntityLoadSheen from './EntityLoadSheen';
 import {
   faCaretDown,
   faCaretRight,
@@ -361,6 +362,8 @@ class Entity extends React.Component {
           onDragLeave={this.onDragLeave}
           onDrop={this.onDrop}
         >
+          {/* Ambient load sheen behind the row content (#2009). */}
+          <EntityLoadSheen entity={entity} />
           <span>
             <span
               style={{

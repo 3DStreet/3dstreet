@@ -1024,6 +1024,13 @@ export function Viewport(inspector) {
         selectionBox.setFromObject(object);
         selectionBox.visible = true;
       } else if (object.el.hasAttribute('gltf-model')) {
+        // A model still downloading may already carry its ghost box
+        // (model-placeholder, #2009): size from that now, then again from
+        // the real mesh below once it lands.
+        if (object.el.getObject3D('placeholder')) {
+          selectionBox.setFromObject(object);
+          selectionBox.visible = true;
+        }
         const listener = (event) => {
           if (event.target !== object.el) return; // we got an event for a child, ignore
           object.el.removeEventListener('model-loaded', listener);

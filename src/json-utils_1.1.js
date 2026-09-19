@@ -1,4 +1,5 @@
 import useStore from './store';
+import { registerEntityBounds } from './model-bounds.js';
 import {
   resolveSavedCameraStates,
   hasViewerStart
@@ -1422,6 +1423,12 @@ async function resolveCloudAssetUrls(containerEl) {
       // may already be GC-purged. Re-resolving to that now-404 URL would clobber
       // a src the entity could otherwise still render from cache, so skip it.
       if (asset?.deleted) continue;
+      // Bounds stored by the optimizer at upload (or backfilled by the owner)
+      // let model-placeholder draw a ghost box before the GLB arrives (#2009).
+      // Runtime registry only: bounds never enter the scene JSON.
+      if (asset?.bounds && el.hasAttribute('gltf-model')) {
+        registerEntityBounds(el, asset.bounds);
+      }
       const servedUrl = getServedUrl(asset);
       if (!servedUrl) continue;
       if (el.hasAttribute('splat')) {

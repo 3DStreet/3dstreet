@@ -31,6 +31,7 @@
 // (unit-tested, DOM-free).
 
 import { computeIntersectionGeometry } from '../tested/managed-intersection-utils.js';
+import { getAssetImageSrc, getAssetPlaceholderColor } from '../lazy-textures';
 import { getTravelledWaySegments } from './street-layout-utils';
 import {
   BASE_SURFACE_DEPTH,
@@ -643,16 +644,22 @@ AFRAME.registerComponent('managed-intersection', {
     if (this.asphaltMaterial) return this.asphaltMaterial;
     const img = document.getElementById('asphalt-texture');
     if (img) {
-      const texture = new THREE.TextureLoader().load(img.src);
+      // Tinted with the texture's placeholder average until it arrives (#2009).
+      const material = new THREE.MeshStandardMaterial({
+        color: getAssetPlaceholderColor(img) || '#ffffff',
+        roughness: 1
+      });
+      const texture = new THREE.TextureLoader().load(
+        getAssetImageSrc(img),
+        () => material.color.set('#ffffff')
+      );
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(0.25, 0.25); // ~1 tile per 4m, like the legacy box
       texture.colorSpace = THREE.SRGBColorSpace;
+      material.map = texture;
       this.asphaltTexture = texture;
-      this.asphaltMaterial = new THREE.MeshStandardMaterial({
-        map: texture,
-        roughness: 1
-      });
+      this.asphaltMaterial = material;
     } else {
       this.asphaltMaterial = new THREE.MeshStandardMaterial({
         color: 0x555555,
@@ -666,17 +673,26 @@ AFRAME.registerComponent('managed-intersection', {
     if (this.sidewalkMaterial) return this.sidewalkMaterial;
     const img = document.getElementById('seamless-sidewalk');
     if (img) {
-      const texture = new THREE.TextureLoader().load(img.src);
+      // Darkens the texture to match the sidewalk mixin; tinted with the
+      // texture's placeholder average until it arrives (#2009).
+      const tint = new THREE.Color(0xcccccc);
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(
+          getAssetPlaceholderColor(img) || '#ffffff'
+        ).multiply(tint),
+        roughness: 0.8
+      });
+      const texture = new THREE.TextureLoader().load(
+        getAssetImageSrc(img),
+        () => material.color.copy(tint)
+      );
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(0.5, 0.5); // match the legacy intersection curbs
       texture.colorSpace = THREE.SRGBColorSpace;
+      material.map = texture;
       this.sidewalkTexture = texture;
-      this.sidewalkMaterial = new THREE.MeshStandardMaterial({
-        map: texture,
-        roughness: 0.8,
-        color: 0xcccccc
-      });
+      this.sidewalkMaterial = material;
     } else {
       this.sidewalkMaterial = new THREE.MeshStandardMaterial({
         color: 0xbbbbbb,

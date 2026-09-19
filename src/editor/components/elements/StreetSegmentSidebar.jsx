@@ -32,6 +32,7 @@ import {
 } from '@shared/icons';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { isGeneratorComponent } from '../../lib/featuredComponents';
+import { getAssetImageSrc } from '@/lazy-textures';
 import { captureSegmentEdit, SEGMENT_OPS } from '../../lib/segmentAnalytics';
 import {
   executeSegmentUpdate,
@@ -277,7 +278,9 @@ SlopeGlyph.propTypes = { startHigher: PropTypes.bool };
 // water) get a flat chip.
 const formatSurfaceOption = (option) => {
   const surface = option.value;
-  const textureSrc = document.getElementById(SURFACE_TEXTURE_IDS[surface])?.src;
+  const textureSrc = getAssetImageSrc(
+    document.getElementById(SURFACE_TEXTURE_IDS[surface])
+  );
   return (
     <span className="surface-option">
       {textureSrc ? (
