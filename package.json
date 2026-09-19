@@ -6,7 +6,7 @@
   "scripts": {
     "start": "webpack serve --config webpack.config.js --open --progress",
     "start:tunnel": "webpack serve --config webpack.config.js --progress & cloudflared tunnel --url http://localhost:3333",
-    "start:prod": "npm run dist && npm run prefirebase && serve public -l 3333",
+    "start:prod": "npm run dist && npm run prefirebase && serve public --single -l 3333",
     "dist": "webpack --config webpack.prod.config.js --progress",
     "dist:staging": "cross-env DEPLOY_ENV=development webpack --config webpack.prod.config.js --progress",
     "lint": "eslint --ext .js,.jsx src",
