@@ -126,7 +126,9 @@ tool integration**, including callers outside `src/editor/`.
 Textures are lazy `<img data-src data-placeholder>` assets: read their URL
 with `getAssetImageSrc()` (`src/lazy-textures.js`), never `img.src`; never
 enumerate `a-assets img` on mount; every lazy image needs a placeholder
-color (or `transparent` for cutouts) shown until it arrives. Scene asset progress is tracked by the
+color (or `transparent` for cutouts) shown until it arrives. The sky
+background shows a per-preset gradient (`src/sky-placeholder.js`) until its
+equirect image downloads. Scene asset progress is tracked by the
 `asset-load-status` system and shown by non-blocking indicators in the scene
 graph. **Read [asset loading](docs/asset-loading.md) before changing scene
 init, `<street-assets>`, texture references or load indicators.**

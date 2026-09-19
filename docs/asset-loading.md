@@ -88,6 +88,32 @@ Rules:
 Still open from the issue: converting the four ~1 MB seamless JPEGs to WebP /
 1024 px lives in the assets repository, not here.
 
+## Sky placeholder (`src/sky-placeholder.js`, `street-environment`)
+
+Every `street-environment` preset except `color` sets `scene.background` and
+`scene.environment` from a ~150–220 KB equirect JPEG on the assets CDN. That
+download used to be the longest black screen of a scene load: the renderer's
+clear color showed until the texture arrived. The component now assigns a
+placeholder the moment a preset is applied: `createSkyPlaceholderTexture()`
+paints a vertical gradient on an 8×128 canvas from color stops sampled off the
+real image (zenith → horizon → nadir, `SKY_GRADIENTS`) and returns it as an
+equirect sRGB `CanvasTexture`. It is assigned as `scene.environment` too;
+on the editor scene A-Frame's `reflection` component overrides that with its
+own probe at init, which renders the placeholder sky anyway. The real texture
+replaces both when it lands; a failed download keeps the gradient. A texture
+that is already showing (`userData.skySrc`) or already downloading is never
+re-requested, so re-applying the same preset does not flash the placeholder.
+
+Rules:
+
+- **A new sky preset needs an entry in `SKY_GRADIENTS`** (row averages of
+  the image at evenly spaced latitudes); unknown presets fall back to `day`.
+- The sky download is reported to the tracker as a texture keyed
+  `sky:<preset>` (`texture-loading` / `-loaded` / `-error` on the scene).
+- Anything that swaps `scene.background` for a texture must dispose the
+  previous one; `disposeSceneTexture()` on the component does that for real
+  and placeholder textures alike.
+
 ## Asset load tracker and indicators
 
 `src/asset-load-tracker.js` is pure bookkeeping (unit tests in
