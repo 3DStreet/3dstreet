@@ -403,9 +403,12 @@ export function segmentIntersection(a, b, c, d) {
  * @param {Array<{ class, polylines }>} otherWays candidate crossers
  *   (local-meter polylines; the caller excludes the way itself and
  *   grade-separated crossers like bridges).
- * @returns {Array<{ s, point, crossWidthM }>} sorted by arc length `s`
- *   along the stretch; `crossWidthM` is the widest crossing way's
- *   imported street width (drives the split inset).
+ * @returns {Array<{ s, point, crossWidthM, kind }>} sorted by arc length
+ *   `s` along the stretch; `crossWidthM` is the widest crossing way's
+ *   imported carriageway width (drives the split inset); `kind` is
+ *   'crossing' (the other way continues past the stretch) or 'terminal'
+ *   (it ends here — a T; callers cut the stretch only at crossings,
+ *   #2004 fix 2).
  */
 export function junctionsAlongStretch(
   stretchPoints,
@@ -416,15 +419,29 @@ export function junctionsAlongStretch(
   const cumulative = cumulativeArcLengths(stretchPoints);
   const total = cumulative[cumulative.length - 1];
   const found = [];
-  const record = (s, point, cls) => {
+  // How close a junction must sit to the other way's own polyline
+  // endpoint to read as that way TERMINATING here (a T into the stretch)
+  // rather than crossing through — generous, to absorb MVT quantization.
+  const TERMINAL_END_M = 6;
+  const terminalEndSq = TERMINAL_END_M * TERMINAL_END_M;
+  const record = (s, point, cls, kind) => {
     if (s < endClearanceM || s > total - endClearanceM) return;
-    found.push({ s, point, crossWidthM: importedCarriagewayMeters(cls) });
+    found.push({
+      s,
+      point,
+      crossWidthM: importedCarriagewayMeters(cls),
+      kind
+    });
   };
 
   for (const other of otherWays || []) {
     for (const line of other.polylines || []) {
       if (!line || line.length < 2) continue;
-      // Proper crossings, segment pair by segment pair.
+      // Proper crossings, segment pair by segment pair. A side road's
+      // shared node lies exactly ON the stretch, so a T registers here
+      // too (touching counts) — classify by whether the other way
+      // continues past the junction or ends at it (#2004 fix 2: callers
+      // cut the stretch only at crossings).
       for (let i = 0; i < stretchPoints.length - 1; i++) {
         const a = stretchPoints[i];
         const b = stretchPoints[i + 1];
@@ -432,7 +449,16 @@ export function junctionsAlongStretch(
           const hit = segmentIntersection(a, b, line[j], line[j + 1]);
           if (hit) {
             const s = cumulative[i] + Math.sqrt(distSq(a, hit.point));
-            record(s, hit.point, other.class);
+            const endSq = Math.min(
+              distSq(hit.point, line[0]),
+              distSq(hit.point, line[line.length - 1])
+            );
+            record(
+              s,
+              hit.point,
+              other.class,
+              endSq <= terminalEndSq ? 'terminal' : 'crossing'
+            );
           }
         }
       }
@@ -454,7 +480,7 @@ export function junctionsAlongStretch(
               cumulative[i] + Math.sqrt(distSq(stretchPoints[i], hit.point));
           }
         }
-        if (bestPoint) record(bestS, bestPoint, other.class);
+        if (bestPoint) record(bestS, bestPoint, other.class, 'terminal');
       }
     }
   }
@@ -465,11 +491,59 @@ export function junctionsAlongStretch(
     const last = junctions[junctions.length - 1];
     if (last && j.s - last.s < minSeparationM) {
       last.crossWidthM = Math.max(last.crossWidthM, j.crossWidthM);
+      // Any crossing member makes the merged junction a crossing (an
+      // offset dual-carriageway crossing with a nearby T still cuts).
+      if (j.kind === 'crossing') last.kind = 'crossing';
     } else {
       junctions.push({ ...j });
     }
   }
   return junctions;
+}
+
+/**
+ * Trim a stretch's ends back to the carriageway EDGE of any way they
+ * terminate on — the companion to cutting only at crossings (#2004 fix
+ * 2): with terminal junctions no longer splitting the through street, a
+ * side street's shared node sits on the through road's centerline, and
+ * untrimmed it would poke halfway across the roadway. An end that
+ * touches the other way's own ENDPOINT is left alone (that's the same
+ * road continuing as another tile fragment, not a T), and a trim that
+ * would drop the stretch under `minLengthM` is skipped entirely.
+ *
+ * @param {Array<{x,z}>} points stretch centerline, local meters.
+ * @param {Array<{ class, polylines }>} otherWays candidate through roads
+ *   (local-meter polylines; the caller excludes the way itself).
+ * @returns {Array<{x,z}>} new points (the input, copied, when untrimmed).
+ */
+export function trimStretchEndsAtWays(
+  points,
+  otherWays,
+  { touchM = 3, endpointClearM = 8, padM = 2, minLengthM = 20 } = {}
+) {
+  if (!points || points.length < 2) return points ? points.slice() : [];
+  const cumulative = cumulativeArcLengths(points);
+  const total = cumulative[points.length - 1];
+
+  const trimFor = (endPoint) => {
+    const hit = nearestWay(otherWays || [], endPoint, touchM);
+    if (!hit) return 0;
+    const line = hit.way.polylines[hit.polylineIndex];
+    const clearSq = endpointClearM * endpointClearM;
+    if (
+      distSq(hit.point, line[0]) <= clearSq ||
+      distSq(hit.point, line[line.length - 1]) <= clearSq
+    ) {
+      return 0; // touching the way's own end: a continuation, not a T
+    }
+    return importedCarriagewayMeters(hit.way.class) / 2 + padM;
+  };
+
+  const sStart = trimFor(points[0]);
+  const sEnd = total - trimFor(points[points.length - 1]);
+  if (sStart === 0 && sEnd === total) return points.slice();
+  if (sEnd - sStart < minLengthM) return points.slice();
+  return slicePolylineByArc(points, cumulative, sStart, sEnd);
 }
 
 /**

@@ -57,24 +57,39 @@ means the paid plan; the code keeps the roadmap's LOD term.) The upgrade
 (`upgradeWayAt`) converts the clicked stretch — the centerline clipped by
 arc length to ±`UPGRADE_WINDOW_M` of the click; a single OSM way can run
 for kilometers — into real managed streets via the editor command stack
-(one undoable step per generate): the stretch **splits at junctions**
-where other ways cross or terminate on it (`junctionsAlongStretch` /
-`splitStretchAtJunctions` in `src/tested/osm-street-import.js`, ends
-inset by half the crossing width plus curb-return room), each piece
+(one undoable step per generate): the stretch **splits at CROSSING
+junctions only** (`junctionsAlongStretch` classifies each junction
+`crossing` vs `terminal` in `src/tested/osm-street-import.js`; a side
+road TERMINATING on the stretch leaves it continuous, and the stretch's
+own ends trim back to the carriageway edge of any road THEY terminate on
+via `trimStretchEndsAtWays` — so side streets butt against the through
+road instead of poking to its centerline, #2004 fix 2). Cut ends inset
+by half the crossing road's CARRIAGEWAY width (sidewalks excluded,
+`importedCarriagewayMeters`) plus 2 m curb-return room. Each piece
 becomes ONE **path-following street** whose editable path shape carries
 the piece's Douglas–Peucker-simplified control points
 (`stretchForWindow`; the same curved-street mechanism as hand-drawn
 paths, `docs/curved-street-path.md`, `curveType: smooth`), degenerating
 to a plain straight street when a piece simplifies to a single chord,
-and a **`managed-intersection` is minted per junction** where ≥2
-generated street ends meet (proximity-deduped, so generating the
+and a **`managed-intersection` is minted per cut** bordered by ≥1
+generated street end (proximity-deduped, so generating the
 crossing way later reuses it — its snap radius picks the new street
-ends up automatically; pathed streets connect as geometry-only arms,
-see `docs/managed-intersection.md`). Cross-section rules from
+ends up automatically; pathed streets connect as geometry-only arms;
+with only one arm connected the pad renders as a PARTIAL intersection,
+see `docs/managed-intersection.md`). Every generated street carries a
+**`data-osm-stretch` coverage stamp** (compact centerline encoding,
+serialized with the scene): a later click on the same way clips its
+window against stamped coverage (`clipStretchToUncovered`, boundary
+snapped flush to the covered piece's endpoint) and **extends** the
+street along the uncovered remainder instead of refusing — pre-stamp
+scenes keep the old whole-way refusal. Cross-section rules from
 class + subclass + oneway (`streetJsonForWay`: one-way streets put every
 lane in the way direction, residential gets parking and unclassified
 doesn't, living streets go narrow, cycleways become bike lanes, lane
-count per direction scales with class),
+count per direction scales with class; `rail` → single ballasted track
+between sloped gravel berms, `transit` → flush tram track on concrete —
+one track per OSM way, parallel tracks are parallel ways; subclass
+`subway` is excluded from ribbons and generate),
 `sourceType: json-blob`, `playable: true` so `street-traffic` animates
 them in play mode. `upgradeNearFocus(radius, cap)` is the console
 convenience for demos. Upgraded streets are ordinary scene entities:
@@ -111,7 +126,10 @@ entries mapped driver-left-first), bus/PSV lanes inside ordinary roads
 back to the class rules, and `facts` records `osm` vs `default` per field
 so the chip can say "Market St · 4 lanes · width 12 m · sidewalks both
 sides" or "lanes not mapped (2 assumed)". Generate waits up to 1.5 s for
-an in-flight answer, else uses the rules. Side convention: segments[0] is the way's forward-RIGHT side
+an in-flight answer, else uses the rules. Rail/transit ways never
+hydrate: the query only matches `highway` ways, so a click on a railway
+could only ever pick up a NEARBY road's tags — `streetDefinitionFor`
+guards against repainting a railway with them; railways are rules-only. Side convention: segments[0] is the way's forward-RIGHT side
 (managed-street lays segments out -x → +x and +z is forward). Tunnels and ferries are
 filtered. Real lane data arrives with the Overpass-backed hydrator
 (phase 6 below; `src/osm/overpass-fetch.js` is kept for exactly that).

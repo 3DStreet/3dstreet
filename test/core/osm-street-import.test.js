@@ -12,6 +12,7 @@ import assert from 'assert';
 import { crossSectionFromTags } from '../../src/tested/osm-way-tags.js';
 import {
   clipStretchToUncovered,
+  trimStretchEndsAtWays,
   decodeStretchPoints,
   eastMPerDeg,
   encodeStretchPoints,
@@ -687,5 +688,125 @@ describe('rail and transit presets (#2004)', () => {
       segments.map((s) => s.type),
       ['grass', 'rail', 'grass']
     );
+  });
+});
+
+describe('T junctions: crossings cut, terminals do not (#2004 fix 2)', () => {
+  const stretch = [
+    { x: 0, z: 0 },
+    { x: 0, z: 400 }
+  ];
+  const mainWay = {
+    class: 'minor',
+    polylines: [stretch]
+  };
+
+  it('classifies a through crossing vs a terminating side road', () => {
+    const crosser = {
+      class: 'minor',
+      polylines: [
+        [
+          { x: -50, z: 200 },
+          { x: 50, z: 200 }
+        ]
+      ]
+    };
+    // Shared node exactly ON the stretch: registers as a segment
+    // intersection, but the way ends there — still a terminal.
+    const teeOnStretch = {
+      class: 'service',
+      polylines: [
+        [
+          { x: 0, z: 300 },
+          { x: 60, z: 300 }
+        ]
+      ]
+    };
+    const junctions = junctionsAlongStretch(stretch, [crosser, teeOnStretch]);
+    assert.strictEqual(junctions.length, 2);
+    assert.strictEqual(junctions[0].kind, 'crossing');
+    assert.strictEqual(junctions[1].kind, 'terminal');
+  });
+
+  it('a merged mixed junction stays a crossing', () => {
+    const crosser = {
+      class: 'minor',
+      polylines: [
+        [
+          { x: -50, z: 200 },
+          { x: 50, z: 200 }
+        ]
+      ]
+    };
+    const tee = {
+      class: 'service',
+      polylines: [
+        [
+          { x: 1, z: 205 },
+          { x: 60, z: 205 }
+        ]
+      ]
+    };
+    const junctions = junctionsAlongStretch(stretch, [tee, crosser]);
+    assert.strictEqual(junctions.length, 1);
+    assert.strictEqual(junctions[0].kind, 'crossing');
+  });
+
+  describe('trimStretchEndsAtWays', () => {
+    it('pulls an end back to the through carriageway edge', () => {
+      const side = [
+        { x: 0, z: 200 },
+        { x: 80, z: 200 }
+      ];
+      const trimmed = trimStretchEndsAtWays(side, [mainWay]);
+      // minor carriageway 10.4 m → trim 10.4/2 + 2 = 7.2 m.
+      assert.ok(Math.abs(trimmed[0].x - 7.2) < 1e-9);
+      assert.deepStrictEqual(trimmed[trimmed.length - 1], { x: 80, z: 200 });
+    });
+
+    it('leaves an end alone when it meets the other way END to end', () => {
+      const side = [
+        { x: 0, z: 200 },
+        { x: 80, z: 200 }
+      ];
+      const continuation = {
+        class: 'minor',
+        polylines: [
+          [
+            { x: 0, z: 200 },
+            { x: -80, z: 200 }
+          ]
+        ]
+      };
+      assert.deepStrictEqual(trimStretchEndsAtWays(side, [continuation]), side);
+    });
+
+    it('skips a trim that would drop the stretch under the minimum', () => {
+      const shortSide = [
+        { x: 0, z: 200 },
+        { x: 22, z: 200 }
+      ];
+      const wallEast = {
+        class: 'minor',
+        polylines: [
+          [
+            { x: 22, z: 0 },
+            { x: 22, z: 400 }
+          ]
+        ]
+      };
+      assert.deepStrictEqual(
+        trimStretchEndsAtWays(shortSide, [mainWay, wallEast]),
+        shortSide
+      );
+    });
+
+    it('is a no-op with no ways in touching range', () => {
+      const side = [
+        { x: 30, z: 200 },
+        { x: 80, z: 200 }
+      ];
+      assert.deepStrictEqual(trimStretchEndsAtWays(side, [mainWay]), side);
+    });
   });
 });

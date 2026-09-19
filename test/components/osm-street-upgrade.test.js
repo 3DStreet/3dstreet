@@ -281,6 +281,37 @@ describe('osm-streets upgrade (viewer creation path)', () => {
     );
   }, 30000);
 
+  it('keeps the through street continuous at a T and trims the side street (#2004 fix 2)', async () => {
+    const comp = await osmStreetsComponent();
+    const scene = comp.el.sceneEl;
+    comp.addTileWays('t-tee', [
+      rawWay('way-through', 'minor', [
+        { x: 0, z: 0 },
+        { x: 0, z: 400 }
+      ]),
+      rawWay('way-side', 'minor', [
+        { x: 0, z: 200 },
+        { x: 120, z: 200 }
+      ])
+    ]);
+    const [through, side] = comp.allWays();
+
+    // The side road TERMINATES on the through road: no cut, no seam —
+    // one continuous street, no intersection (previously this chopped
+    // the through street in two around a seam-band pad).
+    expect(comp.upgradeWay(through, { x: 0, z: 200 })).toBe(1);
+    expect(scene.querySelectorAll('[managed-intersection]')).toHaveLength(0);
+
+    // The side street's end pulls back to the through road's carriageway
+    // edge (10.4/2 + 2 = 7.2 m) instead of poking to its centerline.
+    expect(comp.upgradeWay(side, { x: 60, z: 200 })).toBe(1);
+    const streets = scene.querySelectorAll('[managed-street]');
+    expect(streets).toHaveLength(2);
+    const stamped = streets[1].getAttribute('data-osm-stretch');
+    const startX = parseFloat(stamped.split(';')[0].split(',')[0]);
+    expect(startX).toBeCloseTo(7.2, 1);
+  });
+
   it('returns 0 for a stretch below the generate minimum', async () => {
     const comp = await osmStreetsComponent();
     comp.addTileWays('t-stub', [

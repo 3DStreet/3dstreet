@@ -17,7 +17,8 @@ import {
   nearestWay,
   splitStretchAtJunctions,
   stretchForWindow,
-  streetJsonForWay
+  streetJsonForWay,
+  trimStretchEndsAtWays
 } from '../tested/osm-street-import.js';
 import {
   EXCLUDED_ROAD_CLASSES,
@@ -713,19 +714,28 @@ AFRAME.registerComponent('osm-streets', {
   },
 
   /**
-   * Junction-split plan for a stretch: where other ways cross or
-   * terminate on it, split into inset pieces (one street each) and mark
-   * the junctions to mint intersections at. Other-way candidates come
-   * from every loaded tile (the same way appears clipped in several
-   * tiles — junction dedupe absorbs the doubles); bridges are
-   * grade-separated, not junctions.
+   * Junction-split plan for a stretch: where other ways CROSS it, split
+   * into inset pieces (one street each) and mark the junctions to mint
+   * intersections at; where other ways merely TERMINATE on it (T
+   * junctions) the stretch stays whole, and the stretch's own ends trim
+   * back to the carriageway edge of any road THEY terminate on.
+   * Other-way candidates come from every loaded tile (the same way
+   * appears clipped in several tiles — junction dedupe absorbs the
+   * doubles); bridges are grade-separated, not junctions.
    */
   planUpgrade: function (way, stretch) {
     const others = this.allWays().filter(
       (w) => w.wayId !== way.wayId && w.brunnel !== 'bridge'
     );
-    const junctions = junctionsAlongStretch(stretch.points, others);
-    return splitStretchAtJunctions(stretch.points, junctions);
+    // Ends terminating on another road pull back to its carriageway
+    // edge, and only CROSSING junctions cut the stretch — a side road
+    // ending on it (terminal) leaves the through street continuous
+    // (#2004 fix 2).
+    const points = trimStretchEndsAtWays(stretch.points, others);
+    const junctions = junctionsAlongStretch(points, others).filter(
+      (j) => j.kind === 'crossing'
+    );
+    return splitStretchAtJunctions(points, junctions);
   },
 
   // Is a managed intersection already within `withinM` of this local
