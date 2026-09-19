@@ -29,17 +29,22 @@ const { HeliSound } = require('./heli-sound.js');
  *   W / S            climb / descend (vertical-speed command: holding
  *                    sets a target rate, releasing settles back toward
  *                    hover with a gentle sink — see heli-flight-model)
- *   A / D            yaw left / right
- *   Arrow keys       cyclic — Up = nose down (fly forward), Down =
- *                    nose up, Left / Right = roll
+ *   A / D            roll left / right (strafe — sideways cyclic)
+ *   Arrow keys       Up = nose down (fly forward), Down = nose up,
+ *                    Left / Right = yaw (turn the nose)
  *   Space            hover assist (levels out + brakes drift + trims
  *                    collective to hover)
  *   C                camera mode (chase / fpv / top-down)
  *   R                reset run
  * Gamepad (standard mapping, wired in play-mode.pollGamepad):
- *   RT / LT collective · left stick cyclic · LB / RB yaw · B assist ·
- *   right stick chase-cam orbit/zoom · Y reset · X camera ·
- *   Start pause · Back stop
+ *   RT / LT collective · left stick cyclic · right stick X yaw ·
+ *   LB / RB strafe (secondary roll) · B assist · right stick Y chase
+ *   zoom / FPV look pitch · Y reset · X camera · Start pause · Back stop
+ *
+ * Yaw sits on the "turn" inputs (arrow Left/Right, right stick X) and
+ * strafe on the "slide" inputs (A/D, bumpers) because playtesters
+ * reached for the right stick and the arrows to turn the nose and
+ * found the old bumper/A-D yaw confusing (#2012).
  */
 
 // Chassis-frame collider half-extents. Sized to the helicopter-mesh
@@ -128,12 +133,14 @@ AFRAME.registerComponent('play-mode-helicopter', {
     this.keymap = {
       KeyW: 'collUp',
       KeyS: 'collDown',
-      KeyA: 'yawLeft',
-      KeyD: 'yawRight',
+      // A/D strafe (roll) and arrow Left/Right yaw — see the controls
+      // note in the file header (#2012).
+      KeyA: 'rollLeft',
+      KeyD: 'rollRight',
       ArrowUp: 'pitchFwd',
       ArrowDown: 'pitchBack',
-      ArrowLeft: 'rollLeft',
-      ArrowRight: 'rollRight',
+      ArrowLeft: 'yawLeft',
+      ArrowRight: 'yawRight',
       Space: 'assist'
     };
     this.onKeyDown = (e) => {
