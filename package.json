@@ -28,6 +28,7 @@
     "test:setup": "npx playwright install chromium-headless-shell",
     "test:rules": "cd public && firebase emulators:exec --only firestore,auth --project demo-3dstreet-rules \"cd .. && vitest run --config vitest.rules.config.js\"",
     "prettier": "prettier --write 'src/**/*.js' 'src/**/*.jsx' 'src/**/*.scss'",
+    "assets:bounds": "node scripts/assets/compute-model-bounds.mjs",
     "i18n:extract": "formatjs extract 'src/**/*.{js,jsx}' --ignore '**/*.d.ts' --out-file src/editor/i18n/locales/en.json --flatten && npm run i18n:extract:catalog",
     "i18n:extract:catalog": "node scripts/i18n/extract-catalog.mjs",
     "i18n:translate": "node scripts/i18n/translate.mjs",
