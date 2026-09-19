@@ -13,7 +13,8 @@ import { useAssetLoadSummary } from './useAssetLoadTracker';
  */
 const PanelLoadSheen = () => {
   const summary = useAssetLoadSummary();
-  const loading = summary.pending > 0;
+  // Timed-out loads are still in flight (the row shows them as slow).
+  const loading = summary.pending > 0 || summary.timedOut > 0;
   return (
     <span
       className={'panelLoadSheen' + (loading ? ' is-loading' : '')}

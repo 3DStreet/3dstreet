@@ -17,20 +17,40 @@ export function getAssetLoadTracker() {
   );
 }
 
-const noopSubscribe = () => () => {};
+/**
+ * Subscribe to the scene's tracker. When the scene (or its systems) does not
+ * exist yet, wait for the scene element's `loaded` and attach then, so a
+ * hook that rendered early still picks the tracker up; the snapshot getters
+ * below re-resolve the tracker on every read for the same reason.
+ */
+function subscribeToTracker(listener) {
+  let unsubscribe = null;
+  const attach = () => {
+    const tracker = getAssetLoadTracker();
+    if (!tracker) return false;
+    unsubscribe = tracker.subscribe(listener);
+    return true;
+  };
+  if (attach()) return () => unsubscribe();
+  const sceneEl =
+    typeof document !== 'undefined' ? document.querySelector('a-scene') : null;
+  const onLoaded = () => {
+    if (attach()) listener();
+  };
+  if (sceneEl) sceneEl.addEventListener('loaded', onLoaded, { once: true });
+  return () => {
+    if (sceneEl) sceneEl.removeEventListener('loaded', onLoaded);
+    if (unsubscribe) unsubscribe();
+  };
+}
 
 /** Scene-wide asset load summary; re-renders on tracker changes. */
 export function useAssetLoadSummary() {
-  const tracker = getAssetLoadTracker();
-  const subscribe = useCallback(
-    (listener) => (tracker ? tracker.subscribe(listener) : noopSubscribe()),
-    [tracker]
-  );
-  const getSnapshot = useCallback(
-    () => (tracker ? tracker.getSummary() : EMPTY_ASSET_LOAD_SUMMARY),
-    [tracker]
-  );
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const getSnapshot = useCallback(() => {
+    const tracker = getAssetLoadTracker();
+    return tracker ? tracker.getSummary() : EMPTY_ASSET_LOAD_SUMMARY;
+  }, []);
+  return useSyncExternalStore(subscribeToTracker, getSnapshot, getSnapshot);
 }
 
 /**
@@ -39,14 +59,9 @@ export function useAssetLoadSummary() {
  * entity loads nothing the tracker knows about.
  */
 export function useEntityLoadState(entity) {
-  const tracker = getAssetLoadTracker();
-  const subscribe = useCallback(
-    (listener) => (tracker ? tracker.subscribe(listener) : noopSubscribe()),
-    [tracker]
-  );
-  const getSnapshot = useCallback(
-    () => (tracker && entity ? tracker.get(entity) : null),
-    [tracker, entity]
-  );
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  const getSnapshot = useCallback(() => {
+    const tracker = getAssetLoadTracker();
+    return tracker && entity ? tracker.get(entity) : null;
+  }, [entity]);
+  return useSyncExternalStore(subscribeToTracker, getSnapshot, getSnapshot);
 }

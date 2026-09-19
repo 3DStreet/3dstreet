@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { defineMessages, useIntl } from 'react-intl';
 import { LOAD_STATUS } from '@/asset-load-tracker';
@@ -26,16 +27,46 @@ const MESSAGES = defineMessages({
  * Streaming layers (splats, tiles) get nothing here by design.
  *
  * Rendered as the row's first child and painted behind the content via
- * z-index (the row isolates its stacking context in scenegraph.scss).
+ * z-index (the row isolates its stacking context in scenegraph.scss). Being
+ * behind the content, the span itself is never hovered, so the tooltip is
+ * set on the row element instead.
  */
 const EntityLoadSheen = ({ entity }) => {
   const intl = useIntl();
   const state = useEntityLoadState(entity);
-  if (!state || state.streaming) return null;
-
+  const ref = useRef(null);
+  const shown = !!state && !state.streaming;
   let modifier;
   let message;
-  switch (state.status) {
+  if (shown) {
+    ({ modifier, message } = classify(state.status));
+  }
+  const title = message ? intl.formatMessage(message) : null;
+
+  useEffect(() => {
+    const row = ref.current && ref.current.parentElement;
+    if (!row || !title) return undefined;
+    row.setAttribute('title', title);
+    return () => {
+      if (row.getAttribute('title') === title) row.removeAttribute('title');
+    };
+  }, [title]);
+
+  if (!shown) return null;
+  return (
+    <span
+      ref={ref}
+      className={`entityLoadSheen ${modifier}`}
+      aria-label={title || undefined}
+      role={title ? 'status' : undefined}
+    />
+  );
+};
+
+function classify(status) {
+  let modifier;
+  let message;
+  switch (status) {
     case LOAD_STATUS.PENDING:
       modifier = 'is-pending';
       message = MESSAGES.pending;
@@ -53,16 +84,8 @@ const EntityLoadSheen = ({ entity }) => {
       modifier = 'is-loaded';
       message = null;
   }
-  const title = message ? intl.formatMessage(message) : undefined;
-  return (
-    <span
-      className={`entityLoadSheen ${modifier}`}
-      title={title}
-      aria-label={title}
-      role={title ? 'status' : undefined}
-    />
-  );
-};
+  return { modifier, message };
+}
 
 EntityLoadSheen.propTypes = {
   entity: PropTypes.object

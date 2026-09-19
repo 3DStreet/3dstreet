@@ -174,5 +174,14 @@ describe('installLazyTextureSource', () => {
       { id: 'broken', src: 'https://cdn/404.jpg' },
       false
     );
+    // The failure is not cached: the next reference tries again.
+    expect(system.sourceCache[system.hash(img)]).toBeUndefined();
+    const cb2 = vi.fn();
+    system.loadTextureSource(img, cb2);
+    expect(system.el.emit).toHaveBeenLastCalledWith(
+      'texture-loading',
+      { id: 'broken', src: 'https://cdn/404.jpg' },
+      false
+    );
   });
 });

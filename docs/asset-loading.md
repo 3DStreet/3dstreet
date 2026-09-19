@@ -85,8 +85,10 @@ Rules:
 - User-added textures (`insertNewAsset`) still get an eager `src`; that is a
   deliberate use.
 
-Still open from the issue: converting the four ~1 MB seamless JPEGs to WebP /
-1024 px lives in the assets repository, not here.
+The four ~1 MB seamless textures from the issue are served as WebP: the
+conversion lives in the assets repository and `src/assets.js` references the
+`.webp` files. Any further shrinking (resolution, other formats) is likewise an
+assets-repository change plus a reference update here.
 
 ## Sky placeholder (`src/sky-placeholder.js`, `street-environment`)
 
@@ -101,8 +103,12 @@ equirect sRGB `CanvasTexture`. It is assigned as `scene.environment` too;
 on the editor scene A-Frame's `reflection` component overrides that with its
 own probe at init, which renders the placeholder sky anyway. The real texture
 replaces both when it lands; a failed download keeps the gradient. A texture
-that is already showing (`userData.skySrc`) or already downloading is never
-re-requested, so re-applying the same preset does not flash the placeholder.
+that is already showing (`userData.skySrc`) or already downloading
+(`pendingBackground`) is never re-requested, so re-applying the same preset
+does not flash the placeholder. Switching preset (including to `color`) while
+a sky is in flight abandons that download: its callback applies nothing.
+Flipping back before it lands reuses the same in-flight request
+(`loadSkyTexture` keeps one promise per path) instead of starting a second.
 
 Rules:
 
@@ -118,14 +124,24 @@ Rules:
 
 Props, people and vehicles used to pop into an empty street as each GLB
 finished downloading. The `model-placeholder` system draws a translucent
-ghost box of the model's known bounds under the entity from the moment its
+ghost box of the model's known bounds where the entity is from the moment its
 `gltf-model` or `gltf-part` component initializes (which covers batching's
 deferred duplicates, which never download on their own) until that entity's
-`model-loaded` or `model-error`, then removes it. The box is the entity's
-`placeholder` object3D: it inherits the entity's transform and visibility,
-sizes the editor's selection and hover boxes before the mesh exists, and is
-tagged `userData.source = 'INSPECTOR'` so exports hide it. It never touches
-the `mesh` object3D that the model components and batch-models own.
+`model-loaded` or `model-error`, then removes it. A src or part change while
+pending swaps the box (`componentchanged`); clearing the src drops it.
+
+All ghosts are instances of one `THREE.InstancedMesh` (one draw call however
+many clones are loading; a shader draws the frame on the box faces). The mesh
+hangs off an autocreated `#model-placeholders-root` entity under the scene,
+hidden from the scene graph and never serialized, so the editor's raycaster
+still hits it: an intersection's `instanceId` maps back to the entity through
+`mesh._placeholderEls` (`raycaster.js`). Each tick writes the instance
+matrices from the entities' world matrices and zeroes instances whose entity
+is invisible or detached. The box's local bounds are mirrored on
+`el.object3D._placeholderBbox`, which the editor's selection and hover box
+helper reads like batch-models' `_batchLocalBbox` (`viewport.js`). The mesh
+is tagged `userData.source = 'INSPECTOR'` so exports hide it. Nothing here
+touches the `mesh` object3D that the model components and batch-models own.
 
 Where bounds come from (`src/model-bounds.js`):
 
@@ -161,9 +177,13 @@ Two classes of entity:
   `texture-loading` / `texture-loaded` / `texture-error` on the scene, keyed
   `texture:<asset id>`. A pending entry older than 30 s (matching
   batch-models' `LOAD_TIMEOUT_MS`) is reported as `timed-out` by the 1 s
-  tick, and a late settle still overrides it. Batched duplicates never emit
+  tick: it counts as neither pending nor settled, holds `done` back, and a
+  late settle still overrides it. Batched duplicates never emit
   `model-loading`, and a `model-loaded` without a matching begin is ignored,
-  so they are not counted.
+  so they are not counted. A model component that changes to point at
+  nothing (`gltf-model` src cleared, `gltf-part` without src or part) or is
+  removed never settles, so the system forgets its entry on
+  `componentchanged` / `componentremoved` (capture phase; they don't bubble).
 - **Streaming** (activity only, excluded from the count): splats via
   `splat-loading` / `splat-loaded` / `splat-error`, tile layers
   (`google-maps-aerial`, `tiled-basemap`) via `stream-active` / `stream-idle`
@@ -172,7 +192,9 @@ Two classes of entity:
 
 Entries keyed by an element are forgotten by the tick once the element leaves
 the document. Entries are replaced, never mutated, so React can compare them
-by identity through `useSyncExternalStore`.
+by identity through `useSyncExternalStore`. Events that feed the tracker
+must reach the scene element: emit them bubbling (A-Frame's default), as the
+splat, model and tile components do.
 
 Editor surfaces (`src/editor/components/scenegraph/`) are deliberately
 ambient: no icons, counts, bars or text, so loading is visible to anyone who
@@ -187,10 +209,12 @@ looks and invisible to anyone who does not.
   layers (splats, tiles) show nothing.
 - `PanelLoadSheen.jsx`, behind the left panel's title + save row: a faint
   fill tracks overall progress (`--load-progress`) with a sheen across it,
-  fading out once every model and texture has settled. Always mounted so the
-  fade is a CSS transition.
+  fading out once every model and texture has settled (a timed-out load
+  keeps it going, like the row's slow state). Always mounted so the fade is
+  a CSS transition.
 - `useAssetLoadTracker.js` holds the hooks; the tracker is reachable at
-  `AFRAME.scenes[0].systems['asset-load-status'].tracker`, and the store's
+  `AFRAME.scenes[0].systems['asset-load-status'].tracker` (the hooks attach
+  on the scene's `loaded` if they render before it exists), and the store's
   `assetLoadSummary` carries the counts for tooling (MCP, tests).
 - Both honor `prefers-reduced-motion` (static wash instead of animation).
 

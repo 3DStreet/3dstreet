@@ -220,7 +220,10 @@ export class AssetLoadTracker {
       }
     }
     const total = this.entries.size;
-    const settled = total - pending;
+    // A timed-out load is still in flight as far as anyone knows: it is
+    // neither pending nor settled, and it holds `done` back until a late
+    // model-loaded / model-error (or removal) resolves it.
+    const settled = loaded + error;
     let streamsActive = 0;
     for (const stream of this.streams.values()) {
       if (stream.active) streamsActive++;
@@ -233,7 +236,7 @@ export class AssetLoadTracker {
       timedOut,
       settled,
       progress: total === 0 ? 1 : settled / total,
-      done: total > 0 && pending === 0,
+      done: total > 0 && pending === 0 && timedOut === 0,
       streams: this.streams.size,
       streamsActive,
       failures: Object.freeze(failures)

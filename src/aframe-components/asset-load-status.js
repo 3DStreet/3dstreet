@@ -19,6 +19,16 @@ import { AssetLoadTracker, LOAD_STATUS } from '../asset-load-tracker.js';
 const TICK_MS = 1000;
 
 // Entities keyed by element are dropped once they leave the document.
+const MODEL_COMPONENTS = new Set(['gltf-model', 'gltf-part']);
+
+/** Whether a gltf-model / gltf-part component instance will load anything. */
+function pointsAtModel(component) {
+  if (!component) return false;
+  const data = component.data;
+  if (component.name === 'gltf-part') return !!(data && data.src && data.part);
+  return typeof data === 'string' ? data !== '' : !!data;
+}
+
 function isAlive(key) {
   return typeof key === 'string' || key.isConnected !== false;
 }
@@ -63,6 +73,25 @@ AFRAME.registerSystem('asset-load-status', {
     for (const name in this.handlers) {
       sceneEl.addEventListener(name, this.handlers[name]);
     }
+    // A model component that changes to point at nothing (gltf-model src
+    // cleared, gltf-part without src or part) removes its mesh without any
+    // model-loaded / model-error, and a removed component never settles
+    // either: forget the entry instead of timing it out as a failure. These
+    // events do not bubble: capture phase.
+    this.onComponentChanged = (e) => {
+      const name = e.detail && e.detail.name;
+      if (!MODEL_COMPONENTS.has(name)) return;
+      if (!pointsAtModel(e.target.components && e.target.components[name])) {
+        tracker.forget(e.target);
+      }
+    };
+    this.onComponentRemoved = (e) => {
+      if (MODEL_COMPONENTS.has(e.detail && e.detail.name)) {
+        tracker.forget(e.target);
+      }
+    };
+    sceneEl.addEventListener('componentchanged', this.onComponentChanged, true);
+    sceneEl.addEventListener('componentremoved', this.onComponentRemoved, true);
 
     this.unsubscribe = tracker.subscribe(() => {
       useStore.getState().setAssetLoadSummary(tracker.getSummary());
@@ -74,6 +103,16 @@ AFRAME.registerSystem('asset-load-status', {
     for (const name in this.handlers) {
       this.el.removeEventListener(name, this.handlers[name]);
     }
+    this.el.removeEventListener(
+      'componentchanged',
+      this.onComponentChanged,
+      true
+    );
+    this.el.removeEventListener(
+      'componentremoved',
+      this.onComponentRemoved,
+      true
+    );
     if (this.unsubscribe) this.unsubscribe();
     clearInterval(this.interval);
   }

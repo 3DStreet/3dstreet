@@ -1,6 +1,7 @@
 /* global AFRAME, THREE, ImageBitmap */
 
 import { releaseSharedSource } from './sharedTextureSources';
+import { waitForImage } from './lazy-textures.js';
 
 // Static batching feature flag.
 // The flag is used to conditionnaly register the gltf-model component override and batch models, so it can't be
@@ -449,14 +450,15 @@ function waitForModelLoaded(el) {
 // Lazy textures (#2009): a stencil's atlas may still be downloading when batchModels clones
 // its material for the BatchedMesh (cloneMaterialWithTextures). The clone is taken once, so it
 // would never receive the texture and the whole batch would render as solid quads for good.
-// Wait (bounded, like waitForModelLoaded) for a geometry-material member's map to land. A
-// texture that fails to load never fires materialtextureloaded; the lazy hook's scene-level
-// texture-error settles the wait instead.
+// Wait (bounded, like waitForModelLoaded) for a geometry-material member's map to land: the
+// entity's materialtextureloaded says the map is on the material. A texture that fails never
+// fires that; waitForImage on the <img> itself rejects right away for an image that already
+// failed (the lazy hook only emits the scene's texture-error once per URL, later materials
+// sharing it get the cached rejection silently) and on the error event otherwise.
 function waitForMaterialTexture(el) {
   const src = el.components?.material?.data?.src;
   if (!src || src.tagName !== 'IMG') return Promise.resolve();
   if (el.getObject3D('mesh')?.material?.map) return Promise.resolve();
-  const sceneEl = el.sceneEl;
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       console.warn(
@@ -467,19 +469,14 @@ function waitForMaterialTexture(el) {
     const done = () => {
       clearTimeout(timer);
       el.removeEventListener('materialtextureloaded', onLoaded);
-      sceneEl?.removeEventListener('texture-error', onError);
       resolve();
     };
     const onLoaded = (event) => {
       if (event.target !== el) return; // event from a child entity, ignore
       done();
     };
-    const onError = (event) => {
-      if (event.detail?.id !== src.id) return;
-      done();
-    };
     el.addEventListener('materialtextureloaded', onLoaded);
-    sceneEl?.addEventListener('texture-error', onError);
+    waitForImage(src).catch(done);
   });
 }
 

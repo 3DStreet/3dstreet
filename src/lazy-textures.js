@@ -129,6 +129,9 @@ export function installLazyTextureSource(
           return new SourceCtor(src);
         },
         (err) => {
+          // Do not poison the cache: the next material referencing this
+          // image gets a fresh attempt (and fresh tracker events).
+          delete sourceCache[hash];
           notify(sceneEl, 'texture-error', src);
           throw err;
         }
@@ -194,9 +197,6 @@ export function clearLazyPlaceholder(component) {
   const state = component._lazyPlaceholder;
   if (!state) return;
   component.el.removeEventListener('materialtextureloaded', state.onLoaded);
-  if (state.sceneEl) {
-    state.sceneEl.removeEventListener('texture-error', state.onError);
-  }
   component._lazyPlaceholder = null;
 }
 
@@ -222,20 +222,24 @@ export function applyLazyPlaceholder(
   if (!state || state.img !== img) {
     clearLazyPlaceholder(component);
     const el = component.el;
-    const sceneEl = el.sceneEl || null;
-    const onLoaded = (event) => {
+    const next = { img, onLoaded: null };
+    next.onLoaded = (event) => {
       if (event.target !== el) return;
+      // A-Frame emits this for every map; only the placeholder's own image
+      // landing ends the tint (a normal map arriving first must not).
+      if (!isImageReady(img)) return;
       clearLazyPlaceholder(component);
       restorePlaceholder(component);
     };
-    const onError = (event) => {
-      if (!event.detail || event.detail.id !== img.id) return;
-      // Keep the placeholder: a tint or nothing beats a bare white quad.
-      clearLazyPlaceholder(component);
-    };
-    el.addEventListener('materialtextureloaded', onLoaded);
-    if (sceneEl) sceneEl.addEventListener('texture-error', onError);
-    component._lazyPlaceholder = { img, onLoaded, onError, sceneEl };
+    el.addEventListener('materialtextureloaded', next.onLoaded);
+    component._lazyPlaceholder = next;
+    // A broken image never yields materialtextureloaded. Watch the image
+    // itself (not the scene's once-per-URL texture-error, which a later
+    // material sharing an already-failed image never sees) and keep the
+    // placeholder: a tint or nothing beats a bare white quad.
+    waitForImage(img).then(null, () => {
+      if (component._lazyPlaceholder === next) clearLazyPlaceholder(component);
+    });
   }
   paintPlaceholder(component, placeholder, ColorCtor);
   return true;

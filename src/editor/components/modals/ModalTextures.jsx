@@ -54,7 +54,14 @@ class ModalTextures extends React.Component {
     Events.on('assetsimagesload', this.onAssetsImagesLoad);
     // The asset gallery is built when the modal opens (componentDidUpdate),
     // not on mount: doing it here downloaded every <a-assets> texture a second
-    // time on page load, for a modal nobody had opened (#2009).
+    // time on page load, for a modal nobody had opened (#2009). Unless it
+    // mounts already open.
+    if (this.state.isOpen) {
+      if (!AFRAME.INSPECTOR.assetsLoader.hasLoaded) {
+        AFRAME.INSPECTOR.assetsLoader.load();
+      }
+      this.generateFromAssets();
+    }
   }
 
   componentWillUnmount() {

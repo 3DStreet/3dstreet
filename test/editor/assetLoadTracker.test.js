@@ -102,13 +102,21 @@ describe('AssetLoadTracker', () => {
     clock.advance(1);
     expect(tracker.tick()).toBe(true);
     expect(tracker.get('slow').status).toBe(LOAD_STATUS.TIMED_OUT);
+    // Timed out: not pending, not settled, and not done yet.
     expect(tracker.getSummary()).toMatchObject({
       timedOut: 1,
       pending: 0,
-      done: true
+      settled: 0,
+      progress: 0,
+      done: false
     });
     tracker.settle('slow', LOAD_STATUS.LOADED);
-    expect(tracker.getSummary()).toMatchObject({ timedOut: 0, loaded: 1 });
+    expect(tracker.getSummary()).toMatchObject({
+      timedOut: 0,
+      loaded: 1,
+      settled: 1,
+      done: true
+    });
   });
 
   it('forgets keys that are no longer alive on tick', () => {

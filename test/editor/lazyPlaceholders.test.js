@@ -18,6 +18,8 @@ function lazyImg(id, placeholder) {
   return img;
 }
 
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 function markReady(img) {
   Object.defineProperty(img, 'complete', { value: true, configurable: true });
   Object.defineProperty(img, 'naturalWidth', {
@@ -70,6 +72,7 @@ describe('applyLazyPlaceholder', () => {
     );
     near(comp.material.color, linear('#72726c').multiply(linear('#ffcc88')));
 
+    markReady(img);
     comp.el.dispatchEvent(new CustomEvent('materialtextureloaded'));
     near(comp.material.color, linear('#ffcc88'));
     expect(comp._lazyPlaceholder).toBeNull();
@@ -81,6 +84,7 @@ describe('applyLazyPlaceholder', () => {
     applyLazyPlaceholder(comp, THREE.Color);
     expect(comp.material.visible).toBe(false);
     near(comp.material.color, linear('white'));
+    markReady(img);
     comp.el.dispatchEvent(new CustomEvent('materialtextureloaded'));
     expect(comp.material.visible).toBe(true);
   });
@@ -119,6 +123,7 @@ describe('applyLazyPlaceholder', () => {
     applyLazyPlaceholder(comp, THREE.Color);
     expect(comp._lazyPlaceholder).toBe(state);
     near(comp.material.color, linear('#72726c').multiply(linear('#00ff00')));
+    markReady(img);
     comp.el.dispatchEvent(new CustomEvent('materialtextureloaded'));
     near(comp.material.color, linear('#00ff00'));
   });
@@ -132,24 +137,52 @@ describe('applyLazyPlaceholder', () => {
     applyLazyPlaceholder(comp, THREE.Color);
     expect(comp._lazyPlaceholder.img).toBe(b);
     near(comp.material.color, linear('#eeeeee'));
-    // The first image loading no longer matters; only b's event restores.
+    // The first image loading no longer matters; only b landing restores.
+    markReady(a);
+    comp.el.dispatchEvent(new CustomEvent('materialtextureloaded'));
+    near(comp.material.color, linear('#eeeeee'));
+    markReady(b);
     comp.el.dispatchEvent(new CustomEvent('materialtextureloaded'));
     near(comp.material.color, linear('white'));
   });
 
-  it('keeps the placeholder but drops listeners on texture-error', () => {
+  it('keeps the placeholder but drops listeners when the image fails', async () => {
     const img = lazyImg('broken', 'transparent');
+    img.setAttribute('src', img.getAttribute('data-src'));
     const comp = fakeComponent(img);
     applyLazyPlaceholder(comp, THREE.Color);
-    comp.el.sceneEl.dispatchEvent(
-      new CustomEvent('texture-error', { detail: { id: 'other' } })
-    );
     expect(comp._lazyPlaceholder).not.toBeNull();
-    comp.el.sceneEl.dispatchEvent(
-      new CustomEvent('texture-error', { detail: { id: 'broken' } })
-    );
+    img.dispatchEvent(new Event('error'));
+    await flush();
     expect(comp._lazyPlaceholder).toBeNull();
     expect(comp.material.visible).toBe(false);
+  });
+
+  it('drops listeners right away for an image that already failed', async () => {
+    // A later material sharing a broken image: complete, no natural size,
+    // and no further error event will ever fire.
+    const img = lazyImg('broken', '#333333');
+    img.setAttribute('src', img.getAttribute('data-src'));
+    Object.defineProperty(img, 'complete', { value: true, configurable: true });
+    const comp = fakeComponent(img);
+    expect(applyLazyPlaceholder(comp, THREE.Color)).toBe(true);
+    await flush();
+    expect(comp._lazyPlaceholder).toBeNull();
+    near(comp.material.color, linear('#333333'));
+  });
+
+  it('ignores materialtextureloaded for another map while its image is pending', () => {
+    const img = lazyImg('seamless-road', '#72726c');
+    const comp = fakeComponent(img);
+    applyLazyPlaceholder(comp, THREE.Color);
+    // e.g. a normal map landing first
+    comp.el.dispatchEvent(new CustomEvent('materialtextureloaded'));
+    expect(comp._lazyPlaceholder).not.toBeNull();
+    near(comp.material.color, linear('#72726c'));
+    markReady(img);
+    comp.el.dispatchEvent(new CustomEvent('materialtextureloaded'));
+    expect(comp._lazyPlaceholder).toBeNull();
+    near(comp.material.color, linear('white'));
   });
 
   it('clearLazyPlaceholder is safe without state', () => {
