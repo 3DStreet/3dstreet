@@ -66,7 +66,7 @@
     "defaultMessage": "Driveable Tuk-tuk"
   },
   "addLayer.card.flyableHelicopter.desc": {
-    "defaultMessage": "A flyable helicopter with arcade physics (GTA/Battlefield style), styled after a Coast Guard MH-65 Dolphin. Press Play, then W/S climb/descend, A/D yaw, arrow-key cyclic, Space to auto-hover."
+    "defaultMessage": "A flyable helicopter with arcade physics (GTA/Battlefield style), styled after a Coast Guard MH-65 Dolphin. Press Play, then W/S climb/descend, left/right arrows to turn, up/down arrows to tilt, A/D to strafe, Space to auto-hover."
   },
   "addLayer.card.flyableHelicopter.name": {
     "defaultMessage": "Flyable Helicopter"
@@ -1155,7 +1155,7 @@
     "defaultMessage": "Stability Assist"
   },
   "flyControls.tipKeys": {
-    "defaultMessage": "W/S climb/descend · A/D yaw · arrows tilt · Space auto-hover"
+    "defaultMessage": "W/S climb/descend · ←/→ turn · ↑/↓ tilt · A/D strafe · Space auto-hover"
   },
   "flyControls.tipMisc": {
     "defaultMessage": "R = reset · C = camera · tilt forward to build speed"
@@ -1182,10 +1182,10 @@
     "defaultMessage": "Collective"
   },
   "flyModeControls.gamepadHint": {
-    "defaultMessage": "Gamepad: RT/LT climb/descend · left stick tilt · LB/RB yaw · B hover · right stick camera/look · Y reset · X camera"
+    "defaultMessage": "Gamepad: RT/LT climb/descend · left stick tilt · right stick turn · LB/RB strafe · B hover · Y reset · X camera"
   },
   "flyModeControls.keyboardHint": {
-    "defaultMessage": "W/S climb/descend (release to hover) · A/D yaw · arrows tilt · Space hover hold · drag = orbit/look · R reset · C camera"
+    "defaultMessage": "W/S climb/descend (release to hover) · ←/→ turn · ↑/↓ tilt · A/D strafe · Space hover hold · drag = orbit/look · R reset · C camera"
   },
   "flyModeControls.liftPower": {
     "defaultMessage": "Rotor power"

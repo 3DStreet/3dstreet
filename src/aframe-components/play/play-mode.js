@@ -349,35 +349,42 @@ AFRAME.registerSystem('play-mode', {
     } else if (pmh && pmh.input) {
       // Helicopter mapping. RT/LT = collective lever (signed rate),
       // left stick = cyclic (stick up -> nose down -> fly forward),
-      // LB/RB = yaw pedals, B = hover assist. Right stick keeps its
-      // chase-cam orbit/zoom role from drive mode.
+      // right stick X = yaw pedals (twin-stick convention: playtesters
+      // expect the right stick to turn the nose, #2012), LB/RB =
+      // secondary strafe (roll) when the left stick is centered, B =
+      // hover assist. Right stick Y keeps chase zoom / FPV look pitch;
+      // chase-cam orbit is mouse-drag only while flying.
       const rt = pad.buttons[7] ? pad.buttons[7].value || 0 : 0;
       const lt = pad.buttons[6] ? pad.buttons[6].value || 0 : 0;
       const col = rt - lt;
       pmh.input.collectiveAxis = Math.abs(col) > 0.05 ? col : 0;
       const sx = pad.axes[0] || 0;
       const sy = pad.axes[1] || 0;
-      pmh.input.rollAxis = Math.abs(sx) > 0.1 ? sx : 0;
+      // 4 = LB (strafe left), 5 = RB (strafe right); rollAxis +1 =
+      // roll right. The left stick wins whenever it is deflected.
+      const lb = !!(pad.buttons[4] && pad.buttons[4].pressed);
+      const rb = !!(pad.buttons[5] && pad.buttons[5].pressed);
+      const bumperRoll = (rb ? 1 : 0) - (lb ? 1 : 0);
+      pmh.input.rollAxis = Math.abs(sx) > 0.1 ? sx : bumperRoll;
       // Stick up reads negative on the standard mapping; pitchAxis +1
       // means nose down (forward), so negate.
       pmh.input.pitchAxis = Math.abs(sy) > 0.1 ? -sy : 0;
-      // 4 = LB (yaw left), 5 = RB (yaw right); +1 = nose left.
-      const lb = !!(pad.buttons[4] && pad.buttons[4].pressed);
-      const rb = !!(pad.buttons[5] && pad.buttons[5].pressed);
-      pmh.input.yawAxis = (lb ? 1 : 0) - (rb ? 1 : 0);
-      pmh.input.padAssist = !!(pad.buttons[1] && pad.buttons[1].pressed);
+      // Right stick X (axis 2): +1 = stick right = nose right, and
+      // yawAxis +1 means nose LEFT, so negate. Applies in every camera
+      // mode — in FPV the nose turning IS the look-around.
       const rx = pad.axes[2] || 0;
+      pmh.input.yawAxis = Math.abs(rx) > 0.15 ? -rx : 0;
+      pmh.input.padAssist = !!(pad.buttons[1] && pad.buttons[1].pressed);
       const ry = pad.axes[3] || 0;
       if (pmh.data.cameraMode === 'chase') {
-        if (Math.abs(rx) > 0.15) pmh.chaseYaw += rx * 0.04;
         if (Math.abs(ry) > 0.15) {
           const factor = Math.exp(ry * 0.03);
           pmh.chaseZoom = THREE.MathUtils.clamp(pmh.chaseZoom * factor, 0.4, 4);
         }
       } else if (pmh.data.cameraMode === 'fpv') {
-        // FPV free-look: right stick pans the cockpit view (stick up =
-        // look up). Mirrors the mouse-drag look in play-mode-helicopter.
-        if (Math.abs(rx) > 0.15) pmh.fpvYaw += rx * 0.05;
+        // FPV free-look pitch: right stick Y tilts the cockpit view
+        // (stick up = look up). Mirrors the mouse-drag look in
+        // play-mode-helicopter; horizontal look is the aircraft's yaw.
         if (Math.abs(ry) > 0.15) {
           pmh.fpvPitch = THREE.MathUtils.clamp(
             pmh.fpvPitch - ry * 0.04,
