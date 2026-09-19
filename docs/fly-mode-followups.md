@@ -16,8 +16,8 @@ climb forever, the throttle-oscillation complaint) is gone.
 `K_CYCLIC_DRIVE` and lower `HORIZ_DRAG` so full stick cruises ~115 km/h at
 a sane attitude (supersedes section 6's proposals). Tiles penetration
 (section 2) root-caused and fixed: triangle-budget leak, LOD-swap collider
-gap, and no CCD — see the revised section 2. Sections 1, 3, 5, 7 and the
-GLB swap (4) remain open.
+gap, and no CCD — see the revised section 2. Sections 1, 3, 7 and the
+GLB swap (4) remain open; 5 (right stick = steer) shipped 2026-09-19.
 
 Code map: flight math `src/aframe-components/play/heli-flight-model.js`
 (pure, tests in `test/core/heli-flight-model.test.js`); eager bootstrap
@@ -116,7 +116,13 @@ cam leash 24 m / 8 m; FPV seat 3 m ahead of the origin; the layer
 panel's invisible click box is 2.2 x 3.6 x 12 m. `heli-sound` blade-pass
 now assumes 4 blades.
 
-## 5. Right stick isn't intuitive — expected steering
+## 5. Right stick isn't intuitive — expected steering — RESOLVED 2026-09-19 (#2012)
+
+Shipped the twin-stick remap: right stick X → `yawAxis` (nose turns with
+the stick, all camera modes), LB/RB → secondary strafe (roll, only when
+the left stick is centered), right stick Y keeps chase zoom / FPV look
+pitch, chase orbit is mouse-drag only. Keyboard got the matching swap:
+←/→ yaw, A/D strafe. Original notes below.
 
 Current mapping (`play-mode.js` ~349): right stick = chase-cam orbit/zoom
 (carried over from drive mode), yaw is on LB/RB bumpers. Kieran expects the
