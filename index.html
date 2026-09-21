@@ -24,6 +24,12 @@
       });
     })();
   </script>
+  <!-- Async scene init (#2009): by default A-Frame refuses to initialize
+       <a-scene> until window `load`, which on a cold cache waits for every
+       preloaded texture. With AFRAME_ASYNC the scene starts as soon as the DOM
+       is parsed (see the emitReady() call at the bottom of this file) and
+       assets stream in behind the live scene. Must be set before aframe loads. -->
+  <script>window.AFRAME_ASYNC = true;</script>
   <!-- aframe: this release ships super-three 0.184.0. The npm `three` version in
        package.json must match, so upgrade A-Frame and npm `three` together. -->
   <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
@@ -119,11 +125,19 @@
   document.addEventListener('DOMContentLoaded', function () {
     const scene = document.querySelector('a-scene');
     const splash = document.querySelector('.loader__wrapper');
+    // The splash gates the app shell only: it clears once the scene element
+    // has initialized and the editor UI mounts on it. Scene assets (GLBs,
+    // textures, splats, tiles) keep streaming after this and report through
+    // the non-blocking asset-load indicators in the editor (#2009).
     scene.addEventListener('loaded', function (e) {
       setTimeout(() => {
         splash.style.display = 'none';
       }, 1000);
     });
+    // Release A-Frame now that the DOM is parsed (pairs with AFRAME_ASYNC in
+    // <head>). The 3DStreet bundle registered its own DOMContentLoaded
+    // listener first, so <street-assets> is already injected at this point.
+    AFRAME.emitReady();
   });
 
 </script>

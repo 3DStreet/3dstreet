@@ -1,5 +1,6 @@
 /* global AFRAME, customElements, STREET */
 const catalog = require('./catalog.json');
+require('./lazy-textures.js'); // patches the material system for lazy <img data-src> textures
 
 // Expose catalog to STREET global for component access
 if (typeof STREET !== 'undefined') {
@@ -8,6 +9,14 @@ if (typeof STREET !== 'undefined') {
 
 const assetBasePath = 'https://assets.3dstreet.app/'; // use this path if none specified in index.html assets tag
 
+// Textures are injected as <img data-src="..."> (no `src`): they download on
+// first use by a material, not at page load. See src/lazy-textures.js (#2009).
+// Read their URL with getAssetImageSrc(), never `img.src`.
+// data-placeholder is what a surface shows while its texture is still
+// downloading: the texture's measured average color (multiplied by the
+// material's own color), or "transparent" for alpha-cutout atlases and
+// striping, which are hidden until the image arrives instead of rendering
+// as solid quads. Re-measure with a canvas average if an image changes.
 function buildAssetHTML(assetUrl, categories) {
   console.log('[street]', 'Using street assets from', assetUrl);
   const surfacesRoughness = 0.8;
@@ -20,7 +29,7 @@ function buildAssetHTML(assetUrl, categories) {
         `,
     fixtures: `
         <!-- fixtures -->
-        <img id="wayfinding-map" src="${assetUrl}objects/wayfinding.jpg" crossorigin="anonymous" />
+        <img id="wayfinding-map" data-src="${assetUrl}objects/wayfinding.jpg" data-placeholder="#5b5e5c" crossorigin="anonymous" />
         <a-asset-item id="brt-station-model" src="${assetUrl}sets/brt-station/gltf-exports/draco/brt-station.glb"></a-asset-item>
         <a-mixin shadow id="brt-station" gltf-model="#brt-station-model" ></a-mixin>
         <a-mixin shadow id="outdoor_dining" gltf-part="src: #streetProps; part: outdoor_dining"></a-mixin>
@@ -103,12 +112,12 @@ function buildAssetHTML(assetUrl, categories) {
       `,
     'segment-textures': `  
         <!-- segment mixins with textures -->
-        <img id="seamless-road" src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg" crossorigin="anonymous">
-        <img id="seamless-sandy-road" src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate-sandy.webp" crossorigin="anonymous">
-        <img id="seamless-bright-road" src="${assetUrl}materials/asphalthd_Base_Color.jpg" crossorigin="anonymous">
-        <img id="seamless-sidewalk" src="${assetUrl}materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg" crossorigin="anonymous">
-        <img id="hatched-base" src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" crossorigin="anonymous">
-        <img id="hatched-normal" src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" crossorigin="anonymous">
+        <img id="seamless-road" data-src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate.webp" data-placeholder="#72726c" crossorigin="anonymous">
+        <img id="seamless-sandy-road" data-src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate-sandy.webp" data-placeholder="#958b79" crossorigin="anonymous">
+        <img id="seamless-bright-road" data-src="${assetUrl}materials/asphalthd_Base_Color.jpg" data-placeholder="#9a9994" crossorigin="anonymous">
+        <img id="seamless-sidewalk" data-src="${assetUrl}materials/TexturesCom_FloorsRegular0301_1_seamless_S.webp" data-placeholder="#989c99" crossorigin="anonymous">
+        <img id="hatched-base" data-src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" data-placeholder="#767673" crossorigin="anonymous">
+        <img id="hatched-normal" data-src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" data-placeholder="#767673" crossorigin="anonymous">
         <a-mixin shadow="cast: false" id="drive-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="sandy-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 5;offset:0.55 0;src:#seamless-sandy-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="bright-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.6 50;offset:0.55 0;src:#seamless-bright-road;color:#dddddd"></a-mixin>
@@ -127,14 +136,14 @@ function buildAssetHTML(assetUrl, categories) {
       `,
     'lane-separator': `
         <!-- v2 lane separator markings -->
-        <img id="striping-solid-stripe" src="${assetUrl}materials/striping-solid-stripe-128-1024.webp" crossorigin="anonymous" />
-        <img id="striping-dashed-stripe" src="${assetUrl}materials/striping-dashed-stripe-128-1024.webp" crossorigin="anonymous" />
-        <img id="striping-solid-double" src="${assetUrl}materials/striping-solid-double-256-1024.webp" crossorigin="anonymous" />
-        <img id="striping-solid-dashed" src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" crossorigin="anonymous" />
-        <img id="striping-solid-dashed-mirror" src="${assetUrl}materials/striping-solid-dashed-mirror-256-1024.webp" crossorigin="anonymous" />
-        <img id="striping-crosswalk-zebra" src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" crossorigin="anonymous" />
+        <img id="striping-solid-stripe" data-src="${assetUrl}materials/striping-solid-stripe-128-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
+        <img id="striping-dashed-stripe" data-src="${assetUrl}materials/striping-dashed-stripe-128-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
+        <img id="striping-solid-double" data-src="${assetUrl}materials/striping-solid-double-256-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
+        <img id="striping-solid-dashed" data-src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
+        <img id="striping-solid-dashed-mirror" data-src="${assetUrl}materials/striping-solid-dashed-mirror-256-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
+        <img id="striping-crosswalk-zebra" data-src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
         <!-- legacy lane separator markings using atlas uv -->
-        <img id="markings-atlas" src="${assetUrl}materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />
+        <img id="markings-atlas" data-src="${assetUrl}materials/lane-markings-atlas_1024.png" data-placeholder="transparent" crossorigin="anonymous" />
         <a-mixin id="markings"></a-mixin>
         <a-mixin shadow="cast: false" id="solid-stripe" geometry="primitive: plane; width:0.2; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 8; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 5;"></a-mixin>
         <a-mixin shadow="cast: false" id="dashed-stripe" geometry="primitive: plane; width:0.2; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;"></a-mixin>
@@ -147,7 +156,7 @@ function buildAssetHTML(assetUrl, categories) {
       `,
     stencils: `  
         <!-- stencil markings -->
-        <img id="stencils-atlas" src="${assetUrl}materials/stencils-atlas_2048.png" crossorigin="anonymous" />
+        <img id="stencils-atlas" data-src="${assetUrl}materials/stencils-atlas_2048.png" data-placeholder="transparent" crossorigin="anonymous" />
         <a-mixin id="stencils"></a-mixin>
         <a-mixin shadow="cast: false" id="right" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
         <a-mixin shadow="cast: false" id="left" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 3" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" ></a-mixin>
@@ -202,16 +211,16 @@ function buildAssetHTML(assetUrl, categories) {
         `,
     sky: `
         <!-- sky -->
-        <img id="sky" src="${assetUrl}images/skies/2048-polyhaven-wasteland_clouds_puresky.jpeg" crossorigin="anonymous" />
-        <img id="sky-night" src="${assetUrl}images/AdobeStock_286725174-min.jpeg" crossorigin="anonymous" />
+        <img id="sky" data-src="${assetUrl}images/skies/2048-polyhaven-wasteland_clouds_puresky.jpeg" data-placeholder="#65808f" crossorigin="anonymous" />
+        <img id="sky-night" data-src="${assetUrl}images/AdobeStock_286725174-min.jpeg" data-placeholder="#212e36" crossorigin="anonymous" />
       `,
     grounds: `
         <!-- grounds -->
-        <img id="grass-texture" src="${assetUrl}materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">
-        <img id="compacted-gravel-texture" src="${assetUrl}materials/compacted-gravel_color.webp" crossorigin="anonymous">
-        <img id="parking-lot-texture" src="${assetUrl}materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
-        <img id="asphalt-texture" src="${assetUrl}materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg" crossorigin="anonymous">
-        <img id="sandy-asphalt-texture" src="${assetUrl}materials/sandy-asphalt-texture_color.webp" crossorigin="anonymous">
+        <img id="grass-texture" data-src="${assetUrl}materials/TexturesCom_Grass0052_1_seamless_S.webp" data-placeholder="#929729" crossorigin="anonymous">
+        <img id="compacted-gravel-texture" data-src="${assetUrl}materials/compacted-gravel_color.webp" data-placeholder="#c6a078" crossorigin="anonymous">
+        <img id="parking-lot-texture" data-src="${assetUrl}materials/TexturesCom_Roads0111_1_seamless_S.jpg" data-placeholder="#75726d" crossorigin="anonymous">
+        <img id="asphalt-texture" data-src="${assetUrl}materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.webp" data-placeholder="#6c6b6b" crossorigin="anonymous">
+        <img id="sandy-asphalt-texture" data-src="${assetUrl}materials/sandy-asphalt-texture_color.webp" data-placeholder="#8b8173" crossorigin="anonymous">
 
         <!-- legacy plane-based grounds for compatibility with 0.4.2 and earlier scenes, not used for new streets -->
         <a-mixin shadow id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>

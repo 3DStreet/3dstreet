@@ -1043,6 +1043,15 @@
   "entity.dragToReorder": {
     "defaultMessage": "Drag to reorder"
   },
+  "entity.load.error": {
+    "defaultMessage": "Didn't load. The file may be missing or invalid."
+  },
+  "entity.load.pending": {
+    "defaultMessage": "Loading 3D model…"
+  },
+  "entity.load.timedOut": {
+    "defaultMessage": "Still loading. Slow connection or large file."
+  },
   "entity.removeEntity": {
     "defaultMessage": "Remove entity"
   },

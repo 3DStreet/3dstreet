@@ -1,6 +1,7 @@
 /* global AFRAME, THREE, ImageBitmap */
 
 import { releaseSharedSource } from './sharedTextureSources';
+import { waitForImage } from './lazy-textures.js';
 
 // Static batching feature flag.
 // The flag is used to conditionnaly register the gltf-model component override and batch models, so it can't be
@@ -444,6 +445,45 @@ function waitForModelLoaded(el) {
     el.addEventListener('model-loaded', onEvent);
     el.addEventListener('model-error', onEvent);
   });
+}
+
+// Lazy textures (#2009): a stencil's atlas may still be downloading when batchModels clones
+// its material for the BatchedMesh (cloneMaterialWithTextures). The clone is taken once, so it
+// would never receive the texture and the whole batch would render as solid quads for good.
+// Wait (bounded, like waitForModelLoaded) for a geometry-material member's map to land: the
+// entity's materialtextureloaded says the map is on the material. A texture that fails never
+// fires that; waitForImage on the <img> itself rejects right away for an image that already
+// failed (the lazy hook only emits the scene's texture-error once per URL, later materials
+// sharing it get the cached rejection silently) and on the error event otherwise.
+function waitForMaterialTexture(el) {
+  const src = el.components?.material?.data?.src;
+  if (!src || src.tagName !== 'IMG') return Promise.resolve();
+  if (el.getObject3D('mesh')?.material?.map) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      console.warn(
+        `[batch-models] ${describeEl(el)} texture #${src.id} did not load in ${LOAD_TIMEOUT_MS}ms; proceeding without it`
+      );
+      done();
+    }, LOAD_TIMEOUT_MS);
+    const done = () => {
+      clearTimeout(timer);
+      el.removeEventListener('materialtextureloaded', onLoaded);
+      resolve();
+    };
+    const onLoaded = (event) => {
+      if (event.target !== el) return; // event from a child entity, ignore
+      done();
+    };
+    el.addEventListener('materialtextureloaded', onLoaded);
+    waitForImage(src).catch(done);
+  });
+}
+
+// Everything a member needs before it can be batched: its model (gltf providers) and its
+// material texture (geometry-material provider).
+function waitForMemberReady(el) {
+  return Promise.all([waitForModelLoaded(el), waitForMaterialTexture(el)]);
 }
 
 export async function waitForAllModelsLoaded() {
@@ -1387,7 +1427,7 @@ export async function batchModels(sceneEl) {
   // flip `component.deferLoad = false; component.update()` so each gets its own parse.
   const isDeferred = (el) => !!el.components?.['gltf-model']?.deferLoad;
   await Promise.all(
-    gltfEntities.filter((el) => !isDeferred(el)).map(waitForModelLoaded)
+    gltfEntities.filter((el) => !isDeferred(el)).map(waitForMemberReady)
   );
 
   // Decide which deferred members to release before batching. Two reasons to release:
@@ -1426,7 +1466,7 @@ export async function batchModels(sceneEl) {
     }
   }
   await Promise.all(
-    gltfEntities.filter((el) => !isDeferred(el)).map(waitForModelLoaded)
+    gltfEntities.filter((el) => !isDeferred(el)).map(waitForMemberReady)
   );
 
   // If the tab was backgrounded during load, the render loop was throttled and

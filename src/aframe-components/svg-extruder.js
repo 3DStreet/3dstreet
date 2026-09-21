@@ -1,4 +1,5 @@
 /* global AFRAME */
+import { startAssetImageLoad, waitForImage } from '../lazy-textures.js';
 
 // The vendored SVGLoader (~70 KiB source) loads on first use of this
 // component rather than riding in the core bundle — svg-extruder only runs
@@ -71,27 +72,31 @@ AFRAME.registerComponent('svg-extruder', {
     // topElement.setAttribute('material', `src:${data.src};roughness:1;repeat: 0.01 0.01`);
   },
   materialFromSrc: function (imgSrc, color) {
-    let texture = null;
-    // create material with texture from img element with id imgSrc
-    const textureImg = imgSrc !== '' ? document.querySelector(imgSrc) : null;
-    if (textureImg) {
-      // create texture from img element
-      texture = new THREE.Texture(textureImg);
-
-      texture.encoding = THREE.sRGBEncoding;
-
-      // set repeat property for texture
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
-      texture.repeat.set(0.01, 0.01);
-    }
-
     const material = new THREE.MeshStandardMaterial({
       color: color,
-      map: texture,
       roughness: 1
     });
-    if (material.map) material.map.needsUpdate = true;
+    // Texture from the <a-assets> img with id imgSrc. Asset images are lazy
+    // (`data-src`, #2009): start the download and attach the map once the
+    // image has decoded; wrapping an incomplete img in a Texture would never
+    // upload. Non-image sources (or none) leave the plain color.
+    const textureImg = imgSrc !== '' ? document.querySelector(imgSrc) : null;
+    if (!textureImg || textureImg.tagName !== 'IMG') return material;
+    startAssetImageLoad(textureImg);
+    waitForImage(textureImg).then(
+      () => {
+        const texture = new THREE.Texture(textureImg);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        // set repeat property for texture
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(0.01, 0.01);
+        texture.needsUpdate = true;
+        material.map = texture;
+        material.needsUpdate = true;
+      },
+      () => {} // keep the flat color
+    );
     return material;
   },
   mergedGeometryFromArray: function (geometryArray) {

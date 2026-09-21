@@ -338,8 +338,11 @@ class OrientedBoxHelper extends THREE.BoxHelper {
 
       // Batched entities have their original mesh tree stripped at batch time, so
       // setFromObject finds no geometry under them. batch-models stashes a per-entity-local
-      // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in.
-      const cachedBbox = this.object._batchLocalBbox;
+      // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in. A model
+      // still downloading has no mesh either; model-placeholder mirrors its ghost box's
+      // local bounds the same way (#2009).
+      const cachedBbox =
+        this.object._batchLocalBbox || this.object._placeholderBbox;
       if (cachedBbox) {
         this.object.updateWorldMatrix(false, false);
         auxLocalBbox.copy(cachedBbox).applyMatrix4(this.object.matrixWorld);
@@ -1024,6 +1027,13 @@ export function Viewport(inspector) {
         selectionBox.setFromObject(object);
         selectionBox.visible = true;
       } else if (object.el.hasAttribute('gltf-model')) {
+        // A model still downloading may already have its ghost box bounds
+        // (model-placeholder, #2009): size from those now, then again from
+        // the real mesh below once it lands.
+        if (object._placeholderBbox) {
+          selectionBox.setFromObject(object);
+          selectionBox.visible = true;
+        }
         const listener = (event) => {
           if (event.target !== object.el) return; // we got an event for a child, ignore
           object.el.removeEventListener('model-loaded', listener);
