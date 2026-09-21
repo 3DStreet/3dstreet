@@ -198,7 +198,7 @@ function pointAtArcLength(points, cumulative, s) {
 export function stretchForWindow(
   polylines,
   nearPoint,
-  { windowM = 200, maxDeviationM = 1.5, minLengthM = 20 } = {}
+  { windowM = 200, maxDeviationM = 1.5, minLengthM = 20, covered = null } = {}
 ) {
   const lines = (polylines || []).filter((line) => line && line.length >= 2);
   if (lines.length === 0) return null;
@@ -220,13 +220,125 @@ export function stretchForWindow(
   const total = cumulative[line.length - 1];
   const sStart = Math.max(0, s0 - windowM);
   const sEnd = Math.min(total, s0 + windowM);
-  const lengthM = sEnd - sStart;
-  if (lengthM < minLengthM) return null;
+  if (sEnd - sStart < minLengthM) return null;
 
-  const clipped = slicePolylineByArc(line, cumulative, sStart, sEnd);
+  let clipped = slicePolylineByArc(line, cumulative, sStart, sEnd);
+  if (covered && covered.length > 0) {
+    // Extending a partially generated way (#2006): only the stretch NOT
+    // already covered by earlier generates becomes a street.
+    clipped = clipStretchToUncovered(clipped, covered, { minLengthM });
+    if (!clipped) return null;
+  }
+  const clippedCumulative = cumulativeArcLengths(clipped);
+  const lengthM = clippedCumulative[clipped.length - 1];
+  if (lengthM < minLengthM) return null;
   const points = simplifyPolyline(clipped, maxDeviationM);
   if (points.length < 2) return null;
   return { points, lengthM: Math.round(lengthM * 100) / 100 };
+}
+
+/**
+ * The longest run of `points` NOT already covered by previously
+ * generated stretches of the same way (#2006): the old boolean per-way
+ * gate made the first ±window generate permanent, so a long way could
+ * never be completed — clicking the remainder now extends it.
+ *
+ * The line is resampled at `stepM` so coverage transitions resolve even
+ * between far-apart vertices; a sample is covered within `toleranceM` of
+ * any covered polyline (loose enough for tile-fragment quantization
+ * differences). Runs shorter than `minLengthM` are dropped, so the
+ * junction cut gaps between a generate's own pieces never re-trigger. A
+ * run boundary that borders coverage snaps to the nearest covered-stretch
+ * ENDPOINT within `snapM`, so the new street butts flush against the
+ * piece it extends.
+ *
+ * @param {Array<{x,z}>} points the window-clipped centerline.
+ * @param {Array<Array<{x,z}>>} covered previously generated centerlines.
+ * @returns {Array<{x,z}>|null} densified run (callers simplify), or null
+ *   when nothing generatable remains.
+ */
+export function clipStretchToUncovered(
+  points,
+  covered,
+  { toleranceM = 5, minLengthM = 20, stepM = 5, snapM = 15 } = {}
+) {
+  if (!points || points.length < 2) return null;
+  if (!covered || covered.length === 0) return points.slice();
+
+  const cumulative = cumulativeArcLengths(points);
+  const total = cumulative[points.length - 1];
+  const n = Math.max(1, Math.ceil(total / stepM));
+  const samples = [];
+  for (let i = 0; i <= n; i++) {
+    samples.push(pointAtArcLength(points, cumulative, (total * i) / n));
+  }
+  const tolSq = toleranceM * toleranceM;
+  const isCovered = (p) => {
+    for (const line of covered) {
+      for (let i = 0; i < line.length - 1; i++) {
+        if (pointToSegment(p, line[i], line[i + 1]).distSq <= tolSq) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  const flags = samples.map(isCovered);
+
+  let best = null;
+  let runStart = null;
+  for (let i = 0; i <= samples.length; i++) {
+    const cov = i === samples.length ? true : flags[i];
+    if (!cov && runStart === null) runStart = i;
+    if (cov && runStart !== null) {
+      const lenM = ((i - 1 - runStart) * total) / n;
+      if (!best || lenM > best.lenM) {
+        best = { from: runStart, to: i - 1, lenM };
+      }
+      runStart = null;
+    }
+  }
+  if (!best || best.lenM < minLengthM) return null;
+
+  const run = samples.slice(best.from, best.to + 1);
+  const endpoints = [];
+  for (const line of covered) {
+    if (line.length > 0) endpoints.push(line[0], line[line.length - 1]);
+  }
+  const snapSq = snapM * snapM;
+  const snapBoundary = (idx, bordersCoverage) => {
+    if (!bordersCoverage) return;
+    let bestEp = null;
+    let bestD = snapSq;
+    for (const ep of endpoints) {
+      const d = distSq(ep, run[idx]);
+      if (d <= bestD) {
+        bestD = d;
+        bestEp = ep;
+      }
+    }
+    if (bestEp) run[idx] = { x: bestEp.x, z: bestEp.z };
+  };
+  snapBoundary(0, best.from > 0);
+  snapBoundary(run.length - 1, best.to < samples.length - 1);
+  return run;
+}
+
+/** Compact "x,z;x,z" (dm precision) for the data-osm-stretch stamp. */
+export function encodeStretchPoints(points) {
+  return points.map((p) => `${p.x.toFixed(1)},${p.z.toFixed(1)}`).join(';');
+}
+
+/** Inverse of encodeStretchPoints; null for anything malformed. */
+export function decodeStretchPoints(str) {
+  if (!str) return null;
+  const pts = [];
+  for (const pair of String(str).split(';')) {
+    const [x, z] = pair.split(',').map(parseFloat);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+    pts.push({ x, z });
+  }
+  return pts.length >= 2 ? pts : null;
 }
 
 /** Cumulative arc lengths for [{x, z}, ...], starting at 0. */
@@ -291,9 +403,12 @@ export function segmentIntersection(a, b, c, d) {
  * @param {Array<{ class, polylines }>} otherWays candidate crossers
  *   (local-meter polylines; the caller excludes the way itself and
  *   grade-separated crossers like bridges).
- * @returns {Array<{ s, point, crossWidthM }>} sorted by arc length `s`
- *   along the stretch; `crossWidthM` is the widest crossing way's
- *   imported street width (drives the split inset).
+ * @returns {Array<{ s, point, crossWidthM, kind }>} sorted by arc length
+ *   `s` along the stretch; `crossWidthM` is the widest crossing way's
+ *   imported carriageway width (drives the split inset); `kind` is
+ *   'crossing' (the other way continues past the stretch) or 'terminal'
+ *   (it ends here — a T; callers cut the stretch only at crossings,
+ *   #2004 fix 2).
  */
 export function junctionsAlongStretch(
   stretchPoints,
@@ -304,15 +419,29 @@ export function junctionsAlongStretch(
   const cumulative = cumulativeArcLengths(stretchPoints);
   const total = cumulative[cumulative.length - 1];
   const found = [];
-  const record = (s, point, cls) => {
+  // How close a junction must sit to the other way's own polyline
+  // endpoint to read as that way TERMINATING here (a T into the stretch)
+  // rather than crossing through — generous, to absorb MVT quantization.
+  const TERMINAL_END_M = 6;
+  const terminalEndSq = TERMINAL_END_M * TERMINAL_END_M;
+  const record = (s, point, cls, kind) => {
     if (s < endClearanceM || s > total - endClearanceM) return;
-    found.push({ s, point, crossWidthM: importedWidthMeters(cls) });
+    found.push({
+      s,
+      point,
+      crossWidthM: importedCarriagewayMeters(cls),
+      kind
+    });
   };
 
   for (const other of otherWays || []) {
     for (const line of other.polylines || []) {
       if (!line || line.length < 2) continue;
-      // Proper crossings, segment pair by segment pair.
+      // Proper crossings, segment pair by segment pair. A side road's
+      // shared node lies exactly ON the stretch, so a T registers here
+      // too (touching counts) — classify by whether the other way
+      // continues past the junction or ends at it (#2004 fix 2: callers
+      // cut the stretch only at crossings).
       for (let i = 0; i < stretchPoints.length - 1; i++) {
         const a = stretchPoints[i];
         const b = stretchPoints[i + 1];
@@ -320,7 +449,16 @@ export function junctionsAlongStretch(
           const hit = segmentIntersection(a, b, line[j], line[j + 1]);
           if (hit) {
             const s = cumulative[i] + Math.sqrt(distSq(a, hit.point));
-            record(s, hit.point, other.class);
+            const endSq = Math.min(
+              distSq(hit.point, line[0]),
+              distSq(hit.point, line[line.length - 1])
+            );
+            record(
+              s,
+              hit.point,
+              other.class,
+              endSq <= terminalEndSq ? 'terminal' : 'crossing'
+            );
           }
         }
       }
@@ -342,7 +480,7 @@ export function junctionsAlongStretch(
               cumulative[i] + Math.sqrt(distSq(stretchPoints[i], hit.point));
           }
         }
-        if (bestPoint) record(bestS, bestPoint, other.class);
+        if (bestPoint) record(bestS, bestPoint, other.class, 'terminal');
       }
     }
   }
@@ -353,11 +491,59 @@ export function junctionsAlongStretch(
     const last = junctions[junctions.length - 1];
     if (last && j.s - last.s < minSeparationM) {
       last.crossWidthM = Math.max(last.crossWidthM, j.crossWidthM);
+      // Any crossing member makes the merged junction a crossing (an
+      // offset dual-carriageway crossing with a nearby T still cuts).
+      if (j.kind === 'crossing') last.kind = 'crossing';
     } else {
       junctions.push({ ...j });
     }
   }
   return junctions;
+}
+
+/**
+ * Trim a stretch's ends back to the carriageway EDGE of any way they
+ * terminate on — the companion to cutting only at crossings (#2004 fix
+ * 2): with terminal junctions no longer splitting the through street, a
+ * side street's shared node sits on the through road's centerline, and
+ * untrimmed it would poke halfway across the roadway. An end that
+ * touches the other way's own ENDPOINT is left alone (that's the same
+ * road continuing as another tile fragment, not a T), and a trim that
+ * would drop the stretch under `minLengthM` is skipped entirely.
+ *
+ * @param {Array<{x,z}>} points stretch centerline, local meters.
+ * @param {Array<{ class, polylines }>} otherWays candidate through roads
+ *   (local-meter polylines; the caller excludes the way itself).
+ * @returns {Array<{x,z}>} new points (the input, copied, when untrimmed).
+ */
+export function trimStretchEndsAtWays(
+  points,
+  otherWays,
+  { touchM = 3, endpointClearM = 8, padM = 2, minLengthM = 20 } = {}
+) {
+  if (!points || points.length < 2) return points ? points.slice() : [];
+  const cumulative = cumulativeArcLengths(points);
+  const total = cumulative[points.length - 1];
+
+  const trimFor = (endPoint) => {
+    const hit = nearestWay(otherWays || [], endPoint, touchM);
+    if (!hit) return 0;
+    const line = hit.way.polylines[hit.polylineIndex];
+    const clearSq = endpointClearM * endpointClearM;
+    if (
+      distSq(hit.point, line[0]) <= clearSq ||
+      distSq(hit.point, line[line.length - 1]) <= clearSq
+    ) {
+      return 0; // touching the way's own end: a continuation, not a T
+    }
+    return importedCarriagewayMeters(hit.way.class) / 2 + padM;
+  };
+
+  const sStart = trimFor(points[0]);
+  const sEnd = total - trimFor(points[points.length - 1]);
+  if (sStart === 0 && sEnd === total) return points.slice();
+  if (sEnd - sStart < minLengthM) return points.slice();
+  return slicePolylineByArc(points, cumulative, sStart, sEnd);
 }
 
 /**
@@ -382,7 +568,10 @@ export function junctionsAlongStretch(
 export function splitStretchAtJunctions(
   stretchPoints,
   junctions,
-  { insetPadM = 4, minLengthM = 20 } = {}
+  // insetPadM 4 → 2 (#2006): with carriageway-based crossing widths the
+  // curb returns need less slack, and every meter of inset is a meter of
+  // visible gap at the junction.
+  { insetPadM = 2, minLengthM = 20 } = {}
 ) {
   const cumulative = cumulativeArcLengths(stretchPoints);
   const total = cumulative[cumulative.length - 1];
@@ -494,17 +683,51 @@ const sidewalk = (width = 2) => ({
   generated: { pedestrians: [{ density: 'normal' }] }
 });
 
-const parking = (direction, width = 2.2) => ({
-  name: 'Parking',
-  type: 'parking-lane',
+// Street-parking orientation → lane width and parked-car placement.
+// Widths and per-car spacing are the strassenraumkarte lane-model values
+// (osmberlin/strassenraumkarte data/lua/lanes.lua + proc_cars, validated
+// against the Neukölln parking census); `facing` angles the parked clones
+// off the travel axis for diagonal/perpendicular bays.
+export const PARKING_BY_ORIENTATION = {
+  parallel: { width: 2.2, spacing: 5.2, facing: 0 },
+  diagonal: { width: 4.5, spacing: 3.1, facing: 55 },
+  perpendicular: { width: 5, spacing: 2.5, facing: 90 }
+};
+
+const parking = (direction, orientation = 'parallel', width = null) => {
+  const o =
+    PARKING_BY_ORIENTATION[orientation] ?? PARKING_BY_ORIENTATION.parallel;
+  const clone = {
+    mode: 'random',
+    modelsArray: 'sedan-rig',
+    spacing: o.spacing,
+    count: 4
+  };
+  if (o.facing) clone.facing = o.facing;
+  return {
+    name: 'Parking',
+    type: 'parking-lane',
+    width: width ?? o.width,
+    elevation: 0,
+    direction,
+    color: '#ffffff',
+    surface: 'concrete',
+    generated: { clones: [clone] }
+  };
+};
+
+// Physical separation between a protected cycle lane and traffic
+// (cycleway=track / cycleway:*:separation / :buffer): a narrow raised
+// divider between the bike lane and the drive lanes. (Named to avoid
+// shadowing Node's global Buffer; exported as `buffer`.)
+const bikeBuffer = (width = 0.6) => ({
+  name: 'Buffer',
+  type: 'divider',
   width,
-  elevation: 0,
-  direction,
+  elevation: 0.15,
+  direction: 'none',
   color: '#ffffff',
-  surface: 'concrete',
-  generated: {
-    clones: [{ mode: 'random', modelsArray: 'sedan-rig', spacing: 6, count: 4 }]
-  }
+  surface: 'concrete'
 });
 
 const median = (width = 1.2) => ({
@@ -550,6 +773,47 @@ const bus = (direction, width = 3.2) => ({
   }
 });
 
+// Rail corridor preset (#2004): ONE track per OSM way — parallel tracks
+// are parallel ways in OSM — on a raised ballast bed flanked by sloped
+// gravel berms. Dimensions from the reference scene ("OSM rail"
+// managed-street JSON): 12 ft bed at 1 ft elevation, 5 ft berms.
+const RAIL_BED_ELEVATION_M = 0.3048;
+
+const railBerm = (name, rising) => ({
+  name,
+  type: 'grass',
+  width: 1.524,
+  elevation: 0,
+  direction: 'none',
+  color: '#cfcfcf',
+  surface: 'gravel',
+  variant: 'custom',
+  side: 'right',
+  slope: true,
+  slopeStart: rising ? 0 : RAIL_BED_ELEVATION_M,
+  slopeEnd: rising ? RAIL_BED_ELEVATION_M : 0
+});
+
+const railTrack = ({
+  name = 'railway',
+  width = 3.6576,
+  elevation = RAIL_BED_ELEVATION_M,
+  surface = 'gravel'
+} = {}) => ({
+  name,
+  type: 'rail',
+  width,
+  elevation,
+  direction: 'none',
+  color: '#ffffff',
+  surface,
+  // 'custom' keeps this exact generated config — the rail TYPE preset's
+  // tram clones don't belong on a heavy-rail corridor.
+  variant: 'custom',
+  side: 'right',
+  generated: { rail: [{ gauge: 1435 }] }
+});
+
 const plaza = (width = 5, density = 'dense') => ({
   name: 'Pedestrian Way',
   type: 'sidewalk',
@@ -590,7 +854,9 @@ const NON_MOTOR_CLASSES = new Set([
   'pedestrian',
   'path',
   'busway',
-  'bus_guideway'
+  'bus_guideway',
+  'rail',
+  'transit'
 ]);
 
 const LANE_WIDTH_M = {
@@ -632,6 +898,29 @@ export function segmentsForWay({ class: cls, subclass, oneway }) {
   if (cls === 'busway' || cls === 'bus_guideway') {
     const lanes = oneWay ? [bus(flowDir)] : [bus('inbound'), bus('outbound')];
     return [sidewalk(), ...lanes, sidewalk()];
+  }
+  if (cls === 'rail') {
+    // Heavy rail: single ballasted track between berms (previously fell
+    // through to the residential fallback — a railway generated as a
+    // two-way road with parking).
+    return [
+      railBerm('left berm', true),
+      railTrack(),
+      railBerm('right berm', false)
+    ];
+  }
+  if (cls === 'transit') {
+    // Urban rail (tram / light_rail): flush track, no berms. Merging
+    // street-running track into the underlying road's cross-section is
+    // tracked in #2004 phase B.
+    return [
+      railTrack({
+        name: 'Tram track',
+        width: 3,
+        elevation: 0,
+        surface: 'concrete'
+      })
+    ];
   }
 
   // Drivable classes: lanes, then dress by class/subclass.
@@ -689,7 +978,15 @@ export function segmentsForWay({ class: cls, subclass, oneway }) {
 
 // Segment factories + lane tables, shared with the Overpass tag mapper
 // (osm-way-tags.js) so hydrated and rule-based streets look alike.
-export const segmentBuilders = { drive, sidewalk, parking, median, bike, bus };
+export const segmentBuilders = {
+  drive,
+  sidewalk,
+  parking,
+  median,
+  bike,
+  bus,
+  buffer: bikeBuffer
+};
 export const LANE_TABLES = { LANES_PER_DIRECTION, ONEWAY_LANES, LANE_WIDTH_M };
 export const DRIVABLE_CLASSES = new Set(Object.keys(LANE_WIDTH_M));
 
@@ -720,4 +1017,17 @@ export function streetJsonForClass(cls, lengthM, label) {
 /** Rough total width used for pre-import footprint hints. */
 export function importedWidthMeters(cls) {
   return streetJsonForClass(cls, 1).width || roadWidthMeters(cls);
+}
+
+/**
+ * Carriageway-only width (sidewalks excluded) of a crossing street —
+ * what a junction cut through it must clear. Full-street widths doubled
+ * every junction gap (#2006): a residential crossing is 14 m
+ * sidewalk-to-sidewalk but only 10.4 m of it is roadway.
+ */
+export function importedCarriagewayMeters(cls) {
+  const carriageway = streetJsonForClass(cls, 1)
+    .segments.filter((s) => s.type !== 'sidewalk')
+    .reduce((sum, s) => sum + s.width, 0);
+  return carriageway || roadWidthMeters(cls);
 }
