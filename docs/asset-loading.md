@@ -131,7 +131,10 @@ deferred duplicates, which never download on their own) until that entity's
 pending swaps the box (`componentchanged`); clearing the src drops it.
 
 All ghosts are instances of one `THREE.InstancedMesh` (one draw call however
-many clones are loading; a shader draws the frame on the box faces). The mesh
+many clones are loading; a shader draws the frame on the box faces). The
+scene renders with a logarithmic depth buffer, so that shader, like any
+custom `ShaderMaterial` here, must include three's `logdepthbuf` chunks or
+street surfaces occlude it at random. The mesh
 hangs off an autocreated `#model-placeholders-root` entity under the scene,
 hidden from the scene graph and never serialized, so the editor's raycaster
 still hits it: an intersection's `instanceId` maps back to the entity through

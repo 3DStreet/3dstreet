@@ -50,22 +50,31 @@ const INITIAL_CAPACITY = 256;
 
 // Fill and frame in one pass: each box face's UVs run 0..1, so the distance
 // to the nearest face edge in screen pixels (via fwidth) draws a constant
-// ~1.5 px frame whatever the box size or distance.
+// ~1.5 px frame whatever the box size or distance. The scene renders with a
+// logarithmic depth buffer (index.html), so the logdepthbuf chunks are
+// required: without them the box's depth is compared on a different scale
+// from every built-in material and street surfaces occlude it at random.
 const VERTEX_SHADER = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_vertex>
 varying vec2 vUv;
 void main() {
   vUv = uv;
   vec3 transformed = position;
   #include <project_vertex>
+  #include <logdepthbuf_vertex>
 }
 `;
 const FRAGMENT_SHADER = /* glsl */ `
+#include <common>
+#include <logdepthbuf_pars_fragment>
 uniform vec3 fillColor;
 uniform vec3 edgeColor;
 uniform float fillOpacity;
 uniform float edgeOpacity;
 varying vec2 vUv;
 void main() {
+  #include <logdepthbuf_fragment>
   vec2 fw = max(fwidth(vUv), vec2(1e-5));
   vec2 dist = min(vUv, 1.0 - vUv) / fw;
   float edge = 1.0 - smoothstep(0.6, 1.8, min(dist.x, dist.y));
