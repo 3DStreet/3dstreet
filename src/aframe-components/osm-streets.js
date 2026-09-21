@@ -10,15 +10,19 @@ import {
   streetJsonFromTags
 } from '../tested/osm-way-tags.js';
 import {
+  decodeStretchPoints,
+  encodeStretchPoints,
   junctionsAlongStretch,
   localPolylineFromLatLon,
   nearestWay,
   splitStretchAtJunctions,
   stretchForWindow,
-  streetJsonForWay
+  streetJsonForWay,
+  trimStretchEndsAtWays
 } from '../tested/osm-street-import.js';
 import {
   EXCLUDED_ROAD_CLASSES,
+  EXCLUDED_TRANSIT_SUBCLASSES,
   roadWidthMeters
 } from '../tested/osm-street-style.js';
 import { buildWayRibbons } from '../tested/osm-street-ribbon.js';
@@ -43,6 +47,12 @@ const DEFAULT_PICK_DISTANCE_M = 25;
 // streaming-camera distances, still reads as "on the ground"); the class
 // order steps stack on top of this (see osm-street-ribbon.js).
 const RIBBON_BASE_Y = 0.3;
+
+// Ribbons render semitransparent so the basemap's baked street-name
+// labels stay readable beneath them; multiplied with street-geo's layer
+// opacity in applyOpacity. Highlights stay at full vividness — the pick
+// target must be unambiguous.
+const RIBBON_OPACITY = 0.65;
 
 // Upgraded streets sit above the ribbons so their surfaces are not painted
 // over by the street tint beneath them.
@@ -105,9 +115,12 @@ const HYDRATE_BBOX_PAD_M = 20;
  *   cross or terminate on it, each piece becomes ONE path-following
  *   street bent along the way's centerline (its path shape stays
  *   vertex-editable; straight when the piece simplifies to a single
- *   chord), and a `managed-intersection` is minted at each junction
- *   where ≥2 generated street ends meet — later generates of crossing
- *   ways connect to it automatically (proximity snap radius).
+ *   chord), and a `managed-intersection` is minted at each junction cut
+ *   a generated street end borders — later generates of crossing
+ *   ways connect to it automatically (proximity snap radius). Each
+ *   street carries a `data-osm-stretch` coverage stamp, so clicking the
+ *   same way again extends it along the uncovered remainder instead of
+ *   refusing (#2006).
  *   Class-preset cross sections, `playable: true` so street-traffic
  *   animates them in play mode.
  *
@@ -199,18 +212,48 @@ AFRAME.registerComponent('osm-streets', {
     );
   },
 
-  upgradedWayIdSet: function () {
-    const ids = new Set();
-    this.el.sceneEl.querySelectorAll('[data-osm-way-id]').forEach((el) => {
-      ids.add(el.getAttribute('data-osm-way-id'));
-    });
-    return ids;
+  /**
+   * Centerlines already generated for this way, decoded from the
+   * `data-osm-stretch` stamps each generated street carries (they
+   * serialize with the scene, so coverage survives save/reload). A
+   * pre-stamp scene has streets but no stamps — callers treat that as
+   * fully covered (the old whole-way behavior) rather than duplicating.
+   */
+  coveredStretchesForWay: function (wayId) {
+    const lines = [];
+    this.el.sceneEl
+      .querySelectorAll(
+        `[data-osm-way-id="${CSS.escape(String(wayId))}"][data-osm-stretch]`
+      )
+      .forEach((el) => {
+        const pts = decodeStretchPoints(el.getAttribute('data-osm-stretch'));
+        if (pts) lines.push(pts);
+      });
+    return lines;
+  },
+
+  /**
+   * Fully covered HERE: streets of this way exist and the clicked window
+   * has no generatable remainder — coverage clipping leaves nothing (or
+   * the scene predates coverage stamps entirely).
+   */
+  isWayCoveredAt: function (way, localPoint) {
+    if (!this.isWayUpgraded(way.wayId)) return false;
+    if (this.coveredStretchesForWay(way.wayId).length === 0) return true;
+    return !this.stretchToUpgrade(way, localPoint);
   },
 
   applyOpacity: function () {
-    const opacity = this.data.opacity;
+    const opacity = this.data.opacity * RIBBON_OPACITY;
     this.material.opacity = opacity;
     this.material.transparent = opacity < 1;
+    // The ribbon builder overlaps geometry at the SAME height within one
+    // mesh (round caps over their own strip, same-class joints) — with
+    // blending those would double-darken. LessDepth (vs the LessEqual
+    // default) makes an equal-depth fragment fail the depth test, so
+    // only the first write per pixel blends; cross-class overlaps still
+    // resolve by their class-ordered height steps. depthWrite stays on.
+    this.material.depthFunc = THREE.LessDepth;
     this.material.needsUpdate = true;
   },
 
@@ -397,7 +440,12 @@ AFRAME.registerComponent('osm-streets', {
             { transportationLayer: this.data.transportationLayer }
           ).filter(
             (way) =>
-              !EXCLUDED_ROAD_CLASSES.has(way.class) && way.brunnel !== 'tunnel'
+              !EXCLUDED_ROAD_CLASSES.has(way.class) &&
+              way.brunnel !== 'tunnel' &&
+              !(
+                way.class === 'transit' &&
+                EXCLUDED_TRANSIT_SUBCLASSES.has(way.subclass)
+              )
           );
     cachePut(cacheKey, ways);
     return ways;
@@ -473,13 +521,12 @@ AFRAME.registerComponent('osm-streets', {
    * Adds `alreadyUpgraded` so UI can disable the action.
    */
   wayAtPoint: function (worldPoint, maxDistM = DEFAULT_PICK_DISTANCE_M) {
-    const hit = nearestWay(
-      this.allWays(),
-      this.toLocalGround(worldPoint),
-      maxDistM
-    );
+    const localPoint = this.toLocalGround(worldPoint);
+    const hit = nearestWay(this.allWays(), localPoint, maxDistM);
     if (!hit) return null;
-    hit.alreadyUpgraded = this.isWayUpgraded(hit.way.wayId);
+    // Coverage-aware (#2006): a partially generated way stays clickable —
+    // generating again extends it along the uncovered remainder.
+    hit.alreadyUpgraded = this.isWayCoveredAt(hit.way, localPoint);
     return hit;
   },
 
@@ -487,9 +534,11 @@ AFRAME.registerComponent('osm-streets', {
    * Upgrade the way nearest `worldPoint` into real managed streets —
    * the clicked stretch of its centerline, split at junctions with other
    * ways, one path-following street per piece (straight when a piece is
-   * a single chord) plus a managed intersection per junction where two
-   * generated ends meet; `playable: true` so street-traffic animates
-   * them in play mode. Idempotent per way id.
+   * a single chord) plus a managed intersection per junction cut a
+   * generated end borders; `playable: true` so street-traffic animates
+   * them in play mode. Idempotent per covered stretch: re-clicking a
+   * generated area creates nothing, clicking the ungenerated remainder
+   * of the same way extends it (coverage clipping + boundary snap).
    *
    * Only the stretch near the click upgrades: a single OSM way can run
    * for kilometers (an early bug upgraded one 8 km path into 419
@@ -606,13 +655,23 @@ AFRAME.registerComponent('osm-streets', {
    *   `loaded` events; the count is known synchronously.
    */
   upgradeWay: function (way, nearPoint = null, tags = null) {
-    if (this.isWayUpgraded(way.wayId)) {
+    if (
+      this.isWayUpgraded(way.wayId) &&
+      this.coveredStretchesForWay(way.wayId).length === 0
+    ) {
+      // Streets exist but carry no coverage stamps (a pre-stamp scene):
+      // without knowing WHERE they run, extending would double up.
       this.lastUpgradeOutcome = { reason: 'already-generated' };
       return 0;
     }
     const stretch = this.stretchToUpgrade(way, nearPoint);
     if (!stretch) {
-      this.lastUpgradeOutcome = { reason: 'too-short' };
+      // Coverage clipping ate the whole window vs. a genuinely short way.
+      this.lastUpgradeOutcome = {
+        reason: this.isWayUpgraded(way.wayId)
+          ? 'already-generated'
+          : 'too-short'
+      };
       return 0;
     }
     const { pieces, junctions } = this.planUpgrade(way, stretch);
@@ -634,11 +693,13 @@ AFRAME.registerComponent('osm-streets', {
       }
     }
     for (const junction of junctions) {
-      // Mint only where ≥2 generated street ends actually meet, and
-      // reuse an intersection an earlier generate already placed there
-      // (its snap radius picks the new streets up by itself).
+      // Mint wherever at least one generated street end borders the cut
+      // (#2006: with ≥2 a junction whose far side fell below minLength
+      // left a bare hole — a pad with one arm still fills it, and later
+      // generates of the crossing way reuse it via proximity + snap
+      // radius). Skip only cuts no kept piece touches.
       if (
-        junction.adjacentPieces >= 2 &&
+        junction.adjacentPieces >= 1 &&
         !this.intersectionNear(junction.point)
       ) {
         commands.push(this.intersectionCommand(junction));
@@ -660,24 +721,34 @@ AFRAME.registerComponent('osm-streets', {
   // stretchForWindow), or null.
   stretchToUpgrade: function (way, nearPoint = null) {
     return stretchForWindow(way.polylines, nearPoint, {
-      windowM: UPGRADE_WINDOW_M
+      windowM: UPGRADE_WINDOW_M,
+      covered: this.coveredStretchesForWay(way.wayId)
     });
   },
 
   /**
-   * Junction-split plan for a stretch: where other ways cross or
-   * terminate on it, split into inset pieces (one street each) and mark
-   * the junctions to mint intersections at. Other-way candidates come
-   * from every loaded tile (the same way appears clipped in several
-   * tiles — junction dedupe absorbs the doubles); bridges are
-   * grade-separated, not junctions.
+   * Junction-split plan for a stretch: where other ways CROSS it, split
+   * into inset pieces (one street each) and mark the junctions to mint
+   * intersections at; where other ways merely TERMINATE on it (T
+   * junctions) the stretch stays whole, and the stretch's own ends trim
+   * back to the carriageway edge of any road THEY terminate on.
+   * Other-way candidates come from every loaded tile (the same way
+   * appears clipped in several tiles — junction dedupe absorbs the
+   * doubles); bridges are grade-separated, not junctions.
    */
   planUpgrade: function (way, stretch) {
     const others = this.allWays().filter(
       (w) => w.wayId !== way.wayId && w.brunnel !== 'bridge'
     );
-    const junctions = junctionsAlongStretch(stretch.points, others);
-    return splitStretchAtJunctions(stretch.points, junctions);
+    // Ends terminating on another road pull back to its carriageway
+    // edge, and only CROSSING junctions cut the stretch — a side road
+    // ending on it (terminal) leaves the through street continuous
+    // (#2004 fix 2).
+    const points = trimStretchEndsAtWays(stretch.points, others);
+    const junctions = junctionsAlongStretch(points, others).filter(
+      (j) => j.kind === 'crossing'
+    );
+    return splitStretchAtJunctions(points, junctions);
   },
 
   // Is a managed intersection already within `withinM` of this local
@@ -703,9 +774,14 @@ AFRAME.registerComponent('osm-streets', {
   // The managed-street component config + the `loaded` stamp callback
   // shared by both creation shapes.
   streetDefinitionFor: function (way, stretch, tags) {
-    const hydrated = tags
-      ? streetJsonFromTags(tags, way, stretch.lengthM)
-      : null;
+    // Railways are rules-only: the Overpass query is way["highway"], so a
+    // click on a rail/transit way can only ever have matched a NEARBY
+    // road — whose tags would repaint the railway as that road.
+    const railClass = way.class === 'rail' || way.class === 'transit';
+    const hydrated =
+      tags && !railClass
+        ? streetJsonFromTags(tags, way, stretch.lengthM)
+        : null;
     const streetJson = hydrated
       ? hydrated.json
       : streetJsonForWay(way, stretch.lengthM, `OSM ${way.class || 'street'}`);
@@ -720,6 +796,12 @@ AFRAME.registerComponent('osm-streets', {
     };
     const stampWayId = (entity) => {
       entity.setAttribute('data-osm-way-id', way.wayId);
+      // Coverage stamp (#2006): the piece's centerline, so later clicks
+      // on the same way generate only the uncovered remainder.
+      entity.setAttribute(
+        'data-osm-stretch',
+        encodeStretchPoints(stretch.points)
+      );
       // Read by the sidebar's source card ("Generated from OpenStreetMap").
       entity.setAttribute('data-osm-class', way.class || 'street');
       entity.setAttribute('data-osm-source', hydrated ? 'overpass' : 'tiles');
@@ -891,9 +973,10 @@ AFRAME.registerComponent('osm-streets', {
     if (!focus) return [];
     const point = { x: focus.x, z: focus.z };
     const candidates = [];
-    const upgraded = this.upgradedWayIdSet();
     for (const way of this.allWays()) {
-      if (upgraded.has(way.wayId)) continue;
+      // Partially generated ways stay candidates (#2006) — upgradeWay
+      // extends them along the uncovered remainder and returns 0 when
+      // nothing is left, which doesn't count against the cap.
       const hit = nearestWay([way], point, radiusM);
       if (hit) candidates.push(hit);
     }

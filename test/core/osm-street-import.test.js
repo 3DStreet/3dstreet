@@ -9,8 +9,15 @@
  */
 
 import assert from 'assert';
+import { crossSectionFromTags } from '../../src/tested/osm-way-tags.js';
 import {
+  clipStretchToUncovered,
+  trimStretchEndsAtWays,
+  decodeStretchPoints,
   eastMPerDeg,
+  encodeStretchPoints,
+  importedCarriagewayMeters,
+  importedWidthMeters,
   latLonToLocal,
   localPolylineFromLatLon,
   nearestWay,
@@ -517,5 +524,289 @@ describe('streetJsonForWay', () => {
     const t = types(streetJsonForWay({ class: 'motorway' }, 60));
     assert.ok(!t.includes('sidewalk') && !t.includes('parking-lane'));
     assert.ok(t.includes('divider'));
+  });
+});
+
+describe('generation continuity (#2006)', () => {
+  // A straight 400 m north-south test line at x=0.
+  const line = (z0, z1, step = 10) => {
+    const pts = [];
+    const n = Math.round((z1 - z0) / step);
+    for (let i = 0; i <= n; i++) pts.push({ x: 0, z: z0 + i * step });
+    return pts;
+  };
+
+  describe('importedCarriagewayMeters', () => {
+    it('excludes sidewalks from the crossing width', () => {
+      const full = importedWidthMeters('minor');
+      const carriageway = importedCarriagewayMeters('minor');
+      assert.ok(carriageway < full);
+      // residential: 2 × 3 m drive + 2 × 2.2 m parking = 10.4 m.
+      assert.ok(Math.abs(carriageway - 10.4) < 1e-9);
+    });
+
+    it('junctionsAlongStretch reports carriageway widths', () => {
+      const stretch = line(0, 400);
+      const crosser = {
+        class: 'minor',
+        polylines: [
+          [
+            { x: -50, z: 200 },
+            { x: 50, z: 200 }
+          ]
+        ]
+      };
+      const [j] = junctionsAlongStretch(stretch, [crosser]);
+      assert.ok(Math.abs(j.crossWidthM - 10.4) < 1e-9);
+    });
+  });
+
+  it('default inset pad is 2 m', () => {
+    const stretch = line(0, 400);
+    const j = { s: 200, point: { x: 0, z: 200 }, crossWidthM: 10 };
+    const { pieces } = splitStretchAtJunctions(stretch, [j]);
+    // Inset = 10/2 + 2 = 7 m each side of s=200.
+    assert.strictEqual(pieces[0].points[pieces[0].points.length - 1].z, 193);
+    assert.strictEqual(pieces[1].points[0].z, 207);
+  });
+
+  describe('clipStretchToUncovered', () => {
+    it('passes through untouched with no coverage', () => {
+      const pts = line(0, 100);
+      assert.deepStrictEqual(clipStretchToUncovered(pts, []), pts);
+    });
+
+    it('returns null when fully covered', () => {
+      const pts = line(0, 100);
+      assert.strictEqual(clipStretchToUncovered(pts, [line(-20, 120)]), null);
+    });
+
+    it('keeps the longest uncovered run and snaps to the covered end', () => {
+      // Coverage over the first 150 m; window runs 0–400 m.
+      const covered = [line(0, 150)];
+      const run = clipStretchToUncovered(line(0, 400), covered);
+      assert.ok(run);
+      // Boundary snapped exactly onto the covered stretch's endpoint.
+      assert.deepStrictEqual(run[0], { x: 0, z: 150 });
+      const end = run[run.length - 1];
+      assert.ok(Math.abs(end.z - 400) < 1e-6);
+    });
+
+    it('drops a remainder below the minimum length', () => {
+      const covered = [line(0, 390)];
+      assert.strictEqual(
+        clipStretchToUncovered(line(0, 400), covered, { minLengthM: 20 }),
+        null
+      );
+    });
+
+    it('ignores junction-cut-sized gaps between covered pieces', () => {
+      // Two pieces with a 14 m cut gap between them: nothing to extend.
+      const covered = [line(0, 193, 10.16), line(207, 400, 10.16)];
+      assert.strictEqual(clipStretchToUncovered(line(0, 400), covered), null);
+    });
+  });
+
+  it('stretchForWindow clips against coverage and re-derives length', () => {
+    const polylines = [line(0, 400)];
+    const covered = [line(0, 200)];
+    const stretch = stretchForWindow(
+      polylines,
+      { x: 0, z: 200 },
+      {
+        windowM: 200,
+        covered
+      }
+    );
+    assert.ok(stretch);
+    assert.strictEqual(stretch.points[0].z, 200); // snapped to covered end
+    assert.ok(Math.abs(stretch.lengthM - 200) < 5);
+    // Fully covered window → null.
+    assert.strictEqual(
+      stretchForWindow(
+        polylines,
+        { x: 0, z: 100 },
+        {
+          windowM: 90,
+          covered: [line(0, 400)]
+        }
+      ),
+      null
+    );
+  });
+
+  it('encode/decode stretch points round-trips at dm precision', () => {
+    const pts = [
+      { x: 1.234, z: -5.678 },
+      { x: 100, z: 200.05 }
+    ];
+    const decoded = decodeStretchPoints(encodeStretchPoints(pts));
+    assert.deepStrictEqual(decoded, [
+      { x: 1.2, z: -5.7 },
+      { x: 100, z: 200.1 }
+    ]);
+    assert.strictEqual(decodeStretchPoints(''), null);
+    assert.strictEqual(decodeStretchPoints('1,2;bogus'), null);
+    assert.strictEqual(decodeStretchPoints('1,2'), null); // needs ≥2 points
+  });
+});
+
+describe('rail and transit presets (#2004)', () => {
+  it('generates heavy rail as a ballasted track between berms', () => {
+    const json = streetJsonForClass('rail', 100, 'OSM rail');
+    const t = json.segments.map((s) => s.type);
+    assert.deepStrictEqual(t, ['grass', 'rail', 'grass']);
+    // No residential fallback artifacts.
+    assert.ok(!t.includes('drive-lane') && !t.includes('parking-lane'));
+    const [left, track, right] = json.segments;
+    assert.strictEqual(track.width, 3.6576); // 12 ft bed
+    assert.strictEqual(track.elevation, 0.3048); // 1 ft ballast
+    assert.deepStrictEqual(track.generated.rail, [{ gauge: 1435 }]);
+    assert.strictEqual(track.variant, 'custom'); // no tram-clone preset
+    // Berms ramp up to the bed and back down.
+    assert.strictEqual(left.slopeStart, 0);
+    assert.strictEqual(left.slopeEnd, 0.3048);
+    assert.strictEqual(right.slopeStart, 0.3048);
+    assert.strictEqual(right.slopeEnd, 0);
+    assert.ok(Math.abs(json.width - 6.7056) < 1e-9);
+  });
+
+  it('generates transit as a single flush tram track', () => {
+    const json = streetJsonForClass('transit', 50);
+    assert.strictEqual(json.segments.length, 1);
+    const [track] = json.segments;
+    assert.strictEqual(track.type, 'rail');
+    assert.strictEqual(track.elevation, 0);
+    assert.strictEqual(track.surface, 'concrete');
+    assert.deepStrictEqual(track.generated.rail, [{ gauge: 1435 }]);
+  });
+
+  it('crossSectionFromTags routes rail through the preset, not tags', () => {
+    // A railway way has no highway tag; the tile class must win.
+    const { segments } = crossSectionFromTags({}, { class: 'rail' });
+    assert.deepStrictEqual(
+      segments.map((s) => s.type),
+      ['grass', 'rail', 'grass']
+    );
+  });
+});
+
+describe('T junctions: crossings cut, terminals do not (#2004 fix 2)', () => {
+  const stretch = [
+    { x: 0, z: 0 },
+    { x: 0, z: 400 }
+  ];
+  const mainWay = {
+    class: 'minor',
+    polylines: [stretch]
+  };
+
+  it('classifies a through crossing vs a terminating side road', () => {
+    const crosser = {
+      class: 'minor',
+      polylines: [
+        [
+          { x: -50, z: 200 },
+          { x: 50, z: 200 }
+        ]
+      ]
+    };
+    // Shared node exactly ON the stretch: registers as a segment
+    // intersection, but the way ends there — still a terminal.
+    const teeOnStretch = {
+      class: 'service',
+      polylines: [
+        [
+          { x: 0, z: 300 },
+          { x: 60, z: 300 }
+        ]
+      ]
+    };
+    const junctions = junctionsAlongStretch(stretch, [crosser, teeOnStretch]);
+    assert.strictEqual(junctions.length, 2);
+    assert.strictEqual(junctions[0].kind, 'crossing');
+    assert.strictEqual(junctions[1].kind, 'terminal');
+  });
+
+  it('a merged mixed junction stays a crossing', () => {
+    const crosser = {
+      class: 'minor',
+      polylines: [
+        [
+          { x: -50, z: 200 },
+          { x: 50, z: 200 }
+        ]
+      ]
+    };
+    const tee = {
+      class: 'service',
+      polylines: [
+        [
+          { x: 1, z: 205 },
+          { x: 60, z: 205 }
+        ]
+      ]
+    };
+    const junctions = junctionsAlongStretch(stretch, [tee, crosser]);
+    assert.strictEqual(junctions.length, 1);
+    assert.strictEqual(junctions[0].kind, 'crossing');
+  });
+
+  describe('trimStretchEndsAtWays', () => {
+    it('pulls an end back to the through carriageway edge', () => {
+      const side = [
+        { x: 0, z: 200 },
+        { x: 80, z: 200 }
+      ];
+      const trimmed = trimStretchEndsAtWays(side, [mainWay]);
+      // minor carriageway 10.4 m → trim 10.4/2 + 2 = 7.2 m.
+      assert.ok(Math.abs(trimmed[0].x - 7.2) < 1e-9);
+      assert.deepStrictEqual(trimmed[trimmed.length - 1], { x: 80, z: 200 });
+    });
+
+    it('leaves an end alone when it meets the other way END to end', () => {
+      const side = [
+        { x: 0, z: 200 },
+        { x: 80, z: 200 }
+      ];
+      const continuation = {
+        class: 'minor',
+        polylines: [
+          [
+            { x: 0, z: 200 },
+            { x: -80, z: 200 }
+          ]
+        ]
+      };
+      assert.deepStrictEqual(trimStretchEndsAtWays(side, [continuation]), side);
+    });
+
+    it('skips a trim that would drop the stretch under the minimum', () => {
+      const shortSide = [
+        { x: 0, z: 200 },
+        { x: 22, z: 200 }
+      ];
+      const wallEast = {
+        class: 'minor',
+        polylines: [
+          [
+            { x: 22, z: 0 },
+            { x: 22, z: 400 }
+          ]
+        ]
+      };
+      assert.deepStrictEqual(
+        trimStretchEndsAtWays(shortSide, [mainWay, wallEast]),
+        shortSide
+      );
+    });
+
+    it('is a no-op with no ways in touching range', () => {
+      const side = [
+        { x: 30, z: 200 },
+        { x: 80, z: 200 }
+      ];
+      assert.deepStrictEqual(trimStretchEndsAtWays(side, [mainWay]), side);
+    });
   });
 });

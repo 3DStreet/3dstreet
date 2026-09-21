@@ -43,8 +43,15 @@ From 2+ arms, `computeIntersectionGeometry`
   intersection, placed past the fillet tangents; crosswalks and traffic
   control are laid out on it.
 
-Special cases: fewer than 2 arms renders a placeholder asphalt pad
-(`placeholderRadius`) so the entity is visible/selectable; 3-way T, skewed,
+Special cases: with ZERO connected arms a placeholder asphalt disc
+(`placeholderRadius`) keeps the entity visible/selectable while streets
+are attached; with exactly ONE arm the pad renders as a PARTIAL
+intersection instead — that arm's roadway continued as an asphalt stub
+reaching half a roadway past the junction center, with the arm's
+crosswalk band at the mouth (`buildPartialPlaceholder`) — an "unfinished
+intersection" waiting for its cross street, common for OSM-generated
+sliver cuts (#2006). Full polygon geometry, snapping and `lastGeometry`
+(the plan exporter's input) still require ≥2 arms; 3-way T, skewed,
 and 5+ arm intersections all come out of the same edge-intersection walk.
 
 ## Schema
@@ -58,7 +65,7 @@ and 5+ arm intersections all come out of the same edge-intersection walk.
 | `trafficControl`      | `none`            | `none` / `stop` / `signal`, applied per arm                  |
 | `showSidewalkCorners` | `true`            | corner wedge visibility                                      |
 | `snapStreets`         | `true`            | keep connected streets snapped flush to the mouth            |
-| `placeholderRadius`   | `6`               | pad radius while <2 streets connect                          |
+| `placeholderRadius`   | `6`               | disc radius while NO street connects (1 arm → partial pad)   |
 
 ## Live updates & persistence
 
