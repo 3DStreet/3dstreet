@@ -312,6 +312,16 @@ describe('osm-streets upgrade (viewer creation path)', () => {
     expect(startX).toBeCloseTo(7.2, 1);
   });
 
+  it('renders ribbons semitransparent so basemap labels read through', async () => {
+    const comp = await osmStreetsComponent();
+    const THREE = window.AFRAME.THREE;
+    // 0.65 × the layer opacity (1 by default); LessDepth keeps the
+    // builder's same-height cap/joint overlaps from double-blending.
+    expect(comp.material.opacity).toBeCloseTo(0.65, 5);
+    expect(comp.material.transparent).toBe(true);
+    expect(comp.material.depthFunc).toBe(THREE.LessDepth);
+  });
+
   it('returns 0 for a stretch below the generate minimum', async () => {
     const comp = await osmStreetsComponent();
     comp.addTileWays('t-stub', [

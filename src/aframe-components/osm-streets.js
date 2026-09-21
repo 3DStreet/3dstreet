@@ -48,6 +48,12 @@ const DEFAULT_PICK_DISTANCE_M = 25;
 // order steps stack on top of this (see osm-street-ribbon.js).
 const RIBBON_BASE_Y = 0.3;
 
+// Ribbons render semitransparent so the basemap's baked street-name
+// labels stay readable beneath them; multiplied with street-geo's layer
+// opacity in applyOpacity. Highlights stay at full vividness — the pick
+// target must be unambiguous.
+const RIBBON_OPACITY = 0.65;
+
 // Upgraded streets sit above the ribbons so their surfaces are not painted
 // over by the street tint beneath them.
 const UPGRADED_STREET_Y = 0.5;
@@ -238,9 +244,16 @@ AFRAME.registerComponent('osm-streets', {
   },
 
   applyOpacity: function () {
-    const opacity = this.data.opacity;
+    const opacity = this.data.opacity * RIBBON_OPACITY;
     this.material.opacity = opacity;
     this.material.transparent = opacity < 1;
+    // The ribbon builder overlaps geometry at the SAME height within one
+    // mesh (round caps over their own strip, same-class joints) — with
+    // blending those would double-darken. LessDepth (vs the LessEqual
+    // default) makes an equal-depth fragment fail the depth test, so
+    // only the first write per pixel blends; cross-class overlaps still
+    // resolve by their class-ordered height steps. depthWrite stays on.
+    this.material.depthFunc = THREE.LessDepth;
     this.material.needsUpdate = true;
   },
 

@@ -20,7 +20,10 @@ every polyline end (so meeting/crossing ways read as joined), floated
 `RIBBON_BASE_Y` above the raster ground with a small class-ordered height
 step so the higher class wins where two ribbons overlap. Unlit
 `MeshBasicMaterial`, one draw call per tile, frustum-culled by bounding
-sphere. Per-class tint + stacking order live in
+sphere; semitransparent (0.65 × the street-geo layer opacity) so the
+basemap's baked street-name labels stay readable beneath the ribbons,
+with a LessDepth depth test so the builder's same-height cap/joint
+overlaps don't double-blend. Per-class tint + stacking order live in
 `src/tested/osm-street-style.js` (`ribbonStyleForClass`).
 
 Why not the library's `MVTOverlay` (the first cut, reverted before merge):
