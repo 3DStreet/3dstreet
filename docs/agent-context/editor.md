@@ -29,6 +29,14 @@ spans `src/aframe-components/`, `src/editor/components/elements/`, `src/editor/l
 `src/editor/lib/commands/`; [docs/shapes.md](../shapes.md) is the entry point and carries the file
 map, the vertex-editing commands and the sticky-style rule.
 
+**Custom shaders in the viewport:** the scene renders with a logarithmic
+depth buffer (`index.html`), so any raw `ShaderMaterial` drawn into it (the
+`InfiniteGridHelper` grid in `src/editor/lib/`, the ghost boxes in
+`src/aframe-components/model-placeholder.js`) must include three's `<common>`
+and `logdepthbuf` pars/vertex/fragment chunks. Without them its depth is on a
+different scale from every built-in material and it occludes, or is occluded
+by, real geometry at random (#1988, #2009).
+
 **Street gizmos:** always-on viewport handles for managed streets (endpoint
 nodes that rewrite position/rotation/length, segment width bars), additive to
 the standard TransformControls gizmo. Code in `src/editor/lib/gizmos/`; doc is
