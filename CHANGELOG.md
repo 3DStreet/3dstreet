@@ -1,8 +1,11 @@
-# Changelog
+# What's New in 3DStreet
 
-Human-facing notes for each 3DStreet release. See `docs/releasing.md` for how
-releases are versioned and cut. Versions use CalVer (`YYYY.M.patch`); the build
-SHA shown in-app (`+a1b2c3d`) identifies the exact deployed commit.
+Release notes for [3dstreet.app](https://3dstreet.app). Newest first. Numbers
+like #1974 link to the pull request on GitHub if you want the details.
+
+<!-- Maintainers: see docs/releasing.md for how releases are versioned and
+cut. Versions are CalVer (YYYY.M.patch); the build SHA shown in-app
+(+a1b2c3d) identifies the exact deployed commit. -->
 
 ## 2026.9.0
 
