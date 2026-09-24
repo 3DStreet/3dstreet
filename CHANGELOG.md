@@ -1,14 +1,15 @@
 # What's New in 3DStreet
 
-Release notes for [3dstreet.app](https://3dstreet.app). Newest first. Numbers
-like [#1974](https://github.com/3DStreet/3dstreet/pull/1974) link to the pull request on GitHub if you want the details.
-
 <!-- Maintainers: see docs/releasing.md for how releases are versioned and
 cut. Write PR numbers as full markdown links; GitHub does not autolink [#123](https://github.com/3DStreet/3dstreet/pull/123)
 in rendered .md files. Versions are CalVer (YYYY.M.patch); the build SHA shown in-app
 (+a1b2c3d) identifies the exact deployed commit. -->
 
 ## 2026.9.0
+
+Thanks to **Diarmid Mackenzie** (navigation overhaul, shapes) and **Vincent
+Fretin** (A-Frame 1.8 upgrade, runtime batching, asset Reoptimize, GLB export
+fixes, test tooling) for critical contributions to this release.
 
 Managed Street features below are still labeled "(Beta)" in the Add Layer
 panel. Streetmix URL imports continue to build legacy streets; use the
@@ -75,10 +76,6 @@ panel. Streetmix URL imports continue to build legacy streets; use the
   also available from the profile menu when signed out.
 - **Fixes.** Editor grid and ghost boxes write logarithmic depth so they no
   longer fight street surfaces ([#2016](https://github.com/3DStreet/3dstreet/pull/2016)); GLB export reliability.
-
-Thanks to **Diarmid Mackenzie** (navigation overhaul, shapes) and **Vincent
-Fretin** (A-Frame 1.8 upgrade, runtime batching, asset Reoptimize, GLB export
-fixes, test tooling) for critical contributions to this release.
 
 ## 2026.8.0
 
