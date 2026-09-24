@@ -1,9 +1,9 @@
 # What's New in 3DStreet
 
 <!-- Maintainers: see docs/releasing.md for how releases are versioned and
-cut. Write PR numbers as full markdown links; GitHub does not autolink [#123](https://github.com/3DStreet/3dstreet/pull/123)
-in rendered .md files. Versions are CalVer (YYYY.M.patch); the build SHA shown in-app
-(+a1b2c3d) identifies the exact deployed commit. -->
+cut. Write PR numbers as full markdown links; GitHub does not autolink bare
+PR numbers in rendered .md files. Versions are CalVer (YYYY.M.patch); the
+build SHA shown in-app (+a1b2c3d) identifies the exact deployed commit. -->
 
 ## 2026.9.0
 
