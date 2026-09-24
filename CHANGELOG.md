@@ -1,5 +1,7 @@
 # What's New in 3DStreet
 
+Release notes for [3dstreet.app](https://3dstreet.app).
+
 <!-- Maintainers: see docs/releasing.md for how releases are versioned and
 cut. Write PR numbers as full markdown links; GitHub does not autolink bare
 PR numbers in rendered .md files. Versions are CalVer (YYYY.M.patch); the
