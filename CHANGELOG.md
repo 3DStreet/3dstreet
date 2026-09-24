@@ -72,6 +72,10 @@ panel. Streetmix URL imports continue to build legacy streets; use the
 - **Fixes.** Editor grid and ghost boxes write logarithmic depth so they no
   longer fight street surfaces (#2016); GLB export reliability.
 
+Thanks to **Diarmid Mackenzie** (navigation overhaul, shapes) and **Vincent
+Fretin** (A-Frame 1.8 upgrade, runtime batching, asset Reoptimize, GLB export
+fixes, test tooling) for critical contributions to this release.
+
 ## 2026.8.0
 
 - **Play mode & driving sim.** Unified Viewer with a Start/Stop play lifecycle
