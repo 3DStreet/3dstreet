@@ -11,19 +11,21 @@ build SHA shown in-app (+a1b2c3d) identifies the exact deployed commit. -->
 
 Thanks to **Diarmid Mackenzie** (navigation overhaul, shapes) and **Vincent
 Fretin** (A-Frame 1.8 upgrade, runtime batching, asset Reoptimize, GLB export
-fixes, test tooling) for critical contributions to this release.
+fixes, test tooling) for critical contributions to this release. Thanks to **Hannah Norris** and **Dean Wysocki** for feedback and testing.
 
 Managed Street features below are still labeled "(Beta)" in the Add Layer
 panel. Streetmix URL imports continue to build legacy streets; use the
 "(Beta) Managed Street from Streetmix URL" card to get the new editing tools.
 
 - **Streets from OpenStreetMap.** In 2.5D map mode, click any street on the
-  basemap and press "Generate Street": one managed street bent along the
+  basemap and press "Generate Street": one managed street along the
   real centerline, split at junctions with managed intersections minted where
-  generated streets meet, all as a single undo step ([#1974](https://github.com/3DStreet/3dstreet/pull/1974)). Cross-sections
+  generated streets meet, with a single undo step ([#1974](https://github.com/3DStreet/3dstreet/pull/1974)). Cross-sections
   come from OSM tags where present (lanes, oneway, sidewalks, parking,
   cycleways, bus lanes, surface), with rail and transit presets ([#2004](https://github.com/3DStreet/3dstreet/pull/2004),
   [#2006](https://github.com/3DStreet/3dstreet/pull/2006)). The chip explains when a stretch can't be generated.
+
+  This feature is genuinely useful but is in active development and expect more changes soon. You can generate a few streets in 2.5D mode and switch back to 3D mode to show the streets in real life context.
 - **Curved streets (prototype).** A managed street can follow a drawn shape:
   smooth, arc, or linear curve styles, live re-layout when a vertex moves,
   shift-drag a vertex to ramp the street up or down. Surfaces, striping,
