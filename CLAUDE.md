@@ -196,6 +196,8 @@ to shared components, editor entry points and Firebase functions.
 
 **Deploy:** `npm run deploy` or `npm run deploy:staging`
 
+**Releases:** CalVer (`YYYY.M.patch`) tags plus a `CHANGELOG.md` entry; the deployed build stamp (`+sha`) advances on its own. `CHANGELOG.md` is user-facing (newsletters link to it), so write entries for users, not developers. Process: [docs/releasing.md](docs/releasing.md).
+
 ## Key Patterns
 
 **A-Frame ↔ React:**
