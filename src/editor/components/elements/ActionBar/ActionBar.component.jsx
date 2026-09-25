@@ -18,6 +18,7 @@ import {
 } from '@shared/icons';
 import { useShapeDrawTool } from './ShapeDrawAction.jsx';
 import { isManagedStreetSegment } from '../../../lib/entity';
+import { isDetachableClone } from '../../../lib/detachClone.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 
 const ActionBar = ({ selectedEntity }) => {
@@ -39,8 +40,11 @@ const ActionBar = ({ selectedEntity }) => {
   // signal the CURRENT SELECTION can't be transformed. A managed street's
   // segments dim the same way (#1806): street-align owns segment transforms,
   // so the gizmo layer gives them width bars only, no move/rotate gizmo.
+  // A detachable generated clone (#2011) is the exception: it has no
+  // transform of its own, but dragging it detaches it, so the tools apply.
   const selectionNotTransformable =
-    !!selectedEntity?.hasAttribute('data-no-transform') ||
+    (!!selectedEntity?.hasAttribute('data-no-transform') &&
+      !isDetachableClone(selectedEntity)) ||
     isManagedStreetSegment(selectedEntity);
 
   // The shape draw tool owns its own canvas listeners + preview via this hook,

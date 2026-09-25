@@ -85,3 +85,103 @@ describe('street-generated-clones', () => {
     expect(comp.createdEntities.some((e) => before.includes(e))).toBe(false);
   });
 });
+
+// Per-object detach (#2011): a slot listed in `skip` is left empty, the
+// remaining clones keep their slot indexes and poses, and (random mode) the
+// seeded model picks after the hole are unchanged.
+// Generators set position/rotation on freshly created a-entities; those
+// attribute writes are buffered until the entity initializes, so wait for
+// every clone to load before reading its pose back.
+const whenLoaded = (entities) =>
+  Promise.all(
+    entities.map((e) =>
+      e.hasLoaded
+        ? null
+        : new Promise((resolve) =>
+            e.addEventListener('loaded', resolve, { once: true })
+          )
+    )
+  );
+
+describe('street-generated-clones skip slots', () => {
+  const slotIndexes = (comp) =>
+    comp.createdEntities.map((e) => Number(e.getAttribute('data-clone-index')));
+
+  it('stamps every clone with its slot index', async () => {
+    const el = await makeSegment();
+    const comp = el.components['street-generated-clones'];
+    expect(slotIndexes(comp)).toEqual([0, 1, 2, 3, 4]);
+    expect(
+      comp.createdEntities.every(
+        (e) =>
+          e.getAttribute('data-parent-component') === 'street-generated-clones'
+      )
+    ).toBe(true);
+  });
+
+  it('leaves a skipped slot empty and keeps the other slots in place', async () => {
+    const el = await makeSegment();
+    const comp = el.components['street-generated-clones'];
+    await whenLoaded(comp.createdEntities);
+    const before = new Map(
+      comp.createdEntities.map((e) => [
+        Number(e.getAttribute('data-clone-index')),
+        e.getAttribute('position').z
+      ])
+    );
+    // fixed mode: z = length/2 - (slot + cycleOffset) * spacing
+    expect([...before.values()]).toEqual([40, 20, 0, -20, -40]);
+
+    el.setAttribute('street-generated-clones', 'skip', [1, 3]);
+
+    expect(comp.createdEntities).toHaveLength(3);
+    expect(slotIndexes(comp)).toEqual([0, 2, 4]);
+    await whenLoaded(comp.createdEntities);
+    for (const clone of comp.createdEntities) {
+      const slot = Number(clone.getAttribute('data-clone-index'));
+      expect(clone.getAttribute('position').z).toBe(before.get(slot));
+    }
+    // The generator reads the attribute form too ("1, 3" → strings).
+    el.setAttribute('street-generated-clones', 'skip', '4');
+    expect(slotIndexes(comp)).toEqual([0, 1, 2, 3]);
+  });
+
+  it('restores the slot when it is removed from skip', async () => {
+    const el = await makeSegment();
+    const comp = el.components['street-generated-clones'];
+    el.setAttribute('street-generated-clones', 'skip', [2]);
+    expect(slotIndexes(comp)).toEqual([0, 1, 3, 4]);
+    el.setAttribute('street-generated-clones', 'skip', []);
+    expect(slotIndexes(comp)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('keeps seeded model picks stable after the hole in random mode', async () => {
+    const el = await elFactory();
+    el.setAttribute(
+      'street-segment',
+      'type: drive-lane; width: 3; length: 100; surface: asphalt; color: #ffffff'
+    );
+    el.setAttribute(
+      'street-generated-clones',
+      'mode: random; modelsArray: box, sphere, cylinder; spacing: 10; count: 6; seed: 42'
+    );
+    const comp = el.components['street-generated-clones'];
+    const layout = (c) =>
+      c.createdEntities.map((e) => [
+        Number(e.getAttribute('data-clone-index')),
+        e.getAttribute('mixin'),
+        e.getAttribute('position').z
+      ]);
+    await whenLoaded(comp.createdEntities);
+    const before = layout(comp);
+    expect(before).toHaveLength(6);
+    expect(before.some(([, , z]) => z !== 0)).toBe(true);
+
+    el.setAttribute('street-generated-clones', 'skip', [1]);
+
+    await whenLoaded(comp.createdEntities);
+    const after = layout(comp);
+    expect(after).toHaveLength(5);
+    expect(after).toEqual(before.filter(([slot]) => slot !== 1));
+  });
+});
