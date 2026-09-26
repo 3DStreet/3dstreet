@@ -141,6 +141,7 @@
   "buildArea.palette": "Palette ({count} sélectionnés)",
   "buildArea.paletteFilter": "Filtrer les objets…",
   "buildArea.placedCount": "{count, plural, one {# objet} other {# objets}}",
+  "buildArea.placedCountOfCap": "{count} sur {cap} placés",
   "buildArea.redo": "Rétablir",
   "buildArea.redoTitle": "Rétablir (Maj+Ctrl/Cmd+Z)",
   "buildArea.removeConfirm": "Retirer la zone de construction de cette forme ? Les visiteurs ne pourront plus y placer d’objets.",

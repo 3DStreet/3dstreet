@@ -425,6 +425,9 @@
   "buildArea.placedCount": {
     "defaultMessage": "{count,plural,one{# object} other{# objects}}"
   },
+  "buildArea.placedCountOfCap": {
+    "defaultMessage": "{count} of {cap} placed"
+  },
   "buildArea.redo": {
     "defaultMessage": "Redo"
   },

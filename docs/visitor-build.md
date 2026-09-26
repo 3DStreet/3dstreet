@@ -39,9 +39,13 @@ Visitor Build is a play-mode capability and follows every rule there.
 **Visitor (viewer, while playing):**
 
 - The **palette dock** (bottom centre) shows the union of every buildable
-  area's palette. Drag a card onto a build area to place it there, or tap
-  the card to drop it at the centre of the view (falls back to the first
-  area's centroid).
+  area's palette, wrapped into rows (it scrolls vertically past two rows,
+  never sideways, which testers missed). Drag a card onto a build area to
+  place it there, or tap the card to drop it near the centre of the view
+  (falls back to the first area's centroid). Repeated taps fan out to the
+  nearest free spot inside the area, spaced by each model's precomputed
+  footprint (`src/model-bounds.json`), instead of stacking invisibly on one
+  point. The counter shows placed objects against the areas' total cap.
 - Click an object you placed to select it: the standard gizmo appears,
   translate is XZ-only (objects sit on the shape), rotate is yaw-only. An
   object dragged outside its area snaps back. Only visitor-placed objects

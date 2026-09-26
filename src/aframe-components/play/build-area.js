@@ -30,8 +30,12 @@ import {
   parsePalette,
   canPlace,
   pointInRingXZ,
-  mergePalettes
+  mergePalettes,
+  footprintRadius,
+  findFreeSpotXZ
 } from './build-area-rules.js';
+import { boundsForEntity } from '../model-placeholder.js';
+import { lookupModelBounds } from '../../model-bounds.js';
 
 export const VISITOR_ADDED_ATTR = 'data-viewer-added';
 
@@ -386,6 +390,17 @@ AFRAME.registerSystem('build-area', {
       this._notice('full');
       return null;
     }
+    // A tap has no drop point: every tap of a card would land on the same
+    // spot and stack invisibly (user testing). Fan out to the nearest spot
+    // inside the ring that no placed object covers, using the models'
+    // precomputed footprints (src/model-bounds.json).
+    if (clientX === undefined) {
+      const free = this._freeSpotNear(area, mixinId, point);
+      if (free) {
+        point.x = free.x;
+        point.z = free.z;
+      }
+    }
     const local = area.el.object3D.worldToLocal(point.clone());
     const name =
       (Array.isArray(STREET?.catalog) &&
@@ -412,6 +427,31 @@ AFRAME.registerSystem('build-area', {
     window.AFRAME?.INSPECTOR?.execute('entitycreate', definition);
     // Resumed after the create command's pause by the session observer.
     return area.visitorObjects().find((el) => !before.has(el)) || null;
+  },
+
+  // Nearest free world {x, z} to `point` in `area` for a new `mixinId`
+  // object, or null (area crowded: the caller keeps the original point).
+  _freeSpotNear(area, mixinId, point) {
+    const scale = new THREE.Vector3();
+    const pos = new THREE.Vector3();
+    const occupied = area.visitorObjects().map((el) => {
+      el.object3D.getWorldPosition(pos);
+      el.object3D.getWorldScale(scale);
+      return {
+        x: pos.x,
+        z: pos.z,
+        r: footprintRadius(boundsForEntity(el), Math.max(scale.x, scale.z))
+      };
+    });
+    const mixinModel = document
+      .getElementById(mixinId)
+      ?.getAttribute('gltf-model');
+    area.el.object3D.getWorldScale(scale);
+    const radius = footprintRadius(
+      mixinModel ? lookupModelBounds(mixinModel) : null,
+      Math.max(scale.x, scale.z)
+    );
+    return findFreeSpotXZ(point, area.worldRing(), occupied, radius);
   },
 
   /**

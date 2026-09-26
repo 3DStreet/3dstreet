@@ -897,7 +897,8 @@
     "entity.badge.buildArea": "Build area: visitors can place objects on this shape while playing. Click to fly the camera to it.",
     "viewer.openInEditor": "Open in 3DStreet",
     "viewer.openInEditorTitle": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it",
-    "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again."
+    "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again.",
+    "buildArea.placedCountOfCap": "{count} of {cap} placed"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1797,7 +1798,8 @@
     "entity.badge.buildArea": "Build area: visitors can place objects on this shape while playing. Click to fly the camera to it.",
     "viewer.openInEditor": "Open in 3DStreet",
     "viewer.openInEditorTitle": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it",
-    "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again."
+    "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again.",
+    "buildArea.placedCountOfCap": "{count} of {cap} placed"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2697,6 +2699,7 @@
     "entity.badge.buildArea": "Build area: visitors can place objects on this shape while playing. Click to fly the camera to it.",
     "viewer.openInEditor": "Open in 3DStreet",
     "viewer.openInEditorTitle": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it",
-    "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again."
+    "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again.",
+    "buildArea.placedCountOfCap": "{count} of {cap} placed"
   }
 }

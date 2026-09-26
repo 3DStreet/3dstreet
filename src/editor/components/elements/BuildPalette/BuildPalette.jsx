@@ -224,6 +224,13 @@ export const BuildPalette = () => {
 
   if (!active) return null;
 
+  // Total cap across buildable areas (0 when any area is unlimited), so the
+  // visitor sees how many objects remain before the "full" refusal.
+  const areas = getSystem()?.getBuildableAreas() || [];
+  const placedCap = areas.some((a) => !(a.data.maxObjects > 0))
+    ? 0
+    : areas.reduce((sum, a) => sum + a.data.maxObjects, 0);
+
   const canRotate =
     !!selected &&
     selected.parentEl?.components?.['build-area']?.data?.allowRotate !== false;
@@ -238,11 +245,19 @@ export const BuildPalette = () => {
           />
         </span>
         <span className={styles.counter}>
-          <FormattedMessage
-            id="buildArea.placedCount"
-            defaultMessage="{count, plural, one {# object} other {# objects}}"
-            values={{ count: placedCount }}
-          />
+          {placedCap > 0 ? (
+            <FormattedMessage
+              id="buildArea.placedCountOfCap"
+              defaultMessage="{count} of {cap} placed"
+              values={{ count: placedCount, cap: placedCap }}
+            />
+          ) : (
+            <FormattedMessage
+              id="buildArea.placedCount"
+              defaultMessage="{count, plural, one {# object} other {# objects}}"
+              values={{ count: placedCount }}
+            />
+          )}
         </span>
       </div>
       <div className={styles.cards}>

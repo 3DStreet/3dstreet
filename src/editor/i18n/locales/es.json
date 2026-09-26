@@ -141,6 +141,7 @@
   "buildArea.palette": "Paleta ({count} seleccionados)",
   "buildArea.paletteFilter": "Filtrar objetos…",
   "buildArea.placedCount": "{count, plural, one {# objeto} other {# objetos}}",
+  "buildArea.placedCountOfCap": "{count} de {cap} colocados",
   "buildArea.redo": "Rehacer",
   "buildArea.redoTitle": "Rehacer (Mayús+Ctrl/Cmd+Z)",
   "buildArea.removeConfirm": "¿Quitar el área de construcción de esta forma? Los visitantes ya no podrán colocar objetos sobre ella.",

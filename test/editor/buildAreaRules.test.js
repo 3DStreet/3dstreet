@@ -90,3 +90,61 @@ describe('build-area rules', () => {
     });
   });
 });
+
+import {
+  footprintRadius,
+  findFreeSpotXZ
+} from '../../src/aframe-components/play/build-area-rules.js';
+
+describe('tap-to-place spacing', () => {
+  const square = [
+    { x: -6, z: -6 },
+    { x: 6, z: -6 },
+    { x: 6, z: 6 },
+    { x: -6, z: 6 }
+  ];
+
+  it('derives a footprint radius from model bounds', () => {
+    expect(footprintRadius({ min: [-1, 0, -0.5], max: [1, 2, 0.5] })).toBe(1);
+    expect(footprintRadius({ min: [-1, 0, -1], max: [1, 1, 1] }, 2)).toBe(2);
+    expect(footprintRadius(null)).toBe(0.75);
+  });
+
+  it('uses the start point when it is free', () => {
+    expect(findFreeSpotXZ({ x: 0, z: 0 }, square, [], 0.5)).toEqual({
+      x: 0,
+      z: 0
+    });
+  });
+
+  it('fans repeated placements out instead of stacking them', () => {
+    const occupied = [];
+    for (let i = 0; i < 6; i++) {
+      const spot = findFreeSpotXZ({ x: 0, z: 0 }, square, occupied, 0.5);
+      expect(spot).not.toBeNull();
+      for (const o of occupied) {
+        const d = Math.hypot(spot.x - o.x, spot.z - o.z);
+        expect(d).toBeGreaterThanOrEqual(1 + 0.25 - 1e-9);
+      }
+      occupied.push({ x: spot.x, z: spot.z, r: 0.5 });
+    }
+  });
+
+  it('keeps spots inside the ring and gives up when the area is full', () => {
+    const tiny = [
+      { x: -1, z: -1 },
+      { x: 1, z: -1 },
+      { x: 1, z: 1 },
+      { x: -1, z: 1 }
+    ];
+    const occupied = [{ x: 0, z: 0, r: 1 }];
+    expect(findFreeSpotXZ({ x: 0, z: 0 }, tiny, occupied, 0.5)).toBeNull();
+    const spot = findFreeSpotXZ(
+      { x: 5.5, z: 0 },
+      square,
+      [{ x: 5.5, z: 0, r: 0.5 }],
+      0.5
+    );
+    expect(Math.abs(spot.x) <= 6 && Math.abs(spot.z) <= 6).toBe(true);
+  });
+});
