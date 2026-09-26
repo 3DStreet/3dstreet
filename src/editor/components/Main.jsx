@@ -31,6 +31,7 @@ import { OsmUpgradeChip } from './elements/OsmUpgradeChip';
 import { PlayModeControls, FlyModeControls } from './elements/PlayModeControls';
 import { RaceFinishBanner } from './elements/RaceFinishBanner';
 import { FocusHotspotPanel } from './elements/FocusHotspotPanel/FocusHotspotPanel.jsx';
+import { BuildPalette } from './elements/BuildPalette';
 import useStore from '@/store';
 import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { useNavMode } from '../lib/nav-experimental/useNavMode';
@@ -166,6 +167,7 @@ export default function Main() {
       {!isInspectorEnabled && <FlyModeControls />}
       {!isInspectorEnabled && <RaceFinishBanner />}
       {!isInspectorEnabled && <FocusHotspotPanel />}
+      {!isInspectorEnabled && <BuildPalette />}
       {isInspectorEnabled && (
         <div>
           <SceneGraph scene={scene} selectedEntity={state.entity} />

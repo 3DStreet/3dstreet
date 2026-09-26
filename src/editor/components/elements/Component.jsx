@@ -13,6 +13,7 @@ const isSingleProperty = AFRAME.schema.isSingleProperty;
 const GENERATED_COMPONENT_LABELS = {
   'focus-hotspot': 'Focus Hotspot',
   'viewer-start': 'Starting View',
+  'build-area': 'Build Area',
   'street-generated-clones': 'Clones',
   'street-generated-striping': 'Striping',
   'street-generated-stencil': 'Stencils',

@@ -356,6 +356,20 @@ const useStore = create(
         // the system writes it from focusHotspot()/clearFocus().
         focusedHotspot: null,
         setFocusedHotspot: (info) => set({ focusedHotspot: info }),
+        // Visitor Build (build-area, docs/visitor-build.md): true while a
+        // play session in the viewer has a buildable area, mirrored from the
+        // build-area A-Frame system so the palette dock renders and the
+        // viewport re-enables selection + the gizmo for visitor objects.
+        // Never set directly.
+        buildSessionActive: false,
+        setBuildSessionActive: (active) => set({ buildSessionActive: active }),
+        // Visitor-placed objects currently in the scene (dock counter).
+        buildPlacedCount: 0,
+        setBuildPlacedCount: (count) => set({ buildPlacedCount: count }),
+        // ?embed=true: the viewer with minimal chrome for an <iframe> on a
+        // third-party page (no app switcher, byline or Edit action).
+        isEmbed: false,
+        setIsEmbed: (isEmbed) => set({ isEmbed }),
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           if (newIsInspectorEnabled) {

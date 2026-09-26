@@ -9,6 +9,10 @@ import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
 import JSONCrush from 'jsoncrush';
 import {
+  DEFLATE_HASH_PREFIX,
+  decodeSceneHash
+} from './tested/scene-hash-codec.js';
+import {
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
   migrateSegmentHatchedSurface,
@@ -899,6 +903,26 @@ AFRAME.registerComponent('set-loader-from-hash', {
       // fetchJSON('asset:….json') below and errors with "Could not fetch scene"
       // / "Could not connect to server."
       if (streetURL.startsWith('asset:')) {
+        return;
+      }
+      // Deflated scene JSON (Visitor Build's "Open in 3DStreet" handoff,
+      // src/editor/lib/sceneHandoff.js): same result as the crushed form
+      // below, loaded as an unsaved draft, but fast to produce. Async: the
+      // native decompression stream is.
+      if (streetURL.startsWith(DEFLATE_HASH_PREFIX)) {
+        const payload = window.location.hash.substring(
+          1 + DEFLATE_HASH_PREFIX.length
+        );
+        decodeSceneHash(payload)
+          .then((jsonStr) => {
+            const jsonScene = JSON.parse(jsonStr);
+            STREET.utils.newScene(true, false);
+            STREET.utils.createElementsFromJSON(jsonScene, false);
+          })
+          .catch((err) => {
+            console.error('[set-loader-from-hash] bad deflate payload:', err);
+            STREET.notify?.errorMessage('Could not open this scene link.');
+          });
         return;
       }
       if (streetURL.startsWith('crushed-3dstreet-json:')) {

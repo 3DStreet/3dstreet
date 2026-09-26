@@ -726,6 +726,14 @@ export function Viewport(inspector) {
 
   transformControls.addEventListener('mouseUp', () => {
     controls.enabled = true;
+    // Visitor build session: an object dragged out of its build area snaps
+    // back (build-area system, docs/visitor-build.md).
+    if (useStore.getState().buildSessionActive && transformControls.object) {
+      sceneEl.systems['build-area']?.onGizmoRelease(
+        transformControls.object.el,
+        transformPreDragValues
+      );
+    }
   });
 
   shapeVertexControls.addEventListener('mouseDown', () => {
@@ -913,6 +921,14 @@ export function Viewport(inspector) {
       !el ||
       !inspector.cursor.isPlaying ||
       el.hasAttribute('data-no-transform')
+    ) {
+      return;
+    }
+    // Visitor build session: the gizmo only ever holds a visitor object
+    // (see the session guard below).
+    if (
+      useStore.getState().buildSessionActive &&
+      !el.hasAttribute('data-viewer-added')
     ) {
       return;
     }
@@ -1175,6 +1191,84 @@ export function Viewport(inspector) {
             element.style.display = 'block';
           });
         modeManager?.setMode('viewer');
+      }
+    }
+  );
+
+  // Visitor build session (build-area, docs/visitor-build.md): while a
+  // play session in the viewer has a buildable area, the selection
+  // raycaster and the stock gizmo come back on for the visitor's own
+  // objects (raycaster.js resolves clicks to `data-viewer-added` only).
+  // Inspector.close() hid every helper and paused the cursor entity, so
+  // both are re-armed here and put back when the session ends; the grid
+  // stays hidden and the gizmo's editor mode is restored afterwards so a
+  // Stop into the editor finds its tools as it left them. Translate is
+  // XZ-only (objects sit on the shape) and rotate is yaw-only already.
+  let buildSessionRestore = null;
+  function setBuildTransformMode(mode) {
+    transformControls.setMode(mode);
+    transformControls.showX = true;
+    transformControls.showZ = true;
+    transformControls.showY = mode === 'rotate';
+    if (inspector.selectedEntity) attachControlsForSelection();
+  }
+  inspector.setBuildTransformMode = setBuildTransformMode;
+  // During a session only visitor objects may be selected, whatever set
+  // the selection: the author's editor selection still standing at Start,
+  // the nearest sibling the remove command picks after a delete (a shape
+  // vertex, when the last visitor object goes), or an undo/redo. Any
+  // other entity selected mid-session could be moved, and Stop trims that
+  // move from the undo stack while the scene keeps it.
+  const isVisitorObject = (el) => !!el?.hasAttribute?.('data-viewer-added');
+  Events.on('entityselect', (entity) => {
+    if (!useStore.getState().buildSessionActive) return;
+    if (entity && !isVisitorObject(entity)) inspector.selectEntity(null);
+  });
+  useStore.subscribe(
+    (state) => state.buildSessionActive,
+    (active) => {
+      if (active) {
+        if (
+          inspector.selectedEntity &&
+          !isVisitorObject(inspector.selectedEntity)
+        ) {
+          inspector.selectEntity(null);
+        }
+        buildSessionRestore = {
+          gridVisible: grid.visible,
+          originVisible: originIndicator.visible,
+          mode: transformControls.mode,
+          showX: transformControls.showX,
+          showY: transformControls.showY,
+          showZ: transformControls.showZ
+        };
+        grid.visible = false;
+        originIndicator.visible = false;
+        inspector.sceneHelpers.visible = true;
+        inspector.cursor.play();
+        mouseCursor.enable();
+        transformControls.enabled = true;
+        setBuildTransformMode('translate');
+        return;
+      }
+      if (!buildSessionRestore) return;
+      const restore = buildSessionRestore;
+      buildSessionRestore = null;
+      detachAllTransformControls();
+      if (inspector.selectedEntity) inspector.selectEntity(null);
+      transformControls.setMode(restore.mode);
+      transformControls.showX = restore.showX;
+      transformControls.showY = restore.showY;
+      transformControls.showZ = restore.showZ;
+      grid.visible = restore.gridVisible;
+      originIndicator.visible = restore.originVisible;
+      // An editor reopen re-arms its own tools (the subscription above);
+      // a session ending inside the viewer goes back to the static scene.
+      if (!useStore.getState().isInspectorEnabled) {
+        mouseCursor.disable();
+        inspector.cursor.pause();
+        transformControls.enabled = false;
+        inspector.sceneHelpers.visible = false;
       }
     }
   );

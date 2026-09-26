@@ -57,6 +57,15 @@ export default class ComponentsContainer extends React.Component {
       label: 'Focus Hotspot',
       attrValue: ''
     });
+    // A closed shape can become a surface visitors build on while playing
+    // (Visitor Build, docs/visitor-build.md).
+    if (entity.components?.shape?.data?.closed) {
+      approved.push({
+        value: 'build-area',
+        label: 'Build Area',
+        attrValue: ''
+      });
+    }
     if (this.canFlattenTerrain()) {
       approved.push({
         value: 'geo-flatten',

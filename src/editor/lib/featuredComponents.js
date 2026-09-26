@@ -21,13 +21,15 @@ export const GENERATOR_COMPONENT_PREFIXES = ['street-generated-'];
 // controls are first-class on the shapes that carry it.
 // focus-hotspot (#1315) is a role any mesh can carry; featuring it gives it
 // the standard component bar (icon, collapse, remove) above its controls.
+// build-area (Visitor Build) is the same for a closed shape.
 export const FEATURED_COMPONENT_NAMES = [
   'geometry',
   'material',
   'shape',
   'geo-flatten',
   'focus-hotspot',
-  'viewer-start'
+  'viewer-start',
+  'build-area'
 ];
 
 export function isFeaturedComponent(name) {

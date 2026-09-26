@@ -5,9 +5,10 @@ import MaterialControls from './MaterialControls';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
 import { ShapeSectionControls } from './ShapeSidebar';
 import { FocusHotspotSectionControls } from './FocusHotspotSidebar';
+import { BuildAreaSectionControls } from './BuildAreaSidebar';
 import { ViewerStartSectionControls } from './ViewerStartSidebar';
 import { AwesomeIcon } from './AwesomeIcon';
-import { faBullseye } from '@fortawesome/free-solid-svg-icons';
+import { faBullseye, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { getFeaturedComponentNames } from '../../lib/featuredComponents';
 
 // Low-level geometry props that are too advanced for the first-class section.
@@ -77,6 +78,10 @@ function getHiddenProps(name, component) {
   if (name === 'focus-hotspot') {
     return Object.keys(component?.schema || {});
   }
+  // Same for the build area: labelled rows plus the palette picker.
+  if (name === 'build-area') {
+    return Object.keys(component?.schema || {});
+  }
   return undefined;
 }
 
@@ -87,6 +92,9 @@ function getSectionChildren(name, entity) {
   }
   if (name === 'viewer-start') {
     return <ViewerStartSectionControls entity={entity} />;
+  }
+  if (name === 'build-area') {
+    return <BuildAreaSectionControls entity={entity} />;
   }
   return undefined;
 }
@@ -102,6 +110,16 @@ const ROLE_SECTIONS = {
         id: 'focusHotspot.removeConfirm',
         defaultMessage:
           'Remove the focus hotspot from this entity? It will no longer be clickable in view mode.'
+      }
+    }).m
+  },
+  'build-area': {
+    icon: faCubes,
+    removeConfirmMessage: defineMessages({
+      m: {
+        id: 'buildArea.removeConfirm',
+        defaultMessage:
+          'Remove the build area from this shape? Visitors will no longer be able to place objects on it.'
       }
     }).m
   },
