@@ -135,16 +135,26 @@ export const BuildAreaSectionControls = ({ entity }) => {
                     return n ? ` (${n})` : '';
                   })()}
                 </summary>
-                {options.map((option) => (
-                  <label key={option.mixinId} className="buildAreaPaletteItem">
-                    <input
-                      type="checkbox"
-                      checked={selected.includes(option.mixinId)}
-                      onChange={() => toggle(option.mixinId)}
-                    />
-                    <span>{option.name}</span>
-                  </label>
-                ))}
+                {options.map((option) => {
+                  const isSelected = selected.includes(option.mixinId);
+                  return (
+                    <label
+                      key={option.mixinId}
+                      className={
+                        isSelected
+                          ? 'buildAreaPaletteItem selected'
+                          : 'buildAreaPaletteItem'
+                      }
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggle(option.mixinId)}
+                      />
+                      <span>{option.name}</span>
+                    </label>
+                  );
+                })}
               </details>
             );
           })}

@@ -2463,17 +2463,41 @@ a.help-linkhover {
   .buildAreaPaletteItem {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 2px 0 2px 14px;
+    gap: 8px;
+    padding: 3px 6px 3px 14px;
+    border-radius: 3px;
     cursor: pointer;
     color: variables.$lightgray-300;
 
-    input {
+    // The editor hides native checkboxes globally (index.scss, custom
+    // toggles elsewhere); this list is a real multi-select, so the box
+    // comes back, tinted with the app accent.
+    input[type='checkbox'] {
+      visibility: visible;
+      appearance: auto;
+      accent-color: variables.$purple;
+      width: 14px;
+      height: 14px;
       margin: 0;
+      flex: 0 0 auto;
+      cursor: pointer;
     }
 
     &:hover {
       color: variables.$white;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    // Selected rows read as selected from across the room: tinted
+    // background, white bold label.
+    &.selected {
+      color: variables.$white;
+      font-weight: 600;
+      background: rgba(119, 77, 238, 0.28);
+
+      &:hover {
+        background: rgba(119, 77, 238, 0.4);
+      }
     }
   }
 }
