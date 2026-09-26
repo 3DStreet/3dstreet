@@ -34,6 +34,11 @@ const BADGE_TITLES = defineMessages({
     id: 'entity.badge.focusHotspot',
     defaultMessage:
       'Focus hotspot: clickable in view mode. Click to fly the camera to it.'
+  },
+  'build-area': {
+    id: 'entity.badge.buildArea',
+    defaultMessage:
+      'Build area: visitors can place objects on this shape while playing. Click to fly the camera to it.'
   }
 });
 

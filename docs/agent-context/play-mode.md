@@ -3,7 +3,7 @@
 [Back to the codebase guide](../../CLAUDE.md). Source paths start at the
 repository root; bare filenames name modules within this subsystem.
 
-Unified Viewer presentation with a Start/Stop play lifecycle. Playing is presentation-only (nothing persists, no edit permission needed). Code lives in `src/aframe-components/play/` plus `src/aframe-components/mode-manager.js`.
+Unified Viewer presentation with a Start/Stop play lifecycle. Playing needs no edit permission and persists nothing: play may change the live scene (animated traffic, the driven car, crash markers, visitor-placed objects), but nothing that happens during play is written to the source scene, by design. Code lives in `src/aframe-components/play/` plus `src/aframe-components/mode-manager.js`.
 
 **Lifecycle:** `play-mode` system owns start/stop/pause/reset and emits `play-mode-start|stop|reset` scene events; features subscribe independently and do their own setup/teardown. The canonical clock is `scene-timer.simulationTime` — advanced by physics sub-steps while driving (deterministic, slow-motion on weak CPUs), else at wall-clock rate.
 
@@ -16,6 +16,7 @@ Unified Viewer presentation with a Start/Stop play lifecycle. Playing is present
 - `street-traffic` — animates the edit-time cast on `[managed-street][playable]` lanes (each static clone gets an animated twin; a lane with no clones plays empty by design), pure function of sim-time
 - `street-traffic-replay` — replays anonymized roadside-sensor manifests as agents on a linked managed-street; suppresses synthetic traffic on its target street
 - `race-target`, `collision-marker`, `best-times` — race finish gate, crash markers (session-only, stripped on stop/reset), localStorage best times
+- `build-area` — Visitor Build: a role component on a closed `shape` with a palette of catalog mixins; while playing in the viewer, visitors drag palette cards onto the shape (placed objects are children of the shape, clamped to its ring and capped), move/yaw them with the stock gizmo, delete/undo; `data-viewer-added` objects are session-only (stripped on stop/reset, never serialized) and the undo stack is unwound to the Start mark. The system mirrors `buildSessionActive` into the store; `viewport.js`/`raycaster.js` re-arm selection + gizmo for visitor objects only. Open in 3DStreet hands the scene (objects included) to a new editor tab through the `#crushed-3dstreet-json:` loader; `?embed=true` is the chromeless viewer for iframes. Entry point: [docs/visitor-build.md](../visitor-build.md).
 
 **Shared gotchas:** hide/restore of static street clones during play goes through the refcounted registry in `src/aframe-components/play/clone-visibility.js` (never hide independently — double-hide breaks restore); visibility changes must use `setAttribute('visible', ...)`, never raw `object3D.visible` (mesh batching). Dev-only `?replay=sample` bootstrap (`src/aframe-components/play/replay-demo.js`) is gated out of production builds.
 

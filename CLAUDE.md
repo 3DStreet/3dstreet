@@ -89,7 +89,11 @@ touching them. Entry point: `docs/focus-hotspots.md`.
 
 ## Play Mode & Viewer
 
-Playing is presentation-only: nothing persists and no edit permission is needed.
+Playing needs no edit permission and persists nothing: play may change the
+live scene (traffic, a driven car, visitor-placed objects) but never writes
+to the source scene. **Visitor Build** (`build-area` on a closed shape,
+palette dock, Open in 3DStreet handoff, `?embed=true`): entry point
+`docs/visitor-build.md`.
 Hide/restore of static street clones must use the refcounted registry in
 `src/aframe-components/play/clone-visibility.js`.
 

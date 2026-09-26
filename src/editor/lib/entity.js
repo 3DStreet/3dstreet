@@ -4,7 +4,7 @@ import capitalize from 'lodash-es/capitalize';
 import Events from './Events';
 import { equal } from './utils';
 import posthog from 'posthog-js';
-import { faBullseye } from '@fortawesome/free-solid-svg-icons';
+import { faBullseye, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { captureFocusPose } from './focusPose.js';
 import {
   GeospatialIcon,
@@ -780,6 +780,9 @@ export function getEntityBadges(entity) {
   const badges = [];
   if (entity.hasAttribute('focus-hotspot')) {
     badges.push({ key: 'focus-hotspot', icon: faBullseye });
+  }
+  if (entity.hasAttribute('build-area')) {
+    badges.push({ key: 'build-area', icon: faCubes });
   }
   return badges;
 }

@@ -377,6 +377,78 @@
   "assetInfo.upgradeStorage": {
     "defaultMessage": "Upgrade for {storage} storage"
   },
+  "buildArea.allowRotate": {
+    "defaultMessage": "Allow rotate"
+  },
+  "buildArea.delete": {
+    "defaultMessage": "Delete"
+  },
+  "buildArea.deleteTitle": {
+    "defaultMessage": "Remove the selected object (Delete)"
+  },
+  "buildArea.dockTitle": {
+    "defaultMessage": "Drag an object onto the highlighted area, or tap to place it"
+  },
+  "buildArea.enabled": {
+    "defaultMessage": "Enabled"
+  },
+  "buildArea.hintIdle": {
+    "defaultMessage": "Click an object you placed to move it."
+  },
+  "buildArea.hintSelected": {
+    "defaultMessage": "Drag the arrows to move it."
+  },
+  "buildArea.maxObjects": {
+    "defaultMessage": "Max objects"
+  },
+  "buildArea.notClosedTip": {
+    "defaultMessage": "⚠️ Close this shape (Closed above) so it has an interior visitors can build on."
+  },
+  "buildArea.notice.full": {
+    "defaultMessage": "This build area is full."
+  },
+  "buildArea.notice.keepInside": {
+    "defaultMessage": "Objects stay inside the build area."
+  },
+  "buildArea.notice.outside": {
+    "defaultMessage": "Drop it inside a build area."
+  },
+  "buildArea.notice.palette": {
+    "defaultMessage": "That object is not available in this build area."
+  },
+  "buildArea.palette": {
+    "defaultMessage": "Palette ({count} selected)"
+  },
+  "buildArea.paletteFilter": {
+    "defaultMessage": "Filter objects…"
+  },
+  "buildArea.placedCount": {
+    "defaultMessage": "{count,plural,one{# object} other{# objects}}"
+  },
+  "buildArea.redo": {
+    "defaultMessage": "Redo"
+  },
+  "buildArea.redoTitle": {
+    "defaultMessage": "Redo (Shift+Ctrl/Cmd+Z)"
+  },
+  "buildArea.removeConfirm": {
+    "defaultMessage": "Remove the build area from this shape? Visitors will no longer be able to place objects on it."
+  },
+  "buildArea.rotate": {
+    "defaultMessage": "Rotate"
+  },
+  "buildArea.rotateTitle": {
+    "defaultMessage": "Rotate the selected object 90°"
+  },
+  "buildArea.tip": {
+    "defaultMessage": "💡 Visitors drag these objects onto this shape while playing. Press Start to try it; Stop clears what was placed. Nothing a visitor builds is saved to your scene: they keep their work with Open in 3DStreet."
+  },
+  "buildArea.undo": {
+    "defaultMessage": "Undo"
+  },
+  "buildArea.undoTitle": {
+    "defaultMessage": "Undo (Ctrl/Cmd+Z)"
+  },
   "catalog.Bicycle_1.name": {
     "defaultMessage": "Bicycle Model 1"
   },
@@ -1033,6 +1105,9 @@
   },
   "editorUpgradeModal.alreadyPro": {
     "defaultMessage": "You're already a Pro member — try that action again to continue."
+  },
+  "entity.badge.buildArea": {
+    "defaultMessage": "Build area: visitors can place objects on this shape while playing. Click to fly the camera to it."
   },
   "entity.badge.focusHotspot": {
     "defaultMessage": "Focus hotspot: clickable in view mode. Click to fly the camera to it."
@@ -2536,6 +2611,12 @@
   },
   "viewer.hotspotBack": {
     "defaultMessage": "Back"
+  },
+  "viewer.openInEditor": {
+    "defaultMessage": "Open in 3DStreet"
+  },
+  "viewer.openInEditorTitle": {
+    "defaultMessage": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it"
   },
   "viewer.pause": {
     "defaultMessage": "Pause"

@@ -27,7 +27,16 @@ import { initializeLocationSync } from './lib/location-sync';
 // Helper function to check if viewer mode is requested via URL parameter
 function isViewerModeRequested() {
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('viewer') === 'true';
+  return (
+    urlParams.get('viewer') === 'true' || urlParams.get('embed') === 'true'
+  );
+}
+
+// ?embed=true: the viewer with minimal chrome for an <iframe> on another
+// site (docs/visitor-build.md). Implies viewer mode.
+function isEmbedRequested() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('embed') === 'true';
 }
 
 function Inspector(configOverrides) {
@@ -121,6 +130,9 @@ Inspector.prototype = {
     // If viewer mode is requested, switch to it after initialization is
     // complete. The camera flies to the scene's saved start view via
     // the newScene camera animation once it loads.
+    if (isEmbedRequested()) {
+      useStore.getState().setIsEmbed(true);
+    }
     if (isViewerModeRequested()) {
       useStore.getState().enterViewerMode();
     }

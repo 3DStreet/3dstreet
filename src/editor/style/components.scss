@@ -2431,3 +2431,49 @@ a.help-linkhover {
     line-height: 1.4;
   }
 }
+
+/* Build area (Visitor Build) palette picker in the properties panel:
+   a filter box over grouped checkbox lists of catalog objects. */
+.properties-panel .buildAreaPaletteFilter {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid variables.$darkgray-600;
+  background: variables.$darkgray-800;
+  color: variables.$white;
+  font-size: 12px;
+}
+
+.properties-panel .buildAreaPalette {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid variables.$darkgray-600;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 12px;
+
+  .buildAreaPaletteGroup > summary {
+    cursor: pointer;
+    padding: 3px 0;
+    color: variables.$lightgray-200;
+    user-select: none;
+  }
+
+  .buildAreaPaletteItem {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0 2px 14px;
+    cursor: pointer;
+    color: variables.$lightgray-300;
+
+    input {
+      margin: 0;
+    }
+
+    &:hover {
+      color: variables.$white;
+    }
+  }
+}

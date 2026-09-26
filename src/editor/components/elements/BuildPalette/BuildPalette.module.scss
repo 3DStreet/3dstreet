@@ -1,0 +1,99 @@
+// Visitor Build palette dock (docs/visitor-build.md): bottom-centred card
+// strip shown while a play session has a buildable area, plus the small
+// floating toolbar for the selected visitor object. Matches the viewer's
+// translucent chrome (FocusHotspotPanel / ViewerSnapshot toasts).
+.dock {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(760px, calc(100vw - 40px));
+  padding: 12px 14px;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  color: #fff;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.counter {
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.cards {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+
+.card {
+  all: unset;
+  flex: 0 0 auto;
+  width: 96px;
+  cursor: grab;
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition:
+    transform 120ms ease,
+    background 120ms ease;
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(255, 255, 255, 0.16);
+    transform: translateY(-2px);
+    outline: none;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.cardImg {
+  width: 96px;
+  height: 60px;
+  background-size: cover;
+  background-position: center;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.cardName {
+  display: block;
+  padding: 4px 6px;
+  font-size: 11px;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.hint {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}

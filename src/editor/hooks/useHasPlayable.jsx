@@ -17,13 +17,28 @@ import Events from '../lib/Events';
  * observer alone.
  */
 export function useHasPlayable() {
+  return usePlayableCheck((modeManager) => modeManager.hasPlayable());
+}
+
+/**
+ * True when the scene has a buildable area for Visitor Build
+ * (build-area registered as a playable capability). Same watchers as
+ * useHasPlayable.
+ */
+export function useHasBuildArea() {
+  return usePlayableCheck((modeManager) =>
+    modeManager.getPlayableCapabilities().includes('build-area')
+  );
+}
+
+function usePlayableCheck(check) {
   const [has, setHas] = useState(false);
   useEffect(() => {
     const sceneEl = document.querySelector('a-scene');
     if (!sceneEl) return undefined;
     const runCheck = () => {
       const modeManager = sceneEl.systems?.['mode-manager'];
-      setHas(!!(modeManager && modeManager.hasPlayable()));
+      setHas(!!(modeManager && check(modeManager)));
     };
     // hasPlayable() runs several full-scene querySelectorAll sweeps. A managed
     // street generation inserts hundreds of nodes in one burst, and both the
@@ -54,6 +69,8 @@ export function useHasPlayable() {
       Events.off('componentadd', recheck);
       Events.off('componentremove', recheck);
     };
+    // `check` is an inline predicate that only reads mode-manager state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return has;
 }
