@@ -272,13 +272,18 @@ AFRAME.registerComponent('shape', {
       depthWrite: false // always-on-top overlay must not occlude the gizmo etc.
     });
 
-    // --- always-on area label (closed shapes only) ----------------------
-    // The enclosed-area readout must show whenever the shape is closed, whether
-    // or not it is selected — so it lives here, not in the editor's on-select
-    // ShapeReadouts layer. Created once, mutated in place: it lives in its OWN
-    // object3D slot, never the per-frame-cleared line/vertex/overlay groups (a
-    // CSS2DObject has no geometry and would be orphaned by clearGroup).
+    // --- area label (closed shapes only) --------------------------------
+    // The enclosed-area readout is built here, beside the geometry it
+    // measures, so it tracks every re-derive (a vertex moving, a curve
+    // re-sampling) with no editor round trip. It is SHOWN only while the
+    // editor asks for it (setAreaLabelVisible, called by the shape properties
+    // panel for exactly as long as the shape is selected): an unselected
+    // shape, the viewer and play mode show no label (#2031). Created once,
+    // mutated in place: it lives in its OWN object3D slot, never the
+    // per-frame-cleared line/vertex/overlay groups (a CSS2DObject has no
+    // geometry and would be orphaned by clearGroup).
     this.area = 0; // enclosed x/z area in m² (0 when open / < 3 vertices)
+    this._areaLabelWanted = false;
     // Last plane height the fill's draw order was computed for. Undefined until
     // a cap exists, which is what makes the first syncFillOrder after a build a
     // no-op rather than a redundant recompute.
@@ -927,7 +932,7 @@ AFRAME.registerComponent('shape', {
     if (this.areaLabelObject) {
       const c = polygonCentroidXZ(pts);
       this.areaLabelObject.position.set(c.x, pts[0].y, c.z);
-      this.areaLabelObject.visible = true;
+      this.areaLabelObject.visible = this._areaLabelWanted;
       this._updateAreaLabelText();
     }
   },
@@ -977,6 +982,18 @@ AFRAME.registerComponent('shape', {
   // vertex move.
   beginEditGesture: function () {
     this._editGesture = true;
+  },
+
+  // Show or hide the area label. The editor's shape panel turns it on while
+  // the shape is selected and off when it is not; nothing else calls this, so
+  // an unselected shape, the viewer and play mode never show one. The label
+  // only ever appears on a closed ring (`_areaPts` is null otherwise), and
+  // every re-derive re-reads the flag, so a vertex drag keeps it in step.
+  setAreaLabelVisible: function (wanted) {
+    this._areaLabelWanted = !!wanted;
+    if (this.areaLabelObject) {
+      this.areaLabelObject.visible = this._areaLabelWanted && !!this._areaPts;
+    }
   },
 
   endEditGesture: function () {
