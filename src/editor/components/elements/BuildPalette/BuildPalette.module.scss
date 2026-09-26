@@ -44,8 +44,9 @@
 }
 
 .card {
-  all: unset;
   flex: 0 0 auto;
+  user-select: none;
+  -webkit-user-drag: element;
   width: 96px;
   cursor: grab;
   border-radius: 8px;

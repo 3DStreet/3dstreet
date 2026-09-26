@@ -246,13 +246,23 @@ export const BuildPalette = () => {
         </span>
       </div>
       <div className={styles.cards}>
+        {/* Cards are divs, not buttons: Chromium never starts a native drag
+            from a form control, so a draggable <button> is tap-only.
+            Keyboard activation is restored by hand (Enter / Space). */}
         {cards.map((card) => (
-          <button
+          <div
             key={card.mixinId}
-            type="button"
+            role="button"
+            tabIndex={0}
             className={styles.card}
             draggable
             title={card.description || card.name}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                place(card.mixinId);
+              }
+            }}
             onDragStart={(e) => {
               e.stopPropagation();
               if (!e.dataTransfer) return;
@@ -267,7 +277,7 @@ export const BuildPalette = () => {
               style={{ backgroundImage: `url(${card.img || CardPlaceholder})` }}
             />
             <span className={styles.cardName}>{card.name}</span>
-          </button>
+          </div>
         ))}
       </div>
       <div className={styles.tools}>
