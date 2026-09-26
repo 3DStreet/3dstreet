@@ -35,6 +35,16 @@ import {
 
 export const VISITOR_ADDED_ATTR = 'data-viewer-added';
 
+// Play `el` once loaded, after any `loaded` listener registered before
+// this call (the create/undo commands' pause).
+function resumeWhenLoaded(el) {
+  if (el.hasLoaded) {
+    el.play();
+  } else {
+    el.addEventListener('loaded', () => el.play(), { once: true });
+  }
+}
+
 AFRAME.registerComponent('build-area', {
   schema: {
     enabled: { default: true },
@@ -114,18 +124,31 @@ AFRAME.registerSystem('build-area', {
       // is snapshotted too: History.execute() empties it on every session
       // command, and Stop puts the pre-Start redos back so an author who
       // had just undone something can still redo it after the preview.
+      //
+      // The live redo stack is then EMPTIED: the session has its own
+      // history boundary, and a pre-Start redo replayed from the dock
+      // would apply an editor command during play, then be trimmed from
+      // the undo stack on Stop (unundoable) and handed back as a redo that
+      // applies it twice. Only scenes with a build area touch history.
       const history = this._history();
-      this._historyMark = history?.undos?.length || 0;
-      this._redosAtStart = history ? history.redos.slice() : [];
+      if (history && this.getBuildableAreas().length > 0) {
+        this._historyMark = history.undos.length;
+        this._redosAtStart = history.redos.slice();
+        history.redos = [];
+      } else {
+        this._historyMark = 0;
+        this._redosAtStart = null;
+      }
       this.refresh();
     });
     this.sceneEl.addEventListener('play-mode-stop', () => {
-      this.clearVisitorObjects();
+      this.clearVisitorObjects({ endSession: true });
       this.refresh();
     });
     this.sceneEl.addEventListener('play-mode-reset', () => {
-      // Reset is a fresh run: same session, empty areas.
-      this.clearVisitorObjects();
+      // Reset is a fresh run: same session, empty areas, and still no
+      // author redos in reach.
+      this.clearVisitorObjects({ endSession: false });
       this.refresh();
     });
     this.sceneEl.addEventListener('mode-changed', refresh);
@@ -139,7 +162,22 @@ AFRAME.registerSystem('build-area', {
     // the duration of a session (refresh), so an idle scene pays nothing
     // and a session only sees its own childList churn (traffic clones
     // toggle `visible`, an attribute, not children).
-    this._observer = new MutationObserver(() => this._syncCount());
+    //
+    // The same observer keeps visitor objects ticking. Every command that
+    // (re)attaches an entity pauses it once loaded, the editor convention
+    // for a paused inspector scene: the first placement, Redo of a
+    // placement and Undo of a delete alike. The viewer is playing, so an
+    // animated palette model must resume each time. The observer callback
+    // runs after the command registered its `loaded` listener, so ours
+    // runs after the pause.
+    this._observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.hasAttribute?.(VISITOR_ADDED_ATTR)) resumeWhenLoaded(node);
+        }
+      }
+      this._syncCount();
+    });
 
     // Playable capability: a buildable area is something for Start to do.
     // Deferred to scene `loaded`: mode-manager registers after this system.
@@ -234,8 +272,10 @@ AFRAME.registerSystem('build-area', {
 
   // Strip every visitor object and drop the commands that created or
   // moved them from the undo stack (their entities are gone). Selection
-  // is cleared first so the gizmo never holds a removed object.
-  clearVisitorObjects() {
+  // is cleared first so the gizmo never holds a removed object. Ending
+  // the session (Stop) hands back a copy of the author's pre-Start redo
+  // stack; Reset keeps the session going, so redo stays empty.
+  clearVisitorObjects({ endSession = true } = {}) {
     const inspector = window.AFRAME?.INSPECTOR;
     const placed = Array.from(
       this.sceneEl.querySelectorAll(`[${VISITOR_ADDED_ATTR}]`)
@@ -254,9 +294,11 @@ AFRAME.registerSystem('build-area', {
     const history = this._history();
     if (history && this._redosAtStart) {
       history.undos.length = Math.min(history.undos.length, this._historyMark);
-      // Session commands never survive (their entities are gone); the
-      // author's pre-Start redos come back (see play-mode-start).
-      history.redos = this._redosAtStart || [];
+      // Session commands never survive (their entities are gone). A copy,
+      // never the saved array itself, so nothing done with the live stack
+      // can reach the saved one.
+      history.redos = endSession ? this._redosAtStart.slice() : [];
+      if (endSession) this._redosAtStart = null;
     }
     this._syncCount();
   },
@@ -368,18 +410,8 @@ AFRAME.registerSystem('build-area', {
     }
     const before = new Set(area.visitorObjects());
     window.AFRAME?.INSPECTOR?.execute('entitycreate', definition);
-    const created = area.visitorObjects().find((el) => !before.has(el)) || null;
-    if (created) {
-      // The create command pauses the new entity once loaded (editor
-      // convention: the inspector's scene is paused). The viewer is
-      // playing, so a palette object with ticking components (an animated
-      // model) must keep ticking; our listener is registered after the
-      // command's, so it runs after the pause.
-      const play = () => created.play();
-      if (created.hasLoaded) play();
-      else created.addEventListener('loaded', play, { once: true });
-    }
-    return created;
+    // Resumed after the create command's pause by the session observer.
+    return area.visitorObjects().find((el) => !before.has(el)) || null;
   },
 
   /**

@@ -924,6 +924,14 @@ export function Viewport(inspector) {
     ) {
       return;
     }
+    // Visitor build session: the gizmo only ever holds a visitor object
+    // (see the session guard below).
+    if (
+      useStore.getState().buildSessionActive &&
+      !el.hasAttribute('data-viewer-added')
+    ) {
+      return;
+    }
     // Segments of a managed street are the one selection that gets NO stock
     // gizmo (#1806): street-align owns segment transforms, so any move/rotate
     // applied here would be silently reset by the next street re-layout.
@@ -1205,10 +1213,27 @@ export function Viewport(inspector) {
     if (inspector.selectedEntity) attachControlsForSelection();
   }
   inspector.setBuildTransformMode = setBuildTransformMode;
+  // During a session only visitor objects may be selected, whatever set
+  // the selection: the author's editor selection still standing at Start,
+  // the nearest sibling the remove command picks after a delete (a shape
+  // vertex, when the last visitor object goes), or an undo/redo. Any
+  // other entity selected mid-session could be moved, and Stop trims that
+  // move from the undo stack while the scene keeps it.
+  const isVisitorObject = (el) => !!el?.hasAttribute?.('data-viewer-added');
+  Events.on('entityselect', (entity) => {
+    if (!useStore.getState().buildSessionActive) return;
+    if (entity && !isVisitorObject(entity)) inspector.selectEntity(null);
+  });
   useStore.subscribe(
     (state) => state.buildSessionActive,
     (active) => {
       if (active) {
+        if (
+          inspector.selectedEntity &&
+          !isVisitorObject(inspector.selectedEntity)
+        ) {
+          inspector.selectEntity(null);
+        }
         buildSessionRestore = {
           gridVisible: grid.visible,
           originVisible: originIndicator.visible,

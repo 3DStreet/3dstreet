@@ -69,9 +69,23 @@ is the cap. Shapes already carry children (their `shape-vertex` markers)
 and every shape internal filters on that marker, so extra children are
 opaque to vertex editing, measurement and convert-to-shapes.
 
-**Undo inside a session** stops at the mark taken at Start (`canUndo`), so
-the dock's Undo never pops the author's editor commands; Stop and Reset
-clamp the undo stack to the mark and put the pre-Start redo stack back.
+**A session has its own history boundary.** Undo stops at the mark taken
+at Start (`canUndo`), so the dock's Undo never pops the author's editor
+commands. The redo stack is saved and emptied at Start, so Redo can only
+replay session commands. Reset clamps the undo stack to the mark and keeps
+redo empty; Stop does the same and hands back a copy of the saved redo
+stack.
+
+**Selection is visitor-only during a session.** The viewport clears any
+other selection, whether it is the author's editor selection still standing
+at Start, the sibling the remove command selects after a delete (a shape
+vertex, when the last visitor object goes), or one set by undo. Without
+this the gizmo could move the author's shape or vertices mid-session.
+
+**Visitor objects keep ticking.** Every command that attaches an entity
+pauses it once loaded (the editor's paused-scene convention): the first
+placement, Redo of a placement and Undo of a delete alike. The session's
+MutationObserver resumes each visitor object after that pause.
 
 **Nothing is persisted.** Play may change the live scene, as it already
 does (animated traffic, the driven car, crash markers), but nothing that
