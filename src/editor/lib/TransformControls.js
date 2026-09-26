@@ -464,7 +464,7 @@ class TransformControls extends Controls {
 
 		if ( pointer !== null ) _raycaster.setFromCamera( pointer, this.camera );
 
-		const intersect = intersectObjectWithRay( this._gizmo.picker[ this.mode ], _raycaster );
+		const intersect = intersectPickerWithRay( this._gizmo.picker[ this.mode ], _raycaster );
 
 		if ( intersect ) {
 
@@ -1088,6 +1088,36 @@ function intersectObjectWithRay( object, raycaster, includeInvisible ) {
 	return false;
 
 }
+
+// Picks a gizmo handle under the ray. The axis pickers are wide invisible
+// pyramids that, seen from most angles, sit in front of the small plane
+// squares (XZ in particular is covered by the X and Z arrows, #2027), so the
+// nearest hit would almost always be an axis. A plane picker hit means the
+// cursor is over that plane's square, which is what the user is aiming at, so
+// it wins over any axis hit along the same ray.
+function intersectPickerWithRay( picker, raycaster ) {
+
+	const allIntersections = raycaster.intersectObject( picker, true );
+
+	let first = false;
+
+	for ( let i = 0; i < allIntersections.length; i ++ ) {
+
+		const hit = allIntersections[ i ];
+
+		if ( ! hit.object.visible ) continue;
+
+		if ( PLANE_HANDLES.has( hit.object.name ) ) return hit;
+
+		if ( first === false ) first = hit;
+
+	}
+
+	return first;
+
+}
+
+const PLANE_HANDLES = new Set( [ 'XY', 'YZ', 'XZ' ] );
 
 //
 
