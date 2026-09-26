@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { defineMessages, useIntl } from 'react-intl';
 import Component from './Component';
+import PropertyRow from './PropertyRow';
 import MaterialControls from './MaterialControls';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
 import { ShapeSectionControls } from './ShapeSidebar';
@@ -50,6 +51,30 @@ const SHAPE_PROPERTY_RENDERERS = {
       showNumberInput
     />
   )
+};
+
+// The Starting View's fov is the one number row with a reset button: the
+// value is a lens setting whose "right" value is not obvious, so the row
+// offers the way back to the editor's resting fov (the schema default) the
+// same way the transform rows offer 0 0 0 / 1 1 1. Everything else about the
+// row is the generic widget.
+const VIEWER_START_PROPERTY_RENDERERS = {
+  fov: ({ name, schema, value, componentname, entity }) => (
+    <PropertyRow
+      name={name}
+      schema={schema}
+      data={value}
+      componentname={componentname}
+      isSingle={false}
+      entity={entity}
+      showReset
+    />
+  )
+};
+
+const PROPERTY_RENDERERS = {
+  shape: SHAPE_PROPERTY_RENDERERS,
+  'viewer-start': VIEWER_START_PROPERTY_RENDERERS
 };
 
 function getHiddenProps(name, component) {
@@ -144,9 +169,7 @@ const FeaturedComponents = ({ entity }) => {
               entity={entity}
               name={name}
               hideProperties={getHiddenProps(name, components[name])}
-              propertyRenderers={
-                name === 'shape' ? SHAPE_PROPERTY_RENDERERS : undefined
-              }
+              propertyRenderers={PROPERTY_RENDERERS[name]}
               icon={
                 ROLE_SECTIONS[name]?.icon ? (
                   <AwesomeIcon icon={ROLE_SECTIONS[name].icon} size={12} />

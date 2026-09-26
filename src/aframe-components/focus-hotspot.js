@@ -25,6 +25,7 @@
 // scene. In the editor the selection raycaster owns the mouse, and
 // drive/fly own the camera. Entry point doc: docs/focus-hotspots.md.
 import useStore from '../store.js';
+import { DEFAULT_FOV_DEGREES } from '../tested/scene-camera-pose.js';
 
 const HOVER_OPACITY_BOOST = 0.25;
 const HOVER_EMISSIVE = new THREE.Color('#4fc3f7');
@@ -429,7 +430,7 @@ AFRAME.registerSystem('focus-hotspot', {
     return {
       position: { x: position.x, y: position.y, z: position.z },
       rotation: { x: rotation.x, y: rotation.y, z: rotation.z },
-      zoom: camera.fov || 60,
+      zoom: camera.fov || DEFAULT_FOV_DEGREES,
       type: camera.type
     };
   }

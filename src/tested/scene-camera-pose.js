@@ -13,6 +13,16 @@
  * `hasViewerStart`), so there is exactly one place a start pose lives.
  */
 
+/**
+ * The default vertical field of view in degrees: THREE's PerspectiveCamera
+ * default, which is the inspector camera's resting fov, the Starting View's
+ * (`viewer-start`) schema default, and the fallback wherever a camera state
+ * carries no `zoom`. One value on purpose (#2031): the editor and viewer share
+ * one camera, so a start pose "at the default" must mean the lens the editor
+ * rests at, not a wider frustum-fit guess.
+ */
+export const DEFAULT_FOV_DEGREES = 50;
+
 function defaultSnapshotState(memory) {
   const snapshots = memory?.snapshots;
   if (!Array.isArray(snapshots) || snapshots.length === 0) return null;

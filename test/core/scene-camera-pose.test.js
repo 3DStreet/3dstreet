@@ -3,8 +3,10 @@ import assert from 'assert';
 import {
   resolveSavedCameraStates,
   hasViewerStart,
-  pickLoadCameraState
+  pickLoadCameraState,
+  DEFAULT_FOV_DEGREES
 } from '../../src/tested/scene-camera-pose.js';
+import { DEFAULT_FOV_DEGREES as NAV_DEFAULT_FOV_DEGREES } from '../../src/editor/lib/nav-experimental/constants.js';
 
 const A = { position: { x: 1, y: 2, z: 3 } };
 const B = { position: { x: 4, y: 5, z: 6 } };
@@ -89,5 +91,16 @@ describe('pickLoadCameraState', () => {
 
   it('returns null when nothing is saved (default overview)', () => {
     assert.strictEqual(pickLoadCameraState({}), null);
+  });
+});
+
+// #2031: one default fov. THREE's PerspectiveCamera default, the inspector
+// camera's resting fov, the Starting View's schema default and every
+// camera-state `zoom` fallback all read this value; the nav constants module
+// re-exports it rather than carrying a second literal.
+describe('DEFAULT_FOV_DEGREES', () => {
+  it('is 50 and is the same value the nav constants export', () => {
+    assert.strictEqual(DEFAULT_FOV_DEGREES, 50);
+    assert.strictEqual(NAV_DEFAULT_FOV_DEGREES, DEFAULT_FOV_DEGREES);
   });
 });
