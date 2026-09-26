@@ -2615,6 +2615,9 @@
   "viewer.openInEditor": {
     "defaultMessage": "Open in 3DStreet"
   },
+  "viewer.openInEditorFailed": {
+    "defaultMessage": "Could not open the scene in a new tab. Please try again."
+  },
   "viewer.openInEditorTitle": {
     "defaultMessage": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it"
   },

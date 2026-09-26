@@ -513,6 +513,15 @@ function Toolbar() {
                     });
                     openSceneInNewEditor({
                       getCameraState: getCurrentCameraState
+                    }).catch((err) => {
+                      console.error('Open in 3DStreet failed:', err);
+                      STREET.notify?.errorMessage(
+                        intl.formatMessage({
+                          id: 'viewer.openInEditorFailed',
+                          defaultMessage:
+                            'Could not open the scene in a new tab. Please try again.'
+                        })
+                      );
                     });
                   }}
                   leadingIcon={

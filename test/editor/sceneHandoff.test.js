@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import JSONCrush from 'jsoncrush';
 import {
   buildHandoffScene,
   handoffUrlFor
 } from '../../src/editor/lib/sceneHandoff.js';
+import { decodeSceneHash } from '../../src/tested/scene-hash-codec.js';
 
 const sceneObject = {
   title: 'Corner',
@@ -73,13 +73,13 @@ describe('sceneHandoff', () => {
     expect(scene.memory.forkedFrom).toBeUndefined();
   });
 
-  it('produces a crushed hash the loader can uncrush back to the scene', () => {
+  it('produces a deflate hash the loader can decode back to the scene', async () => {
     const scene = buildHandoffScene({ sceneObject });
-    const url = handoffUrlFor(scene, 'https://3dstreet.app/');
-    const prefix = 'https://3dstreet.app/#crushed-3dstreet-json:';
+    const url = await handoffUrlFor(scene, 'https://3dstreet.app/');
+    const prefix = 'https://3dstreet.app/#deflate-3dstreet-json:';
     expect(url.startsWith(prefix)).toBe(true);
     const roundTrip = JSON.parse(
-      JSONCrush.uncrush(decodeURIComponent(url.slice(prefix.length)))
+      await decodeSceneHash(url.slice(prefix.length))
     );
     expect(roundTrip).toEqual(scene);
   });

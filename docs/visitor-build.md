@@ -132,12 +132,23 @@ guards) and, when rotate is off, `data-transform-yaw-only`.
 `src/editor/lib/sceneHandoff.js` serializes the scene the way Save does,
 strips `build-area` components (the visitor now owns an ordinary scene;
 their shape stays a shape), stamps `memory.forkedFrom` with the source
-scene id, crushes the JSON with JSONCrush and opens
-`#crushed-3dstreet-json:…` in a new tab. That loader
-(`set-loader-from-hash`, `json-utils_1.1.js`) clears metadata, so the
-scene lands as a local draft: Edit needs no account, Save opens sign-in
-and saves it as the visitor's own scene. The hash never reaches a server;
-a street with a few hundred objects crushes to under 10 KB.
+scene id, deflates the JSON with the native `CompressionStream`
+(`src/tested/scene-hash-codec.js`, base64url) and opens
+`#deflate-3dstreet-json:…` in a new tab. That loader (`set-loader-from-hash`,
+`json-utils_1.1.js`) clears metadata, so the scene lands as a local draft:
+Edit needs no account, Save opens sign-in and saves it as the visitor's own
+scene. The hash never reaches a server.
+
+**Why not JSONCrush** (the older `#crushed-3dstreet-json:` loader, still
+supported): it searches the whole string for repeated substrings on every
+pass, so it is super-linear and blocks the main thread. It froze the page
+for 20-30 s on a real scene. Deflate takes about a millisecond; a 450 KB
+scene hands off in under half a second.
+
+**Popup rule.** Compression is async, and browsers block a `window.open`
+that follows an `await`. The button opens a blank tab synchronously inside
+the click, severs its opener, and points it at the URL once compression
+resolves.
 
 ## Embedding
 

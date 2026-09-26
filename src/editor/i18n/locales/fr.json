@@ -871,6 +871,7 @@
   "viewer.editingCopyWarning": "Ceci est une copie non enregistrée. Cliquez sur Enregistrer pour créer votre propre copie.",
   "viewer.hotspotBack": "Retour",
   "viewer.openInEditor": "Ouvrir dans 3DStreet",
+  "viewer.openInEditorFailed": "Impossible d'ouvrir la scène dans un nouvel onglet. Veuillez réessayer.",
   "viewer.openInEditorTitle": "Ouvrez cette scène, avec ce que vous avez placé, dans un nouvel onglet de l’éditeur 3DStreet pour continuer à y travailler",
   "viewer.pause": "Pause",
   "viewer.pauseTitle": "Met la simulation en pause",

@@ -871,6 +871,7 @@
   "viewer.editingCopyWarning": "Esta é uma cópia não salva. Clique em Salvar para criar sua própria cópia.",
   "viewer.hotspotBack": "Voltar",
   "viewer.openInEditor": "Abrir no 3DStreet",
+  "viewer.openInEditorFailed": "Não foi possível abrir a cena em uma nova aba. Tente novamente.",
   "viewer.openInEditorTitle": "Abra esta cena, com o que você posicionou, em uma nova aba do editor do 3DStreet para continuar trabalhando nela",
   "viewer.pause": "Pausar",
   "viewer.pauseTitle": "Pause a simulação",
