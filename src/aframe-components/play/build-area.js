@@ -32,7 +32,6 @@ import {
   pointInRingXZ,
   mergePalettes
 } from './build-area-rules.js';
-import { FILL_LIFT_M } from '../shapeFillRender.js';
 
 export const VISITOR_ADDED_ATTR = 'data-viewer-added';
 
@@ -281,15 +280,12 @@ AFRAME.registerSystem('build-area', {
     for (const area of this.getBuildableAreas()) {
       const ring = area.worldRing();
       if (ring.length < 3) continue;
-      // The drop plane is the shape's fill cap: the ring's mean height
-      // plus the cap's lift above it (shapeFillRender.js). Objects stand ON
-      // the painted surface the visitor sees rather than on the vertex
-      // plane the cap floats over, where their bottom centimetres would be
-      // hidden inside the fill. Mean height is exact for the flat painted
-      // zones this is built for and a fair approximation for a shape whose
-      // vertices were raised unevenly (the cap is flat too).
+      // The drop plane is the ring's mean height: exact for the flat
+      // painted zones this is built for, a fair approximation for a shape
+      // whose vertices were raised or lowered unevenly (the shape's own
+      // fill is a flat cap at one height too).
       const meanY = ring.reduce((sum, p) => sum + p.y, 0) / ring.length;
-      this._plane.constant = -(meanY + FILL_LIFT_M);
+      this._plane.constant = -meanY;
       const hit = this._raycaster.ray.intersectPlane(this._plane, this._hit);
       if (!hit) continue;
       if (!pointInRingXZ(hit, ring)) continue;
@@ -320,7 +316,6 @@ AFRAME.registerSystem('build-area', {
     const point = new THREE.Vector3();
     for (const p of ring) point.add(new THREE.Vector3(p.x, p.y, p.z));
     point.divideScalar(ring.length);
-    point.y += FILL_LIFT_M; // on the fill cap, as pickArea places
     return { area, point, distance: 0 };
   },
 

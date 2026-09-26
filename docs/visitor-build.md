@@ -103,12 +103,9 @@ viewer is the static scene it always was. On it:
   (`outside`, `palette`, `full`, `keepInside`).
 
 **Drop resolution.** The system casts the pointer ray to each buildable
-area's drop plane, the shape's fill cap: the mean height of the shape's
-vertices plus the cap's lift (`FILL_LIFT_M`, `shapeFillRender.js`), so
-objects stand on the painted surface the visitor sees rather than inside
-it. Mean height is exact for a flat painted zone and an approximation for a
-shape whose vertices were raised unevenly (the cap is flat too). The hit is
-then tested against
+area's drop plane (the mean height of the shape's vertices: exact for a
+flat painted zone, an approximation for a shape whose vertices were raised
+unevenly, whose own fill is a flat cap too) and tests the hit against
 the shape's world ring (`pointInRingXZ`, `build-area-rules.js`, unit
 tested). It does not raycast the fill mesh, so an author who turned
 `selectInside` off for a big zone still gets drops. Placement runs
