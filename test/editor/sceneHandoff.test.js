@@ -45,6 +45,27 @@ describe('sceneHandoff', () => {
     ).toBeDefined();
   });
 
+  it('strips the string-form component values filterJSONstreet produces', () => {
+    // Production input: convertDOMElToObject + filterJSONstreet stringify
+    // component values ("enabled: true; palette: tree3,bench").
+    const stringForm = {
+      title: 'Corner',
+      data: [
+        {
+          components: {
+            shape: 'closed: true',
+            'build-area': 'enabled: true; palette: tree3,bench; maxObjects: 5'
+          },
+          children: [{ mixin: 'tree3', components: { position: '1 0 1' } }]
+        }
+      ],
+      memory: {}
+    };
+    const scene = buildHandoffScene({ sceneObject: stringForm });
+    expect(scene.data[0].components).toEqual({ shape: 'closed: true' });
+    expect(scene.data[0].children[0].mixin).toBe('tree3');
+  });
+
   it('stamps the camera state when given and omits forkedFrom for local drafts', () => {
     const cameraState = { position: { x: 1, y: 2, z: 3 } };
     const scene = buildHandoffScene({ sceneObject, cameraState });

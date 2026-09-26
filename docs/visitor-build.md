@@ -69,6 +69,10 @@ is the cap. Shapes already carry children (their `shape-vertex` markers)
 and every shape internal filters on that marker, so extra children are
 opaque to vertex editing, measurement and convert-to-shapes.
 
+**Undo inside a session** stops at the mark taken at Start (`canUndo`), so
+the dock's Undo never pops the author's editor commands; Stop and Reset
+clamp the undo stack to the mark and put the pre-Start redo stack back.
+
 **Nothing is persisted.** Play may change the live scene, as it already
 does (animated traffic, the driven car, crash markers), but nothing that
 happens during play is written to the source scene. Visitor objects carry
@@ -99,7 +103,9 @@ viewer is the static scene it always was. On it:
   (`outside`, `palette`, `full`, `keepInside`).
 
 **Drop resolution.** The system casts the pointer ray to each buildable
-area's fill plane (the shape's vertex height) and tests the hit against
+area's drop plane (the mean height of the shape's vertices: exact for a
+flat painted zone, an approximation for a shape whose vertices were raised
+unevenly, whose own fill is a flat cap too) and tests the hit against
 the shape's world ring (`pointInRingXZ`, `build-area-rules.js`, unit
 tested). It does not raycast the fill mesh, so an author who turned
 `selectInside` off for a big zone still gets drops. Placement runs
@@ -122,7 +128,10 @@ a street with a few hundred objects crushes to under 10 KB.
 ## Embedding
 
 `?embed=true` implies `?viewer=true` and hides the app switcher, byline,
-Edit action and profile button. The shuttle, Snapshot, the palette dock
+Edit action and profile button. Hosting sends no `X-Frame-Options` or
+`frame-ancestors` header today (`public/firebase.json` sets only
+`Cache-Control`), so third-party pages can frame the app; adding one later
+must allow the campaign sites. The shuttle, Snapshot, the palette dock
 and Open in 3DStreet stay. Example:
 
 ```html
@@ -151,12 +160,12 @@ and Open in 3DStreet stay. Example:
 
 ## Files
 
-| Where | What |
-| --- | --- |
-| `src/aframe-components/play/build-area.js` | component + system (session, drop resolution, placement, cleanup) |
-| `src/aframe-components/play/build-area-rules.js` | pure rules (palette parsing, cap, point-in-ring, palette union); `test/editor/buildAreaRules.test.js` |
-| `src/editor/components/elements/BuildPalette/` | visitor dock |
-| `src/editor/components/elements/BuildAreaSidebar.jsx` | author's Build Area section (wired in `FeaturedComponents.jsx`, `featuredComponents.js`, `ComponentsContainer.jsx`) |
-| `src/editor/lib/sceneHandoff.js` | Open in 3DStreet; `test/editor/sceneHandoff.test.js` |
-| `src/editor/lib/viewport.js`, `src/editor/lib/raycaster.js` | session gating, gizmo release clamp hook, viewer selection filter |
-| `src/editor/components/scenegraph/Toolbar.jsx`, `src/editor/index.jsx` | Open in 3DStreet button, `?embed=true` |
+| Where                                                                  | What                                                                                                                |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `src/aframe-components/play/build-area.js`                             | component + system (session, drop resolution, placement, cleanup)                                                   |
+| `src/aframe-components/play/build-area-rules.js`                       | pure rules (palette parsing, cap, point-in-ring, palette union); `test/editor/buildAreaRules.test.js`               |
+| `src/editor/components/elements/BuildPalette/`                         | visitor dock                                                                                                        |
+| `src/editor/components/elements/BuildAreaSidebar.jsx`                  | author's Build Area section (wired in `FeaturedComponents.jsx`, `featuredComponents.js`, `ComponentsContainer.jsx`) |
+| `src/editor/lib/sceneHandoff.js`                                       | Open in 3DStreet; `test/editor/sceneHandoff.test.js`                                                                |
+| `src/editor/lib/viewport.js`, `src/editor/lib/raycaster.js`            | session gating, gizmo release clamp hook, viewer selection filter                                                   |
+| `src/editor/components/scenegraph/Toolbar.jsx`, `src/editor/index.jsx` | Open in 3DStreet button, `?embed=true`                                                                              |

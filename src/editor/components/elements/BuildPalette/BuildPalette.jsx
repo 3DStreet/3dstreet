@@ -176,7 +176,11 @@ export const BuildPalette = () => {
     AFRAME.INSPECTOR.execute('entityremove', selected);
   }, [selected]);
 
-  const undo = useCallback(() => AFRAME.INSPECTOR.undo(), []);
+  // Undo stops at the session's Start mark (build-area.canUndo): past it
+  // would pop the author's own editor commands.
+  const undo = useCallback(() => {
+    if (getSystem()?.canUndo()) AFRAME.INSPECTOR.undo();
+  }, []);
   const redo = useCallback(() => AFRAME.INSPECTOR.redo(), []);
 
   // Keyboard, capture phase so Escape with a selection deselects and
@@ -185,7 +189,15 @@ export const BuildPalette = () => {
     if (!active) return undefined;
     const onKeyDown = (e) => {
       const a = document.activeElement;
-      if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
+      if (
+        a &&
+        (a.tagName === 'INPUT' ||
+          a.tagName === 'TEXTAREA' ||
+          a.tagName === 'SELECT' ||
+          a.isContentEditable)
+      ) {
+        return;
+      }
       if (useStore.getState().modal) return;
       const mod = e.ctrlKey || e.metaKey;
       if (mod && e.code === 'KeyZ') {

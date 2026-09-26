@@ -110,8 +110,13 @@ AFRAME.registerSystem('build-area', {
     this.sceneEl.addEventListener('play-mode-start', () => {
       // Visitor objects live for one session; anything placed later is
       // undone back to here on Stop so the author's own undo stack (an
-      // editor-origin Start) survives the preview intact.
-      this._historyMark = this._history()?.undos?.length || 0;
+      // editor-origin Start) survives the preview intact. The redo stack
+      // is snapshotted too: History.execute() empties it on every session
+      // command, and Stop puts the pre-Start redos back so an author who
+      // had just undone something can still redo it after the preview.
+      const history = this._history();
+      this._historyMark = history?.undos?.length || 0;
+      this._redosAtStart = history ? history.redos.slice() : [];
       this.refresh();
     });
     this.sceneEl.addEventListener('play-mode-stop', () => {
@@ -130,11 +135,11 @@ AFRAME.registerSystem('build-area', {
     });
 
     // Keep the dock's counter live off the DOM rather than off each command
-    // path (create, delete, undo, redo all change it).
-    const observer = new MutationObserver(() => {
-      if (this._active) this._syncCount();
-    });
-    observer.observe(this.sceneEl, { childList: true, subtree: true });
+    // path (create, delete, undo, redo all change it). Connected only for
+    // the duration of a session (refresh), so an idle scene pays nothing
+    // and a session only sees its own childList churn (traffic clones
+    // toggle `visible`, an attribute, not children).
+    this._observer = new MutationObserver(() => this._syncCount());
 
     // Playable capability: a buildable area is something for Start to do.
     // Deferred to scene `loaded`: mode-manager registers after this system.
@@ -154,6 +159,14 @@ AFRAME.registerSystem('build-area', {
   register(component) {
     this.areas.add(component);
     this.refresh();
+  },
+
+  // The dock's Undo stops at the Start mark: undoing past it would pop the
+  // author's editor commands, which Stop then trims for good (it clamps
+  // the undo stack to the mark and restores the pre-Start redos).
+  canUndo() {
+    const history = this._history();
+    return !!history && history.undos.length > this._historyMark;
   },
 
   unregister(component) {
@@ -195,6 +208,14 @@ AFRAME.registerSystem('build-area', {
     const active = this.isActive();
     if (active !== this._active) {
       this._active = active;
+      if (active) {
+        this._observer.observe(this.sceneEl, {
+          childList: true,
+          subtree: true
+        });
+      } else {
+        this._observer.disconnect();
+      }
       useStore.getState().setBuildSessionActive(active);
     }
     this._syncCount();
@@ -219,7 +240,6 @@ AFRAME.registerSystem('build-area', {
     const placed = Array.from(
       this.sceneEl.querySelectorAll(`[${VISITOR_ADDED_ATTR}]`)
     );
-    if (!placed.length) return;
     if (
       inspector?.selectedEntity &&
       placed.includes(inspector.selectedEntity)
@@ -229,10 +249,14 @@ AFRAME.registerSystem('build-area', {
     for (const el of placed) {
       if (el.parentNode) el.parentNode.removeChild(el);
     }
+    // Trim even with nothing left in the scene: a session that placed and
+    // then deleted everything still left its commands on the stack.
     const history = this._history();
-    if (history) {
+    if (history && this._redosAtStart) {
       history.undos.length = Math.min(history.undos.length, this._historyMark);
-      history.redos = [];
+      // Session commands never survive (their entities are gone); the
+      // author's pre-Start redos come back (see play-mode-start).
+      history.redos = this._redosAtStart || [];
     }
     this._syncCount();
   },
@@ -256,7 +280,12 @@ AFRAME.registerSystem('build-area', {
     for (const area of this.getBuildableAreas()) {
       const ring = area.worldRing();
       if (ring.length < 3) continue;
-      this._plane.constant = -ring[0].y;
+      // The drop plane is the ring's mean height: exact for the flat
+      // painted zones this is built for, a fair approximation for a shape
+      // whose vertices were raised or lowered unevenly (the shape's own
+      // fill is a flat cap at one height too).
+      const meanY = ring.reduce((sum, p) => sum + p.y, 0) / ring.length;
+      this._plane.constant = -meanY;
       const hit = this._raycaster.ray.intersectPlane(this._plane, this._hit);
       if (!hit) continue;
       if (!pointInRingXZ(hit, ring)) continue;
@@ -340,6 +369,16 @@ AFRAME.registerSystem('build-area', {
     const before = new Set(area.visitorObjects());
     window.AFRAME?.INSPECTOR?.execute('entitycreate', definition);
     const created = area.visitorObjects().find((el) => !before.has(el)) || null;
+    if (created) {
+      // The create command pauses the new entity once loaded (editor
+      // convention: the inspector's scene is paused). The viewer is
+      // playing, so a palette object with ticking components (an animated
+      // model) must keep ticking; our listener is registered after the
+      // command's, so it runs after the pause.
+      const play = () => created.play();
+      if (created.hasLoaded) play();
+      else created.addEventListener('loaded', play, { once: true });
+    }
     return created;
   },
 
