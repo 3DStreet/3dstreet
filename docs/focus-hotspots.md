@@ -87,6 +87,16 @@ Nothing in the load path depends on auth.
   pose itself, the same as Preview Start: `ExperimentalControls.focus`
   routes `viewer-start` targets to the system's `goToStart`. Nothing but
   position/rotation/`viewer-start` serializes.
+- **fov is a lens setting, applied live:** the editor and viewer share
+  one camera, so editing `fov` in the panel sets that camera's lens at
+  once (typed, dragged, reset or undone; `viewer-start` `update` →
+  system `applyFov`), while position/rotation stay Preview-only. The
+  row's reset returns it to `DEFAULT_FOV_DEGREES`
+  (`src/tested/scene-camera-pose.js`, 50: THREE's default and the
+  editor camera's resting fov), which is also the schema default and
+  every camera-state `zoom` fallback. A scene saved before #2031 whose
+  Starting View was exactly the old default of 60 reloads at 50, by
+  decision (no migration).
 - **Play:** the system glides the shared editor/viewer camera to the
   start pose on `play-mode-start` (`controls.focusCameraState`, which
   honors `fov` as `zoom`) and, for editor-origin sessions only, restores
