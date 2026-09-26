@@ -135,15 +135,17 @@ export function fillPaintOrder(planeY, area) {
 // difference and cannot carry a polygonOffset - so a biased fill would look
 // right here and shimmer in whatever viewer opened the exported scene.
 //
-// On depth-precision grounds alone ~1 mm would do, and that is the figure to
-// return to. The lift is far higher for an unrelated reason: the street's lane
-// markings and stencils are transparent quads authored with no alpha cut-off,
-// so each writes depth across its whole quad including the empty margin,
-// discarding anything translucent drawn lower - a 1 mm fill is punched full of
-// holes wherever a marking crosses it. So the fill clears the marking layer
-// instead, at the cost of visibly floating at grazing angles and exporting that
-// way. Giving the marking materials an alpha cut-off undoes the fudge and lets
-// this come back down.
+// On depth-precision grounds alone ~1 mm would do. The lift is far higher
+// for a reason that is now half gone: the street's lane markings and stencils
+// USED to be transparent quads with no alpha cut-off, each writing depth across
+// its whole quad including the empty margin, so a 1 mm fill was punched full of
+// rectangular holes wherever a marking crossed it. Since #2031 they carry
+// MARKING_ALPHA_TEST (street-segment-utils.js) and only their paint writes
+// depth, so a fill below a marking is hidden only under the paint itself. The
+// lift is KEPT above the marking layer on purpose all the same: a translucent
+// fill is expected to read OVER a stencil (tinting the T and the road beneath
+// it), and a fill under the paint would be covered by it instead. Lowering the
+// lift toward 1 mm is a product decision, not a rendering one, now.
 //
 // Expressed in terms of the markings' own offset rather than as a bare number,
 // so if that offset is lowered - the note beside it says it should be - the

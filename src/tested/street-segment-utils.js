@@ -15,6 +15,21 @@ const BASE_SURFACE_DEPTH = 0.15; // Minimum material depth above dirt layer
 // nobody can justify.
 const MARKING_SURFACE_OFFSET = 0.05;
 
+// Alpha cut-off for every generated lane marking, stencil and crosswalk
+// material (`alphaTest`). These are transparent quads whose texture is empty
+// outside the paint; with no cut-off a fully transparent texel still passes the
+// fragment stage and, with depthWrite on, writes depth, so the empty margin of
+// each quad occludes anything translucent drawn later and geometrically below
+// it: a closed shape's fill under a parking T vanished in a rectangle the
+// size of the quad, and a crosswalk under a T did the same (#2031). With a
+// cut-off those texels are discarded and write no depth, so only the paint
+// itself hides what is under it. Low rather than the common 0.5 because the
+// margin is exactly 0 (any positive value discards it) while mipmapping pulls a
+// thin dashed stripe's alpha down at distance, and a high threshold would thin
+// or erase far stripes. `transparent` stays on, so edge texels above the
+// cut-off still blend.
+const MARKING_ALPHA_TEST = 0.1;
+
 // Calculate the Y position and below-box geometry height for a given elevation
 // in meters. The below-box primitive places its top face at the entity's local
 // origin, so using the same value for both entity Y and box height means the
@@ -265,5 +280,6 @@ export {
   migrateShowBuildingsFlag,
   CURB_HEIGHT,
   BASE_SURFACE_DEPTH,
-  MARKING_SURFACE_OFFSET
+  MARKING_SURFACE_OFFSET,
+  MARKING_ALPHA_TEST
 };
