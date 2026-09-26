@@ -511,6 +511,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // click asked.
       if (closingArmedRef.current) {
         if (closureRefused()) return;
+        // This release also bubbles to the viewport raycaster's empty-space
+        // click handler, which would deselect the polygon the create command
+        // is about to select (the first vertex is not a raycastable entity).
+        // Mark the press as consumed by a viewport tool, exactly as the gizmos
+        // do, so the shape stays selected (raycaster.js handleEmptySpaceClick).
+        if (AFRAME.INSPECTOR) AFRAME.INSPECTOR.gizmoCapturedPress = true;
         finish(); // closing onto the first vertex
         return;
       }
