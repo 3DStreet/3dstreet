@@ -157,6 +157,39 @@ and Open in 3DStreet stay. Example:
 ></iframe>
 ```
 
+## Known issues
+
+- **Other play capabilities.** A scene with a drivable car or a helicopter
+  never enters a build session: Start hands the camera to the vehicle and
+  leaves control mode `viewer` ("drive wins"), so the dock silently never
+  appears. Focus hotspots and building are both live in `viewer` and both
+  listen to the canvas pointer with no arbiter: clicking a hotspot glides
+  the camera while build tools are live, a visitor object inside a
+  see-through hotspot box cannot be selected (the box is hit first), and a
+  zero-movement click on a gizmo handle over a hotspot focuses the
+  hotspot. The root cause is systemic: mode-manager arbitrates camera
+  ownership (editor / viewer / drive / fly) but nothing arbitrates pointer
+  ownership or which capabilities may run together. A fix is a single
+  pointer owner in `viewer` with prioritized handlers, plus capabilities
+  declaring compatibility so Start picks or offers a mode instead of
+  dropping one. The history and selection fencing in this feature is a
+  hand-built slice of the isolated visitor session that would contain the
+  whole class.
+- **Tap-to-place target.** Dragging is exact. A tap (no drop point) uses
+  the area under the centre of the view, else the first area's
+  corner-average. Two edge cases: with several areas offering different
+  objects, a tap is refused when the centre is over an area that does not
+  offer the object even if another area does; and the corner-average of an
+  L- or U-shaped area can fall in its notch, so the object lands outside
+  the area (the ring clamp runs only on gizmo release). Neither affects a
+  single convex area. Fix: choose the area under the centre only if it
+  offers the object and has room, else the first area that does, and drop
+  at a point guaranteed inside the ring.
+- **Test coverage.** The rules and the handoff are unit tested; the
+  session lifecycle, refusal paths, snap-back, selection guard and
+  `?embed=true` are verified by hand in headless Chromium only. They
+  belong in `test/components` (browser harness).
+
 ## Not in this phase
 
 - A tethered "limited look" camera between free and fixed.
