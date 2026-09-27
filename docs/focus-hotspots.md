@@ -71,6 +71,14 @@ unit-tested), for owners and visitors alike:
 | no Starting View          | autosaved editor pose (`memory.cameraState`) |
 | nothing saved             | default overview                             |
 
+The lens is part of the pose: a load with no saved fov (a blank scene, a
+pose saved without `zoom`) lands at `DEFAULT_FOV_DEGREES`, never at the fov
+the previous scene left on the shared camera. File › New › Blank Scene once
+kept it for the rest of the session, and the next save wrote it into the
+new scene (#2037). `createBlankScene` emits through `emitNewScene({})` like
+every other load route, so a late-initializing viewport replays the blank
+scene's empty detail, not the previous scene's saved pose.
+
 Pressing **Start** (and Reset) glides to the same Starting View. Legacy
 scenes that pinned their opening view through the default snapshot's
 camera state get a Starting View synthesized at load

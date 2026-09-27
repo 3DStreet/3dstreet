@@ -60,7 +60,7 @@ export function encodeCameraStateToParam(cameraState) {
     rotation?.x,
     rotation?.y,
     rotation?.z,
-    cameraState?.zoom ?? 60
+    cameraState?.zoom ?? DEFAULT_FOV_DEGREES
   ];
   if (!values.every(Number.isFinite)) return null;
   return values.map((v, i) => Number(v.toFixed(i < 3 ? 2 : 4))).join(',');

@@ -13,7 +13,14 @@ import { db } from '@shared/services/firebase';
 
 export function createBlankScene() {
   STREET.utils.newScene();
-  AFRAME.scenes[0].emit('newScene');
+  // A ?camera= deep link parked by a cloud load that never finished must
+  // not ride into the next scene loaded after this one.
+  delete AFRAME.scenes[0].pendingSceneLoadCamera;
+  // Emit through the shared helper (not a bare emit) so the parked
+  // "last newScene detail" a late-initializing viewport replays is this
+  // scene's empty one, not the previous scene's saved camera pose. With no
+  // saved pose the fly-in lands at the default overview and default fov.
+  STREET.utils.emitNewScene({});
 }
 
 export function inputStreetmix() {
