@@ -24,6 +24,7 @@ import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { ViewerSnapshot } from '../elements/ViewerSnapshot/ViewerSnapshot';
+import { HandoffPrompt } from '../elements/HandoffPrompt';
 import { ToolTip } from '../elements/PrimaryToolbar/PrimaryToolbar';
 import primaryStyles from '../elements/PrimaryToolbar/PrimaryToolbar.module.scss';
 import styles from './Toolbar.module.scss';
@@ -168,6 +169,9 @@ function Toolbar() {
   // Edit action. A build scene's Open in 3DStreet stays: it is the
   // visitor's way to keep their work.
   const isEmbed = useStore((s) => s.isEmbed);
+  // Open in 3DStreet's link when its new tab was blocked (HandoffPrompt).
+  const [handoffUrl, setHandoffUrl] = useState(null);
+  const closeHandoffPrompt = useCallback(() => setHandoffUrl(null), []);
   const controlMode = useControlMode();
   // First-entry call-to-action: until Play has run once for this scene
   // load, the idle Start is a large centered button instead of the small
@@ -521,18 +525,25 @@ function Toolbar() {
                       placed_count: useStore.getState().buildPlacedCount,
                       is_embed: isEmbed
                     });
+                    setHandoffUrl(null);
                     openSceneInNewEditor({
                       getCameraState: getCurrentCameraState
-                    }).catch((err) => {
-                      console.error('Open in 3DStreet failed:', err);
-                      STREET.notify?.errorMessage(
-                        intl.formatMessage({
-                          id: 'viewer.openInEditorFailed',
-                          defaultMessage:
-                            'Could not open the scene in a new tab. Please try again.'
-                        })
-                      );
-                    });
+                    })
+                      .then(({ url, opened }) => {
+                        // Popup blocked: offer the link behind a fresh
+                        // click instead of losing the design.
+                        if (!opened) setHandoffUrl(url);
+                      })
+                      .catch((err) => {
+                        console.error('Open in 3DStreet failed:', err);
+                        STREET.notify?.errorMessage(
+                          intl.formatMessage({
+                            id: 'viewer.openInEditorFailed',
+                            defaultMessage:
+                              'Could not open the scene in a new tab. Please try again.'
+                          })
+                        );
+                      });
                   }}
                   leadingIcon={
                     <AwesomeIcon icon={faArrowUpRightFromSquare} size={14} />
@@ -600,6 +611,9 @@ function Toolbar() {
           />
         )}
       </div>
+      {handoffUrl && (
+        <HandoffPrompt url={handoffUrl} onClose={closeHandoffPrompt} />
+      )}
     </>
   );
 }

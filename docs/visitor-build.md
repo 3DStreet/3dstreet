@@ -41,8 +41,12 @@ Visitor Build is a play-mode capability and follows every rule there.
 - The **palette dock** (bottom centre) shows the union of every buildable
   area's palette, wrapped into rows (it scrolls vertically past two rows,
   never sideways, which testers missed). Drag a card onto a build area to
-  place it there, or tap the card to drop it near the centre of the view
-  (falls back to the first area's centroid). Repeated taps fan out to the
+  place it there, or tap the card to drop it near the centre of the view.
+  A tap goes to the area under the view centre only if that area offers
+  the object and has room; otherwise to another area that does, visible
+  areas first, then the nearest (`chooseTapArea`), at a point guaranteed
+  inside it, L- and U-shaped areas included (`interiorPointXZ`). It is
+  refused only when no area can take the object. Repeated taps fan out to the
   nearest free spot inside the area, spaced by each model's precomputed
   footprint (`src/model-bounds.json`), instead of stacking invisibly on one
   point. The counter shows placed objects against the areas' total cap.
@@ -154,6 +158,13 @@ that follows an `await`. The button opens a blank tab synchronously inside
 the click, severs its opener, and points it at the URL once compression
 resolves.
 
+**Blocked tab.** If a popup blocker stops even that blank tab, nothing is
+retried after the `await` (it would be blocked too, silently). Instead
+`openSceneInNewEditor` resolves `opened: false` and the viewer shows
+`HandoffPrompt` with the ready URL: **Open in 3DStreet** is a plain link,
+which a fresh click lets through, and **Copy link** keeps the design for a
+blocker that still refuses. Escape closes the prompt without stopping play.
+
 ## Embedding
 
 `?embed=true` implies `?viewer=true` and hides the app switcher, byline,
@@ -192,17 +203,6 @@ and Open in 3DStreet stay. Example:
   dropping one. The history and selection fencing in this feature is a
   hand-built slice of the isolated visitor session that would contain the
   whole class.
-- **Tap-to-place with several areas.** Dragging is exact. A tap (no drop
-  point) uses the area under the centre of the view, else the first area.
-  It does not check that area offers the object or has room: with several
-  areas, a tap is refused as "not available" or "full" even when another
-  area would take it. A single area is unaffected. (The fallback point is guaranteed
-  inside the area, L- and U-shaped ones included: `interiorPointXZ`.)
-- **Open in 3DStreet with a blocked tab.** The blank tab is opened inside
-  the click; if a popup blocker stops it anyway, the fallback `window.open`
-  runs after compression, outside the click, and is blocked too. With
-  `noopener` it returns null either way, so the failure is neither
-  detected nor shown, and the visitor loses their design.
 - **Test coverage.** The rules and the handoff are unit tested; the
   session lifecycle, refusal paths, snap-back, selection guard and
   `?embed=true` are verified by hand in headless Chromium only. They
@@ -234,3 +234,4 @@ and Open in 3DStreet stay. Example:
 | `src/editor/lib/sceneHandoff.js`                                       | Open in 3DStreet; `test/editor/sceneHandoff.test.js`                                                                |
 | `src/editor/lib/viewport.js`, `src/editor/lib/raycaster.js`            | session gating, gizmo release clamp hook, viewer selection filter                                                   |
 | `src/editor/components/scenegraph/Toolbar.jsx`, `src/editor/index.jsx` | Open in 3DStreet button, `?embed=true`                                                                              |
+| `src/editor/components/elements/HandoffPrompt/`                        | Blocked-tab fallback for Open in 3DStreet                                                                           |

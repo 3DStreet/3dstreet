@@ -2612,6 +2612,27 @@
   "viewer.editingCopyWarning": {
     "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
   },
+  "viewer.handoffPrompt.body": {
+    "defaultMessage": "Your browser blocked the new tab. Open it here, or copy the link to keep your design."
+  },
+  "viewer.handoffPrompt.close": {
+    "defaultMessage": "Close"
+  },
+  "viewer.handoffPrompt.copied": {
+    "defaultMessage": "Link copied. Paste it into a new tab to open your design."
+  },
+  "viewer.handoffPrompt.copy": {
+    "defaultMessage": "Copy link"
+  },
+  "viewer.handoffPrompt.copyFailed": {
+    "defaultMessage": "Could not copy the link. Please try Open instead."
+  },
+  "viewer.handoffPrompt.open": {
+    "defaultMessage": "Open in 3DStreet"
+  },
+  "viewer.handoffPrompt.title": {
+    "defaultMessage": "Your design is ready"
+  },
   "viewer.hotspotBack": {
     "defaultMessage": "Back"
   },

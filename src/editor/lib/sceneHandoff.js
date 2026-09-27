@@ -44,7 +44,7 @@ export function buildHandoffScene({
   return scene;
 }
 
-/** `https://host/path#crushed-3dstreet-json:…` for a scene object. */
+/** `https://host/path#deflate-3dstreet-json:…` for a scene object. */
 export async function handoffUrlFor(scene, base) {
   const payload = await encodeSceneHash(JSON.stringify(scene));
   return `${base}#${DEFLATE_HASH_PREFIX}${payload}`;
@@ -52,13 +52,18 @@ export async function handoffUrlFor(scene, base) {
 
 /**
  * Serialize the current scene the way Save does and open it in a new
- * tab as an unsaved draft. Resolves to the URL (also for tests/analytics).
+ * tab as an unsaved draft. Resolves to { url, opened }.
  *
  * Must be called from the click handler: the tab is opened synchronously,
  * inside the user gesture, and pointed at the URL once compression
  * resolves. Browsers block a window.open that comes after an await. The
  * opener link is severed by hand, since `noopener` would make window.open
  * return null and leave nothing to navigate.
+ *
+ * When a popup blocker stops even the in-gesture tab, nothing is retried
+ * here (a second window.open after the await is blocked too, and silently):
+ * `opened` is false and the caller offers the URL behind a fresh click
+ * (HandoffPrompt), so the visitor never loses their design.
  */
 export async function openSceneInNewEditor({ getCameraState } = {}) {
   const tab = window.open('', '_blank');
@@ -74,9 +79,10 @@ export async function openSceneInNewEditor({ getCameraState } = {}) {
     });
     const base = `${window.location.origin}${window.location.pathname}`;
     const url = await handoffUrlFor(scene, base);
-    if (tab) tab.location.href = url;
-    else window.open(url, '_blank', 'noopener'); // popup blocked the blank tab
-    return url;
+    // A tab closed while compressing counts as blocked: offer the link.
+    const opened = !!tab && !tab.closed;
+    if (opened) tab.location.href = url;
+    return { url, opened };
   } catch (err) {
     if (tab) tab.close();
     throw err;

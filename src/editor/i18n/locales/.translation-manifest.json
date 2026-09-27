@@ -898,7 +898,14 @@
     "viewer.openInEditor": "Open in 3DStreet",
     "viewer.openInEditorTitle": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it",
     "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again.",
-    "buildArea.placedCountOfCap": "{count} of {cap} placed"
+    "buildArea.placedCountOfCap": "{count} of {cap} placed",
+    "viewer.handoffPrompt.body": "Your browser blocked the new tab. Open it here, or copy the link to keep your design.",
+    "viewer.handoffPrompt.close": "Close",
+    "viewer.handoffPrompt.copied": "Link copied. Paste it into a new tab to open your design.",
+    "viewer.handoffPrompt.copy": "Copy link",
+    "viewer.handoffPrompt.copyFailed": "Could not copy the link. Please try Open instead.",
+    "viewer.handoffPrompt.open": "Open in 3DStreet",
+    "viewer.handoffPrompt.title": "Your design is ready"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1799,7 +1806,14 @@
     "viewer.openInEditor": "Open in 3DStreet",
     "viewer.openInEditorTitle": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it",
     "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again.",
-    "buildArea.placedCountOfCap": "{count} of {cap} placed"
+    "buildArea.placedCountOfCap": "{count} of {cap} placed",
+    "viewer.handoffPrompt.body": "Your browser blocked the new tab. Open it here, or copy the link to keep your design.",
+    "viewer.handoffPrompt.close": "Close",
+    "viewer.handoffPrompt.copied": "Link copied. Paste it into a new tab to open your design.",
+    "viewer.handoffPrompt.copy": "Copy link",
+    "viewer.handoffPrompt.copyFailed": "Could not copy the link. Please try Open instead.",
+    "viewer.handoffPrompt.open": "Open in 3DStreet",
+    "viewer.handoffPrompt.title": "Your design is ready"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2700,6 +2714,13 @@
     "viewer.openInEditor": "Open in 3DStreet",
     "viewer.openInEditorTitle": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it",
     "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again.",
-    "buildArea.placedCountOfCap": "{count} of {cap} placed"
+    "buildArea.placedCountOfCap": "{count} of {cap} placed",
+    "viewer.handoffPrompt.body": "Your browser blocked the new tab. Open it here, or copy the link to keep your design.",
+    "viewer.handoffPrompt.close": "Close",
+    "viewer.handoffPrompt.copied": "Link copied. Paste it into a new tab to open your design.",
+    "viewer.handoffPrompt.copy": "Copy link",
+    "viewer.handoffPrompt.copyFailed": "Could not copy the link. Please try Open instead.",
+    "viewer.handoffPrompt.open": "Open in 3DStreet",
+    "viewer.handoffPrompt.title": "Your design is ready"
   }
 }
