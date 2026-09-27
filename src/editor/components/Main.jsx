@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useIntl } from 'react-intl';
 import RightPanel from './scenegraph/RightPanel';
 import Events from '../lib/Events';
 import ModalTextures from './modals/ModalTextures';
@@ -86,6 +87,21 @@ export default function Main() {
   const isInspectorEnabled = useStore((state) => state.isInspectorEnabled);
   // Sync the UI locale with the signed-in user's stored profile preference.
   useProfileLocaleSync();
+  // A scene link the loader could not decode (json-utils_1.1.js): toast
+  // here, where the message can be localized.
+  const intl = useIntl();
+  const sceneLinkError = useStore((state) => state.sceneLinkError);
+  useEffect(() => {
+    if (!sceneLinkError) return;
+    STREET.notify?.errorMessage(
+      intl.formatMessage({
+        id: 'sceneLink.decodeFailed',
+        defaultMessage:
+          'Could not open this scene link. It may be incomplete; try copying the whole link again.'
+      })
+    );
+    useStore.getState().setSceneLinkError(false);
+  }, [sceneLinkError, intl]);
   const { isPedestalMode } = useNavMode();
   const dockClass = (base) =>
     isPedestalMode ? `${base} ${styles.pedestalMode}` : base;

@@ -410,6 +410,9 @@
   "buildArea.notice.keepInside": {
     "defaultMessage": "Objects stay inside the build area."
   },
+  "buildArea.notice.offscreen": {
+    "defaultMessage": "No build area in view can take that object. Turn toward a build area and try again."
+  },
   "buildArea.notice.outside": {
     "defaultMessage": "Drop it inside a build area."
   },
@@ -2101,6 +2104,9 @@
   },
   "sceneGraph.tabLayers": {
     "defaultMessage": "Layers"
+  },
+  "sceneLink.decodeFailed": {
+    "defaultMessage": "Could not open this scene link. It may be incomplete; try copying the whole link again."
   },
   "scenesModal.fetchError": {
     "defaultMessage": "Error fetching scenes: {error}"

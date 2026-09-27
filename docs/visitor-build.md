@@ -43,10 +43,12 @@ Visitor Build is a play-mode capability and follows every rule there.
   never sideways, which testers missed). Drag a card onto a build area to
   place it there, or tap the card to drop it near the centre of the view.
   A tap goes to the area under the view centre only if that area offers
-  the object and has room; otherwise to another area that does, visible
-  areas first, then the nearest (`chooseTapArea`), at a point guaranteed
-  inside it, L- and U-shaped areas included (`interiorPointXZ`). It is
-  refused only when no area can take the object. Repeated taps fan out to the
+  the object and has room; otherwise to the nearest other area in view
+  that does (`chooseTapArea`), at a point guaranteed inside it, L- and
+  U-shaped areas included (`interiorPointXZ`). It never goes to an area
+  out of view, where the object would appear to vanish: when only such
+  an area could take it, the tap is refused with a toast asking the
+  visitor to turn toward a build area. Repeated taps fan out to the
   nearest free spot inside the area, spaced by each model's precomputed
   footprint (`src/model-bounds.json`), instead of stacking invisibly on one
   point. The counter shows placed objects against the areas' total cap.
@@ -56,8 +58,9 @@ Visitor Build is a play-mode capability and follows every rule there.
   are selectable: the shape, the street and the author's layers are off
   limits.
 - Dock toolbar: **Rotate** (90°), **Delete**, **Undo**, **Redo**.
-  Keyboard: Delete/Backspace, Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z; Escape
-  deselects first, then stops the session as usual.
+  Keyboard: Delete/Backspace, Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z; Escape backs
+  out one level per press: it closes the blocked-tab prompt if open, then
+  deselects, then stops the session as usual.
 - Right dock: **Snapshot** (the existing capture-only button) and
   **Open in 3DStreet** (below).
 - **Reset** and **Stop** remove every placed object.
@@ -122,7 +125,7 @@ viewer is the static scene it always was. On it:
   palette, a window-level drop handler with its own MIME type, the object
   toolbar, the keyboard, and the localized toasts for the refusals the
   system names through the `build-area-notice` scene event
-  (`outside`, `palette`, `full`, `keepInside`).
+  (`outside`, `offscreen`, `palette`, `full`, `keepInside`).
 
 **Drop resolution.** The system casts the pointer ray to each buildable
 area's drop plane (the mean height of the shape's vertices: exact for a
@@ -163,7 +166,15 @@ retried after the `await` (it would be blocked too, silently). Instead
 `openSceneInNewEditor` resolves `opened: false` and the viewer shows
 `HandoffPrompt` with the ready URL: **Open in 3DStreet** is a plain link,
 which a fresh click lets through, and **Copy link** keeps the design for a
-blocker that still refuses. Escape closes the prompt without stopping play.
+blocker that still refuses. Escape closes the prompt without deselecting
+or stopping play: the prompt listens in the window's capture phase, ahead
+of the dock (document capture) and the viewer toolbar (window bubble),
+which both skip a handled Escape.
+
+A `#deflate-3dstreet-json:` link that fails to decode (usually truncated
+by a chat app or a partial copy) leaves an empty scene and shows a
+localized toast: the loader has no intl, so it sets `sceneLinkError` in
+the store and `Main.jsx` shows the message.
 
 ## Embedding
 

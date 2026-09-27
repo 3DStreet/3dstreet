@@ -11,7 +11,7 @@ import styles from './HandoffPrompt.module.scss';
  * resolves `opened: false`). The design is already in `url`, so nothing is
  * lost: Open is a plain link, which a fresh click lets through any popup
  * blocker, and Copy link keeps the design for a blocker that still says
- * no. Escape closes the prompt before it can stop play.
+ * no. Escape closes the prompt first, before it can deselect or stop play.
  */
 export function HandoffPrompt({ url, onClose }) {
   const intl = useIntl();
@@ -19,8 +19,10 @@ export function HandoffPrompt({ url, onClose }) {
   useEffect(() => {
     const onKeyDown = (e) => {
       if (e.code !== 'Escape') return;
-      // Capture phase, so the viewer's Escape (Toolbar) sees
-      // defaultPrevented and stays put.
+      // Window capture phase, the first listener to run: the dock's
+      // Escape (BuildPalette, document capture) and the viewer's (Toolbar)
+      // see defaultPrevented, so this press only closes the prompt, not
+      // also deselecting the object or stopping play.
       e.preventDefault();
       onClose();
     };

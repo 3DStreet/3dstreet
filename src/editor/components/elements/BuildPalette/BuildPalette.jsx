@@ -28,6 +28,11 @@ const notices = defineMessages({
     id: 'buildArea.notice.outside',
     defaultMessage: 'Drop it inside a build area.'
   },
+  offscreen: {
+    id: 'buildArea.notice.offscreen',
+    defaultMessage:
+      'No build area in view can take that object. Turn toward a build area and try again.'
+  },
   palette: {
     id: 'buildArea.notice.palette',
     defaultMessage: 'That object is not available in this build area.'
@@ -184,10 +189,14 @@ export const BuildPalette = () => {
   const redo = useCallback(() => AFRAME.INSPECTOR.redo(), []);
 
   // Keyboard, capture phase so Escape with a selection deselects and
-  // stops there (the viewer toolbar's Escape sees defaultPrevented).
+  // stops there (the viewer toolbar's Escape sees defaultPrevented). On
+  // `document`, not `window`: an open HandoffPrompt listens in the window's
+  // capture phase, which runs first, so Escape closes the prompt before it
+  // deselects (one level per press).
   useEffect(() => {
     if (!active) return undefined;
     const onKeyDown = (e) => {
+      if (e.defaultPrevented) return;
       const a = document.activeElement;
       if (
         a &&
@@ -218,8 +227,8 @@ export const BuildPalette = () => {
         AFRAME.INSPECTOR.selectEntity(null);
       }
     };
-    window.addEventListener('keydown', onKeyDown, true);
-    return () => window.removeEventListener('keydown', onKeyDown, true);
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
   }, [active, undo, redo]);
 
   if (!active) return null;

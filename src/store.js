@@ -366,6 +366,11 @@ const useStore = create(
         // Visitor-placed objects currently in the scene (dock counter).
         buildPlacedCount: 0,
         setBuildPlacedCount: (count) => set({ buildPlacedCount: count }),
+        // A `#deflate-3dstreet-json:` scene link failed to decode
+        // (set-loader-from-hash). Set by the loader, which has no intl;
+        // Main shows the localized toast and clears it.
+        sceneLinkError: false,
+        setSceneLinkError: (sceneLinkError) => set({ sceneLinkError }),
         // ?embed=true: the viewer with minimal chrome for an <iframe> on a
         // third-party page (no app switcher, byline or Edit action).
         isEmbed: false,

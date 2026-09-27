@@ -212,7 +212,7 @@ describe('chooseTapArea', () => {
       chooseTapArea([area({ underCentre: true, hasRoom: false }), area()])
     ).toEqual({ index: 1 });
   });
-  it('prefers a visible area, then the nearest', () => {
+  it('picks the nearest visible area, never one out of view', () => {
     expect(
       chooseTapArea([
         area({ visible: false, distance: 1 }),
@@ -220,6 +220,15 @@ describe('chooseTapArea', () => {
         area({ distance: 5 })
       ])
     ).toEqual({ index: 2 });
+  });
+  it('refuses when only areas out of view could take the object', () => {
+    expect(
+      chooseTapArea([
+        area({ visible: false }),
+        area({ offers: false }),
+        area({ hasRoom: false })
+      ])
+    ).toEqual({ reason: 'offscreen' });
   });
   it('explains a refusal', () => {
     expect(chooseTapArea([area({ offers: false })])).toEqual({

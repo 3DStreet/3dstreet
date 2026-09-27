@@ -347,12 +347,12 @@ AFRAME.registerSystem('build-area', {
 
   // Target for tap-to-place (no drop point). The dock merges every
   // area's palette, so the area under the view centre is used only when it
-  // offers `mixinId` and has room; otherwise the tap goes to another area
-  // that can take it, visible ones first, then the nearest
+  // offers `mixinId` and has room; otherwise the tap goes to the nearest
+  // other area in view that can take it, never one off-screen
   // (chooseTapArea). Its point is the centre hit, or a point guaranteed
   // inside the area (interiorPointXZ; not the corner-average, which falls
   // in the notch of an L- or U-shaped zone). Returns { area, point } or
-  // { reason } ('outside' | 'palette' | 'full').
+  // { reason } ('outside' | 'offscreen' | 'palette' | 'full').
   pickTapTarget(mixinId) {
     const areas = this.getBuildableAreas();
     const canvas = this.sceneEl.canvas;

@@ -921,7 +921,8 @@ AFRAME.registerComponent('set-loader-from-hash', {
           })
           .catch((err) => {
             console.error('[set-loader-from-hash] bad deflate payload:', err);
-            STREET.notify?.errorMessage('Could not open this scene link.');
+            // Localized toast in React (Main.jsx); this module has no intl.
+            useStore.getState().setSceneLinkError(true);
           });
         return;
       }
