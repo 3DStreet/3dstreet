@@ -532,6 +532,7 @@
   "jobHealthModal.recentRuns": "Execuções recentes",
   "jobHealthModal.title": "Integridade do Sistema",
   "loadingSceneModal.dismiss": "Dispensar",
+  "loadingSceneModal.errorTitle": "Não foi possível carregar a cena",
   "managedIntersectionSidebar.awaitingStreets": "Nenhuma rua conectada ainda — mova as extremidades das ruas gerenciadas para dentro do raio de encaixe.",
   "managedIntersectionSidebar.connectedStreets": "{count,plural,one{# rua conectada} other{# ruas conectadas}}",
   "managedStreetSidebar.changePath": "Alterar caminho…",

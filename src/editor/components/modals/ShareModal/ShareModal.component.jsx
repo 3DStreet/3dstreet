@@ -15,6 +15,7 @@ import { getUserProfile } from '@shared/utils/username';
 import { Tooltip } from 'radix-ui';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { formatLocationString } from '../../../../utils.js';
+import { scenePath } from '@/tested/scene-url-utils.js';
 
 const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   return (
@@ -134,7 +135,8 @@ function ShareModal() {
   const getShareUrl = () => {
     const sceneId = STREET.utils.getCurrentSceneId();
     if (sceneId) {
-      return `https://3dstreet.app/#/scenes/${sceneId}`;
+      // Path form so pasted links unfurl per-scene (server-visible, #1970)
+      return `https://3dstreet.app${scenePath(sceneId)}`;
     }
     return window.location.href;
   };
