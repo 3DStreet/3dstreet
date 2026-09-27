@@ -29,6 +29,15 @@ function checkOrCreateEntity(elementId, parentEl, layerName = null) {
  */
 export function newScene(clearMetaData = true, clearUrlHash = true) {
   AFRAME.INSPECTOR?.selectEntity(null);
+  // Forget the previous scene's asset load bookkeeping (#2009). Entity-keyed
+  // entries die with their elements on the tracker's next tick, but texture
+  // entries are keyed by asset id and would otherwise carry a stale error or
+  // pending state into every later scene of the session. Must run before the
+  // environment entity is re-created below: re-adding street-environment
+  // synchronously emits texture-loading for the default sky, and a reset
+  // after that would drop the entry, leaving the sky download untracked.
+  AFRAME.scenes[0].systems?.['asset-load-status']?.tracker?.reset();
+
   let environmentEl = document.getElementById('environment');
   if (environmentEl) environmentEl.removeAttribute('street-environment');
   environmentEl = checkOrCreateEntity(
@@ -60,13 +69,6 @@ export function newScene(clearMetaData = true, clearUrlHash = true) {
   if (streetContainer.object3D && !streetContainer.object3D.visible) {
     streetContainer.setAttribute('visible', true);
   }
-
-  // Forget the previous scene's asset load bookkeeping (#2009). Entity-keyed
-  // entries die with their elements on the tracker's next tick, but texture
-  // entries are keyed by asset id and would otherwise carry a stale error or
-  // pending state into every later scene of the session. Runs here, before
-  // the next scene's entities are created, so nothing of theirs is dropped.
-  AFRAME.scenes[0].systems?.['asset-load-status']?.tracker?.reset();
 
   // clear metadata
   if (clearMetaData) {
