@@ -56,6 +56,15 @@ regenerations and reloads. That creation order is a clone's **slot** index.
   (same as Figma's detached instance).
 - **Detach button** on the autocreated sidebar (`Sidebar.jsx`, next to "Edit
   Clone Settings"), for detaching without moving and for hard-to-grab objects.
+- **AI tool `detachClone`** (`DetachCloneCommand.llmTool`, picked up by the
+  LLM registry like every command with that static). Generated clones have no
+  id and are `autocreated`, so they are absent from the scene state the model
+  sees; the tool names one by `segmentId` + `component` (the generator, e.g.
+  `street-generated-clones__1`) + `slotIndex`, all visible in the scene state,
+  or with none of the three takes the selected clone. Optional
+  `position`/`rotation` place the detached entity. Errors list the segment's
+  detachable generators or the generator's live slots so the model can
+  correct itself (`resolveDetachToolArgs` in `detachClone.js`).
 
 `isDetachableClone(el)` is the single predicate both triggers and the UI gating
 use: an `autocreated` entity stamped with a slot index whose parent still

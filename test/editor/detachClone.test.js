@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   DETACHED_LAYER_PREFIX,
   buildDetachCommands,
@@ -6,7 +6,9 @@ import {
   findCloneAtSlot,
   getCloneSlot,
   isDetachableClone,
-  poseFromObject3D
+  listCloneSlots,
+  poseFromObject3D,
+  resolveDetachToolArgs
 } from '../../src/editor/lib/detachClone.js';
 
 // A segment element with a live generator component (the shape
@@ -233,6 +235,102 @@ describe('detachClone (#2011)', () => {
       const segment = makeSegment();
       const plain = makeClone(segment, { autocreated: false });
       expect(() => buildDetachCommands(plain)).toThrow(/not a detachable/);
+    });
+  });
+
+  describe('listCloneSlots', () => {
+    it('lists the live slots of one generator, sorted', () => {
+      const segment = makeSegment();
+      makeClone(segment, { index: 4 });
+      makeClone(segment, { index: 0 });
+      makeClone(segment, {
+        index: 1,
+        componentName: 'street-generated-stencil__1'
+      });
+      expect(listCloneSlots(segment, 'street-generated-clones__1')).toEqual([
+        0, 4
+      ]);
+      expect(listCloneSlots(null, 'street-generated-clones__1')).toEqual([]);
+    });
+  });
+
+  // The AI tool path: the model addresses a clone by segment + generator +
+  // slot (clones have no id and are not in the scene state it sees), or
+  // omits all three for the selection. Segments must sit inside the
+  // editable scene roots (getEditableEntity).
+  describe('resolveDetachToolArgs', () => {
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    function mountSegment(options) {
+      const root = document.createElement('a-entity');
+      root.id = 'street-container';
+      root.isEntity = true;
+      const segment = makeSegment(options);
+      segment.id = 'seg-1';
+      segment.isEntity = true;
+      root.appendChild(segment);
+      document.body.appendChild(root);
+      return segment;
+    }
+
+    const addressed = (overrides) => ({
+      segmentId: 'seg-1',
+      component: 'street-generated-clones__1',
+      slotIndex: 2,
+      ...overrides
+    });
+
+    it('resolves segment + generator + slot to the clone, with the pose', () => {
+      const segment = mountSegment();
+      const clone = makeClone(segment, { index: 2 });
+      expect(resolveDetachToolArgs(addressed({ position: '1 0 2' }))).toEqual({
+        entity: clone,
+        pose: { position: '1 0 2' }
+      });
+      expect(resolveDetachToolArgs(addressed()).pose).toEqual({});
+    });
+
+    it('falls back to the selected clone when nothing is addressed', () => {
+      const segment = mountSegment();
+      const clone = makeClone(segment, { index: 0 });
+      expect(resolveDetachToolArgs({}, { selectedEntity: clone }).entity).toBe(
+        clone
+      );
+      expect(() => resolveDetachToolArgs({}, {})).toThrow(
+        /Nothing is selected/
+      );
+      const plain = makeClone(segment, { autocreated: false, index: 1 });
+      expect(() =>
+        resolveDetachToolArgs({}, { selectedEntity: plain })
+      ).toThrow(/not a generated clone/);
+    });
+
+    it('names the live slots when the slot has no clone', () => {
+      const segment = mountSegment({ skip: [2] });
+      makeClone(segment, { index: 0 });
+      makeClone(segment, { index: 1 });
+      expect(() => resolveDetachToolArgs(addressed())).toThrow(
+        /No clone at slot 2 .*Live slots: 0, 1/
+      );
+    });
+
+    it('names the detachable generators when the component is wrong', () => {
+      mountSegment();
+      expect(() =>
+        resolveDetachToolArgs(addressed({ component: 'street-generated-rail' }))
+      ).toThrow(/Detachable generators on it: street-generated-clones__1/);
+    });
+
+    it('rejects a partial address and an unknown segment', () => {
+      mountSegment();
+      expect(() => resolveDetachToolArgs({ segmentId: 'seg-1' })).toThrow(
+        /given together/
+      );
+      expect(() =>
+        resolveDetachToolArgs(addressed({ segmentId: 'nope' }))
+      ).toThrow(/not found/);
     });
   });
 

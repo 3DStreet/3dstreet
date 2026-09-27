@@ -30,7 +30,9 @@ the clone's slot to the generator's `skip` and creates the plain entity, as one
 undo entry composed from `entityupdate` + `entitycreate`. The viewport gizmo
 attaches to such a clone (the only `data-no-transform` entity it accepts) and
 commits the whole drag on `mouseUp` as that one command; the autocreated
-sidebar has a Detach button. Predicate and payload builders live in
+sidebar has a Detach button, and the AI chat has the `detachClone` tool
+(addresses a clone by segment + generator + slot, since clones have no id and
+are not in the scene state). Predicate and payload builders live in
 `src/editor/lib/detachClone.js`; doc is [docs/per-object-detach.md](../per-object-detach.md).
 
 **Shapes:** editor-drawn 2D polylines with an optional filled interior. The code

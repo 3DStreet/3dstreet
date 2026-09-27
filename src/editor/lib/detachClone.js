@@ -3,6 +3,7 @@ import {
   isDetachableGenerator,
   withSkippedSlot
 } from '@/tested/clone-slots.js';
+import { getEditableEntity } from './commands/llmToolGuards.js';
 
 /**
  * Per-object detach from managed-street generators (#2011).
@@ -72,6 +73,90 @@ export function findCloneAtSlot(segmentEl, componentName, index) {
     }
   }
   return null;
+}
+
+/**
+ * Slot indexes of the clones a generator currently has in the DOM, sorted.
+ * Detached (skipped) slots are absent. Used to tell the AI tool caller which
+ * slots it can name.
+ */
+export function listCloneSlots(segmentEl, componentName) {
+  const slots = [];
+  if (!segmentEl) return slots;
+  for (const child of segmentEl.children) {
+    if (child.getAttribute?.('data-parent-component') !== componentName) {
+      continue;
+    }
+    const index = Number(child.getAttribute(CLONE_INDEX_ATTR));
+    if (Number.isInteger(index) && index >= 0) slots.push(index);
+  }
+  return slots.sort((a, b) => a - b);
+}
+
+/**
+ * Resolve the AI tool's arguments (`detachClone` in the LLM registry) to the
+ * `{ entity, pose }` payload DetachCloneCommand takes. Generated clones carry
+ * no id and are left out of the scene state the model sees (they are
+ * `autocreated`), so the tool addresses one by its segment, generator and
+ * slot — all three visible in the scene state — or, with none of the three
+ * given, takes the currently selected clone. Throws a readable error the
+ * model can correct from: the generators the segment has, the live slots of
+ * the generator, or that the selection is not a detachable clone.
+ */
+export function resolveDetachToolArgs(args = {}, { selectedEntity } = {}) {
+  const { segmentId, component, slotIndex, position, rotation } = args;
+  const addressed =
+    segmentId !== undefined ||
+    component !== undefined ||
+    slotIndex !== undefined;
+  let cloneEl;
+  if (addressed) {
+    if (!segmentId || !component || slotIndex === undefined) {
+      throw new Error(
+        'segmentId, component and slotIndex must be given together (omit all three to detach the selected clone)'
+      );
+    }
+    const segmentEl = getEditableEntity(segmentId, { role: 'segment' });
+    if (!segmentEl.components?.[component]) {
+      const generators = Object.keys(segmentEl.components || {}).filter(
+        isDetachableGenerator
+      );
+      throw new Error(
+        `Entity ${segmentId} has no '${component}' component. Detachable generators on it: ${generators.join(', ') || '(none)'}`
+      );
+    }
+    const index = Number(slotIndex);
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `slotIndex must be a non-negative integer, got ${slotIndex}`
+      );
+    }
+    cloneEl = findCloneAtSlot(segmentEl, component, index);
+    if (!cloneEl) {
+      const live = listCloneSlots(segmentEl, component);
+      throw new Error(
+        `No clone at slot ${index} of ${component} on ${segmentId} (already detached, or beyond the last slot). Live slots: ${live.join(', ') || '(none)'}`
+      );
+    }
+  } else {
+    cloneEl = selectedEntity;
+    if (!cloneEl) {
+      throw new Error(
+        'Nothing is selected: pass segmentId, component and slotIndex to name the clone'
+      );
+    }
+  }
+  if (!isDetachableClone(cloneEl)) {
+    throw new Error(
+      addressed
+        ? `The clone at slot ${slotIndex} of ${component} is not detachable`
+        : 'The selected entity is not a generated clone of a slot-aware generator (clones, stencil, pedestrians)'
+    );
+  }
+  const pose = {};
+  if (position !== undefined) pose.position = position;
+  if (rotation !== undefined) pose.rotation = rotation;
+  return { entity: cloneEl, pose };
 }
 
 // "x y z" from either A-Frame's parsed vec3 object or an already-stringified
