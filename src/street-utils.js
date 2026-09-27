@@ -1,6 +1,7 @@
 /* global AFRAME */
 /* 3DStreet utils functions */
 import useStore from '@/store.js';
+import { clearedSceneUrl } from '@/tested/scene-url-utils.js';
 
 /*
  * create element with provided Id, clear old element data and replace with new HTML string
@@ -68,10 +69,11 @@ export function newScene(clearMetaData = true, clearUrlHash = true) {
     AFRAME.scenes[0].setAttribute('metadata', 'authorId', '');
   }
 
-  // clear url hash
+  // clear url hash, and reset a path-form scene URL (/scenes/UUID) back to
+  // root (#1970)
   if (clearUrlHash) {
     setTimeout(function () {
-      window.location.hash = '';
+      window.history.replaceState(null, '', clearedSceneUrl(window.location));
     });
   }
 }

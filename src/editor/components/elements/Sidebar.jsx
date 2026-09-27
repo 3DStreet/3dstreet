@@ -1,6 +1,7 @@
 import { canRenameEntity } from '../../lib/entity';
 import { Button } from '../elements';
 import ComponentsContainer from './ComponentsContainer';
+import CommonComponents from './CommonComponents';
 import EntityActionButtons from './EntityActionButtons';
 import Events from '../../lib/Events';
 import Mixins from '../widgets/Mixins';
@@ -198,6 +199,14 @@ export default class Sidebar extends React.Component {
               {entity.getAttribute('managed-intersection') && (
                 <ManagedIntersectionSidebar entity={entity} />
               )}
+              {/* Driveable/flyable vehicles swap in their own panel instead
+                  of ComponentsContainer, but still need the Transform section
+                  so they can be positioned (#2026). */}
+              {(entity.getAttribute('drive-controls') ||
+                entity.getAttribute('fly-controls')) &&
+                !entity.hasAttribute('data-no-transform') && (
+                  <CommonComponents entity={entity} />
+                )}
               {entity.getAttribute('drive-controls') && (
                 <>
                   <DriveControlsSidebar entity={entity} />

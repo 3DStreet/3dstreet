@@ -128,7 +128,21 @@ ghost box of the model's known bounds where the entity is from the moment its
 `gltf-model` or `gltf-part` component initializes (which covers batching's
 deferred duplicates, which never download on their own) until that entity's
 `model-loaded` or `model-error`, then removes it. A src or part change while
-pending swaps the box (`componentchanged`); clearing the src drops it.
+pending swaps the box (`componentchanged`); clearing the src drops it. A model
+whose load has already settled (the component's `_loadSettled`) never gets a
+box: a `gltf-part` whose parent GLB is cached resolves synchronously inside
+its own `update()`, before `componentinitialized`, and batching may have
+stripped its mesh on that same `model-loaded`, so the box that
+`componentinitialized` would open could never be closed (#2031, the boxes
+left behind by a street redraw).
+
+A deferred duplicate's `model-loaded` comes from batch-models when its group
+is built, and the initial pass builds each key group as soon as that group's
+own reference model has loaded (`batchKeyGroupWhenReady` in
+`src/batch-models.js`), not after every model in the scene. So a duplicate's
+box clears together with its original; one slow or stalled GLB elsewhere only
+delays its own group (#2033). A duplicate whose reference fails is released to
+load on its own at the same point.
 
 All ghosts are instances of one `THREE.InstancedMesh` (one draw call however
 many clones are loading; a shader draws the frame on the box faces). The

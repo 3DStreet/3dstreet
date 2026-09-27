@@ -6,6 +6,7 @@ import { equal } from './utils';
 import posthog from 'posthog-js';
 import { faBullseye, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { captureFocusPose } from './focusPose.js';
+import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 import {
   GeospatialIcon,
   ManagedStreetIcon,
@@ -988,7 +989,7 @@ function viewerStartValuesFromCamera(parent) {
   return {
     position: { x: localPos.x, y: localPos.y, z: localPos.z },
     rotation: { x: deg(euler.x), y: deg(euler.y), z: deg(euler.z) },
-    fov: camera.fov || 60
+    fov: camera.fov || DEFAULT_FOV_DEGREES
   };
 }
 

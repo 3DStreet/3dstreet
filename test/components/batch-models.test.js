@@ -612,3 +612,150 @@ describe('batch-models geometry-material (stencil) provider', () => {
     expect(el._mesh.visible).toBe(true); // never hidden
   });
 });
+
+// The initial pass, per key group (#2033). Real DOM elements under a fake #street-container so
+// batchModels' querySelectorAll / isConnected / event plumbing run for real; the gltf-model
+// component is faked so the test controls when each "GLB" lands.
+describe('batch-models initial pass batches each group on its own', () => {
+  function makeScene() {
+    const sceneEl = document.createElement('div');
+    sceneEl.object3D = new THREE.Object3D();
+    sceneEl.emit = (name, detail) =>
+      sceneEl.dispatchEvent(new CustomEvent(name, { detail, bubbles: true }));
+    const streetContainer = document.createElement('div');
+    streetContainer.id = 'street-container';
+    // getOrCreateBatchRoot finds this by id, so batchGroup's setObject3D lands here.
+    const objects = {};
+    const batchRoot = document.createElement('div');
+    batchRoot.id = 'batch-models-root';
+    batchRoot.sceneEl = sceneEl;
+    batchRoot.setObject3D = (k, o) => (objects[k] = o);
+    batchRoot.getObject3D = (k) => objects[k];
+    batchRoot.removeObject3D = (k) => delete objects[k];
+    streetContainer.appendChild(batchRoot);
+    sceneEl.appendChild(streetContainer);
+    document.body.appendChild(sceneEl);
+    return { sceneEl, streetContainer };
+  }
+
+  // A [gltf-model] entity whose load the test settles by hand with `land()`.
+  function makeModelEl(parent, src, id) {
+    const el = document.createElement('div');
+    el.id = id;
+    el.setAttribute('gltf-model', src);
+    el.object3D = new THREE.Object3D();
+    el.object3D.updateMatrixWorld();
+    let mesh = null;
+    const comp = {
+      data: src,
+      deferLoad: false,
+      _loadSettled: false,
+      removeMesh: vi.fn(() => {
+        mesh = null;
+      }),
+      update: vi.fn()
+    };
+    el.components = { 'gltf-model': comp };
+    el.getObject3D = (type) => (type === 'mesh' ? mesh : undefined);
+    el.emit = (name, detail) =>
+      el.dispatchEvent(new CustomEvent(name, { detail, bubbles: true }));
+    el.land = () => {
+      mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(),
+        new THREE.MeshBasicMaterial()
+      );
+      el.object3D.add(mesh);
+      comp._loadSettled = true;
+      el.emit('model-loaded', { format: 'gltf', model: mesh });
+    };
+    el.loadedEvents = 0;
+    el.addEventListener('model-loaded', (e) => {
+      if (e.target === el) el.loadedEvents++;
+    });
+    parent.appendChild(el);
+    return el;
+  }
+
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('finalizes a group as soon as its own reference loads, before other groups', async () => {
+    const { sceneEl, streetContainer } = makeScene();
+    try {
+      const aRef = makeModelEl(streetContainer, 'a.glb', 'a-ref');
+      const aDup = makeModelEl(streetContainer, 'a.glb', 'a-dup');
+      const bRef = makeModelEl(streetContainer, 'b.glb', 'b-ref');
+      const bDup = makeModelEl(streetContainer, 'b.glb', 'b-dup');
+
+      const grouped = new Promise((resolve) =>
+        sceneEl.addEventListener('batch-grouping-done', resolve, {
+          once: true
+        })
+      );
+      const pass = batch.batchModels(sceneEl);
+      await grouped;
+      // The duplicates were deferred; the refs load on their own.
+      expect(aDup.components['gltf-model'].deferLoad).toBe(true);
+      expect(bDup.components['gltf-model'].deferLoad).toBe(true);
+      expect(aRef.components['gltf-model'].deferLoad).toBe(false);
+
+      // Only a.glb lands. Its group must batch without waiting for b.glb.
+      aRef.land();
+      await flush();
+      expect(batch.isBatched(aRef)).toBe(true);
+      expect(batch.isBatched(aDup)).toBe(true);
+      // The deferred duplicate got its model-loaded (what clears its ghost box).
+      expect(aDup.loadedEvents).toBe(1);
+      expect(aDup.components['gltf-model'].deferLoad).toBe(false);
+      expect(sceneEl._batchModelsBuilt).toHaveLength(1);
+      // b.glb's group is still waiting: untouched, still deferred, no event.
+      expect(batch.isBatched(bRef)).toBe(false);
+      expect(batch.isBatched(bDup)).toBe(false);
+      expect(bDup.loadedEvents).toBe(0);
+      expect(bDup.components['gltf-model'].deferLoad).toBe(true);
+
+      let settled = false;
+      pass.then(() => (settled = true));
+      await flush();
+      expect(settled).toBe(false); // the pass as a whole still waits for b.glb
+
+      bRef.land();
+      const built = await pass;
+      expect(built).toHaveLength(2);
+      expect(batch.isBatched(bDup)).toBe(true);
+      expect(bDup.loadedEvents).toBe(1);
+      expect(sceneEl._batchModelsBuilt).toHaveLength(2);
+    } finally {
+      sceneEl.remove();
+    }
+  });
+
+  it('releases a deferred duplicate when its own reference fails, without waiting on other groups', async () => {
+    const { sceneEl, streetContainer } = makeScene();
+    try {
+      const aRef = makeModelEl(streetContainer, 'a.glb', 'a-ref');
+      const aDup = makeModelEl(streetContainer, 'a.glb', 'a-dup');
+      makeModelEl(streetContainer, 'b.glb', 'b-ref');
+      const bDup = makeModelEl(streetContainer, 'b.glb', 'b-dup');
+
+      const grouped = new Promise((resolve) =>
+        sceneEl.addEventListener('batch-grouping-done', resolve, {
+          once: true
+        })
+      );
+      batch.batchModels(sceneEl);
+      await grouped;
+
+      // a.glb 404s: no mesh, model-error. The duplicate must be released to load on its own
+      // right away — b.glb never lands in this test.
+      aRef.components['gltf-model']._loadSettled = true;
+      aRef.emit('model-error', { format: 'gltf', src: 'a.glb' });
+      await flush();
+      expect(aDup.components['gltf-model'].deferLoad).toBe(false);
+      expect(aDup.components['gltf-model'].update).toHaveBeenCalledTimes(1);
+      expect(bDup.components['gltf-model'].deferLoad).toBe(true);
+      expect(bDup.components['gltf-model'].update).not.toHaveBeenCalled();
+    } finally {
+      sceneEl.remove();
+    }
+  });
+});

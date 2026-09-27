@@ -14,7 +14,7 @@
 // raycasts (`.name = 'navRotationIndicator'`, also added to cursorAnchor's
 // EXCLUDE_NAME_SUBSTRINGS) so it can never become a pivot/anchor target.
 
-import { RING_SCREEN_FRACTION } from './constants.js';
+import { DEFAULT_FOV_DEGREES, RING_SCREEN_FRACTION } from './constants.js';
 
 const DEG2RAD = Math.PI / 180;
 
@@ -86,7 +86,7 @@ export class RotationIndicator {
     // fixed fraction of screen height even when the fov is reduced (e.g.
     // after a street-level FOV zoom). Fall back to 60° for a non-
     // perspective camera (no `fov`).
-    const halfFov = ((camera.fov || 60) * DEG2RAD) / 2;
+    const halfFov = ((camera.fov || DEFAULT_FOV_DEGREES) * DEG2RAD) / 2;
     const halfHeightWorld = d * Math.tan(halfFov);
     mesh.scale.setScalar(
       Math.max(halfHeightWorld * RING_SCREEN_FRACTION, 1e-3)

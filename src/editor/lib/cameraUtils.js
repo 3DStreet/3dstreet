@@ -1,5 +1,6 @@
 // Camera utility functions for snapshot feature
 import * as THREE from 'three';
+import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 
 /**
  * Get the current camera state including position, rotation, and zoom
@@ -36,15 +37,15 @@ export function getCurrentCameraState() {
       z: rotation.z
     },
     // For perspective camera, we'll store FOV as "zoom"
-    zoom: camera.fov || 60,
+    zoom: camera.fov || DEFAULT_FOV_DEGREES,
     type: camera.type
   };
 }
 
 /**
- * Serialize a camera state into a compact URL-hash param value
+ * Serialize a camera state into a compact URL param value
  * (`px,py,pz,rx,ry,rz,fov`) for camera vantage deep links like
- * `#/scenes/UUID?camera=…`. Decoded by decodeCameraStateFromParam in
+ * `/scenes/UUID?camera=…`. Decoded by decodeCameraStateFromParam in
  * set-loader-from-hash. Rounded — cm position / ~0.006° rotation — to keep
  * the URL short; well beyond visual precision either way.
  * @param {Object} cameraState - Camera state with position, rotation, zoom

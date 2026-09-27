@@ -17,52 +17,52 @@ const card = (nameMsg, descMsg, rest) => ({
 export const streetLayersData = [
   card(m.createIntersectionName, m.createIntersectionDesc, {
     img: '',
-    icon: 'ui_assets/cards/icons/3dst24.png',
+    icon: '/ui_assets/cards/icons/3dst24.png',
     handlerFunction: createFunctions.createIntersection
   }),
   card(m.managedIntersectionName, m.managedIntersectionDesc, {
     img: '',
-    icon: 'ui_assets/cards/icons/3dst24.png',
+    icon: '/ui_assets/cards/icons/3dst24.png',
     handlerFunction: createFunctions.createManagedIntersection
   }),
   card(m.streetmixStreetName, m.streetmixStreetDesc, {
-    img: 'ui_assets/cards/streetmix.jpg',
-    icon: 'ui_assets/cards/icons/streetmix24.png',
+    img: '/ui_assets/cards/streetmix.jpg',
+    icon: '/ui_assets/cards/icons/streetmix24.png',
     handlerFunction: createFunctions.createStreetmixStreet
   }),
   card(m.managedStreetmixName, m.managedStreetmixDesc, {
     img: '',
-    icon: 'ui_assets/cards/icons/streetmix24.png',
+    icon: '/ui_assets/cards/icons/streetmix24.png',
     handlerFunction: createFunctions.createManagedStreetFromStreetmixURLPrompt
   }),
   card(m.managedStreet4024Name, m.managedStreet4024Desc, {
-    img: 'ui_assets/cards/street-preset-40-24.jpg',
-    icon: 'ui_assets/cards/icons/3dst24.png',
+    img: '/ui_assets/cards/street-preset-40-24.jpg',
+    icon: '/ui_assets/cards/icons/3dst24.png',
     handlerFunction: createFunctions.create40ftRightOfWayManagedStreet
   }),
   card(m.managedStreet6036Name, m.managedStreet6036Desc, {
-    img: 'ui_assets/cards/street-preset-60-36.jpg',
-    icon: 'ui_assets/cards/icons/3dst24.png',
+    img: '/ui_assets/cards/street-preset-60-36.jpg',
+    icon: '/ui_assets/cards/icons/3dst24.png',
     handlerFunction: createFunctions.create60ftRightOfWayManagedStreet
   }),
   card(m.managedStreet8056Name, m.managedStreet8056Desc, {
-    img: 'ui_assets/cards/street-preset-80-56.jpg',
-    icon: 'ui_assets/cards/icons/3dst24.png',
+    img: '/ui_assets/cards/street-preset-80-56.jpg',
+    icon: '/ui_assets/cards/icons/3dst24.png',
     handlerFunction: createFunctions.create80ftRightOfWayManagedStreet
   }),
   card(m.managedStreet9470Name, m.managedStreet9470Desc, {
-    img: 'ui_assets/cards/street-preset-94-70.jpg',
-    icon: 'ui_assets/cards/icons/3dst24.png',
+    img: '/ui_assets/cards/street-preset-94-70.jpg',
+    icon: '/ui_assets/cards/icons/3dst24.png',
     handlerFunction: createFunctions.create94ftRightOfWayManagedStreet
   }),
   card(m.managedStreet150124Name, m.managedStreet150124Desc, {
-    img: 'ui_assets/cards/street-preset-150-124.jpg',
-    icon: 'ui_assets/cards/icons/3dst24.png',
+    img: '/ui_assets/cards/street-preset-150-124.jpg',
+    icon: '/ui_assets/cards/icons/3dst24.png',
     handlerFunction: createFunctions.create150ftRightOfWayManagedStreet
   }),
   card(m.buildingDemoName, m.buildingDemoDesc, {
     img: '',
-    icon: 'ui_assets/cards/icons/3dst24.png',
+    icon: '/ui_assets/cards/icons/3dst24.png',
     handlerFunction: createFunctions.createBuildingDemoManagedStreet
   }),
   card(m.managedStreetplanName, m.managedStreetplanDesc, {
@@ -124,7 +124,7 @@ export const customLayersData = [
   card(m.uploadImageName, m.uploadImageDesc, {
     img: '',
     requiresPro: false,
-    icon: 'ui_assets/cards/icons/gallery24.png',
+    icon: '/ui_assets/cards/icons/gallery24.png',
     handlerFunction: createFunctions.createImageEntity
   }),
   card(m.uploadModelName, m.uploadModelDesc, {
@@ -169,7 +169,7 @@ export const customLayersData = [
   card(m.trafficReplayName, m.trafficReplayDesc, {
     img: '',
     requiresPro: false,
-    icon: 'ui_assets/cards/icons/3dst24.png',
+    icon: '/ui_assets/cards/icons/3dst24.png',
     handlerFunction: createFunctions.createTrafficReplay
   }),
   card(m.uploadSplatName, m.uploadSplatDesc, {

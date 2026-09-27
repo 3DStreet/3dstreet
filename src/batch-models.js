@@ -45,10 +45,14 @@ export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
 //   the N-1 non-reference members of every all-safe group so they never download/parse. It
 //   sets `sceneEl._batchGroupingDone = true` and emits "batch-grouping-done" to release the
 //   parked gltf-model components: refs load, deferred ones skip.
-// - It then waits for every non-deferred model to load, filters to entities whose components
-//   are all in the per-provider safe-components set, groups by batch key (gltf-model src, or gltf-part
-//   src+part), and for each group >= 2 builds one THREE.BatchedMesh per material from the
-//   reference member (members[0]).
+// - It then groups every entity by batch key (gltf-model src, gltf-part src+part, or stencil
+//   material) and handles each group on its own (batchKeyGroupWhenReady): wait for THAT group's
+//   non-deferred members to load, filter to entities whose components are all in the
+//   per-provider safe-components set, and for a group >= 2 build one THREE.BatchedMesh per
+//   material from the reference member (members[0]). Groups don't wait on each other, so a
+//   duplicate appears as soon as its own reference model lands, not after the slowest GLB in
+//   the scene (#2033). Only the end of the pass (late listeners, "initial-batching-done")
+//   waits for every group.
 // - Per-member: addInstance(geometryId) x sub-mesh-count, setMatrixAt(instanceId,
 //   memberWorld . subMeshLocal). Slot visibility seeded from effective visibility
 //   (local AND ancestor chain) since the slot lives under batchRootEl, outside the
@@ -1260,7 +1264,8 @@ function onSceneComponentChanged(evt) {
   // A change to a batch-defining component (e.g. a stencil's atlas-uvs cell / material / geometry
   // after a mixin swap) leaves the member's BatchedMesh instance stale. Pop it so its now-updated
   // original mesh renders unbatched with the new appearance. (componentchanged only — a first-time
-  // init is handled above; the initial batch pass runs with these listeners torn down.)
+  // init is handled above; during the initial batch pass this listener is live but only ever
+  // sees members of groups already built, since isBatched gates it.)
   if (
     evt.type === 'componentchanged' &&
     isBatched(root) &&
@@ -1374,11 +1379,12 @@ export function beginBatching(sceneEl) {
   sceneEl._batchingEnabled = true;
   sceneEl._batchGroupingDone = false;
   // Tear down the post-pass listeners (model-loaded / componentchanged / componentinitialized)
-  // for the duration of this pass. They stay live across scene loads, so on a 2nd+ load the
-  // models and components that fire while createEntities runs would otherwise be mis-handled by
-  // onLateModelLoaded / onSceneComponentChanged as post-batch additions — racing ahead of
-  // batchModels' own classification. batchModels re-adds them once the pass settles. No-op on
-  // the first pass (nothing registered yet).
+  // while this scene's entities are minted. They stay live across scene loads, so on a 2nd+ load
+  // the models and components that fire while createEntities runs would otherwise be mis-handled
+  // by onLateModelLoaded / onSceneComponentChanged as post-batch additions — racing ahead of
+  // batchModels' own classification. batchModels re-adds the change sync once grouping is done
+  // (groups build as their models land) and model-loaded once the pass settles. No-op on the
+  // first pass (nothing registered yet).
   removeLateListeners(sceneEl);
   resetSrcLoadCounts();
   // Signal a new scene is loading. gltf-model listens to drop the PREVIOUS scene's clone
@@ -1407,11 +1413,11 @@ export async function batchModels(sceneEl) {
     await new Promise((resolve) => setTimeout(resolve));
   }
 
-  let gltfEntities = Array.from(rootEl.querySelectorAll(BATCHABLE_SELECTOR));
+  const gltfEntities = Array.from(rootEl.querySelectorAll(BATCHABLE_SELECTOR));
   markDeferredLoads(gltfEntities);
 
   // Grouping decided: release every held gltf-model. Non-deferred ones load now;
-  // deferred ones stay parked as batch slots until batchModels classifies them below.
+  // deferred ones stay parked as batch slots until their group is classified below.
   sceneEl._batchGroupingDone = true;
   sceneEl.emit('batch-grouping-done');
 
@@ -1422,12 +1428,118 @@ export async function batchModels(sceneEl) {
     return [];
   }
 
-  // Skip deferred entities in the wait — model-loaded will never fire for them. After we
-  // classify each group's loaded ref, we either keep them deferred (group will batch) or
-  // flip `component.deferLoad = false; component.update()` so each gets its own parse.
-  const isDeferred = (el) => !!el.components?.['gltf-model']?.deferLoad;
+  // Groups build below as soon as their own members are ready, so from here on a built group
+  // can be transformed / hidden / popped like any post-pass group: arm the componentchanged /
+  // componentinitialized sync now. It early-outs until the first group exists, so the entities
+  // still initializing don't pay for it. The model-loaded listener stays off until the end —
+  // it would misfile this pass's own loads as post-pass additions.
+  registerSceneChangeListeners(sceneEl);
+
+  // Group by key up front (keys come from attributes — src, part, material — not from loaded
+  // meshes) so every group can proceed on its own. Missing-key entities have no model to load —
+  // just log + status, no BVH.
+  const groups = groupByBatchKey(gltfEntities);
+
+  // Batch each group as soon as ITS members are ready (#2033). The pass used to await every
+  // non-deferred model in the scene before building anything, so one slow or stalled GLB
+  // anywhere held every duplicate's placeholder up for as long as LOAD_TIMEOUT_MS, long after
+  // the duplicates' own reference model had landed. The groups run concurrently; only the pass
+  // as a whole (late-listener arming, "initial-batching-done") still waits for the slowest one.
+  const inEditor = !!AFRAME.INSPECTOR;
+  const built = [];
+  const moved = [];
   await Promise.all(
-    gltfEntities.filter((el) => !isDeferred(el)).map(waitForMemberReady)
+    Array.from(groups, ([key, entities]) =>
+      batchKeyGroupWhenReady(sceneEl, key, entities, inEditor, built, moved)
+    )
+  );
+
+  // Entities whose key changed while their original group waited (a src / part / material swap
+  // mid-load) were handed back: regroup them by their current key and give them one more round.
+  // Anything that moves again stays unbatched; the release sweep below still frees it.
+  if (moved.length > 0) {
+    console.log(
+      `[batch-models] regrouping ${moved.length} entit(y/ies) whose key changed during the pass`
+    );
+    await Promise.all(
+      Array.from(groupByBatchKey(moved), ([key, entities]) =>
+        batchKeyGroupWhenReady(sceneEl, key, entities, inEditor, built, null)
+      )
+    );
+  }
+
+  // Safety net: release any member still deferred but not batched (its group bailed, or it
+  // changed key twice) so it loads individually rather than staying mesh-less forever. Each
+  // group already released its own; this catches whatever fell between groups.
+  releaseUnbatchedDeferred(gltfEntities);
+
+  // Re-arm the post-pass listeners that catch entities created / edited AFTER this pass —
+  // typically from the editor's entityclone command or a layer reorder. They were torn down
+  // in beginBatching so nothing during the pass hit them (the change listeners were re-armed
+  // above once groups could exist; adding them again here is a no-op).
+  registerLateListeners(sceneEl);
+
+  // The initial batch pass is complete.
+  sceneEl.emit('initial-batching-done');
+
+  return built;
+}
+
+// Group entities by batch key, in DOM order. Entities with no key (empty gltf-model src, a
+// gltf-part missing src or part) have nothing to load or batch: they get a status and are left
+// out. Shared by batchModels' first round and its regroup round.
+function groupByBatchKey(entities) {
+  const groups = new Map();
+  for (const el of entities) {
+    const key = getBatchKey(el);
+    if (!key) {
+      const reason = 'no gltf-model src';
+      console.log(`[batch-models] not batched ${describeEl(el)}: ${reason}`);
+      setStatus(el, false, reason);
+      continue;
+    }
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(el);
+  }
+  return groups;
+}
+
+function isDeferredMember(el) {
+  return !!el.components?.['gltf-model']?.deferLoad;
+}
+
+// Release every member of `entities` that is still deferred but never got a batch slot, so it
+// parses on its own. Idempotent: a released member is no longer deferred.
+function releaseUnbatchedDeferred(entities) {
+  for (const el of entities) {
+    const comp = el.components?.['gltf-model'];
+    if (comp?.deferLoad && !isBatched(el)) {
+      comp.deferLoad = false;
+      // It will parse after all — put it back in the per-src tally.
+      adjustSrcLoadCount(comp.data, +1);
+      comp.update();
+    }
+  }
+}
+
+// One key group, end to end: wait for ITS members only, release the deferred duplicates that
+// have to load after all, drop what left the DOM or changed key meanwhile, then build. Built
+// groups are pushed onto `built` and onto sceneEl._batchModelsBuilt right away (the change
+// listeners are live). Entities whose key no longer matches are pushed onto `moved` for
+// batchModels to regroup, or left for the release sweep when `moved` is null.
+async function batchKeyGroupWhenReady(
+  sceneEl,
+  key,
+  entities,
+  inEditor,
+  built,
+  moved
+) {
+  // Skip deferred entities in the wait — model-loaded will never fire for them. After we
+  // classify the group's loaded ref, we either keep them deferred (group will batch) or
+  // flip `component.deferLoad = false; component.update()` so each gets its own parse.
+  await Promise.all(
+    entities.filter((el) => !isDeferredMember(el)).map(waitForMemberReady)
   );
 
   // Decide which deferred members to release before batching. Two reasons to release:
@@ -1437,20 +1549,12 @@ export async function batchModels(sceneEl) {
   //      ones don't sit forever as ghost members.
   //   2. The member is .clickable in runtime: batchGroup keeps its hidden original mesh
   //      around as the runtime cursor's raycast target, so it has to be loaded.
-  const inEditor = !!AFRAME.INSPECTOR;
-  const groupsByKey = new Map();
-  for (const el of gltfEntities) {
-    const key = getBatchKey(el);
-    if (!key) continue;
-    if (!groupsByKey.has(key)) groupsByKey.set(key, []);
-    groupsByKey.get(key).push(el);
-  }
-  for (const entities of groupsByKey.values()) {
-    if (!entities.some(isDeferred)) continue;
+  if (entities.some(isDeferredMember)) {
     const ref = entities.find(
-      (el) => !isDeferred(el) && el.getObject3D('mesh')
+      (el) => !isDeferredMember(el) && el.getObject3D('mesh')
     );
     const groupNeedsLoad = !ref;
+    const released = [];
     for (const el of entities) {
       const comp = el.components['gltf-model'];
       if (!comp?.deferLoad) continue;
@@ -1462,18 +1566,11 @@ export async function batchModels(sceneEl) {
         // It will parse after all — put it back in the per-src tally.
         adjustSrcLoadCount(comp.data, +1);
         comp.update();
+        released.push(el);
       }
     }
+    await Promise.all(released.map(waitForMemberReady));
   }
-  await Promise.all(
-    gltfEntities.filter((el) => !isDeferred(el)).map(waitForMemberReady)
-  );
-
-  // If the tab was backgrounded during load, the render loop was throttled and
-  // matrixWorld can be stale. Walk ancestors + descendants from the scene root so the
-  // matrices we read below (for member world matrices and the reference model's
-  // sub-mesh local matrices) are correct.
-  sceneEl.object3D.updateWorldMatrix(true, true);
 
   // Drop entities that left the DOM while we awaited the model loads. A managed-street
   // re-layout during the pass — e.g. a path curve resolving late on a 2nd+ scene load — tears
@@ -1483,70 +1580,63 @@ export async function batchModels(sceneEl) {
   // raycast to parentless entities (the sidebar crashes on `parentElement.getAttribute`). The
   // replacements were minted after the grouping gate, so they load individually and the
   // post-pass listeners pick them up.
-  const detachedCount = gltfEntities.length;
-  gltfEntities = gltfEntities.filter((el) => el.isConnected);
-  if (gltfEntities.length !== detachedCount) {
+  // Also drop entities whose key changed while we waited: they no longer share this group's
+  // geometry, and would be slotted with the wrong reference. They are regrouped by their
+  // current key once (see batchModels).
+  const live = [];
+  let detached = 0;
+  let movedCount = 0;
+  for (const el of entities) {
+    if (!el.isConnected) {
+      detached++;
+    } else if (getBatchKey(el) !== key) {
+      movedCount++;
+      if (moved) moved.push(el);
+    } else {
+      live.push(el);
+    }
+  }
+  if (detached > 0) {
     console.log(
-      `[batch-models] skipped ${detachedCount - gltfEntities.length} entit(y/ies) detached during the pass`
+      `[batch-models] "${key}": skipped ${detached} entit(y/ies) detached during the pass`
     );
   }
-
-  // Group by key. Missing-key entities have no model to load — just log + status, no BVH.
-  const groups = new Map();
-  for (const el of gltfEntities) {
-    const key = getBatchKey(el);
-    if (!key) {
-      const reason = 'no gltf-model src';
-      console.log(`[batch-models] not batched ${describeEl(el)}: ${reason}`);
-      setStatus(el, false, reason);
-      continue;
-    }
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(el);
+  if (movedCount > 0) {
+    console.log(
+      `[batch-models] "${key}": ${movedCount} entit(y/ies) changed key during the pass`
+    );
   }
+  if (live.length === 0) return;
 
-  const built = [];
-  for (const [key, entities] of groups) {
-    const result = processKeyGroup(key, entities);
-    if (result) built.push(result);
+  // If the tab was backgrounded during load, the render loop was throttled and
+  // matrixWorld can be stale. Refresh each member's ancestors + descendants so the matrices
+  // read below (member world matrices, and the reference model's sub-mesh local matrices)
+  // are correct. Per member rather than from the scene root, so a group doesn't walk a scene
+  // whose other models are still arriving.
+  for (const el of live) el.object3D.updateWorldMatrix(true, true);
+
+  const result = processKeyGroup(key, live);
+  if (result) {
+    built.push(result);
+    // Track built groups on sceneEl: the scene-level componentchanged listener early-outs
+    // when this is empty, and removeMember splices a group out once its last member is gone.
+    if (!sceneEl._batchModelsBuilt) sceneEl._batchModelsBuilt = [];
+    sceneEl._batchModelsBuilt.push(result);
   }
 
   // Release any member still deferred but not batched: its group bailed (skinned/morph/
   // multi-material/no-ref-mesh) so it will never get a slot — load it individually,
   // otherwise it stays mesh-less forever.
-  for (const el of gltfEntities) {
-    const comp = el.components?.['gltf-model'];
-    if (comp?.deferLoad && !isBatched(el)) {
-      comp.deferLoad = false;
-      // It will parse after all — put it back in the per-src tally.
-      adjustSrcLoadCount(comp.data, +1);
-      comp.update();
-    }
-  }
+  releaseUnbatchedDeferred(live);
 
   // In runtime (no inspector), `.clickable` entities are raycast targets via class even
   // while they sit inside a batch — give them BVHs too. ensureOriginalBvh is idempotent,
   // so re-covering already-BVH'd unbatched entities here is harmless.
   if (!inEditor) {
-    for (const el of gltfEntities) {
+    for (const el of live) {
       if (el.classList.contains('clickable')) ensureOriginalBvh(el);
     }
   }
-
-  // Track built groups on sceneEl: the scene-level componentchanged listener early-outs
-  // when this is empty, and removeMember splices a group out once its last member is gone.
-  const existing = sceneEl._batchModelsBuilt || [];
-  sceneEl._batchModelsBuilt = existing.concat(built);
-
-  // Re-arm the post-pass listeners that catch entities created / edited AFTER this pass —
-  // typically from the editor's entityclone command or a layer reorder. They were torn down
-  // in beginBatching so nothing during the pass hit them.
-  registerLateListeners(sceneEl);
-
-  // The initial batch pass is complete.
-  sceneEl.emit('initial-batching-done');
-
-  return built;
 }
 
 // The listeners for entities/edits AFTER a batch pass. Registered at the end of every
@@ -1571,6 +1661,14 @@ export async function batchModels(sceneEl) {
 //   initComponent vs callUpdateHandler).
 function registerLateListeners(sceneEl) {
   sceneEl.addEventListener('model-loaded', onLateModelLoaded);
+  registerSceneChangeListeners(sceneEl);
+}
+
+// The transform / visible / pop sync alone. batchModels arms it as soon as groups can exist
+// (they build one by one as their members load), before the model-loaded listener, which must
+// wait for the pass to end. addEventListener dedupes the same reference, so the full
+// registerLateListeners at the end of the pass is safe to repeat it.
+function registerSceneChangeListeners(sceneEl) {
   sceneEl.addEventListener('componentchanged', onSceneComponentChanged, {
     capture: true
   });

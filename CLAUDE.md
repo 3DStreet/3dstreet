@@ -212,7 +212,8 @@ to shared components, editor entry points and Firebase functions.
 **Visibility:** use `setAttribute('visible', ...)`, never raw `object3D.visible`
 (mesh batching).
 
-**URL Hash Schemes:** Streetmix URL, StreetPlan URL, Cloud UUID (`#scenes/...`), Managed Street JSON
+**URL Schemes:** Cloud scenes use path URLs (`/scenes/UUID`, server-visible for unfurls/SEO, #1970; legacy `#/scenes/` hash links load forever and self-upgrade via `history.replaceState`; helpers in `src/tested/scene-url-utils.js`). App-state deep links stay hash-based: Streetmix URL, StreetPlan URL, Managed Street JSON, `#asset:`, `#mcp`
+Because the app now runs at a nested path, every static asset reference must be root-absolute (`/ui_assets/...`, `/assets/...`); a relative path resolves to `/scenes/ui_assets/...` and 404s.
 
 **File Naming:** A-Frame: `kebab-case.js`, React: `PascalCase.js/jsx`, Styles: `.module.scss`
 

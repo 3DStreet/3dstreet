@@ -85,6 +85,14 @@ export default function Main() {
 
   const scene = state.sceneEl;
   const isInspectorEnabled = useStore((state) => state.isInspectorEnabled);
+  const sceneTitle = useStore((state) => state.sceneTitle);
+
+  // Browser tab / history title: "Scene Title · 3DStreet" (GitHub-style), or
+  // plain "3DStreet" for an untitled/new scene.
+  useEffect(() => {
+    const title = sceneTitle?.trim();
+    document.title = title ? `${title} · 3DStreet` : '3DStreet';
+  }, [sceneTitle]);
   // Sync the UI locale with the signed-in user's stored profile preference.
   useProfileLocaleSync();
   // A scene link the loader could not decode (json-utils_1.1.js): toast
