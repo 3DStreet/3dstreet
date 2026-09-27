@@ -136,6 +136,14 @@ stripped its mesh on that same `model-loaded`, so the box that
 `componentinitialized` would open could never be closed (#2031, the boxes
 left behind by a street redraw).
 
+A deferred duplicate's `model-loaded` comes from batch-models when its group
+is built, and the initial pass builds each key group as soon as that group's
+own reference model has loaded (`batchKeyGroupWhenReady` in
+`src/batch-models.js`), not after every model in the scene. So a duplicate's
+box clears together with its original; one slow or stalled GLB elsewhere only
+delays its own group (#2033). A duplicate whose reference fails is released to
+load on its own at the same point.
+
 All ghosts are instances of one `THREE.InstancedMesh` (one draw call however
 many clones are loading; a shader draws the frame on the box faces). The
 scene renders with a logarithmic depth buffer, so that shader, like any
