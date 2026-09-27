@@ -68,12 +68,13 @@ public/
 - `intersection` - 4-way intersections (no managed equivalent yet)
 
 **Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones).
-Clones, stencils and pedestrians are slot-indexed: a generator's `skip` array
-leaves slots empty for **per-object detach** (#2011; drag a clone or press
-Detach to turn it into a plain `Detached Model` entity). Read
+Clones, stencils and pedestrians are placed in straight space and numbered in
+creation order: a generator's `skip` array holds `"x z"` placement holes for
+**per-object detach** (#2011; drag a clone or press Detach to turn it into a
+plain `Detached Model` entity). Read
 [docs/per-object-detach.md](docs/per-object-detach.md) before changing clone
-creation order, seeded draws, `autocreated` handling or the gizmo's
-no-transform gating.
+placement or creation order, seeded draws, `autocreated` handling or the
+gizmo's no-transform gating.
 
 **Streets and geospatial:** curved street paths, basemaps, OSM buildings and
 terrain flattening span components, pure utilities and workers. **Read

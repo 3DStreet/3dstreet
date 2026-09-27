@@ -53,7 +53,7 @@ const layout = (comp) =>
 // Per-object detach (#2011): a skipped slot is left empty and, because the
 // seeded draws for it are still consumed, every pedestrian after the hole
 // keeps its position, model and facing.
-describe('street-generated-pedestrians skip slots', () => {
+describe('street-generated-pedestrians skip holes', () => {
   it('stamps every pedestrian with its slot index', async () => {
     const el = await makeSidewalk();
     const comp = el.components['street-generated-pedestrians'];
@@ -77,7 +77,13 @@ describe('street-generated-pedestrians skip slots', () => {
     const before = layout(comp);
     expect(before.some(([, , , z]) => z !== 0)).toBe(true);
 
-    el.setAttribute('street-generated-pedestrians', 'skip', [2, 9]);
+    const keyOf = (slot) =>
+      comp.createdEntities[slot].getAttribute('data-clone-key');
+    expect(keyOf(2)).toMatch(/^-?\d+(\.\d+)? -?\d+(\.\d+)?$/);
+    el.setAttribute('street-generated-pedestrians', 'skip', [
+      keyOf(2),
+      keyOf(9)
+    ]);
 
     await whenLoaded(comp.createdEntities);
     const after = layout(comp);

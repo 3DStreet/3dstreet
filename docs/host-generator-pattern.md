@@ -47,7 +47,8 @@ Generators follow the canonical `street-generated-*` managed-children pattern
   `data-layer-name`, and `data-parent-component` so the SceneGraph treats them as
   managed (the sidebar's "Edit Clone Settings" flow works automatically).
   Per-object **Detach** (#2011) additionally needs slot support — a `skip`
-  array and a `data-clone-index` stamp via `src/tested/clone-slots.js`; see
+  array of `"x z"` placement holes plus `data-clone-index` / `data-clone-key`
+  stamps via `src/tested/clone-slots.js`; see
   [per-object-detach.md](per-object-detach.md).
 - Wrap heavy GPU objects (e.g. a `THREE.InstancedMesh`) under an `autocreated`
   child entity via `setObject3D`, so the SceneGraph behaves and the mesh is

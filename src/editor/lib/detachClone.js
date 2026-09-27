@@ -1,7 +1,9 @@
 import {
   CLONE_INDEX_ATTR,
+  CLONE_KEY_ATTR,
   isDetachableGenerator,
-  withSkippedSlot
+  parseHole,
+  withSkippedHole
 } from '@/tested/clone-slots.js';
 import { getEditableEntity } from './commands/llmToolGuards.js';
 
@@ -9,9 +11,9 @@ import { getEditableEntity } from './commands/llmToolGuards.js';
  * Per-object detach from managed-street generators (#2011).
  *
  * A generated clone (`autocreated`, `data-no-transform`, regenerated on every
- * update) can't be moved on its own. Detaching it means: leave its slot empty
- * in the generator (`skip`) and put a plain entity the user owns where the
- * clone was — same mixin, same pose, under the same segment, with no
+ * update) can't be moved on its own. Detaching it means: leave a hole at its
+ * straight-space placement in the generator (`skip`) and put a plain entity
+ * the user owns where the clone was — same mixin, same pose, under the same segment, with no
  * `autocreated` marker so it saves, moves, duplicates and deletes like any
  * hand-placed object. This module holds the pure/DOM-only pieces that
  * DetachCloneCommand, the sidebar Detach button and the viewport's
@@ -33,10 +35,12 @@ const COPIED_COMPONENTS = ['geometry', 'polygon-offset', 'batch-member'];
 /**
  * Which generator slot a clone came from, or null when the entity is not a
  * detachable generated clone. Detachable means: an `autocreated` entity
- * stamped with a slot index by one of the slot-aware generators (clones,
- * stencil, pedestrians), whose parent still carries that generator.
+ * stamped with a slot index and a placement key by one of the slot-aware
+ * generators (clones, stencil, pedestrians), whose parent still carries that
+ * generator. `key` is the "x z" straight-space placement the hole is keyed
+ * by; `index` is the creation-order number used to address the clone.
  * @param {Element} entity
- * @returns {{ segmentEl: Element, componentName: string, index: number } | null}
+ * @returns {{ segmentEl: Element, componentName: string, index: number, key: string } | null}
  */
 export function getCloneSlot(entity) {
   if (!entity?.classList?.contains('autocreated')) return null;
@@ -48,9 +52,11 @@ export function getCloneSlot(entity) {
   }
   const index = Number(rawIndex);
   if (!Number.isInteger(index) || index < 0) return null;
+  const key = entity.getAttribute(CLONE_KEY_ATTR);
+  if (!parseHole(key)) return null;
   const segmentEl = entity.parentElement;
   if (!segmentEl?.components?.[componentName]) return null;
-  return { segmentEl, componentName, index };
+  return { segmentEl, componentName, index, key };
 }
 
 /** Whether the viewport gizmo / sidebar may offer to detach this entity. */
@@ -211,18 +217,19 @@ export function buildDetachedDefinition(cloneEl, pose = {}) {
 
 /**
  * The two undoable steps a detach is made of, as `[type, payload]` tuples for
- * MultiCommand: append the clone's slot to its generator's `skip` (the
- * generator regenerates minus that slot, removing the clone), then create the
- * plain entity in its place. Undo runs them in reverse: the plain entity is
- * removed and the slot restored, so the generator puts the clone back exactly
- * where it was. Throws when the entity is not a detachable clone.
+ * MultiCommand: append the clone's placement key to its generator's `skip`
+ * (the generator regenerates minus that placement, removing the clone), then
+ * create the plain entity in its place. Undo runs them in reverse: the plain
+ * entity is removed and the hole restored, so the generator puts the clone
+ * back exactly where it was. Throws when the entity is not a detachable
+ * clone.
  */
 export function buildDetachCommands(cloneEl, pose = {}) {
   const slot = getCloneSlot(cloneEl);
   if (!slot) {
     throw new Error('Entity is not a detachable generated clone');
   }
-  const { segmentEl, componentName, index } = slot;
+  const { segmentEl, componentName, key } = slot;
   const currentSkip =
     segmentEl.getAttribute(componentName)?.skip ??
     segmentEl.components[componentName]?.data?.skip ??
@@ -236,7 +243,7 @@ export function buildDetachCommands(cloneEl, pose = {}) {
           entity: segmentEl,
           component: componentName,
           property: 'skip',
-          value: withSkippedSlot(currentSkip, index),
+          value: withSkippedHole(currentSkip, key),
           // The generator's segment is not what the user is editing: the
           // create step below selects the detached entity.
           noSelectEntity: true

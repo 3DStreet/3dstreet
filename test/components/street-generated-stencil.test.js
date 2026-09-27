@@ -99,7 +99,7 @@ const whenLoaded = (entities) =>
     )
   );
 
-describe('street-generated-stencil skip slots', () => {
+describe('street-generated-stencil skip holes', () => {
   const slotIndexes = (comp) =>
     comp.createdEntities.map((e) => Number(e.getAttribute('data-clone-index')));
 
@@ -124,7 +124,7 @@ describe('street-generated-stencil skip slots', () => {
     ]);
   });
 
-  it('leaves skipped slots empty and keeps the other stencils in place', async () => {
+  it('leaves holes empty and keeps the other stencils in place', async () => {
     const el = await makeSegment('outbound');
     el.setAttribute(
       'street-generated-stencil',
@@ -140,7 +140,9 @@ describe('street-generated-stencil skip slots', () => {
     );
     expect(new Set(before.values()).size).toBe(before.size);
 
-    el.setAttribute('street-generated-stencil', 'skip', [0, 5]);
+    const keyOf = (slot) =>
+      comp.createdEntities[slot].getAttribute('data-clone-key');
+    el.setAttribute('street-generated-stencil', 'skip', [keyOf(0), keyOf(5)]);
 
     expect(slotIndexes(comp)).toEqual([1, 2, 3, 4, 6, 7]);
     await whenLoaded(comp.createdEntities);

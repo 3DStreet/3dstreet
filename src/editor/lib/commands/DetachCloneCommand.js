@@ -7,7 +7,7 @@ import {
 
 /**
  * Detach one generated clone from its managed-street generator (#2011):
- * leave its slot empty (`skip`) and put a plain entity — same mixin, same
+ * leave a hole at its placement (`skip`) and put a plain entity — same mixin, same
  * pose (or the pose a viewport drag ended at), under the same segment, no
  * `autocreated` marker — where the clone was. One undo entry: undo removes
  * the plain entity and restores the slot, so the generator regenerates the
@@ -28,7 +28,7 @@ export class DetachCloneCommand extends MultiCommand {
   static llmTool = {
     name: 'detachClone',
     description:
-      "Detach one generated clone (a vehicle, tree, prop, stencil or pedestrian placed by a street-generated-clones, street-generated-stencil or street-generated-pedestrians component on a managed street segment) from its generator so it becomes a plain entity that can be moved, rotated, duplicated or deleted on its own; the rest of the segment stays generated. Name the clone by the segment entity, the generator component on it and the clone slot index (0-based creation order from the start of the segment; the generator's skip array lists slots already detached), or omit all three to detach the currently selected clone. Optional position/rotation place the detached entity.",
+      "Detach one generated clone (a vehicle, tree, prop, stencil or pedestrian placed by a street-generated-clones, street-generated-stencil or street-generated-pedestrians component on a managed street segment) from its generator so it becomes a plain entity that can be moved, rotated, duplicated or deleted on its own; the rest of the segment stays generated. Name the clone by the segment entity, the generator component on it and the clone slot index (0-based creation order from the start of the segment; a slot already detached has no clone, and the generator's skip array lists the detached placements as 'x z' keys), or omit all three to detach the currently selected clone. Optional position/rotation place the detached entity.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -95,7 +95,8 @@ export class DetachCloneCommand extends MultiCommand {
   undo() {
     super.undo();
     // The create step's undo cleared the selection; hand it to the clone the
-    // generator just put back so the user lands where they started.
+    // generator just put back (same layout, so the same slot index) so the
+    // user lands where they started.
     const clone = findCloneAtSlot(
       this.slot.segmentEl,
       this.slot.componentName,

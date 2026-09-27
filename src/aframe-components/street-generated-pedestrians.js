@@ -1,7 +1,11 @@
 /* global AFRAME */
 import { createRNG } from '../lib/rng';
 import { getCurvedPlacement } from './street-path.js';
-import { CLONE_INDEX_ATTR, createSlotCounter } from '../tested/clone-slots.js';
+import {
+  CLONE_INDEX_ATTR,
+  CLONE_KEY_ATTR,
+  createSlotCounter
+} from '../tested/clone-slots.js';
 
 AFRAME.registerComponent('street-generated-pedestrians', {
   multiple: true,
@@ -19,8 +23,8 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       type: 'int',
       default: 0
     },
-    // Slot indexes (creation order) left empty by a per-object detach
-    // (#2011). See docs/per-object-detach.md.
+    // Straight-space placements ("x z" keys) left empty by a per-object
+    // detach (#2011). See docs/per-object-detach.md.
     skip: {
       type: 'array',
       default: []
@@ -110,15 +114,15 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       1.5
     );
 
-    // One slot per pedestrian; detached slots (skip) are counted but not
-    // created (#2011).
+    // One slot per pedestrian; a pedestrian whose placement is a detached
+    // hole (skip) is counted but not created (#2011).
     const slots = createSlotCounter(data.skip);
 
     // Create pedestrians
     for (let i = 0; i < totalPedestrians; i++) {
       // Seeded draws first — position, model variant, then facing — in the
       // same order as before so a given seed lays out identically, and so a
-      // detached slot consumes the draws it would have (the pedestrians
+      // detached placement consumes the draws it would have (the pedestrians
       // after it keep their layout).
       const position = {
         x: this.getRandomArbitrary(xRange.min, xRange.max),
@@ -137,7 +141,7 @@ AFRAME.registerComponent('street-generated-pedestrians', {
         rotationY = 180;
       }
 
-      const slot = slots.next();
+      const slot = slots.next(position.x, position.z);
       if (slot.skipped) continue;
 
       const pedestrian = document.createElement('a-entity');
@@ -174,6 +178,7 @@ AFRAME.registerComponent('street-generated-pedestrians', {
       pedestrian.setAttribute('data-layer-name', 'Cloned Pedestrian');
       pedestrian.setAttribute('data-parent-component', this.attrName);
       pedestrian.setAttribute(CLONE_INDEX_ATTR, slot.index);
+      pedestrian.setAttribute(CLONE_KEY_ATTR, slot.key);
 
       this.createdEntities.push(pedestrian);
     }

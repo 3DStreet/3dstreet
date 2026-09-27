@@ -26,7 +26,8 @@ or component code.
 
 **Per-object detach (#2011):** `detachclone` turns one generated clone
 (clones/stencil/pedestrians) into a plain `Detached Model` entity: it appends
-the clone's slot to the generator's `skip` and creates the plain entity, as one
+the clone's `"x z"` placement key to the generator's `skip` (a hole; forgotten
+if the layout stops landing there) and creates the plain entity, as one
 undo entry composed from `entityupdate` + `entitycreate`. The viewport gizmo
 attaches to such a clone (the only `data-no-transform` entity it accepts) and
 commits the whole drag on `mouseUp` as that one command; the autocreated

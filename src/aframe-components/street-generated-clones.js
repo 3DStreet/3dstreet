@@ -1,7 +1,11 @@
 /* global AFRAME, STREET */
 import { createRNG } from '../lib/rng';
 import { getCurvedPlacement } from './street-path.js';
-import { CLONE_INDEX_ATTR, createSlotCounter } from '../tested/clone-slots.js';
+import {
+  CLONE_INDEX_ATTR,
+  CLONE_KEY_ATTR,
+  createSlotCounter
+} from '../tested/clone-slots.js';
 
 // Helper function to get base rotation from catalog
 function getBaseRotationFromCatalog(mixinId) {
@@ -29,10 +33,10 @@ AFRAME.registerComponent('street-generated-clones', {
       oneOf: ['none', 'inbound', 'outbound']
     },
 
-    // Slot indexes (creation order within one regeneration) left empty by a
-    // per-object detach (#2011): the clone that would fill the slot is not
-    // created, and a plain entity the user owns stands where it was. Keyed
-    // by slot, so changing spacing/count/mode later shifts the hole — see
+    // Straight-space placements ("x z" keys) left empty by a per-object
+    // detach (#2011): a clone that would land there is not created, and a
+    // plain entity the user owns stands in its place. A layout change that
+    // puts nothing there any more simply forgets the hole — see
     // docs/per-object-detach.md.
     skip: { type: 'array', default: [] },
 
@@ -123,7 +127,8 @@ AFRAME.registerComponent('street-generated-clones', {
     // Clear existing entities
     this.clearEntities();
     // One slot per clone the mode below would create, in creation order;
-    // detached slots (skip) are counted but not created.
+    // a clone whose placement is a detached hole (skip) is counted but not
+    // created.
     this.slots = createSlotCounter(this.data.skip);
 
     // Generate new entities based on mode
@@ -307,20 +312,22 @@ AFRAME.registerComponent('street-generated-clones', {
       rotationY = this.rng() * 360 + baseRotation;
     }
 
-    // Every seeded draw for this clone (model pick, random facing) happens
-    // above, so a detached slot consumes the same RNG calls it would have
-    // and the clones after it keep their layout (#2011).
-    const slot = this.slots.next();
-    if (slot.skipped) return;
-
-    const clone = document.createElement('a-entity');
-
-    clone.setAttribute('mixin', mixinId);
     // straight segment-local placement, bent onto the parent street's path
     // curve when one is active (position remapped, yaw follows the tangent)
     let x = positionX !== undefined ? positionX : data.positionX;
     let y = data.positionY;
     let z = positionZ;
+
+    // Every seeded draw for this clone (model pick, random facing) happens
+    // above, so a detached placement consumes the same RNG calls it would
+    // have and the clones after it keep their layout (#2011). The hole is
+    // keyed by the straight-space placement, before any bending.
+    const slot = this.slots.next(x, z);
+    if (slot.skipped) return;
+
+    const clone = document.createElement('a-entity');
+
+    clone.setAttribute('mixin', mixinId);
     let curveYaw = 0;
     const bent = getCurvedPlacement(this.el, x, z);
     if (bent) {
@@ -347,6 +354,7 @@ AFRAME.registerComponent('street-generated-clones', {
     clone.setAttribute('data-layer-name', 'Cloned Model • ' + mixinId);
     clone.setAttribute('data-parent-component', this.attrName);
     clone.setAttribute(CLONE_INDEX_ATTR, slot.index);
+    clone.setAttribute(CLONE_KEY_ATTR, slot.key);
 
     this.el.appendChild(clone);
     this.createdEntities.push(clone);

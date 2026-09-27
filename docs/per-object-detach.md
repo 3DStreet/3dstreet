@@ -16,32 +16,64 @@ entity the user owns, while the rest of the street stays managed.
 The `street-generated-clones`, `street-generated-stencil` and
 `street-generated-pedestrians` generators rebuild every clone deterministically
 (fixed mode from `spacing`/`cycleOffset`, random mode from the persisted
-`seed`), so the order in which they create clones is stable across
-regenerations and reloads. That creation order is a clone's **slot** index.
+`seed`). Each clone is laid out at a **straight-space placement**: an `x`
+across the segment and a `z` along it, computed before any bending onto a
+curved street path. That placement identifies the clone; a detach leaves a
+**hole** there.
 
 - **Generator side** (`src/tested/clone-slots.js`, pure + unit-tested): each of
-  the three generators has a `skip: {type: 'array', default: []}` property.
-  `update()` starts a slot counter (`createSlotCounter(this.data.skip)`); every
-  clone the generator would create takes the next slot, and a slot listed in
-  `skip` is counted but not created. Every created clone is stamped
-  `data-clone-index` next to `data-parent-component`. Seeded draws (model
-  pick, random facing, pedestrian position/variant/facing) happen **before**
-  the counter is consulted, so a skipped slot consumes the same RNG calls it
-  would have and the clones after the hole keep their layout.
+  the three generators has a `skip: {type: 'array', default: []}` property
+  holding `"x z"` placement keys (millimeter precision, matched within 1 cm).
+  `update()` starts a slot counter (`createSlotCounter(this.data.skip)`); for
+  every clone it would create it calls `next(x, z)` with the straight-space
+  placement, and a placement on a hole is counted but not created. Every
+  created clone is stamped `data-clone-index` (creation order, used to
+  address a clone) and `data-clone-key` (its placement) next to
+  `data-parent-component`. Seeded draws (model pick, random facing,
+  pedestrian position/variant/facing) happen **before** the counter is
+  consulted, so a skipped placement consumes the same RNG calls it would have
+  and the clones after the hole keep their layout.
 - **Editor side** (`src/editor/lib/detachClone.js` +
   `src/editor/lib/commands/DetachCloneCommand.js`): `detachclone` is one
   undoable command composed from two existing ones — an `entityupdate` that
-  appends the slot to the generator's `skip` (the generator regenerates minus
-  that slot, removing the clone) and an `entitycreate` of a plain entity under
-  the same segment with the clone's mixin, position and rotation (plus a
-  stencil's own `geometry`/`polygon-offset`/`batch-member`), layer name
-  `Detached Model • <mixin>`, no `autocreated` class, no `data-no-transform`.
-  Undo removes the plain entity and restores the slot, so the generator puts
-  the clone back exactly where it was, and reselects it.
+  appends the clone's placement key to the generator's `skip` (the generator
+  regenerates minus that placement, removing the clone) and an `entitycreate`
+  of a plain entity under the same segment with the clone's mixin, position
+  and rotation (plus a stencil's own `geometry`/`polygon-offset`/
+  `batch-member`), layer name `Detached Model • <mixin>`, no `autocreated`
+  class, no `data-no-transform`. Undo removes the plain entity and restores
+  the hole, so the generator puts the clone back exactly where it was, and
+  reselects it.
 - **Persistence:** nothing new. `skip` saves with the generator config (and
   round-trips through Managed Street JSON export/import like any schema
   property); the detached entity saves as an ordinary segment child; on load
-  the generator regenerates minus that slot.
+  the generator regenerates minus that placement.
+
+### Why holes are keyed by placement, not by slot index
+
+The rule a user can hold in their head: *the generator stops placing an
+object at that spot; if its layout later changes so that nothing lands there
+any more, the spot is forgotten — every clone comes back and the detached
+object stays as your own.* Concretely:
+
+- **Unrelated edits keep the hole:** changing models, facing, direction or
+  colors regenerates the same placements, so the hole stays.
+- **Curving the street keeps the hole:** placements are matched in straight
+  space, before bending, so a path change does not touch them. (The detached
+  object itself is plain and does not follow a re-bend, like any hand-placed
+  object.)
+- **A layout change forgets the hole** (spacing, count, mode, seed, or a
+  length change, which shifts every placement by half the added length since
+  the segment stays centered): the old placement is no longer generated, so
+  the hole matches nothing. All clones are created; the detached object may
+  sit near one of them. A spacing that still lands on the spot keeps it a
+  hole.
+- **Nothing ever goes missing somewhere else.** An index-keyed hole would
+  instead follow the *n*-th clone of the new layout: one clone would vanish at
+  a new place while a regenerated one appeared on top of the detached object.
+
+`skip` entries that are not `"x z"` placements (for instance an index left by
+a pre-release build) are ignored, never mistaken for a hole.
 
 ## Triggers
 
@@ -70,15 +102,16 @@ regenerations and reloads. That creation order is a clone's **slot** index.
   correct itself (`resolveDetachToolArgs` in `detachClone.js`).
 
 `isDetachableClone(el)` is the single predicate both triggers and the UI gating
-use: an `autocreated` entity stamped with a slot index whose parent still
-carries the named generator. Clones from surface generators (striping, rail,
+use: an `autocreated` entity stamped with a slot index and a placement key
+whose parent still carries the named generator. Clones from surface generators (striping, rail,
 grass) and clones created before slots existed (no stamp) are not detachable;
 Convert to Shapes remains the bulk path.
 
 ## Accepted trade-offs
 
-- The hole is keyed by slot index; changing that generator's spacing, count,
-  mode or models later shifts which object the hole lands on.
+- A layout change (spacing, count, mode, seed, length) forgets the hole, so
+  the generator places a clone near or on the detached object again; the user
+  deletes whichever they do not want. See "Why holes are keyed by placement".
 - Changing the segment type or reloading from Streetmix replaces the
   generator, so `skip` is lost and the detached object remains (possibly next
   to a regenerated duplicate). Same behavior as any hand-placed object today.

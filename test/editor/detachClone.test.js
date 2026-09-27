@@ -35,7 +35,8 @@ function makeClone(
     componentName = 'street-generated-clones__1',
     index = 2,
     mixin = 'sedan-rig',
-    autocreated = true
+    autocreated = true,
+    key = '1.5 -12'
   } = {}
 ) {
   const clone = document.createElement('a-entity');
@@ -44,6 +45,7 @@ function makeClone(
   clone.setAttribute('mixin', mixin);
   clone.setAttribute('data-parent-component', componentName);
   if (index !== null) clone.setAttribute('data-clone-index', index);
+  if (key !== null) clone.setAttribute('data-clone-key', key);
   clone.setAttribute('position', '1.5 0 -12');
   clone.setAttribute('rotation', '0 180 0');
   segment.appendChild(clone);
@@ -58,7 +60,8 @@ describe('detachClone (#2011)', () => {
       expect(getCloneSlot(clone)).toEqual({
         segmentEl: segment,
         componentName: 'street-generated-clones__1',
-        index: 4
+        index: 4,
+        key: '1.5 -12'
       });
       expect(isDetachableClone(clone)).toBe(true);
     });
@@ -72,6 +75,12 @@ describe('detachClone (#2011)', () => {
         const clone = makeClone(segment, { componentName });
         expect(isDetachableClone(clone)).toBe(true);
       }
+    });
+
+    it('rejects a clone without a placement key', () => {
+      const segment = makeSegment();
+      expect(isDetachableClone(makeClone(segment, { key: null }))).toBe(false);
+      expect(isDetachableClone(makeClone(segment, { key: 'x' }))).toBe(false);
     });
 
     it('rejects a clone without a slot stamp (pre-slot generators)', () => {
@@ -200,14 +209,15 @@ describe('detachClone (#2011)', () => {
   });
 
   describe('buildDetachCommands', () => {
-    it('appends the slot to skip, then creates the plain entity', () => {
-      const segment = makeSegment({ skip: ['1'] });
-      const clone = makeClone(segment, { index: 3 });
+    it('appends the placement hole to skip, then creates the plain entity', () => {
+      const segment = makeSegment({ skip: ['0 20'] });
+      const clone = makeClone(segment, { index: 3, key: '1.5 -12' });
       const { slot, commands } = buildDetachCommands(clone);
       expect(slot).toEqual({
         segmentEl: segment,
         componentName: 'street-generated-clones__1',
-        index: 3
+        index: 3,
+        key: '1.5 -12'
       });
       expect(commands).toHaveLength(2);
       expect(commands[0]).toEqual([
@@ -216,7 +226,7 @@ describe('detachClone (#2011)', () => {
           entity: segment,
           component: 'street-generated-clones__1',
           property: 'skip',
-          value: [1, 3],
+          value: ['0 20', '1.5 -12'],
           noSelectEntity: true
         }
       ]);
@@ -225,10 +235,12 @@ describe('detachClone (#2011)', () => {
       expect(commands[1][1].mixin).toBe('sedan-rig');
     });
 
-    it('is idempotent on skip when the slot is already skipped', () => {
-      const segment = makeSegment({ skip: [3] });
-      const clone = makeClone(segment, { index: 3 });
-      expect(buildDetachCommands(clone).commands[0][1].value).toEqual([3]);
+    it('is idempotent on skip when the placement is already a hole', () => {
+      const segment = makeSegment({ skip: ['1.5 -12'] });
+      const clone = makeClone(segment, { index: 3, key: '1.5 -12' });
+      expect(buildDetachCommands(clone).commands[0][1].value).toEqual([
+        '1.5 -12'
+      ]);
     });
 
     it('throws for a non-detachable entity', () => {

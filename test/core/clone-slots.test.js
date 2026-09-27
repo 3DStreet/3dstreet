@@ -3,17 +3,23 @@
 import assert from 'assert';
 import {
   CLONE_INDEX_ATTR,
+  CLONE_KEY_ATTR,
   DETACHABLE_GENERATORS,
+  HOLE_TOLERANCE,
   createSlotCounter,
+  holeMatches,
   isDetachableGenerator,
-  parseSkipSlots,
-  withSkippedSlot,
-  withoutSkippedSlot
+  parseHole,
+  parseSkipHoles,
+  placementKey,
+  withSkippedHole,
+  withoutSkippedHole
 } from '../../src/tested/clone-slots.js';
 
 describe('clone-slots (#2011)', function () {
-  it('names the stamp and the slot-aware generators', function () {
+  it('names the stamps and the slot-aware generators', function () {
     assert.strictEqual(CLONE_INDEX_ATTR, 'data-clone-index');
+    assert.strictEqual(CLONE_KEY_ATTR, 'data-clone-key');
     assert.deepStrictEqual(DETACHABLE_GENERATORS, [
       'street-generated-clones',
       'street-generated-stencil',
@@ -57,55 +63,129 @@ describe('clone-slots (#2011)', function () {
     });
   });
 
-  describe('#parseSkipSlots()', function () {
-    it('accepts numbers and the strings A-Frame parses from an attribute', function () {
-      assert.deepStrictEqual([...parseSkipSlots([0, 3])], [0, 3]);
-      assert.deepStrictEqual([...parseSkipSlots(['1', ' 4 '])], [1, 4]);
-      assert.deepStrictEqual([...parseSkipSlots([2, '2'])], [2]);
+  describe('#placementKey() / #parseHole()', function () {
+    it('writes "x z" to the millimeter and reads it back', function () {
+      assert.strictEqual(placementKey(1.23456, -12), '1.235 -12');
+      assert.strictEqual(placementKey(-0.0001, 0), '0 0');
+      assert.deepStrictEqual(parseHole('1.235 -12'), { x: 1.235, z: -12 });
+      assert.deepStrictEqual(parseHole('  0   20 '), { x: 0, z: 20 });
+      assert.deepStrictEqual(parseHole({ x: 2, z: '3' }), { x: 2, z: 3 });
     });
 
-    it('ignores anything that is not a non-negative integer', function () {
-      assert.deepStrictEqual([...parseSkipSlots(['', 'x', -1, 1.5, 7])], [7]);
-      assert.deepStrictEqual([...parseSkipSlots(undefined)], []);
-      assert.deepStrictEqual([...parseSkipSlots('1, 2')], []);
+    it('rejects anything that is not a placement', function () {
+      assert.strictEqual(parseHole(''), null);
+      assert.strictEqual(parseHole('1'), null);
+      assert.strictEqual(parseHole('1 2 3'), null);
+      assert.strictEqual(parseHole('x z'), null);
+      assert.strictEqual(parseHole(3), null);
+      assert.strictEqual(parseHole(null), null);
+      assert.strictEqual(parseHole(undefined), null);
     });
   });
 
-  describe('#withSkippedSlot() / #withoutSkippedSlot()', function () {
-    it('appends a slot, sorted and de-duplicated, as numbers', function () {
-      assert.deepStrictEqual(withSkippedSlot([], 2), [2]);
-      assert.deepStrictEqual(withSkippedSlot(['5', 1], 3), [1, 3, 5]);
-      assert.deepStrictEqual(withSkippedSlot([3], '3'), [3]);
+  describe('#holeMatches()', function () {
+    it('matches within the tolerance on both axes', function () {
+      const hole = { x: 0, z: 20 };
+      assert.strictEqual(holeMatches(hole, 0, 20), true);
+      assert.strictEqual(
+        holeMatches(hole, HOLE_TOLERANCE / 2, 20 - HOLE_TOLERANCE / 2),
+        true
+      );
+      assert.strictEqual(holeMatches(hole, 0, 20.05), false);
+      assert.strictEqual(holeMatches(hole, 0.05, 20), false);
+    });
+  });
+
+  describe('#parseSkipHoles()', function () {
+    it('accepts strings (the attribute form) and objects, de-duplicated', function () {
+      assert.deepStrictEqual(parseSkipHoles(['0 20', { x: 0, z: -20 }]), [
+        { x: 0, z: 20 },
+        { x: 0, z: -20 }
+      ]);
+      assert.deepStrictEqual(parseSkipHoles(['0 20', '0.001 20.004']), [
+        { x: 0, z: 20 }
+      ]);
     });
 
-    it('removes a slot and leaves the rest', function () {
-      assert.deepStrictEqual(withoutSkippedSlot([1, 3, 5], 3), [1, 5]);
-      assert.deepStrictEqual(withoutSkippedSlot(['1', '3'], '1'), [3]);
-      assert.deepStrictEqual(withoutSkippedSlot([1], 9), [1]);
+    it('ignores non-placements, including the old index form', function () {
+      assert.deepStrictEqual(parseSkipHoles(['', 'x', 1, '3', '0 7']), [
+        { x: 0, z: 7 }
+      ]);
+      assert.deepStrictEqual(parseSkipHoles(undefined), []);
+      assert.deepStrictEqual(parseSkipHoles('0 20'), []);
+    });
+  });
+
+  describe('#withSkippedHole() / #withoutSkippedHole()', function () {
+    it('appends a hole once, as "x z" strings', function () {
+      assert.deepStrictEqual(withSkippedHole([], '0 20'), ['0 20']);
+      assert.deepStrictEqual(withSkippedHole(['0 40'], '0 20'), [
+        '0 40',
+        '0 20'
+      ]);
+      assert.deepStrictEqual(withSkippedHole(['0 20'], '0 20'), ['0 20']);
+      assert.deepStrictEqual(withSkippedHole(['0 20'], '0.004 20.001'), [
+        '0 20'
+      ]);
+      assert.deepStrictEqual(withSkippedHole(['0 20'], 'nope'), ['0 20']);
+    });
+
+    it('removes a hole and leaves the rest', function () {
+      assert.deepStrictEqual(withoutSkippedHole(['0 20', '0 -20'], '0 -20'), [
+        '0 20'
+      ]);
+      assert.deepStrictEqual(withoutSkippedHole(['0 20'], '0 9'), ['0 20']);
     });
 
     it('does not mutate the input', function () {
-      const skip = [4, 2];
-      withSkippedSlot(skip, 1);
-      withoutSkippedSlot(skip, 4);
-      assert.deepStrictEqual(skip, [4, 2]);
+      const skip = ['0 20', '0 40'];
+      withSkippedHole(skip, '0 60');
+      withoutSkippedHole(skip, '0 20');
+      assert.deepStrictEqual(skip, ['0 20', '0 40']);
     });
   });
 
   describe('#createSlotCounter()', function () {
-    it('hands out consecutive slots and flags the skipped ones', function () {
-      const slots = createSlotCounter(['1', 3]);
-      assert.deepStrictEqual(slots.next(), { index: 0, skipped: false });
-      assert.deepStrictEqual(slots.next(), { index: 1, skipped: true });
-      assert.deepStrictEqual(slots.next(), { index: 2, skipped: false });
-      assert.deepStrictEqual(slots.next(), { index: 3, skipped: true });
-      assert.deepStrictEqual(slots.next(), { index: 4, skipped: false });
+    it('numbers placements in order and flags the ones on a hole', function () {
+      const slots = createSlotCounter(['0 20', { x: 0, z: -20 }]);
+      assert.deepStrictEqual(slots.next(0, 40), {
+        index: 0,
+        key: '0 40',
+        skipped: false
+      });
+      assert.deepStrictEqual(slots.next(0, 20), {
+        index: 1,
+        key: '0 20',
+        skipped: true
+      });
+      assert.deepStrictEqual(slots.next(0, 0), {
+        index: 2,
+        key: '0 0',
+        skipped: false
+      });
+      assert.deepStrictEqual(slots.next(0.004, -20.003), {
+        index: 3,
+        key: '0.004 -20.003',
+        skipped: true
+      });
+    });
+
+    it('forgets a hole that the layout no longer lands on', function () {
+      // The hole was made at 0 25; a re-spaced layout that never places a
+      // clone there creates every clone, and nothing else goes missing.
+      const slots = createSlotCounter(['0 25']);
+      const placed = [40, 30, 20, 10, 0].map((z) => slots.next(0, z).skipped);
+      assert.deepStrictEqual(placed, [false, false, false, false, false]);
     });
 
     it('skips nothing without a skip list', function () {
       const slots = createSlotCounter(undefined);
-      assert.deepStrictEqual(slots.next(), { index: 0, skipped: false });
-      assert.deepStrictEqual(slots.next(), { index: 1, skipped: false });
+      assert.deepStrictEqual(slots.next(1, 2), {
+        index: 0,
+        key: '1 2',
+        skipped: false
+      });
+      assert.deepStrictEqual(slots.next(1, 3).index, 1);
     });
   });
 });

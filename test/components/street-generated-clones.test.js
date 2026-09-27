@@ -103,14 +103,19 @@ const whenLoaded = (entities) =>
     )
   );
 
-describe('street-generated-clones skip slots', () => {
+describe('street-generated-clones skip holes', () => {
   const slotIndexes = (comp) =>
     comp.createdEntities.map((e) => Number(e.getAttribute('data-clone-index')));
+  const keys = (comp) =>
+    comp.createdEntities.map((e) => e.getAttribute('data-clone-key'));
 
-  it('stamps every clone with its slot index', async () => {
+  it('stamps every clone with its slot index and placement key', async () => {
     const el = await makeSegment();
     const comp = el.components['street-generated-clones'];
     expect(slotIndexes(comp)).toEqual([0, 1, 2, 3, 4]);
+    // fixed mode: x = positionX (0), z = length/2 - (slot + cycleOffset) * spacing
+    // with cycleOffset 0.5 and spacing 20 on 100 m
+    expect(keys(comp)).toEqual(['0 40', '0 20', '0 0', '0 -20', '0 -40']);
     expect(
       comp.createdEntities.every(
         (e) =>
@@ -119,7 +124,7 @@ describe('street-generated-clones skip slots', () => {
     ).toBe(true);
   });
 
-  it('leaves a skipped slot empty and keeps the other slots in place', async () => {
+  it('leaves a hole empty and keeps the other clones in place', async () => {
     const el = await makeSegment();
     const comp = el.components['street-generated-clones'];
     await whenLoaded(comp.createdEntities);
@@ -129,10 +134,9 @@ describe('street-generated-clones skip slots', () => {
         e.getAttribute('position').z
       ])
     );
-    // fixed mode: z = length/2 - (slot + cycleOffset) * spacing
     expect([...before.values()]).toEqual([40, 20, 0, -20, -40]);
 
-    el.setAttribute('street-generated-clones', 'skip', [1, 3]);
+    el.setAttribute('street-generated-clones', 'skip', ['0 20', '0 -20']);
 
     expect(comp.createdEntities).toHaveLength(3);
     expect(slotIndexes(comp)).toEqual([0, 2, 4]);
@@ -141,18 +145,46 @@ describe('street-generated-clones skip slots', () => {
       const slot = Number(clone.getAttribute('data-clone-index'));
       expect(clone.getAttribute('position').z).toBe(before.get(slot));
     }
-    // The generator reads the attribute form too ("1, 3" → strings).
-    el.setAttribute('street-generated-clones', 'skip', '4');
+    // The generator reads the attribute form too ("0 -40" → ['0 -40']).
+    el.setAttribute('street-generated-clones', 'skip', '0 -40');
     expect(slotIndexes(comp)).toEqual([0, 1, 2, 3]);
   });
 
-  it('restores the slot when it is removed from skip', async () => {
+  it('restores the clone when its hole is removed from skip', async () => {
     const el = await makeSegment();
     const comp = el.components['street-generated-clones'];
-    el.setAttribute('street-generated-clones', 'skip', [2]);
+    el.setAttribute('street-generated-clones', 'skip', ['0 0']);
     expect(slotIndexes(comp)).toEqual([0, 1, 3, 4]);
     el.setAttribute('street-generated-clones', 'skip', []);
     expect(slotIndexes(comp)).toEqual([0, 1, 2, 3, 4]);
+  });
+
+  it('keeps a hole through changes that leave the placement alone', async () => {
+    const el = await makeSegment();
+    const comp = el.components['street-generated-clones'];
+    el.setAttribute('street-generated-clones', 'skip', ['0 0']);
+    el.setAttribute('street-generated-clones', 'facing', 90);
+    expect(slotIndexes(comp)).toEqual([0, 1, 3, 4]);
+    // spacing 4 (with the 0.5 cycleOffset) still lands a clone on 0 0 —
+    // floor(100 / 4) = 25 placements, 48, 44, …, 0, …, -48 — so it stays a
+    // hole: 24 clones
+    el.setAttribute('street-generated-clones', 'spacing', 4);
+    expect(keys(comp)).not.toContain('0 0');
+    expect(comp.createdEntities).toHaveLength(24);
+  });
+
+  it('forgets a hole when the layout no longer lands on it', async () => {
+    const el = await makeSegment();
+    const comp = el.components['street-generated-clones'];
+    el.setAttribute('street-generated-clones', 'skip', ['0 20']);
+    expect(comp.createdEntities).toHaveLength(4);
+    // spacing 25 (cycleOffset 0.5) puts clones at 37.5, 12.5, -12.5, -37.5:
+    // nothing at 0 20, so every clone comes back and none goes missing
+    el.setAttribute('street-generated-clones', 'spacing', 25);
+    expect(keys(comp)).toEqual(['0 37.5', '0 12.5', '0 -12.5', '0 -37.5']);
+    // an index-form leftover is ignored, never mistaken for a hole
+    el.setAttribute('street-generated-clones', 'skip', [1]);
+    expect(comp.createdEntities).toHaveLength(4);
   });
 
   it('keeps seeded model picks stable after the hole in random mode', async () => {
@@ -177,7 +209,8 @@ describe('street-generated-clones skip slots', () => {
     expect(before).toHaveLength(6);
     expect(before.some(([, , z]) => z !== 0)).toBe(true);
 
-    el.setAttribute('street-generated-clones', 'skip', [1]);
+    const holeKey = comp.createdEntities[1].getAttribute('data-clone-key');
+    el.setAttribute('street-generated-clones', 'skip', [holeKey]);
 
     await whenLoaded(comp.createdEntities);
     const after = layout(comp);
