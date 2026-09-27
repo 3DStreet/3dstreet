@@ -106,16 +106,18 @@ export function holeMatches(hole, x, z) {
 
 /**
  * Normalize a generator's `skip` value into a list of holes, ignoring
- * entries that are not placements and collapsing duplicates.
+ * entries that are not placements. Duplicates are kept on purpose: one
+ * detach adds one hole, and each hole removes exactly one clone per
+ * regeneration (see createSlotCounter), so two clones that share a
+ * placement — a stencil group with zero padding stacks its stencils on one
+ * spot — need two holes to both be detached.
  */
 export function parseSkipHoles(skip) {
   const holes = [];
   if (!Array.isArray(skip)) return holes;
   for (const entry of skip) {
     const hole = parseHole(entry);
-    if (!hole) continue;
-    if (holes.some((h) => holeMatches(h, hole.x, hole.z))) continue;
-    holes.push(hole);
+    if (hole) holes.push(hole);
   }
   return holes;
 }
@@ -124,23 +126,23 @@ function serializeHoles(holes) {
   return holes.map((h) => placementKey(h.x, h.z));
 }
 
-/** `skip` with the hole at `key` added: "x z" strings, de-duplicated. */
+/** `skip` with a hole at `key` appended, as "x z" strings. */
 export function withSkippedHole(skip, key) {
   const holes = parseSkipHoles(skip);
   const hole = parseHole(key);
-  if (hole && !holes.some((h) => holeMatches(h, hole.x, hole.z))) {
-    holes.push(hole);
-  }
+  if (hole) holes.push(hole);
   return serializeHoles(holes);
 }
 
-/** `skip` with the hole at `key` removed: "x z" strings, de-duplicated. */
+/** `skip` with one hole at `key` removed (the first match), as "x z" strings. */
 export function withoutSkippedHole(skip, key) {
   const holes = parseSkipHoles(skip);
   const hole = parseHole(key);
-  return serializeHoles(
-    hole ? holes.filter((h) => !holeMatches(h, hole.x, hole.z)) : holes
-  );
+  if (hole) {
+    const i = holes.findIndex((h) => holeMatches(h, hole.x, hole.z));
+    if (i !== -1) holes.splice(i, 1);
+  }
+  return serializeHoles(holes);
 }
 
 /**
@@ -156,20 +158,26 @@ export function withoutSkippedHole(skip, key) {
  *   clone.setAttribute(CLONE_INDEX_ATTR, slot.index);
  *   clone.setAttribute(CLONE_KEY_ATTR, slot.key);
  *
- * Generators must draw any seeded randomness for a clone BEFORE consulting
- * the counter, so a skipped placement consumes the same RNG calls it would
- * have and the clones after it keep their models, positions and facings.
+ * Each hole is spent by the first placement that lands on it, so a hole
+ * removes one clone per regeneration even when several clones share a
+ * placement. Generators must draw any seeded randomness for a clone BEFORE
+ * consulting the counter, so a skipped placement consumes the same RNG calls
+ * it would have and the clones after it keep their models, positions and
+ * facings.
  */
 export function createSlotCounter(skip) {
   const holes = parseSkipHoles(skip);
+  const spent = holes.map(() => false);
   let index = 0;
   return {
     next(x, z) {
       const slot = index++;
+      const hole = holes.findIndex((h, i) => !spent[i] && holeMatches(h, x, z));
+      if (hole !== -1) spent[hole] = true;
       return {
         index: slot,
         key: placementKey(x, z),
-        skipped: holes.some((h) => holeMatches(h, x, z))
+        skipped: hole !== -1
       };
     }
   };

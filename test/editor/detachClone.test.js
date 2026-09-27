@@ -235,10 +235,13 @@ describe('detachClone (#2011)', () => {
       expect(commands[1][1].mixin).toBe('sedan-rig');
     });
 
-    it('is idempotent on skip when the placement is already a hole', () => {
+    it('adds a second hole for a clone stacked on an existing hole', () => {
+      // a live clone at a hole placement means a sibling spent the hole
+      // (zero-padding stencil group): detaching it needs its own hole
       const segment = makeSegment({ skip: ['1.5 -12'] });
       const clone = makeClone(segment, { index: 3, key: '1.5 -12' });
       expect(buildDetachCommands(clone).commands[0][1].value).toEqual([
+        '1.5 -12',
         '1.5 -12'
       ]);
     });
@@ -333,6 +336,33 @@ describe('detachClone (#2011)', () => {
       expect(() =>
         resolveDetachToolArgs(addressed({ component: 'street-generated-rail' }))
       ).toThrow(/Detachable generators on it: street-generated-clones__1/);
+    });
+
+    it('treats null fields as omitted and validates the pose', () => {
+      const segment = mountSegment();
+      const clone = makeClone(segment, { index: 0 });
+      makeClone(segment, { index: 2, key: '0 0' });
+      // slotIndex: null must not resolve to slot 0
+      expect(() =>
+        resolveDetachToolArgs(addressed({ slotIndex: null }))
+      ).toThrow(/given together/);
+      expect(
+        resolveDetachToolArgs(
+          { segmentId: null, component: null, slotIndex: null },
+          { selectedEntity: clone }
+        ).entity
+      ).toBe(clone);
+      expect(
+        resolveDetachToolArgs(
+          addressed({ position: ' 1 2  3 ', rotation: null })
+        ).pose
+      ).toEqual({ position: '1 2 3' });
+      expect(() =>
+        resolveDetachToolArgs(addressed({ position: 'abc' }))
+      ).toThrow(/position must be "x y z" numbers/);
+      expect(() =>
+        resolveDetachToolArgs(addressed({ rotation: '0 90' }))
+      ).toThrow(/rotation must be/);
     });
 
     it('rejects a partial address and an unknown segment', () => {

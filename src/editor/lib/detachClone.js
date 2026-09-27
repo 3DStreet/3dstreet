@@ -111,13 +111,11 @@ export function listCloneSlots(segmentEl, componentName) {
  */
 export function resolveDetachToolArgs(args = {}, { selectedEntity } = {}) {
   const { segmentId, component, slotIndex, position, rotation } = args;
-  const addressed =
-    segmentId !== undefined ||
-    component !== undefined ||
-    slotIndex !== undefined;
+  // Function-calling models emit null for optional fields they mean to omit.
+  const addressed = segmentId != null || component != null || slotIndex != null;
   let cloneEl;
   if (addressed) {
-    if (!segmentId || !component || slotIndex === undefined) {
+    if (!segmentId || !component || slotIndex == null) {
       throw new Error(
         'segmentId, component and slotIndex must be given together (omit all three to detach the selected clone)'
       );
@@ -160,9 +158,22 @@ export function resolveDetachToolArgs(args = {}, { selectedEntity } = {}) {
     );
   }
   const pose = {};
-  if (position !== undefined) pose.position = position;
-  if (rotation !== undefined) pose.rotation = rotation;
+  if (position != null) pose.position = requireVec3Arg('position', position);
+  if (rotation != null) pose.rotation = requireVec3Arg('rotation', rotation);
   return { entity: cloneEl, pose };
+}
+
+// An "x y z" string of three finite numbers, or a readable tool error: a
+// malformed pose would otherwise land as NaN on the detached entity while
+// the tool still reports success.
+function requireVec3Arg(name, value) {
+  const parts = String(value).trim().split(/\s+/);
+  if (parts.length !== 3 || parts.some((p) => !Number.isFinite(Number(p)))) {
+    throw new Error(
+      `${name} must be "x y z" numbers, got ${JSON.stringify(value)}`
+    );
+  }
+  return parts.map(Number).join(' ');
 }
 
 // "x y z" from either A-Frame's parsed vec3 object or an already-stringified

@@ -97,13 +97,15 @@ describe('clone-slots (#2011)', function () {
   });
 
   describe('#parseSkipHoles()', function () {
-    it('accepts strings (the attribute form) and objects, de-duplicated', function () {
+    it('accepts strings (the attribute form) and objects, keeping duplicates', function () {
       assert.deepStrictEqual(parseSkipHoles(['0 20', { x: 0, z: -20 }]), [
         { x: 0, z: 20 },
         { x: 0, z: -20 }
       ]);
+      // two clones on one spot (a zero-padding stencil group) need two holes
       assert.deepStrictEqual(parseSkipHoles(['0 20', '0.001 20.004']), [
-        { x: 0, z: 20 }
+        { x: 0, z: 20 },
+        { x: 0.001, z: 20.004 }
       ]);
     });
 
@@ -117,23 +119,28 @@ describe('clone-slots (#2011)', function () {
   });
 
   describe('#withSkippedHole() / #withoutSkippedHole()', function () {
-    it('appends a hole once, as "x z" strings', function () {
+    it('appends a hole per detach, as "x z" strings', function () {
       assert.deepStrictEqual(withSkippedHole([], '0 20'), ['0 20']);
       assert.deepStrictEqual(withSkippedHole(['0 40'], '0 20'), [
         '0 40',
         '0 20'
       ]);
-      assert.deepStrictEqual(withSkippedHole(['0 20'], '0 20'), ['0 20']);
-      assert.deepStrictEqual(withSkippedHole(['0 20'], '0.004 20.001'), [
+      // a second detach on the same spot is a second hole
+      assert.deepStrictEqual(withSkippedHole(['0 20'], '0 20'), [
+        '0 20',
         '0 20'
       ]);
       assert.deepStrictEqual(withSkippedHole(['0 20'], 'nope'), ['0 20']);
     });
 
-    it('removes a hole and leaves the rest', function () {
+    it('removes one hole and leaves the rest', function () {
       assert.deepStrictEqual(withoutSkippedHole(['0 20', '0 -20'], '0 -20'), [
         '0 20'
       ]);
+      assert.deepStrictEqual(
+        withoutSkippedHole(['0 20', '0 20'], '0.004 20.001'),
+        ['0 20']
+      );
       assert.deepStrictEqual(withoutSkippedHole(['0 20'], '0 9'), ['0 20']);
     });
 
@@ -168,6 +175,16 @@ describe('clone-slots (#2011)', function () {
         key: '0.004 -20.003',
         skipped: true
       });
+    });
+
+    it('spends each hole on one placement, so stacked clones need one hole each', function () {
+      const one = createSlotCounter(['0 20']);
+      assert.strictEqual(one.next(0, 20).skipped, true);
+      assert.strictEqual(one.next(0, 20).skipped, false);
+      const two = createSlotCounter(['0 20', '0 20']);
+      assert.strictEqual(two.next(0, 20).skipped, true);
+      assert.strictEqual(two.next(0, 20).skipped, true);
+      assert.strictEqual(two.next(0, 20).skipped, false);
     });
 
     it('forgets a hole that the layout no longer lands on', function () {

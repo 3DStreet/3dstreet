@@ -72,8 +72,12 @@ object stays as your own.* Concretely:
   instead follow the *n*-th clone of the new layout: one clone would vanish at
   a new place while a regenerated one appeared on top of the detached object.
 
-`skip` entries that are not `"x z"` placements (for instance an index left by
-a pre-release build) are ignored, never mistaken for a hole.
+Each hole is spent by the first clone that lands on it in a regeneration, so
+one detach always removes exactly one object. Two clones that share a
+placement (a stencil group with zero padding stacks its stencils on one
+spot) need two holes to both be detached; `skip` therefore keeps duplicate
+keys. `skip` entries that are not `"x z"` placements (for instance an index
+left by a pre-release build) are ignored, never mistaken for a hole.
 
 ## Triggers
 

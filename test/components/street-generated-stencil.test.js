@@ -100,6 +100,26 @@ const whenLoaded = (entities) =>
   );
 
 describe('street-generated-stencil skip holes', () => {
+  it('detaches one stencil of a zero-padding group, not the whole group', async () => {
+    const el = await makeSegment('outbound');
+    // padding 0 stacks both stencils of a group on one placement
+    el.setAttribute(
+      'street-generated-stencil',
+      'modelsArray: left, right; spacing: 25; padding: 0'
+    );
+    const comp = el.components['street-generated-stencil'];
+    expect(comp.createdEntities).toHaveLength(8);
+    const key = comp.createdEntities[0].getAttribute('data-clone-key');
+    expect(comp.createdEntities[1].getAttribute('data-clone-key')).toBe(key);
+
+    el.setAttribute('street-generated-stencil', 'skip', [key]);
+    expect(comp.createdEntities).toHaveLength(7);
+    expect(comp.createdEntities[0].getAttribute('mixin')).toBe('right');
+
+    el.setAttribute('street-generated-stencil', 'skip', [key, key]);
+    expect(comp.createdEntities).toHaveLength(6);
+  });
+
   const slotIndexes = (comp) =>
     comp.createdEntities.map((e) => Number(e.getAttribute('data-clone-index')));
 
