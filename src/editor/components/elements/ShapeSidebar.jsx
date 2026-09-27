@@ -241,6 +241,10 @@ const ShapeSidebar = ({ entity }) => {
     );
     readouts.setUnits(unitsPreference);
     readoutsRef.current = readouts;
+    // The area label is the component's own (it tracks every re-derive) but
+    // it shows only for as long as this panel is mounted, i.e. while the shape
+    // is selected — the same lifetime as the chips. Off again in the cleanup.
+    entity.components.shape?.setAreaLabelVisible(true);
 
     const render = (hoverPoint) =>
       renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef);
@@ -416,6 +420,7 @@ const ShapeSidebar = ({ entity }) => {
       readouts.dispose();
       readoutsRef.current = null;
       lastRenderElsRef.current = null;
+      entity.components.shape?.setAreaLabelVisible(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity, intl.locale]);

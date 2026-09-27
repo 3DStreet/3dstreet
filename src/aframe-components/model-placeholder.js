@@ -18,7 +18,10 @@ import {
 // from src/model-bounds.json for catalog models and legacy mixins, and from
 // the per-entity registry for user uploads (src/model-bounds.js). An entity
 // with no known bounds shows nothing and waits for a registration. A src or
-// part change while pending swaps the box; clearing the src drops it.
+// part change while pending swaps the box; clearing the src drops it. A
+// model that has already settled (loaded or errored) never gets a box, which
+// covers a cached gltf-part resolving synchronously before its component is
+// even announced (see show()).
 //
 // Every ghost is one instance of a single THREE.InstancedMesh, so a
 // clone-heavy street adds one draw call while it loads instead of thousands.
@@ -270,7 +273,19 @@ AFRAME.registerSystem('model-placeholder', {
   show: function (el) {
     if (!el || !el.object3D || typeof el.getObject3D !== 'function') return;
     const key = placeholderKey(el);
-    if (!key || el.getObject3D('mesh')) {
+    // A model whose load already settled needs no box even when it has no
+    // `mesh`: a gltf-part whose parent GLB is cached resolves synchronously
+    // inside its own update(), so model-loading and model-loaded both fire
+    // before A-Frame emits componentinitialized, and batch-models' late
+    // listener has stripped the mesh into a BatchedMesh on that very
+    // model-loaded. Without this check the componentinitialized that follows
+    // would open a box nothing ever closes (a street redraw re-creates every
+    // clone this way). `_loadSettled` is the flag gltf-model / gltf-part keep
+    // for batch-models: false from the start of a load, true once loaded or
+    // errored; batching's deferred duplicates never set it, so they still get
+    // a box until the batch pass re-emits model-loaded for them.
+    const model = el.components['gltf-model'] || el.components['gltf-part'];
+    if (!key || el.getObject3D('mesh') || (model && model._loadSettled)) {
       this.hide(el);
       return;
     }
