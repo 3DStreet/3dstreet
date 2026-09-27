@@ -133,3 +133,53 @@ export function findFreeSpotXZ(
   }
   return null;
 }
+
+// Distance from (x, z) to segment a-b on the XZ plane.
+function distanceToSegmentXZ(x, z, a, b) {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const len2 = dx * dx + dz * dz;
+  const t = len2
+    ? Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / len2))
+    : 0;
+  return Math.hypot(x - (a.x + t * dx), z - (a.z + t * dz));
+}
+
+/**
+ * A point guaranteed inside `ring` (XZ), as deep inside as a grid search
+ * finds: the inside sample farthest from every edge. For a convex ring it
+ * lands near the centre; for an L- or U-shaped ring, whose corner-average
+ * can fall in the notch outside the shape, it lands in the widest arm.
+ * Returns {x, z}, or null for a degenerate ring.
+ */
+export function interiorPointXZ(ring, samples = 24) {
+  if (!Array.isArray(ring) || ring.length < 3) return null;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (const p of ring) {
+    minX = Math.min(minX, p.x);
+    maxX = Math.max(maxX, p.x);
+    minZ = Math.min(minZ, p.z);
+    maxZ = Math.max(maxZ, p.z);
+  }
+  let best = null;
+  let bestDepth = -1;
+  for (let i = 0; i < samples; i++) {
+    for (let j = 0; j < samples; j++) {
+      const x = minX + ((i + 0.5) / samples) * (maxX - minX);
+      const z = minZ + ((j + 0.5) / samples) * (maxZ - minZ);
+      if (!pointInRingXZ({ x, z }, ring)) continue;
+      let depth = Infinity;
+      for (let k = 0, m = ring.length - 1; k < ring.length; m = k++) {
+        depth = Math.min(depth, distanceToSegmentXZ(x, z, ring[m], ring[k]));
+      }
+      if (depth > bestDepth) {
+        bestDepth = depth;
+        best = { x, z };
+      }
+    }
+  }
+  return best;
+}

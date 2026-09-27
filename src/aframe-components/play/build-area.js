@@ -32,7 +32,8 @@ import {
   pointInRingXZ,
   mergePalettes,
   footprintRadius,
-  findFreeSpotXZ
+  findFreeSpotXZ,
+  interiorPointXZ
 } from './build-area-rules.js';
 import { boundsForEntity } from '../model-placeholder.js';
 import { lookupModelBounds } from '../../model-bounds.js';
@@ -355,13 +356,16 @@ AFRAME.registerSystem('build-area', {
       );
       if (centre) return centre;
     }
+    // Centre of the view misses every area: use a point guaranteed inside
+    // the first area. Not the corner-average, which falls in the notch of
+    // an L- or U-shaped zone, outside the shape (interiorPointXZ).
     const area = this.getBuildableAreas()[0];
     if (!area) return null;
     const ring = area.worldRing();
-    if (ring.length < 3) return null;
-    const point = new THREE.Vector3();
-    for (const p of ring) point.add(new THREE.Vector3(p.x, p.y, p.z));
-    point.divideScalar(ring.length);
+    const inside = interiorPointXZ(ring);
+    if (!inside) return null;
+    const meanY = ring.reduce((sum, p) => sum + p.y, 0) / ring.length;
+    const point = new THREE.Vector3(inside.x, meanY, inside.z);
     return { area, point, distance: 0 };
   },
 

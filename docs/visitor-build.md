@@ -190,16 +190,12 @@ and Open in 3DStreet stay. Example:
   dropping one. The history and selection fencing in this feature is a
   hand-built slice of the isolated visitor session that would contain the
   whole class.
-- **Tap-to-place target.** Dragging is exact. A tap (no drop point) uses
-  the area under the centre of the view, else the first area's
-  corner-average. Two edge cases: with several areas offering different
-  objects, a tap is refused when the centre is over an area that does not
-  offer the object even if another area does; and the corner-average of an
-  L- or U-shaped area can fall in its notch, so the object lands outside
-  the area (the ring clamp runs only on gizmo release). Neither affects a
-  single convex area. Fix: choose the area under the centre only if it
-  offers the object and has room, else the first area that does, and drop
-  at a point guaranteed inside the ring.
+- **Tap-to-place with several areas.** Dragging is exact. A tap (no drop
+  point) uses the area under the centre of the view, else the first area.
+  With several areas offering different objects, a tap is refused when the
+  centre is over an area that does not offer the object, even if another
+  area does. A single area is unaffected. (The fallback point is guaranteed
+  inside the area, L- and U-shaped ones included: `interiorPointXZ`.)
 - **Test coverage.** The rules and the handoff are unit tested; the
   session lifecycle, refusal paths, snap-back, selection guard and
   `?embed=true` are verified by hand in headless Chromium only. They

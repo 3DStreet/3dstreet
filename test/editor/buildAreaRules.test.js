@@ -148,3 +148,41 @@ describe('tap-to-place spacing', () => {
     expect(Math.abs(spot.x) <= 6 && Math.abs(spot.z) <= 6).toBe(true);
   });
 });
+
+import { interiorPointXZ } from '../../src/aframe-components/play/build-area-rules.js';
+
+describe('interiorPointXZ', () => {
+  it('lands inside an L-shaped ring whose corner-average is outside it', () => {
+    // L: 10x10 square minus its top-right 8x8 quadrant (thin arms).
+    const ell = [
+      { x: 0, z: 0 },
+      { x: 10, z: 0 },
+      { x: 10, z: 2 },
+      { x: 2, z: 2 },
+      { x: 2, z: 10 },
+      { x: 0, z: 10 }
+    ];
+    const avg = ell.reduce((a, p) => ({ x: a.x + p.x / 6, z: a.z + p.z / 6 }), {
+      x: 0,
+      z: 0
+    });
+    expect(pointInRingXZ(avg, ell)).toBe(false);
+    const p = interiorPointXZ(ell);
+    expect(pointInRingXZ(p, ell)).toBe(true);
+  });
+
+  it('lands near the middle of a convex ring', () => {
+    const square = [
+      { x: -4, z: -4 },
+      { x: 4, z: -4 },
+      { x: 4, z: 4 },
+      { x: -4, z: 4 }
+    ];
+    const p = interiorPointXZ(square);
+    expect(Math.abs(p.x) < 0.5 && Math.abs(p.z) < 0.5).toBe(true);
+  });
+
+  it('returns null for a degenerate ring', () => {
+    expect(interiorPointXZ([{ x: 0, z: 0 }])).toBeNull();
+  });
+});
