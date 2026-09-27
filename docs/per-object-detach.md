@@ -54,6 +54,9 @@ regenerations and reloads. That creation order is a clone's **slot** index.
   to its slot. Afterwards the sidebar shows a normal object panel with the
   "Detached Model" layer name — that is how the user learns what happened
   (same as Figma's detached instance).
+- **Toast.** `DetachCloneCommand.execute` posts a `STREET.notify` success
+  toast saying the object left its generator and that Undo puts it back, so an
+  accidental nudge is explained. Fires on redo and on the AI tool too.
 - **Detach button** on the autocreated sidebar (`Sidebar.jsx`, next to "Edit
   Clone Settings"), for detaching without moving and for hard-to-grab objects.
 - **AI tool `detachClone`** (`DetachCloneCommand.llmTool`, picked up by the
@@ -81,8 +84,9 @@ Convert to Shapes remains the bulk path.
   to a regenerated duplicate). Same behavior as any hand-placed object today.
 - A detached vehicle or pedestrian is no longer part of the play-mode moving
   cast (`street-traffic` finds its cast via `data-parent-component`): it stays
-  put as scenery while traffic animates around it, and the managed street's
-  show-vehicles toggle no longer affects it.
+  put as scenery while traffic animates around it. The managed street's
+  show-vehicles toggle still covers it (`getVehicleEntities` selects by mixin
+  category under the street, not by generator).
 - Managed Street JSON export describes generators, not children, so detached
   entities are not part of that export (the scene save carries them).
 

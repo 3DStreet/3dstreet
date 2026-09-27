@@ -78,6 +78,20 @@ export class DetachCloneCommand extends MultiCommand {
     this.slot = slot;
   }
 
+  execute() {
+    const result = super.execute();
+    // The drag trigger gives no other feedback than the sidebar's layer
+    // name, and a nudge on a clone is easy to do by accident: say what just
+    // happened and that Undo reverses it. Plain text like the other
+    // STREET.notify toasts (entity.js, clipboard.js); redo repeats it, which
+    // is accurate. Reached through the global: notify is an A-Frame
+    // component and unit tests have no scene.
+    globalThis.STREET?.notify?.successMessage?.(
+      'Detached from the street generator: this object is now a plain model you can move, rotate, duplicate or delete. Undo puts it back.'
+    );
+    return result;
+  }
+
   undo() {
     super.undo();
     // The create step's undo cleared the selection; hand it to the clone the
