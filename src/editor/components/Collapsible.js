@@ -1,6 +1,12 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
+import {
+  isSectionCollapsed,
+  setSectionCollapsed,
+  onCollapseAll,
+  broadcastCollapseAll
+} from '../lib/panelPrefs';
 
 export default class Collapsible extends React.Component {
   static propTypes = {
@@ -8,7 +14,13 @@ export default class Collapsible extends React.Component {
     collapsed: PropTypes.bool,
     children: PropTypes.oneOfType([PropTypes.array, PropTypes.element])
       .isRequired,
-    id: PropTypes.string
+    id: PropTypes.string,
+    // Named sections (#1981) remember their collapsed state per device: the
+    // preference is keyed by this string (shared across entities — collapsing
+    // "Transform" on one entity collapses it for every entity), and
+    // shift-clicking a header applies the toggle to every named section
+    // currently in view.
+    sectionKey: PropTypes.string
   };
 
   static defaultProps = {
@@ -18,14 +30,57 @@ export default class Collapsible extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      collapsed: this.props.collapsed
+      collapsed: props.sectionKey
+        ? isSectionCollapsed(props.sectionKey, props.collapsed)
+        : props.collapsed
     };
   }
+
+  componentDidMount() {
+    if (this.props.sectionKey) {
+      this.offCollapseAll = onCollapseAll(this.onCollapseAll);
+    }
+  }
+
+  componentWillUnmount() {
+    this.offCollapseAll?.();
+  }
+
+  componentDidUpdate(prevProps) {
+    // React reuses instances across renders; if this slot starts showing a
+    // different named section, pick up that section's stored preference.
+    if (prevProps.sectionKey !== this.props.sectionKey) {
+      this.setState({
+        collapsed: this.props.sectionKey
+          ? isSectionCollapsed(this.props.sectionKey, this.props.collapsed)
+          : this.props.collapsed
+      });
+      this.offCollapseAll?.();
+      this.offCollapseAll = this.props.sectionKey
+        ? onCollapseAll(this.onCollapseAll)
+        : undefined;
+    }
+  }
+
+  onCollapseAll = (collapsed) => {
+    setSectionCollapsed(this.props.sectionKey, collapsed);
+    this.setState({ collapsed });
+  };
 
   toggleVisibility = (event) => {
     // Don't collapse if we click on actions like clipboard
     if (event.target.nodeName === 'A') return;
-    this.setState({ collapsed: !this.state.collapsed });
+    const collapsed = !this.state.collapsed;
+    if (this.props.sectionKey) {
+      if (event.shiftKey) {
+        // Applies to every named section in the current view, this one
+        // included (each subscriber persists its own key).
+        broadcastCollapseAll(collapsed);
+        return;
+      }
+      setSectionCollapsed(this.props.sectionKey, collapsed);
+    }
+    this.setState({ collapsed });
   };
 
   render() {

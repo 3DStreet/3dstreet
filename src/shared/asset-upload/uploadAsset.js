@@ -78,9 +78,17 @@ async function preflightQuota(proposedBytes) {
  * @param {object} [opts]
  * @param {(stage: 'validating'|'optimizing'|'uploading'|'thumbnailing', info?: object) => void} [opts.onStatus]
  * @param {(progress: number) => void} [opts.onProgress] - 0..100
+ * @param {object} [opts.metadata] - Extra fields merged into the asset doc
+ *   (e.g. a display name or provenance). Wins over the values derived here.
+ * @param {object|null} [opts.attribution] - Stored attribution to use instead
+ *   of what is extracted from the GLB (copyAsset passes the source doc's,
+ *   which may carry the owner's edits).
  * @returns {Promise<{ ok: boolean, assetId?: string, kind?: string, error?: string }>}
  */
-export async function uploadAsset(file, { onStatus, onProgress } = {}) {
+export async function uploadAsset(
+  file,
+  { onStatus, onProgress, metadata, attribution: attributionOverride } = {}
+) {
   const kind = getAssetKind(file);
   if (!kind) return { ok: false, error: `Unsupported file type: ${file.name}` };
 
@@ -196,10 +204,13 @@ export async function uploadAsset(file, { onStatus, onProgress } = {}) {
     // Seed Display name from the extracted title when richer than the
     // filename; `title` itself is never persisted on the attribution object.
     const initialName = attribution?.title?.trim() || undefined;
-    const storedAttribution = buildStoredAttribution(attribution);
+    const storedAttribution =
+      attributionOverride !== undefined
+        ? attributionOverride
+        : buildStoredAttribution(attribution);
     const assetId = await assetsService.addAsset(
       file,
-      { originalFilename: file.name, name: initialName },
+      { originalFilename: file.name, name: initialName, ...metadata },
       assetType,
       ASSET_CATEGORIES.UPLOAD,
       userId,

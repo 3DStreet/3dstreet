@@ -1,5 +1,6 @@
 // Camera utility functions for snapshot feature
 import * as THREE from 'three';
+import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 
 /**
  * Get the current camera state including position, rotation, and zoom
@@ -36,7 +37,7 @@ export function getCurrentCameraState() {
       z: rotation.z
     },
     // For perspective camera, we'll store FOV as "zoom"
-    zoom: camera.fov || 60,
+    zoom: camera.fov || DEFAULT_FOV_DEGREES,
     type: camera.type
   };
 }

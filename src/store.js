@@ -6,6 +6,7 @@ import canvasRecorder from './editor/lib/CanvasRecorder';
 import { auth } from '@shared/services/firebase';
 import { saveUserProfile } from '@shared/utils/username';
 import { resolveInitialLocale, persistLocale } from './editor/i18n/config';
+import { EMPTY_ASSET_LOAD_SUMMARY } from './asset-load-tracker';
 
 const firstModal = () => {
   const hash = window.location.hash;
@@ -105,6 +106,13 @@ const useStore = create(
             loadingSceneError: errorMessage,
             loadingSceneMessage: 'Error loading scene'
           }),
+        // Non-blocking scene asset load summary (#2009), mirrored from the
+        // asset-load-status system's tracker (src/asset-load-tracker.js).
+        // Counts deterministic loads (GLBs, textures) and streaming activity
+        // (splats, tiles); it never gates the UI — LoadingSceneModal above is
+        // the only blocking scene-load surface.
+        assetLoadSummary: EMPTY_ASSET_LOAD_SUMMARY,
+        setAssetLoadSummary: (assetLoadSummary) => set({ assetLoadSummary }),
         // Blocking overlay shown while a GLB/glTF export is running (issue
         // #1797). Export work happens on the main thread and can take several
         // seconds on large scenes, so we surface a saving-style indicator.
@@ -122,12 +130,17 @@ const useStore = create(
         locationString: null,
         setLocationString: (newLocationString) =>
           set({ locationString: newLocationString }),
+        // True once the loaded scene's start pose is owned by a Starting
+        // View entity (present, or deliberately deleted); mirrors
+        // memory.viewerStartMigrated for the save path.
+        viewerStartMigrated: false,
         newScene: () =>
           set({
             sceneId: null,
             sceneTitle: null,
             authorId: null,
-            locationString: null
+            locationString: null,
+            viewerStartMigrated: false
           }),
         authorId: null, // not used anywhere yet, we still use the metadata component
         setAuthorId: (newAuthorId) => set({ authorId: newAuthorId }), // not used anywhere yet
@@ -203,6 +216,14 @@ const useStore = create(
         // in-app replacement for window.confirm. See ConfirmModal.
         confirmProps: null,
         showConfirm: (props) => set({ modal: 'confirm', confirmProps: props }),
+        // OSM click-to-upgrade candidate (#1930): set when an empty-space
+        // viewport click lands near a streamed OSM street way in osm3d mode
+        // ({ wayId, class, worldPoint, distance }); the OsmUpgradeChip
+        // renders the "Generate Street" action for it (and osm-streets
+        // highlights the stretch). Cleared on entity selection, generate,
+        // or dismiss.
+        osmWayCandidate: null,
+        setOsmWayCandidate: (candidate) => set({ osmWayCandidate: candidate }),
         startCheckout: (postCheckout) => {
           // Snapshot the current modal so closing/completing the upgrade
           // flow lands the user back where they started (e.g. geo modal).
@@ -332,6 +353,12 @@ const useStore = create(
         enterViewerMode: () => {
           useStore.getState().setIsInspectorEnabled(false);
         },
+        // Focus hotspot currently opened in the viewer, mirrored from the
+        // focus-hotspot A-Frame system so React can render the info panel.
+        // null | { entityId, title, description }. Never set directly —
+        // the system writes it from focusHotspot()/clearFocus().
+        focusedHotspot: null,
+        setFocusedHotspot: (info) => set({ focusedHotspot: info }),
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           if (newIsInspectorEnabled) {

@@ -6,11 +6,24 @@
   overflow: auto;
   width: auto;
 
-  // Layers container
+  // Layers container. Thin scrollbar so a classic (non-overlay) scrollbar
+  // on Windows does not eat the row's right edge where the eye lives.
   .layers {
     overflow-y: auto;
     flex: 1 1 auto;
     min-height: 0;
+    scrollbar-width: thin;
+    scrollbar-color: variables.$lightgray-300 transparent;
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background-color: variables.$lightgray-300;
+      border-radius: 3px;
+    }
   }
 
   // Empty state for the layers panel
@@ -96,11 +109,10 @@
     column-gap: 8px;
   }
 
-  // Layer styling
+  // Layer styling. No vertical margins: top-level rows sit flush like child
+  // rows, so every row in the tree gets the same spacing (#1994).
   .layer {
     width: 100%;
-    margin-top: 6px;
-    margin-bottom: 6px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -115,6 +127,9 @@
     padding: 3px;
     width: 100%;
     white-space: nowrap;
+    // Host for the load sheen layer (painted at z-index -1 behind content).
+    position: relative;
+    isolation: isolate;
 
     &:focus {
       background: variables.$purple-900;
@@ -146,7 +161,7 @@
       flex-grow: 0;
       height: 40px;
       justify-content: center;
-      padding: 0 16px 0 4px;
+      padding: 0 6px 0 4px;
       box-sizing: border-box;
 
       > span {
@@ -237,7 +252,7 @@
   // Drag handle styling
   .drag-handle {
     transition: opacity 0.2s ease;
-    margin-right: 4px;
+    margin-right: 0;
     display: inline-flex;
     align-items: center;
     width: 16px; // Fixed width to ensure consistent spacing
@@ -271,6 +286,9 @@
 
   // Entity icons and actions
   .entityIcons {
+    margin-left: 0;
+  }
+  .entity .entityPrint {
     margin-left: 2px;
   }
 
@@ -290,6 +308,143 @@
     border-radius: 4px;
     padding: 2px 4px;
     outline: none;
+  }
+
+  // Long names truncate with an ellipsis. The label only reserves room for
+  // the absolutely positioned badge/toggle bar (#1980) when something in it
+  // is always visible (a role badge, a hidden entity's slashed eye); on
+  // other rows the name runs the full width and the hover-revealed eye
+  // overlays it on the row's own background.
+  .entity.has-badges .entityPrint {
+    padding-right: 44px;
+  }
+  .entity.novisible:not(.has-badges) .entityPrint {
+    padding-right: 24px;
+  }
+  .entity .entityName {
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // Right-justified badge/toggle bar overlaid on the row (#1980): passive
+  // role badges (always visible) + the visibility eye (hover-revealed).
+  .entityRowBar {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    z-index: 1;
+    padding-left: 4px;
+  }
+  .entity:hover .entityRowBar,
+  .entity.active .entityRowBar,
+  .entity:focus .entityRowBar {
+    background: variables.$purple-900;
+  }
+
+  // Ambient per-row load state (EntityLoadSheen, #2009): an absolutely
+  // positioned layer painted behind the row content (the row isolates its
+  // stacking context and the layer sits at z-index -1). While a model loads
+  // a soft sheen sweeps across; once loaded it fades out; a failed load
+  // settles to a faint warning wash. Hovering the row shows the tooltip.
+  // Selector outranks the row's generic `> span` layout rule below.
+  .entity > span.entityLoadSheen {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.6s ease-out;
+    // A constant faint wash so a pending row is always distinguishable,
+    // plus a wider band sweeping across it.
+    background:
+      linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.12) 35%,
+          rgba(255, 255, 255, 0.2) 50%,
+          rgba(255, 255, 255, 0.12) 65%,
+          transparent 100%
+        )
+        0 0 / 200% 100%,
+      rgba(255, 255, 255, 0.05);
+
+    &.is-pending {
+      opacity: 1;
+      animation: load-sheen 1.8s linear infinite;
+    }
+    &.is-slow {
+      animation-duration: 3s;
+    }
+    // Failed: a thin accent on the row's left edge plus a very faint wash,
+    // quiet enough not to fight the selected row or its right-hand bar.
+    &.is-error {
+      opacity: 1;
+      animation: none;
+      background: linear-gradient(
+        90deg,
+        rgba(242, 22, 75, 0.85) 0 3px,
+        rgba(242, 22, 75, 0.07) 3px
+      );
+    }
+  }
+  @keyframes load-sheen {
+    from {
+      background-position: 120% 0;
+    }
+    to {
+      background-position: -120% 0;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .entity > span.entityLoadSheen.is-pending {
+      animation: none;
+      background: rgba(255, 255, 255, 0.08);
+    }
+  }
+
+  // Role badges (hotspot target): always visible, in a fixed slot left of
+  // the eye. Also a button: click focuses the camera on the layer.
+  .entityBadges {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    gap: 2px;
+  }
+
+  .entityBadge,
+  .entityVisibilityToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: variables.$lightgray-300;
+    opacity: 0.85;
+    cursor: pointer;
+
+    &:hover {
+      color: variables.$white;
+      background: variables.$black-300;
+    }
+  }
+
+  // The eye always occupies its slot so the badge never shifts; it is only
+  // shown on hover, except a hidden entity's slashed eye, which stays
+  // visible as the row's state indicator.
+  .entityVisibilityToggle:not(.is-entity-hidden) {
+    visibility: hidden;
+  }
+  .entity:hover .entityVisibilityToggle {
+    visibility: visible;
   }
 
   .entityActions {
@@ -321,55 +476,22 @@
     color: variables.$white-100;
   }
 
-  .fa-eye,
-  .fa-eye-slash {
-    color: variables.$lightgray-300;
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-position: center;
-    width: 15px;
-    height: 15px;
-
-    &:before {
-      content: none;
-    }
-  }
-
-  .fa-eye {
-    background-image: url(variables.$faEye);
-  }
-
-  .fa-eye-slash {
-    background-image: url(variables.$faEyeSlash) !important;
-  }
-
   // ID styling
   .id {
     color: variables.$lightgray-600;
   }
 
-  // Collapse space styling
+  // Expand/collapse children arrow: left-justified before the entity name
+  // (#1980). Rows without children reserve no space, so names there sit
+  // further left — an accepted inconsistency.
   .collapsespace {
     color: variables.$white !important;
-    display: inline-block;
-    text-align: center;
-    width: 14px;
-    right: 0px;
-    position: absolute;
-    z-index: 1;
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-45%, -50%);
-      width: 20px;
-      height: 20px;
-      background: variables.$darkgray-800;
-      border-radius: 50%;
-      z-index: -1;
-    }
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 16px;
+    margin-right: 0;
   }
 
   // Icons and buttons
@@ -450,6 +572,49 @@
         flex: 1 1 auto;
         min-width: 0;
         margin: 0;
+      }
+    }
+
+    // Ambient scene-wide load state (PanelLoadSheen, #2009) behind the
+    // title + save row: a faint fill tracks overall progress (--load-progress)
+    // with a sheen sweeping across it, and it fades out once every model and
+    // texture has settled. Always mounted; visibility is the is-loading class.
+    .left-panel-title-row,
+    .left-panel-header-row {
+      position: relative;
+      isolation: isolate;
+    }
+    .panelLoadSheen {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      border-radius: 6px;
+      opacity: 0;
+      transition: opacity 0.8s ease-out;
+      pointer-events: none;
+      --load-progress: 0%;
+      background:
+        linear-gradient(
+            90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.1) 50%,
+            transparent 100%
+          )
+          0 0 / 220% 100%,
+        linear-gradient(
+          90deg,
+          rgba(106, 74, 195, 0.35) var(--load-progress),
+          rgba(106, 74, 195, 0.12) var(--load-progress)
+        );
+
+      &.is-loading {
+        opacity: 1;
+        animation: load-sheen 2.2s linear infinite;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .panelLoadSheen.is-loading {
+        animation: none;
       }
     }
 

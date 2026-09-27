@@ -1,5 +1,14 @@
 // Author: Fyrestar https://mevedia.com (https://github.com/Fyrestar/THREE.InfiniteGridHelper)
 // Adapted for 3DStreet
+//
+// The scene renders with a logarithmic depth buffer (index.html), so this
+// custom ShaderMaterial must include three's logdepthbuf chunks. Without
+// them the grid's fragment depth is written on the plain gl_FragCoord.z
+// scale while every built-in material writes log depth: the grid then loses
+// (or wins) the depth test at random against real geometry, so objects below
+// y = 0 draw over the grid lines and the lines never occlude anything (#1988).
+// With matching depth the plane at y = 0 correctly hides fragments beneath it
+// when viewed from above, and fragments above it when viewed from below.
 
 import * as THREE from 'three';
 
@@ -31,46 +40,49 @@ class InfiniteGridHelper extends THREE.Mesh {
       },
       transparent: true,
       vertexShader: `
+        #include <common>
+        #include <logdepthbuf_pars_vertex>
         varying vec3 worldPosition;
         uniform float uDistance;
-        
+
         void main() {
           vec3 pos = position.${axes} * uDistance;
           pos.${planeAxes} += cameraPosition.${planeAxes};
-          
+
           worldPosition = pos;
-          
+
           gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+          #include <logdepthbuf_vertex>
         }
       `,
       fragmentShader: `
+        #include <common>
+        #include <logdepthbuf_pars_fragment>
         varying vec3 worldPosition;
         uniform float uSize1;
         uniform float uSize2;
         uniform vec3 uColor;
         uniform float uDistance;
-        
+
         float getGrid(float size) {
           vec2 r = worldPosition.${planeAxes} / size;
           vec2 grid = abs(fract(r - 0.5) - 0.5) / fwidth(r);
           float line = min(grid.x, grid.y);
           return 1.0 - min(line, 1.0);
         }
-        
+
         void main() {
+          #include <logdepthbuf_fragment>
           float d = 1.0 - min(distance(cameraPosition.${planeAxes}, worldPosition.${planeAxes}) / uDistance, 1.0);
           float g1 = getGrid(uSize1);
           float g2 = getGrid(uSize2);
-          
+
           gl_FragColor = vec4(uColor.rgb, mix(g2, g1, g1) * pow(d, 3.0));
           gl_FragColor.a = mix(0.5 * gl_FragColor.a, gl_FragColor.a, g2);
-          
+
           if (gl_FragColor.a <= 0.0) discard;
         }
-      `,
-      extensions: {
-        derivatives: true
-      }
+      `
     });
 
     super(geometry, material);

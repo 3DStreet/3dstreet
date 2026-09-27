@@ -42,10 +42,17 @@ export function useHasPlayable() {
     const obs = new MutationObserver(recheck);
     obs.observe(sceneEl, { childList: true, subtree: true });
     Events.on('entityupdate', recheck);
+    // Adding/removing a role component (focus-hotspot) through the
+    // properties panel is an attribute change, no DOM mutation and no
+    // entityupdate.
+    Events.on('componentadd', recheck);
+    Events.on('componentremove', recheck);
     return () => {
       if (scheduled) cancelAnimationFrame(scheduled);
       obs.disconnect();
       Events.off('entityupdate', recheck);
+      Events.off('componentadd', recheck);
+      Events.off('componentremove', recheck);
     };
   }, []);
   return has;

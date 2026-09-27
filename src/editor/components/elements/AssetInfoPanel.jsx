@@ -4,12 +4,16 @@ import PropTypes from 'prop-types';
 import posthog from 'posthog-js';
 import useAssetUploadStatus, {
   STATUS_LABELS,
-  REASON_TEXT
+  REASON_TEXT,
+  getStatusText
 } from './useAssetUploadStatus';
+import { CANCELLABLE_UPLOAD_STAGES } from '@shared/assets/uploadStageLabels.js';
+import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { AssetDetailModal, formatBytes } from '@shared/assets';
+import { swapCloudAssetInScene } from '../../lib/asset-upload/swapCloudAsset';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 import useStore from '@/store.js';
 import { Button } from './Button';
@@ -29,6 +33,7 @@ const formatStorage = () =>
 
 const AssetInfoPanel = ({ entity }) => {
   const intl = useIntl();
+  const t = useSharedMessages();
   const state = useAssetUploadStatus(entity);
   const [detailsOpen, setDetailsOpen] = useState(false);
   if (!state) return null;
@@ -61,10 +66,10 @@ const AssetInfoPanel = ({ entity }) => {
     useStore.getState().startCheckout('storage');
   };
 
+  // The percentage rides inside the stage label ("Uploading 42%") so this
+  // panel and the gallery's pending card read identically.
   let detail = '';
-  if (state.status === 'uploading' && state.progress > 0) {
-    detail = `${state.progress}%`;
-  } else if (
+  if (
     (state.status === 'uploaded' ||
       state.status === 'local' ||
       state.status === 'local_error') &&
@@ -99,9 +104,9 @@ const AssetInfoPanel = ({ entity }) => {
             display: 'inline-block'
           }}
         />
-        <strong style={{ color: meta.color }}>{meta.text}</strong>
+        <strong style={{ color: meta.color }}>{getStatusText(t, state)}</strong>
         {detail && <span style={{ opacity: 0.7 }}>· {detail}</span>}
-        {(state.status === 'uploading' || state.status === 'optimizing') && (
+        {CANCELLABLE_UPLOAD_STAGES.has(state.status) && (
           <button
             type="button"
             onClick={() => useCurrentUploadStore.getState().cancel()}
@@ -231,6 +236,15 @@ const AssetInfoPanel = ({ entity }) => {
           ownerUid={state.ownerUid}
           type={state.type}
           onClose={() => setDetailsOpen(false)}
+          // Opened from an entity that uses this asset: a copy should take
+          // its place in the scene, not just land in the gallery. Fires even
+          // if the modal was closed while the copy ran.
+          onCopied={(copy) =>
+            swapCloudAssetInScene(
+              { assetId: state.assetId, ownerUid: state.ownerUid },
+              copy
+            )
+          }
           onUseForGenerator={(item) => openInGenerator(item, 'image')}
           onUseForVideo={(item) => openInGenerator(item, 'video')}
         />

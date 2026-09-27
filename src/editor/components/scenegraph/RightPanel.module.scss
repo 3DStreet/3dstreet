@@ -74,6 +74,20 @@
 .tabPaneScroll {
   overflow-y: auto;
   overflow-x: hidden;
+  // Thin scrollbar so a classic (non-overlay) scrollbar on Windows does
+  // not eat the rows' right edge (same treatment as the layers pane).
+  scrollbar-width: thin;
+  scrollbar-color: variables.$lightgray-300 transparent;
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: variables.$lightgray-300;
+    border-radius: 3px;
+  }
 
   :global(.properties-empty-state) {
     color: variables.$lightgray-700;

@@ -19,6 +19,7 @@ import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import { isBatched, syncBatchedSubtree } from '../../batch-models';
 import useStore from '@/store';
+import { pickLoadCameraState } from '@/tested/scene-camera-pose.js';
 // variables used by OrientedBoxHelper
 const auxEuler = new THREE.Euler();
 const auxPosition = new THREE.Vector3();
@@ -337,8 +338,11 @@ class OrientedBoxHelper extends THREE.BoxHelper {
 
       // Batched entities have their original mesh tree stripped at batch time, so
       // setFromObject finds no geometry under them. batch-models stashes a per-entity-local
-      // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in.
-      const cachedBbox = this.object._batchLocalBbox;
+      // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in. A model
+      // still downloading has no mesh either; model-placeholder mirrors its ghost box's
+      // local bounds the same way (#2009).
+      const cachedBbox =
+        this.object._batchLocalBbox || this.object._placeholderBbox;
       if (cachedBbox) {
         this.object.updateWorldMatrix(false, false);
         auxLocalBbox.copy(cachedBbox).applyMatrix4(this.object.matrixWorld);
@@ -689,6 +693,21 @@ export function Viewport(inspector) {
     });
   });
 
+  // Each gizmo dispatches 'mouseDown' only when a press actually grabs one
+  // of its handles. Record that on the inspector so the raycaster's
+  // empty-space-click deselection (raycaster.js, #1992) doesn't mistake a
+  // zero-movement click on a handle — invisible to the entity raycaster —
+  // for a click on nothing. The raycaster clears the flag on mouseup.
+  const markGizmoPress = () => {
+    inspector.gizmoCapturedPress = true;
+  };
+  [
+    transformControls,
+    shapeVertexControls,
+    streetNodeControls,
+    segmentWidthControls
+  ].forEach((gizmo) => gizmo.addEventListener('mouseDown', markGizmoPress));
+
   transformControls.addEventListener('mouseDown', () => {
     const object = transformControls.object;
     if (object) {
@@ -782,11 +801,38 @@ export function Viewport(inspector) {
     Events.emit('camerachanged');
   });
 
-  sceneEl.addEventListener('newScene', (event) => {
-    // Check if there's a snapshot camera state passed with the event
-    const snapshotCameraState = event.detail?.snapshotCameraState;
-    controls.newSceneCameraZoom(snapshotCameraState);
-  });
+  // Load fly-in target: the Starting View entity if the scene has one,
+  // else the autosaved editor pose, else the default overview; a ?camera=
+  // deep link beats all (src/tested/scene-camera-pose.js). Same rule for
+  // owners and visitors, so nothing here depends on auth.
+  const onNewScene = (detail) => {
+    const { editorCameraState = null, urlCameraState = null } = detail || {};
+    const viewerStart = sceneEl.systems['viewer-start'];
+    const flyIn = () =>
+      controls.newSceneCameraZoom(
+        pickLoadCameraState({
+          urlCameraState,
+          startCameraState: viewerStart?.getStartCameraState() || null,
+          editorCameraState
+        })
+      );
+    // The Starting View entity's transform is only real once it has
+    // loaded (a frame after newScene at most); reading it earlier yields
+    // the origin.
+    if (viewerStart) viewerStart.whenReady(flyIn);
+    else flyIn();
+  };
+  sceneEl.addEventListener('newScene', (event) => onNewScene(event.detail));
+  // A cloud scene can finish loading before this viewport exists (fast
+  // response, slow editor boot), in which case its newScene event was
+  // emitted with nobody listening and the scene sat at the default
+  // overview. The loader parks the last payload on the scene element;
+  // replay it once, here.
+  if (sceneEl.lastNewSceneDetail) {
+    const detail = sceneEl.lastNewSceneDetail;
+    delete sceneEl.lastNewSceneDetail;
+    onNewScene(detail);
+  }
 
   Events.on('cameratoggle', (data) => {
     // Plan View intercept (KD-26): when
@@ -981,6 +1027,13 @@ export function Viewport(inspector) {
         selectionBox.setFromObject(object);
         selectionBox.visible = true;
       } else if (object.el.hasAttribute('gltf-model')) {
+        // A model still downloading may already have its ghost box bounds
+        // (model-placeholder, #2009): size from those now, then again from
+        // the real mesh below once it lands.
+        if (object._placeholderBbox) {
+          selectionBox.setFromObject(object);
+          selectionBox.visible = true;
+        }
         const listener = (event) => {
           if (event.target !== object.el) return; // we got an event for a child, ignore
           object.el.removeEventListener('model-loaded', listener);

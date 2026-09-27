@@ -57,7 +57,15 @@ class PropertyRow extends React.Component {
     noSelectEntity: PropTypes.bool,
     onEntityUpdate: PropTypes.func,
     onValueChange: PropTypes.func,
-    rightElement: PropTypes.node
+    rightElement: PropTypes.node,
+    // Opt-in reset button for a number/int row with a schema default (vec3
+    // rows always get one). Off by default so no other number row grows one.
+    showReset: PropTypes.bool,
+    // Makes the row label itself an affordance (the position/geoloc display
+    // toggle, #1979). `labelTitle` is appended to the default schema tooltip so the
+    // affordance can be explained.
+    onLabelClick: PropTypes.func,
+    labelTitle: PropTypes.string
   };
 
   static defaultProps = {
@@ -224,26 +232,43 @@ class PropertyRow extends React.Component {
     }
   }
 
-  // Circle-arrow reset beside vec3 inputs: restores the schema default
-  // (position/rotation 0 0 0, scale 1 1 1, …) as one undoable update.
-  // Disabled — not hidden — at the default so the row keeps its width.
+  // Circle-arrow reset: restores the schema default as one undoable update.
+  // Every vec3 row gets one (position/rotation 0 0 0, scale 1 1 1, …); a
+  // number/int row gets one only when the caller opts in with `showReset`
+  // (the Starting View's fov, #2031). Disabled — not hidden — at the default
+  // so the row keeps its width.
   renderReset() {
     const props = this.props;
-    const def = props.schema?.default;
-    if (props.schema?.type !== 'vec3' || !def || typeof def !== 'object') {
+    const schema = props.schema || {};
+    const def = schema.default;
+    let atDefault;
+    let value;
+    let testId;
+    if (schema.type === 'vec3' && def && typeof def === 'object') {
+      atDefault = areVectorsEqual(props.data, def);
+      value = { ...def };
+      testId = 'vec3-reset';
+    } else if (
+      props.showReset &&
+      (schema.type === 'number' || schema.type === 'int') &&
+      Number.isFinite(def)
+    ) {
+      atDefault = props.data === def;
+      value = def;
+      testId = 'number-reset';
+    } else {
       return null;
     }
-    const atDefault = areVectorsEqual(props.data, def);
     return (
       <button
         type="button"
         className="vec3-tool vec3-reset"
         disabled={atDefault}
-        onClick={() => this.updateProperty(props.name, { ...def })}
+        onClick={() => this.updateProperty(props.name, value)}
         title={props.intl.formatMessage(messages.resetToDefault, {
           value: formatVec(def)
         })}
-        data-testid="vec3-reset"
+        data-testid={testId}
       >
         <AwesomeIcon icon={faArrowRotateLeft} size={13} />
       </button>
@@ -262,10 +287,11 @@ class PropertyRow extends React.Component {
     return (
       <div className="propertyRow">
         <label
-          htmlFor={this.id}
-          className="text"
-          title={title}
+          htmlFor={props.onLabelClick ? undefined : this.id}
+          className={'text' + (props.onLabelClick ? ' label-toggle' : '')}
+          title={props.labelTitle ? title + '\n' + props.labelTitle : title}
           style={props.label ? { textTransform: 'none' } : null}
+          onClick={props.onLabelClick}
         >
           {props.label || props.name}
         </label>

@@ -159,6 +159,23 @@ function Toolbar() {
   const setModal = useStore((s) => s.setModal);
   const hasPlayable = useHasPlayable();
   const controlMode = useControlMode();
+  // First-entry call-to-action: until Play has run once for this scene
+  // load, the idle Start is a large centered button instead of the small
+  // shuttle, so a visitor knows what to press (hotspot tour, traffic, or
+  // the car). After the first Start (or an auto-start) the small shuttle
+  // is enough. Reset per scene load. Owners never see it: they enter the
+  // viewer through Start.
+  const [hasPlayedThisScene, setHasPlayedThisScene] = useState(false);
+  useEffect(() => {
+    if (isPlaying) setHasPlayedThisScene(true);
+  }, [isPlaying]);
+  useEffect(() => {
+    const sceneEl = AFRAME.scenes[0] || document.querySelector('a-scene');
+    if (!sceneEl) return undefined;
+    const reset = () => setHasPlayedThisScene(false);
+    sceneEl.addEventListener('newScene', reset);
+    return () => sceneEl.removeEventListener('newScene', reset);
+  }, []);
   const [authorId, setAuthorId] = useState(null);
   const [authorUsername, setAuthorUsername] = useState(null);
 
@@ -281,7 +298,13 @@ function Toolbar() {
       if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
       e.preventDefault();
       const playMode = getPlayModeSystem();
-      if (playMode?.isPlaying) {
+      const hotspotSystem = AFRAME.scenes[0]?.systems?.['focus-hotspot'];
+      if (hotspotSystem?.focusedEl) {
+        // A focused hotspot is one level deeper than playing: Escape backs
+        // out to the overview before it ever stops the session (focus is
+        // only possible while playing, so this check comes first).
+        hotspotSystem.returnToOverview();
+      } else if (playMode?.isPlaying) {
         useStore.getState().stopPlaying();
       } else {
         handleEnterEditor();
@@ -333,7 +356,7 @@ function Toolbar() {
           Drive still requires an explicit action, so a visitor is never
           dropped into a vehicle they didn't ask for. Static scenes
           (hasPlayable === false) show nothing. */}
-      {hasPlayable && (
+      {hasPlayable && (isPlaying || hasPlayedThisScene) && (
         <div id="viewer-shuttle" className={`clickable ${styles.shuttleDock}`}>
           <div className={primaryStyles.wrapper}>
             <Tooltip.Provider>
@@ -428,6 +451,22 @@ function Toolbar() {
         </div>
       )}
 
+      {/* First-entry Start: large and centered until Play has run once
+          for this scene load (see hasPlayedThisScene). */}
+      {hasPlayable && !isPlaying && !hasPlayedThisScene && (
+        <div className={`clickable ${styles.startCta}`}>
+          <button
+            id="viewer-start-cta"
+            type="button"
+            className={styles.startCtaButton}
+            onClick={() => getPlayModeSystem()?.start()}
+          >
+            <AwesomeIcon icon={faPlay} size={28} />
+            <FormattedMessage id="viewer.play" defaultMessage="Start" />
+          </button>
+        </div>
+      )}
+
       {/* Identity + access, top-right — mirrors the editor's collapsed
           auth dock. The primary action is always Edit; a signed-out
           visitor on a cloud scene is asked to sign in first. Same
@@ -437,13 +476,13 @@ function Toolbar() {
         <div className={primaryStyles.wrapper}>
           <Tooltip.Provider>
             {/* Capture-only snapshot (#1824 Q2): instant capture +
-              non-blocking toast; no modal, no pause. The richer
-              Capture & Render flow stays an editor action. */}
+            non-blocking toast; no modal, no pause. The richer
+            Capture & Render flow stays an editor action. */}
             <ViewerSnapshot />
             <div className={primaryStyles.divider} />
             {/* No "View only" label: the absence of edit controls plus an
-              Edit / Sign in to Edit action already says this isn't edit
-              mode; copy semantics surface via the unsaved-copy toast. */}
+            Edit / Sign in to Edit action already says this isn't edit
+            mode; copy semantics surface via the unsaved-copy toast. */}
             <ToolTip
               content={
                 needsAuthToEdit

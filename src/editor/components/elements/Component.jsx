@@ -11,6 +11,8 @@ const isSingleProperty = AFRAME.schema.isSingleProperty;
 // Friendly labels for the multi-instance street-generated components so the
 // panel header reads e.g. "Clones 2" instead of "street-generated-clones__2".
 const GENERATED_COMPONENT_LABELS = {
+  'focus-hotspot': 'Focus Hotspot',
+  'viewer-start': 'Starting View',
   'street-generated-clones': 'Clones',
   'street-generated-striping': 'Striping',
   'street-generated-stencil': 'Stencils',
@@ -21,8 +23,11 @@ const GENERATED_COMPONENT_LABELS = {
 function getFriendlyComponentName(componentName) {
   const [base, modifier] = componentName.split('__');
   const label = GENERATED_COMPONENT_LABELS[base];
+  if (!label) return componentName;
+  // Single-instance role components carry no index.
+  if (!base.startsWith('street-generated-')) return label;
   // Bare instance is index 1; the __n modifier maps directly to the label number.
-  return label ? `${label} ${modifier || '1'}` : componentName;
+  return `${label} ${modifier || '1'}`;
 }
 
 /**
@@ -47,7 +52,13 @@ export default class Component extends React.Component {
     // Optional curated rows rendered inside the section, above the
     // schema-driven property rows (e.g. the shape section's direction and
     // curve-style controls).
-    children: PropTypes.node
+    children: PropTypes.node,
+    // Optional icon rendered in the header before the title, so a role
+    // component's bar matches its scene-graph badge.
+    icon: PropTypes.node,
+    // Optional replacement for the generic "may corrupt your scene" removal
+    // prompt, for components whose removal is a routine authoring action.
+    removeConfirmMessage: PropTypes.string
   };
 
   constructor(props) {
@@ -88,13 +99,12 @@ export default class Component extends React.Component {
   removeComponent = (event) => {
     var componentName = this.props.name;
     event.stopPropagation();
-    if (
-      confirm(
-        'Do you really want to remove component `' +
-          componentName +
-          '`? This may cause problems or corrupt your scene, please use component removal with caution.'
-      )
-    ) {
+    const message =
+      this.props.removeConfirmMessage ||
+      'Do you really want to remove component `' +
+        componentName +
+        '`? This may cause problems or corrupt your scene, please use component removal with caution.';
+    if (confirm(message)) {
       AFRAME.INSPECTOR.execute('componentremove', {
         entity: this.props.entity,
         component: componentName
@@ -170,9 +180,17 @@ export default class Component extends React.Component {
     const componentName = this.props.name;
 
     return (
-      <Collapsible collapsed={this.props.isCollapsed}>
+      <Collapsible
+        collapsed={this.props.isCollapsed}
+        // Collapse preference is remembered per component name across
+        // entities (#1981); instances (`__2`…) share their base name's pref.
+        sectionKey={componentName.split('__')[0]}
+      >
         <div className="componentHeader collapsible-header">
           <span className="componentTitle" title={componentName}>
+            {this.props.icon && (
+              <span className="componentIcon">{this.props.icon}</span>
+            )}
             <span>{getFriendlyComponentName(componentName)}</span>
           </span>
           <div className="componentHeaderActions">

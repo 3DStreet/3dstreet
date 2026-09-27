@@ -1,9 +1,13 @@
 /**
  * Web Worker that runs the gltf-transform optimization pipeline off the
- * main thread. The main-thread shim in optimizeGlb.js races this worker
- * against a wall-clock timeout and `worker.terminate()`s on bail, so the
- * editor stays responsive even for photogrammetry GLBs that take many
- * seconds to Draco-encode.
+ * main thread:
+ *
+ *   dedup → instance → flatten → join → weld → simplify(meshopt) →
+ *   resample → prune → sparse → palette → textureCompress(webp) →
+ *   draco(edgebreaker)
+ *
+ * simplify() is the only lossy step. optimizeGlb.js is the main-thread
+ * shim that owns the timeout and the fall-back-to-original contract.
  *
  * Protocol:
  *   parent → worker: { type: 'optimize', bytes: ArrayBuffer }  (transferred)
@@ -20,12 +24,13 @@
  * applies to worker bundles too.
  */
 
-const GLB_MAGIC = 0x46546c67; // 'glTF' little-endian
+import { hasGlbMagic } from './glbMagic.js';
 
 function isGlbBytes(bytes) {
   if (bytes.byteLength < 4) return false;
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  return view.getUint32(0, true) === GLB_MAGIC;
+  return hasGlbMagic(
+    new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+  );
 }
 
 let depsPromise = null;
@@ -33,12 +38,15 @@ let depsPromise = null;
 async function loadDeps() {
   if (!depsPromise) {
     depsPromise = (async () => {
-      const [core, extensions, functions, draco3d] = await Promise.all([
-        import('@gltf-transform/core'),
-        import('@gltf-transform/extensions'),
-        import('@gltf-transform/functions'),
-        import('draco3dgltf')
-      ]);
+      const [core, extensions, functions, draco3d, meshopt] = await Promise.all(
+        [
+          import('@gltf-transform/core'),
+          import('@gltf-transform/extensions'),
+          import('@gltf-transform/functions'),
+          import('draco3dgltf'),
+          import('meshoptimizer/simplifier')
+        ]
+      );
       const draco3dDefault = draco3d.default || draco3d;
       // Draco's Emscripten loader resolves its .wasm via locateFile.
       // In a worker the default resolution lands at a path the dev
@@ -53,24 +61,56 @@ async function loadDeps() {
       ]);
       return {
         WebIO: core.WebIO,
+        getBounds: core.getBounds,
         ALL_EXTENSIONS: extensions.ALL_EXTENSIONS,
         functions,
         decoderModule,
-        encoderModule
+        encoderModule,
+        MeshoptSimplifier: meshopt.MeshoptSimplifier
       };
     })();
   }
   return depsPromise;
 }
 
+/**
+ * Model-space bounds of the document's default scene, `{ min, max }` in
+ * meters, or null. Stored on the asset doc so the scene can draw a
+ * placeholder box before the GLB downloads (#2009, model-placeholder).
+ */
+function sceneBounds(document, getBounds) {
+  try {
+    const root = document.getRoot();
+    const scene = root.getDefaultScene() || root.listScenes()[0];
+    if (!scene) return null;
+    const b = getBounds(scene);
+    const round = (v) => Math.round(v * 10000) / 10000;
+    const min = b.min.map(round);
+    const max = b.max.map(round);
+    if (![...min, ...max].every(Number.isFinite)) return null;
+    if (min.every((v, i) => v === max[i])) return null;
+    return { min, max };
+  } catch (err) {
+    return null;
+  }
+}
+
 async function optimize(originalBytes) {
   const inputBytes = originalBytes.byteLength;
-  const { WebIO, ALL_EXTENSIONS, functions, decoderModule, encoderModule } =
-    await loadDeps();
+  const {
+    WebIO,
+    getBounds,
+    ALL_EXTENSIONS,
+    functions,
+    decoderModule,
+    encoderModule,
+    MeshoptSimplifier
+  } = await loadDeps();
   const {
     dedup,
     instance,
     weld,
+    simplify,
     resample,
     prune,
     sparse,
@@ -116,7 +156,8 @@ async function optimize(originalBytes) {
       reason: 'already_optimized',
       outputBytes: inputBytes,
       hadDraco: true,
-      hadWebP: true
+      hadWebP: true,
+      bounds: sceneBounds(document, getBounds)
     };
   }
 
@@ -126,6 +167,7 @@ async function optimize(originalBytes) {
     flatten(),
     join(),
     weld(),
+    simplify({ simplifier: MeshoptSimplifier, ratio: 0, error: 0.001 }),
     resample(),
     prune(),
     sparse(),
@@ -140,6 +182,9 @@ async function optimize(originalBytes) {
 
   const output = await io.writeBinary(document);
   const outputBytes = output.byteLength;
+  // Bounds of what is actually served (post-simplify; the original differs
+  // by at most the simplify error tolerance).
+  const bounds = sceneBounds(document, getBounds);
 
   if (outputBytes >= inputBytes && !wasJson) {
     return {
@@ -147,7 +192,8 @@ async function optimize(originalBytes) {
       reason: 'not_smaller',
       outputBytes,
       hadDraco: hasDraco,
-      hadWebP: hasWebP
+      hadWebP: hasWebP,
+      bounds
     };
   }
 
@@ -156,7 +202,8 @@ async function optimize(originalBytes) {
     bytes: output,
     outputBytes,
     hadDraco: hasDraco,
-    hadWebP: hasWebP
+    hadWebP: hasWebP,
+    bounds
   };
 }
 

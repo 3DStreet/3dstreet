@@ -19,11 +19,15 @@ export const GENERATOR_COMPONENT_PREFIXES = ['street-generated-'];
 // `geometry-merger`, or a hypothetical `materialLibrary`).
 // geo-flatten (#1476) is featured so a flattening volume's enabled/mode
 // controls are first-class on the shapes that carry it.
+// focus-hotspot (#1315) is a role any mesh can carry; featuring it gives it
+// the standard component bar (icon, collapse, remove) above its controls.
 export const FEATURED_COMPONENT_NAMES = [
   'geometry',
   'material',
   'shape',
-  'geo-flatten'
+  'geo-flatten',
+  'focus-hotspot',
+  'viewer-start'
 ];
 
 export function isFeaturedComponent(name) {

@@ -1,4 +1,10 @@
 import useStore from './store';
+import { registerEntityBounds } from './model-bounds.js';
+import {
+  resolveSavedCameraStates,
+  hasViewerStart,
+  DEFAULT_FOV_DEGREES
+} from './tested/scene-camera-pose';
 import { createUniqueId } from './editor/lib/entity';
 import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
@@ -511,6 +517,68 @@ function migrateLegacyFlatteningShape(entitiesData) {
   };
   attachToTarget(entitiesData);
 }
+
+/**
+ * Legacy start pose → Starting View entity. Before the Starting View
+ * existed, set-thumbnail pinned the opening view through the default
+ * snapshot's camera state. There is now exactly one place a start pose
+ * lives, so a saved scene with a default-snapshot pose and no
+ * `viewer-start` entity gets one synthesized (top-level, at that pose)
+ * before its entities are created. Idempotent: the entity is saved with
+ * the scene on the next save and the check finds it from then on. The
+ * snapshot's cameraState itself is left alone (the gallery's "fly to this
+ * view" still reads it).
+ *
+ * Runs once per scene: `memory.viewerStartMigrated` (written on every save
+ * once the scene has, or has had, a Starting View entity) says the entity
+ * owns the start pose from then on, so deleting the entity and saving is a
+ * durable off switch and the snapshot pose is not resurrected on the next
+ * load. The store mirrors the flag for the save path.
+ */
+function migrateDefaultSnapshotToViewerStart(entitiesData, memory) {
+  const owned =
+    !!memory?.viewerStartMigrated ||
+    (Array.isArray(entitiesData) && hasViewerStart(entitiesData));
+  useStore.setState({ viewerStartMigrated: owned });
+  if (owned || !Array.isArray(entitiesData)) return;
+  const { legacyStartCameraState: state } = resolveSavedCameraStates(memory);
+  if (!state || !state.position) return;
+  useStore.setState({ viewerStartMigrated: true });
+  const rot = state.rotation || {};
+  // Saved rotations are radians applied as XYZ (see applyCameraState /
+  // the fly-in's scratch camera); A-Frame rotation is degrees, YXZ.
+  const quaternion = new THREE.Quaternion().setFromEuler(
+    new THREE.Euler(rot.x || 0, rot.y || 0, rot.z || 0, 'XYZ')
+  );
+  const euler = new THREE.Euler().setFromQuaternion(quaternion, 'YXZ');
+  const deg = THREE.MathUtils.radToDeg;
+  // Saved data's top level holds the scene's direct children; user layers
+  // live under the street-container entry. The Starting View is a user
+  // layer (pinned to the top of the list, saved with the scene), so it
+  // goes there; a file with no container entry falls back to top level.
+  const container = entitiesData.find((e) => e && e.id === 'street-container');
+  const target = container
+    ? (container.children = container.children || [])
+    : entitiesData;
+  target.push({
+    element: 'a-entity',
+    components: {
+      position: {
+        x: state.position.x || 0,
+        y: state.position.y || 0,
+        z: state.position.z || 0
+      },
+      rotation: { x: deg(euler.x), y: deg(euler.y), z: deg(euler.z) },
+      'viewer-start': { fov: state.zoom || DEFAULT_FOV_DEGREES },
+      'data-layer-name': 'Starting View'
+    }
+  });
+  console.log(
+    '[migration] default snapshot pose → Starting View entity (viewer-start)'
+  );
+}
+STREET.utils.migrateDefaultSnapshotToViewerStart =
+  migrateDefaultSnapshotToViewerStart;
 
 function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
@@ -1209,33 +1277,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
             );
           }
 
-          // Resolve camera state: explicit snapshot > auto-saved > null (default)
-          let defaultSnapshotCameraState = jsonData.memory?.cameraState || null;
-          if (
-            jsonData.memory?.snapshots &&
-            jsonData.memory.snapshots.length > 0
-          ) {
-            const defaultSnapshot = jsonData.memory.snapshots.find(
-              (s) => s.isDefault
-            );
-            if (defaultSnapshot && defaultSnapshot.cameraState) {
-              defaultSnapshotCameraState = defaultSnapshot.cameraState;
-            }
-          }
-          // A ?camera= vantage deep link wins over the scene's default
-          // snapshot pose.
-          if (urlCameraState) {
-            defaultSnapshotCameraState = urlCameraState;
-          }
-          if (defaultSnapshotCameraState) {
-            console.log(
-              '[set-loader-from-hash] Resolved camera state:',
-              defaultSnapshotCameraState
-            );
-            // Store it temporarily on the scene element for the newScene event
-            AFRAME.scenes[0].defaultSnapshotCameraState =
-              defaultSnapshotCameraState;
-          }
+          // A ?camera= deep link beats the scene's own start pose; it rides
+          // along to createElementsFromJSON, which resolves the load pose.
+          AFRAME.scenes[0].pendingSceneLoadCamera = {
+            urlCameraState: urlCameraState || null
+          };
           useStore.getState().updateLoadingProgress(50, 'Creating scene...');
           STREET.utils.createElementsFromJSON(jsonData, false);
           const sceneId = getUUIDFromPath(requestURL);
@@ -1352,66 +1398,109 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
 
   const streetContainerEl = document.getElementById('street-container');
 
+  // Start pose: the Starting View entity (migrated here from the legacy
+  // default-snapshot pose if needed) wins; the autosaved editor pose is
+  // the fallback; a ?camera= deep link (parked by the hash loader) beats
+  // both. The viewport's newScene handler picks (scene-camera-pose.js)
+  // once the entities exist in the DOM.
+  migrateDefaultSnapshotToViewerStart(streetObject.data, streetObject.memory);
   createEntities(streetObject.data, streetContainerEl);
-  resolveSplatAssetUrls(streetContainerEl);
+  resolveCloudAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(90, 'Finalizing...');
   STREET.notify.successMessage('Scene loaded');
 
-  // Pass snapshot camera state if available
-  const snapshotCameraState = AFRAME.scenes[0].defaultSnapshotCameraState;
-  AFRAME.scenes[0].emit('newScene', {
-    snapshotCameraState: snapshotCameraState
+  const pending = AFRAME.scenes[0].pendingSceneLoadCamera || {};
+  delete AFRAME.scenes[0].pendingSceneLoadCamera;
+  emitNewScene({
+    editorCameraState: resolveSavedCameraStates(streetObject.memory)
+      .editorCameraState,
+    urlCameraState: pending.urlCameraState || null
   });
-  // Clean up temporary storage
-  delete AFRAME.scenes[0].defaultSnapshotCameraState;
 }
 
 STREET.utils.createElementsFromJSON = createElementsFromJSON;
 
 /**
- * Re-resolve splat src from the Firestore asset doc after a scene load.
+ * Emit `newScene` with the saved camera poses the viewport's load fly-in
+ * picks from (src/tested/scene-camera-pose.js). The detail is also parked
+ * on the scene element for a viewport that initializes after this event
+ * (a fast cloud response on a slow editor boot); it replays the fly-in
+ * once on init and clears it. Every scene-load route emits through here.
+ */
+function emitNewScene(detail = {}) {
+  AFRAME.scenes[0].lastNewSceneDetail = { ...detail };
+  AFRAME.scenes[0].emit('newScene', { ...detail });
+}
+STREET.utils.emitNewScene = emitNewScene;
+
+/**
+ * Re-resolve cloud-asset URLs from the Firestore asset doc after a scene load.
  *
- * A splat's `src` is baked into the saved scene at placement time. The
- * streaming-optimized .rad variant (optimizedSourceUrl) is produced async in
- * the cloud AFTER upload, so saved scenes usually carry the raw .ply storageUrl
- * and reload without LOD streaming. Here we re-resolve every splat that has an
- * asset identity (data-asset-id + data-asset-owner-uid) to the served URL
- * (optimizedSourceUrl ?? storageUrl). Assets are public-read so anonymous
- * viewers can fetch too. A real .ply→.rad swap reloads the splat (desired) —
- * the splat component's no-reload guard only skips a blob: oldSrc.
+ * A model's URL is baked into the saved scene at placement time, but what the
+ * asset serves changes afterwards: a splat's streaming .rad variant is produced
+ * async in the cloud AFTER upload, and a GLB's optimized variant changes every
+ * time the owner presses Reoptimize or Remove optimized. Here every entity
+ * with an asset identity (data-asset-id + data-asset-owner-uid) is repointed
+ * at the doc's served URL (optimizedSourceUrl ?? storageUrl), so existing
+ * scenes pick up the current variant instead of the one saved months ago.
+ * Assets are public-read so anonymous viewers can fetch too. A real swap
+ * reloads the model (desired); an unchanged URL is a no-op.
  *
  * Fire-and-forget: deliberately not awaited so it never blocks entity creation.
  */
-async function resolveSplatAssetUrls(containerEl) {
+async function resolveCloudAssetUrls(containerEl) {
   const root = containerEl || document;
-  const splatEls = root.querySelectorAll(
-    '[splat][data-asset-id][data-asset-owner-uid]'
+  const els = root.querySelectorAll(
+    '[splat][data-asset-id][data-asset-owner-uid], ' +
+      '[gltf-model][data-asset-id][data-asset-owner-uid]'
   );
-  if (!splatEls.length) return;
+  if (!els.length) return;
 
   const { assetsService, getServedUrl } = await import('@shared/assets');
-  for (const el of splatEls) {
+  for (const el of els) {
     const assetId = el.getAttribute('data-asset-id');
     const ownerUid = el.getAttribute('data-asset-owner-uid');
     try {
       const asset = await assetsService.getAsset(assetId, ownerUid);
       // getAsset returns soft-deleted docs (deleted:true) whose Storage object
       // may already be GC-purged. Re-resolving to that now-404 URL would clobber
-      // a src the splat could otherwise still render from cache, so skip it.
+      // a src the entity could otherwise still render from cache, so skip it.
       if (asset?.deleted) continue;
+      // Bounds stored by the optimizer at upload (or backfilled by the owner)
+      // let model-placeholder draw a ghost box before the GLB arrives (#2009).
+      // Runtime registry only: bounds never enter the scene JSON.
+      if (asset?.bounds && el.hasAttribute('gltf-model')) {
+        registerEntityBounds(el, asset.bounds);
+      }
       const servedUrl = getServedUrl(asset);
       if (!servedUrl) continue;
-      const currentSrc = el.getAttribute('splat')?.src;
-      if (servedUrl !== currentSrc) {
-        console.log(
-          `[splat] re-resolved asset ${assetId} to served URL:`,
-          servedUrl
+      if (el.hasAttribute('splat')) {
+        const currentSrc = el.getAttribute('splat')?.src;
+        if (servedUrl !== currentSrc) {
+          console.log(
+            `[splat] re-resolved asset ${assetId} to served URL:`,
+            servedUrl
+          );
+          el.setAttribute('splat', 'src', servedUrl);
+        }
+      } else {
+        // The `model` property type parses `url(...)` away, but be tolerant
+        // of a raw string in case the attribute was set before init.
+        const currentSrc = String(el.getAttribute('gltf-model') || '').replace(
+          /^url\(|\)$/g,
+          ''
         );
-        el.setAttribute('splat', 'src', servedUrl);
+        if (servedUrl !== currentSrc) {
+          console.log(
+            `[gltf-model] re-resolved asset ${assetId} to served URL:`,
+            servedUrl
+          );
+          el.setAttribute('gltf-model', `url(${servedUrl})`);
+        }
       }
     } catch (err) {
-      console.warn(`[splat] could not re-resolve asset ${assetId}:`, err);
+      console.warn(`[asset] could not re-resolve asset ${assetId}:`, err);
     }
   }
 }
-STREET.utils.resolveSplatAssetUrls = resolveSplatAssetUrls;
+STREET.utils.resolveCloudAssetUrls = resolveCloudAssetUrls;

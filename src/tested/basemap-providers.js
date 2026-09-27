@@ -99,6 +99,10 @@ export const VECTOR_TILE_SOURCES = {
     // MapTiler Planet vector tiles end at z14 (~1.9 km at mid-latitudes).
     maxLevel: 14,
     buildingLayer: 'building',
+    // OpenMapTiles street centerlines (#1930): LineStrings with a `class`
+    // field (motorway…path) — no lane count or width, hence the class-based
+    // width heuristic in osm-street-style.js.
+    transportationLayer: 'transportation',
     heightKeys: ['render_height', 'height'],
     minHeightKeys: ['render_min_height', 'min_height']
   },

@@ -76,9 +76,21 @@ AFRAME.registerComponent('focus-animation', {
   }
 });
 
+// An author-set camera vantage for focusing this entity (Focus button
+// long-press, the hotspot "Set Focus View", the AI focus tool). Consumed
+// by ExperimentalControls.focus(); captured/resolved in
+// src/editor/lib/focusPose.js. `lookAt: true` (the default, and every pose
+// saved before rotation was stored) means "stand at relativePosition and
+// aim at the entity's center"; a full capture stores orientation + fov
+// and sets lookAt false so the glide lands exactly as framed.
 AFRAME.registerComponent('focus-camera-pose', {
   schema: {
-    relativePosition: { type: 'vec3', default: { x: 0, y: 0, z: 0 } }
+    relativePosition: { type: 'vec3', default: { x: 0, y: 0, z: 0 } },
+    // Degrees, A-Frame YXZ order, in the entity's frame.
+    relativeRotation: { type: 'vec3', default: { x: 0, y: 0, z: 0 } },
+    // Vertical fov; 0 leaves the current lens alone.
+    fov: { default: 0 },
+    lookAt: { default: true }
   },
   init() {
     //

@@ -10,6 +10,12 @@ export {
   uploadCapturedThumbnail
 } from './captureThumbnail.js';
 export { optimizeGlb } from './optimizeGlb.js';
+export { copyAssetToLibrary } from './copyAsset.js';
+export {
+  reoptimizeAsset,
+  removeOptimizedVariant,
+  REOPTIMIZE_TIMEOUT_MS
+} from './reoptimizeAsset.js';
 export {
   isGltfJsonFile,
   analyzeGltfFile,

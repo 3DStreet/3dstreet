@@ -1,0 +1,51 @@
+// Focused-hotspot info card, bottom-left of the viewer viewport.
+// Matches the viewer's snapshot-toast styling (ViewerSnapshot.module.scss).
+.panel {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  width: 340px;
+  max-width: calc(100vw - 40px);
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 16px;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  animation: hotspot-panel-in 0.25s ease-out;
+}
+
+.title {
+  margin: 0;
+  padding-right: 24px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.description {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  line-height: 1.5;
+  // Author text is a plain multi-line string; keep their line breaks.
+  white-space: pre-wrap;
+}
+
+@keyframes hotspot-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

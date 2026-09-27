@@ -21,15 +21,17 @@ function buildVersion() {
 
 module.exports = {
   performance: {
-    // 4.25 MiB — raised from 4.0 MiB for the custom street/segment side
-    // panels (#1960; main was already at 99.9% of the old budget). Earlier
-    // bump: 3.8 → 4.0 for the experimental nav-controls system.
+    // 4.5 MiB — raised from 4.25 MiB for the OSM streets layer + managed
+    // intersections (#1974; the branch built to 4.246 MiB locally and
+    // 4.26 MiB in CI, so the result had become build-environment noise).
+    // Earlier bumps: 4.0 → 4.25 for the custom street/segment side panels
+    // (#1960), 3.8 → 4.0 for the experimental nav-controls system.
     // When the budget trips, look for illustration-grade SVGs inlined in JS
     // first (the ~100 KiB icon move to ui_assets, and the lazy SVGLoader in
     // svg-extruder, bought the earlier headroom); the durable fix is
     // code-splitting the editor app + Firebase — tracked in #1624/#1628.
-    maxAssetSize: 4456448, // 4.25 MiB
-    maxEntrypointSize: 4456448, // 4.25 MiB
+    maxAssetSize: 4718592, // 4.5 MiB
+    maxEntrypointSize: 4718592, // 4.5 MiB
     hints: 'error',
     assetFilter: function (assetFilename) {
       // Only check named entry point bundles, not async-loaded chunks.

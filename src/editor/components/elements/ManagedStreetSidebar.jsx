@@ -7,19 +7,11 @@ import StreetCrossSectionStrip from './StreetCrossSectionStrip';
 import AdvancedComponents from './AdvancedComponents';
 import CommonComponents from './CommonComponents';
 import EntityLabel from '../scenegraph/EntityLabel';
-import { IconButton } from './StreetSegmentSidebar';
+import EntityActionButtons, { IconButton } from './EntityActionButtons';
 import Events from '../../lib/Events';
 import { saveString } from '@/editor/lib/utils';
-import {
-  canRenameEntity,
-  cloneEntity,
-  removeSelectedEntity,
-  setFocusCameraPose,
-  createUniqueId
-} from '@/editor/lib/entity.js';
+import { canRenameEntity, createUniqueId } from '@/editor/lib/entity.js';
 import useStore from '@/store.js';
-import { commonMessages } from '@/editor/i18n/commonMessages';
-import { ArrowsPointingInwardIcon, Copy32Icon, TrashIcon } from '@shared/icons';
 import { StreetToShapesGraphic } from '@/editor/components/modals/ConfirmModal/StreetToShapesGraphic';
 
 // Condensed managed-street sidebar (#1753 companion, design option 3a):
@@ -454,6 +446,34 @@ const ManagedStreetSidebar = ({ entity }) => {
         ref: stripProtocol(data.sourceValue)
       };
     }
+    if (data.importSource === 'osm-upgrade') {
+      // Generated from a streamed OpenStreetMap way (#1930); the JSON blob
+      // is ours, so no open/reload-from-source actions.
+      const cls = entity.getAttribute('data-osm-class') || 'street';
+      const osmName = entity.getAttribute('data-osm-name');
+      const fromTags = entity.getAttribute('data-osm-source') === 'overpass';
+      return {
+        kind: 'osm',
+        name: 'OpenStreetMap',
+        imported: false,
+        generated: true,
+        ref: fromTags
+          ? intl.formatMessage(
+              {
+                id: 'managedStreetSidebar.osmHydratedRef',
+                defaultMessage: '{name}, cross-section from OSM tags'
+              },
+              { name: osmName || `${cls} road` }
+            )
+          : intl.formatMessage(
+              {
+                id: 'managedStreetSidebar.osmGeneratedRef',
+                defaultMessage: '{cls} road, class preset via MapTiler tiles'
+              },
+              { cls }
+            )
+      };
+    }
     return {
       kind: '3dstreet',
       name: '3DStreet',
@@ -552,27 +572,7 @@ const ManagedStreetSidebar = ({ entity }) => {
           <span className="segment-title">
             <EntityLabel entity={entity} editable={canRenameEntity(entity)} />
           </span>
-          <div className="segment-actions">
-            <IconButton
-              title={intl.formatMessage(commonMessages.focus)}
-              onClick={() => Events.emit('objectfocus', entity.object3D)}
-              onLongPress={() => setFocusCameraPose(entity)}
-            >
-              <ArrowsPointingInwardIcon />
-            </IconButton>
-            <IconButton
-              title={intl.formatMessage(commonMessages.duplicate)}
-              onClick={() => cloneEntity(entity)}
-            >
-              <Copy32Icon />
-            </IconButton>
-            <IconButton
-              title={intl.formatMessage(commonMessages.delete)}
-              onClick={() => removeSelectedEntity()}
-            >
-              <TrashIcon />
-            </IconButton>
-          </div>
+          <EntityActionButtons entity={entity} />
         </div>
         <StreetCrossSectionStrip entity={entity} variant="street" />
       </div>
@@ -821,6 +821,7 @@ const ManagedStreetSidebar = ({ entity }) => {
                 <img src="ui_assets/streetmix-logo.svg" alt="" />
               )}
               {source.kind === 'streetplan' && <span>SP</span>}
+              {source.kind === 'osm' && <span>OSM</span>}
               {source.kind === '3dstreet' && (
                 <img src="ui_assets/3D-St-stacked-128.png" alt="" />
               )}
@@ -833,10 +834,15 @@ const ManagedStreetSidebar = ({ entity }) => {
                         id: 'managedStreetSidebar.importedFrom',
                         defaultMessage: 'Imported from'
                       })
-                    : intl.formatMessage({
-                        id: 'managedStreetSidebar.createdIn',
-                        defaultMessage: 'Created in'
-                      })}
+                    : source.generated
+                      ? intl.formatMessage({
+                          id: 'managedStreetSidebar.generatedFrom',
+                          defaultMessage: 'Generated from'
+                        })
+                      : intl.formatMessage({
+                          id: 'managedStreetSidebar.createdIn',
+                          defaultMessage: 'Created in'
+                        })}
                 </span>{' '}
                 {source.name}
               </div>
@@ -916,10 +922,8 @@ const ManagedStreetSidebar = ({ entity }) => {
         <div className="advancedComponentsContainer">
           {/* Transform rows lived in ComponentsContainer before this panel
               replaced it — keep them reachable under Advanced. */}
-          <div className="sidepanelContent">
-            <CommonComponents entity={entity} />
-          </div>
-          <AdvancedComponents entity={entity} show hideButton />
+          <CommonComponents entity={entity} />
+          <AdvancedComponents entity={entity} />
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import { FormattedMessage } from 'react-intl';
-import AdvancedComponents from './AdvancedComponents';
+import PanelFooter from './PanelFooter';
 
 const UserLayersSidebar = ({ entity }) => {
   return (
@@ -29,7 +29,7 @@ const UserLayersSidebar = ({ entity }) => {
                   •{' '}
                   <FormattedMessage
                     id="userLayers.tipVisibility"
-                    defaultMessage="Toggle layer visibility by using the switch on the left on each row of the layers panel"
+                    defaultMessage="Toggle layer visibility with the eye icon that appears on the right when hovering a row of the layers panel"
                   />
                 </li>
                 <li>
@@ -43,11 +43,7 @@ const UserLayersSidebar = ({ entity }) => {
             </div>
           </div>
 
-          {entity && entity.components && (
-            <div className="propertyRow">
-              <AdvancedComponents entity={entity} />
-            </div>
-          )}
+          {entity && entity.components && <PanelFooter entity={entity} />}
         </div>
       </div>
     </div>

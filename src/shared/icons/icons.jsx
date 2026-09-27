@@ -1050,6 +1050,30 @@ export const Object24IconCyan = () => (
   </svg>
 );
 
+// Layers-panel icon for primitive-geometry entities (#1999): basic 2D
+// shapes, distinct from the wireframe cube that marks 3D-model rows.
+export const Geometry24Icon = () => (
+  <svg
+    width="24"
+    height="28"
+    viewBox="0 0 24 28"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect
+      x="2.5"
+      y="4.5"
+      width="11.5"
+      height="11.5"
+      rx="1"
+      stroke="#00FFFF"
+      strokeWidth="2.5"
+      strokeLinejoin="round"
+    />
+    <circle cx="15.5" cy="18.5" r="6" stroke="#00FFFF" strokeWidth="2.5" />
+  </svg>
+);
+
 // Illustration-grade art: served from ui_assets (cached, on-demand)
 // instead of inlining tens of KiB of path data into the JS bundle.
 export const SignInMicrosoftIconSVG = () => (
@@ -1086,5 +1110,21 @@ export const SignInAppleIconSVG = () => (
         Sign in with Apple
       </text>
     </g>
+  </svg>
+);
+
+// Layers-panel icon for the `viewer-start` entity: a ring carrying a play
+// triangle — the scene's start view (where visitors open it and where a
+// viewer session starts: hotspot tour, look-around, future spawn roles).
+export const ViewerStartIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="12" cy="12" r="10.5" stroke="#00FFFF" strokeWidth="1.8" />
+    <path d="M9.2 7.4V16.6L16.4 12L9.2 7.4Z" fill="#00FFFF" />
   </svg>
 );

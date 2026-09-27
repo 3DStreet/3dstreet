@@ -3,7 +3,10 @@
 // a-frame component to generate cloned models along a street
 // this moves logic from aframe-streetmix-parsers into this component
 
-import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
+import {
+  MARKING_ALPHA_TEST,
+  MARKING_SURFACE_OFFSET
+} from '../tested/street-segment-utils';
 import { getRibbonGeometryAttr } from './street-path.js';
 
 // lane-marking yellow shared by every *-yellow striping variant
@@ -133,7 +136,7 @@ AFRAME.registerComponent('street-generated-striping', {
     }
     clone.setAttribute(
       'material',
-      `src: #${stripingTextureId}; alphaTest: 0; transparent:true; ${offset}repeat:${repeatXFinal} ${repeatY}; color: ${color}`
+      `src: #${stripingTextureId}; alphaTest: ${MARKING_ALPHA_TEST}; transparent:true; ${offset}repeat:${repeatXFinal} ${repeatY}; color: ${color}`
     );
     clone.setAttribute(
       'geometry',

@@ -237,6 +237,18 @@ const cardMouseEnter = (mixinId) => {
   previewEntity.setAttribute('position', position);
 };
 
+// World position of the hover preview arrow, or the same ground point the
+// arrow is placed at when it isn't showing (e.g. a keyboard or touch click).
+const getPreviewPosition = () => {
+  const previewEntity = document.getElementById('previewEntity');
+  if (previewEntity) return previewEntity.object3D.position.clone();
+  return pickPointOnGroundPlane({
+    normalizedX: 0,
+    normalizedY: -0.1,
+    camera: AFRAME.INSPECTOR.camera
+  });
+};
+
 const cardMouseLeave = (mixinId) => {
   // Note that this is not called when dragging, that's what we want.
   const previewEntity = document.getElementById('previewEntity');
@@ -486,7 +498,10 @@ const AddLayerPanel = () => {
     } else if (card.mixinId) {
       createEntity(card.mixinId, card.name);
     } else if (card.handlerFunction) {
-      card.handlerFunction();
+      // Place the new layer where the hover preview arrow points, the same
+      // spot a drag-and-drop would use, instead of the handler's origin
+      // default (#2026).
+      card.handlerFunction(getPreviewPosition());
     }
   };
 

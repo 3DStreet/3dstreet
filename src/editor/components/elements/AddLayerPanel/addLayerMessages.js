@@ -62,6 +62,15 @@ export const layerCardMessages = defineMessages({
     id: 'addLayer.card.createIntersection.desc',
     defaultMessage: 'Create 90º intersection entity.'
   },
+  managedIntersectionName: {
+    id: 'addLayer.card.managedIntersection.name',
+    defaultMessage: '(Beta) Managed Intersection'
+  },
+  managedIntersectionDesc: {
+    id: 'addLayer.card.managedIntersection.desc',
+    defaultMessage:
+      'Auto-generate intersection geometry from nearby managed street ends.'
+  },
   streetmixStreetName: {
     id: 'addLayer.card.streetmixStreet.name',
     defaultMessage: 'Street from Streetmix URL'
@@ -266,7 +275,16 @@ export const layerCardMessages = defineMessages({
   flyableHelicopterDesc: {
     id: 'addLayer.card.flyableHelicopter.desc',
     defaultMessage:
-      'A flyable helicopter with arcade physics (GTA/Battlefield style), styled after a Coast Guard MH-65 Dolphin. Press Play, then W/S climb/descend, A/D yaw, arrow-key cyclic, Space to auto-hover.'
+      'A flyable helicopter with arcade physics (GTA/Battlefield style), styled after a Coast Guard MH-65 Dolphin. Press Play, then W/S climb/descend, left/right arrows to turn, up/down arrows to tilt, A/D to strafe, Space to auto-hover.'
+  },
+  focusHotspotName: {
+    id: 'addLayer.card.focusHotspot.name',
+    defaultMessage: 'Focus Hotspot'
+  },
+  focusHotspotDesc: {
+    id: 'addLayer.card.focusHotspot.desc',
+    defaultMessage:
+      'A semitransparent clickable block for view mode. Visitors click it to fly the camera in and read your title and description, then return to the overview.'
   },
   raceTargetName: {
     id: 'addLayer.card.raceTarget.name',

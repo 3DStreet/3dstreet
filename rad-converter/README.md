@@ -129,7 +129,7 @@ Watch logs: `gcloud run services logs read rad-converter --project dev-3dstreet 
 > bucket's CORS must expose `Accept-Ranges` and `Content-Range` (cross-origin JS
 > can't read them otherwise). `../public/cors.json` does **not** include these
 > yet — that's plan §3. Add them there and apply:
-> `gsutil cors set ../public/cors.json gs://dev-3dstreet.appspot.com`.
+> `gcloud storage buckets update gs://dev-3dstreet.appspot.com --cors-file=../public/cors.json`.
 
 ## Notes
 

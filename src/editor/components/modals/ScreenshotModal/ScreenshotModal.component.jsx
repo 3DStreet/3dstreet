@@ -14,6 +14,7 @@ import {
   saveScreenshotToGallery,
   setSnapshotAsSceneThumbnail
 } from '../../../api/snapshot';
+import { ensureViewerStartAtCurrentView } from '../../../lib/entity';
 import { functions } from '@shared/services/firebase';
 import { useAuthContext } from '../../../contexts';
 import { httpsCallable } from 'firebase/functions';
@@ -343,6 +344,10 @@ function ScreenshotModal() {
         // For original screenshots, use the existing method
         await createSceneSnapshot(sceneId, true, 'Scene Thumbnail');
       }
+      // The thumbnail's view IS the scene's start view: move (or create)
+      // the Viewer Start entity to the captured pose. The camera hasn't
+      // moved since the capture, so the current view is the thumbnail's.
+      ensureViewerStartAtCurrentView();
 
       STREET.notify.successMessage(
         intl.formatMessage({

@@ -27,8 +27,10 @@ import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
 import { Compass } from './elements/Compass';
 import { ContextViewButton } from './elements/ContextViewButton';
+import { OsmUpgradeChip } from './elements/OsmUpgradeChip';
 import { PlayModeControls, FlyModeControls } from './elements/PlayModeControls';
 import { RaceFinishBanner } from './elements/RaceFinishBanner';
+import { FocusHotspotPanel } from './elements/FocusHotspotPanel/FocusHotspotPanel.jsx';
 import useStore from '@/store';
 import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { useNavMode } from '../lib/nav-experimental/useNavMode';
@@ -163,6 +165,7 @@ export default function Main() {
       {!isInspectorEnabled && <PlayModeControls />}
       {!isInspectorEnabled && <FlyModeControls />}
       {!isInspectorEnabled && <RaceFinishBanner />}
+      {!isInspectorEnabled && <FocusHotspotPanel />}
       {isInspectorEnabled && (
         <div>
           <SceneGraph scene={scene} selectedEntity={state.entity} />
@@ -191,6 +194,7 @@ export default function Main() {
             </div>
           )}
           {isStreetLevelNav() && <RecoveryCue />}
+          <OsmUpgradeChip />
         </div>
       )}
       <ScreenshotModal />
