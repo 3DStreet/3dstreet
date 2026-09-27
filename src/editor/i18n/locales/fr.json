@@ -532,6 +532,7 @@
   "jobHealthModal.recentRuns": "Exécutions récentes",
   "jobHealthModal.title": "État du système",
   "loadingSceneModal.dismiss": "Ignorer",
+  "loadingSceneModal.errorTitle": "Impossible de charger la scène",
   "managedIntersectionSidebar.awaitingStreets": "Aucune rue connectée pour l'instant — rapprochez les extrémités des rues gérées dans le rayon d'accroche.",
   "managedIntersectionSidebar.connectedStreets": "{count,plural,one{# rue connectée} other{# rues connectées}}",
   "managedStreetSidebar.changePath": "Changer de tracé…",
