@@ -169,7 +169,7 @@ const TYPES = {
   boundary: {
     // adjacent land use flanking the street (buildings, waterfront, fences,
     // parking lots, ...). Renamed from 'building'; saved scenes carrying the
-    // old type are migrated at load time (see json-utils_1.1.js).
+    // old type are migrated at load time (src/scene/migrations/street-segments.js).
     type: 'boundary',
     surface: 'cracked-asphalt',
     color: COLORS.white,
@@ -268,7 +268,7 @@ AFRAME.registerComponent('street-segment', {
       // vertical offset of the segment surface in meters (matches Streetmix
       // schema 33+ units): 0 = road level, 0.15 = curb/sidewalk height.
       // Replaces the deprecated integer `level` (1 level == 0.15m); legacy
-      // saved scenes are migrated at load time (see json-utils_1.1.js).
+      // saved scenes are migrated at load time (src/scene/migrations/street-segments.js).
       // Negative elevations (below road level) are intentionally unsupported
       // for now — calculateHeight clamps to the base surface depth anyway.
       type: 'number',

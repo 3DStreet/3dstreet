@@ -2,7 +2,7 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
-import { migrateImplicitStreetAlign } from '@/tested/migrate-street-align.js';
+import { migrateEntityData } from '@/scene/migrations/index.js';
 
 /**
  * Pastes a serialized entity (STREET.utils.getElementData format) into a
@@ -56,9 +56,10 @@ export class EntityPasteCommand extends Command {
     // geometry/material from components). We need the original intact for
     // a later redo.
     const entityData = JSON.parse(JSON.stringify(this.entityData));
-    // Clipboard text can come from a tab on a pre-#1863 build, where a
-    // street-align without a length meant 'start'.
-    migrateImplicitStreetAlign([entityData]);
+    // Clipboard text can come from a tab on an older build (e.g. pre-#1863,
+    // where a street-align without a length meant 'start'), so pasted data
+    // gets the same entity-tree migrations a scene load runs.
+    migrateEntityData([entityData]);
 
     const entity = STREET.utils.createEntityFromObj(
       entityData,

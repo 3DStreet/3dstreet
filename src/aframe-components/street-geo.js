@@ -31,8 +31,8 @@ AFRAME.registerComponent('street-geo', {
       default: 'google3d',
       // tiles2d replaced the legacy single-plane mapbox2d layer (#1962 step
       // C). 'mapbox2d' stays in the list only so stray legacy values parse
-      // without warnings: saved scenes are migrated at load (createEntities
-      // in json-utils_1.1.js) and a live mapbox2d value is treated as
+      // without warnings: saved scenes are migrated at load
+      // (src/scene/migrations/street-geo.js) and a live mapbox2d value is treated as
       // tiles2d by activeMapType().
       oneOf: ['google3d', 'mapbox2d', 'osm3d', 'tiles2d', 'none']
     },
@@ -54,8 +54,8 @@ AFRAME.registerComponent('street-geo', {
     // Deprecated (#1476): the single flattening shape reference, replaced by
     // per-entity geo-flatten components. Kept in the schema only so stray
     // legacy attribute strings parse without warnings. Saved scenes are
-    // migrated at load time (createEntities in json-utils_1.1.js) and this is
-    // never written by the UI.
+    // migrated at load time (src/scene/migrations/flattening-shape.js) and
+    // this is never written by the UI.
     flatteningShape: {
       type: 'string'
     },
@@ -64,8 +64,8 @@ AFRAME.registerComponent('street-geo', {
     opacity: { type: 'number', default: 100, min: 0, max: 100 },
     // Deprecated (#1738/#1236/#1235): kept in the schema only so stray
     // legacy attribute strings parse without warnings. Saved scenes are
-    // migrated to `opacity` at load time (createEntities in
-    // json-utils_1.1.js) and these are never written by the UI.
+    // migrated to `opacity` at load time (src/scene/migrations/street-geo.js)
+    // and these are never written by the UI.
     blendMode: { type: 'string', default: '30% Opacity' },
     blendingEnabled: { type: 'boolean', default: false },
     locationString: { type: 'string', default: '' },

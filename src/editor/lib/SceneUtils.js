@@ -1,6 +1,7 @@
 import posthog from 'posthog-js';
 import useStore from '@/store.js';
 import { resolveSavedCameraStates } from '@/tested/scene-camera-pose.js';
+import { migrateSceneJSON } from '@/scene/migrations/index.js';
 import {
   createScene,
   updateScene,
@@ -98,10 +99,11 @@ export function createElementsForScenesFromJSON(streetData, memoryData) {
 
   const correctedStreetData = processStreetDataForDuplicateIds(streetData);
 
-  STREET.utils.migrateDefaultSnapshotToViewerStart(
-    correctedStreetData,
-    memoryData
-  );
+  const { viewerStartMigrated } = migrateSceneJSON({
+    data: correctedStreetData,
+    memory: memoryData
+  });
+  useStore.setState({ viewerStartMigrated });
   STREET.utils.createEntities(correctedStreetData, streetContainerEl);
   STREET.utils.resolveCloudAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(80, 'Finalizing scene...');

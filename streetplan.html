@@ -44,7 +44,7 @@
     <div class="right-fixed">
       <ul class="right-menu">
         <li onclick="buttonScreenshotTock()"> <a class="camera"  href="#"> <span> Capture image as PNG </span> <img src="ui_assets/camera-icon.svg"> </a></li>
-        <li onclick="STREET.utils.inputStreetmix()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
+        <li onclick="loadStreetmixURL()"> <a class="load"  href="#"> <span> Load Streetmix URL </span> <img src="ui_assets/streetmix-logo.svg"> </a></li>
         <!-- <li onclick="inputJSON()"> <a class="load"  href="#"> <span> Load JSON String </span> <img src="assets/ui_assets/upload-icon.svg"> </a></li> -->
         <li><a class="load"> <label for="inputfile" style="display: inherit; align-items: center; cursor: pointer"> <input type="file" id="inputfile" style="display:none" accept=".js, .json, .txt"> <span> Load JSON File </span> <img src="ui_assets/upload-icon.svg"></label></a></li>
       </ul>
@@ -106,6 +106,14 @@
       screenshotEl.play(); // double check playing in case we're in editor mode
       screenshotEl.setAttribute('screentock', 'type', 'jpg');
       screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+    }
+
+    function loadStreetmixURL() {
+      var streetmixURL = prompt('Please enter a Streetmix URL', 'https://streetmix.net/kfarr/3/example-street');
+      if (!streetmixURL) return;
+      // set-loader-from-hash builds the street from a Streetmix URL in the hash on load.
+      window.location.hash = streetmixURL;
+      window.location.reload();
     }
 
     function startEditor() {

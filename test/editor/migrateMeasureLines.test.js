@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { migrateMeasureLinesToShapes } from '../../src/tested/migrate-measure-lines.js';
+import { migrateMeasureLinesToShapes } from '../../src/scene/migrations/measure-lines.js';
 
 // The saved-JSON shapes this migration must accept: elementToObject serializes
 // component values as strings ('start: 1 2 3; end: 4 5 6'), but scenes written

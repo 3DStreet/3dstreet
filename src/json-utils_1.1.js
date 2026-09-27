@@ -1,35 +1,13 @@
 import useStore from './store';
 import { registerEntityBounds } from './model-bounds.js';
-import {
-  resolveSavedCameraStates,
-  hasViewerStart,
-  DEFAULT_FOV_DEGREES
-} from './tested/scene-camera-pose';
+import { resolveSavedCameraStates } from './tested/scene-camera-pose';
 import { createUniqueId } from './editor/lib/entity';
 import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
 import JSONCrush from 'jsoncrush';
-import {
-  migrateSegmentLevelToElevation,
-  migrateSegmentBuildingType,
-  migrateSegmentHatchedSurface,
-  migratePedestriansDirection,
-  migrateShowBuildingsFlag
-} from './tested/street-segment-utils';
-import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
-import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
+import { migrateSceneJSON } from './scene/migrations/index.js';
 
 /* global AFRAME, Node */
-// Components removed alongside the legacy viewer mode. Stripped from
-// saved-scene data on load so old scenes still open; re-save drops them.
-const LEGACY_STRIPPED_COMPONENTS = [
-  'viewer-mode',
-  'cursor-teleport',
-  'movement-controls',
-  'look-controls',
-  'hand-controls',
-  'blink-controls'
-];
 window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
@@ -84,7 +62,8 @@ function convertDOMElToObject(entity) {
     const entityData = getElementData(entry);
     if (entityData) {
       // visible is never persisted for the User Layers root: a saved
-      // visible:false blanks every scene load (see createEntities).
+      // visible:false blanks every scene load (stripped on load too, see
+      // src/scene/migrations/index.js).
       if (entityData.id === 'street-container' && entityData.components) {
         delete entityData.components.visible;
       }
@@ -283,9 +262,6 @@ const removeProps = {
   'create-from-json': '*',
   street: { JSON: '*' }
 };
-// a list of component_name:new_component_name pairs to rename in JSON string
-const renameProps = {};
-
 function filterJSONstreet(streetJSON) {
   function removeValueCheck(removeVal, value) {
     if (AFRAME.utils.deepEqual(removeVal, value) || removeVal === '*') {
@@ -294,7 +270,7 @@ function filterJSONstreet(streetJSON) {
     return undefined;
   }
 
-  let stringJSON = JSON.stringify(streetJSON, function replacer(key, value) {
+  const stringJSON = JSON.stringify(streetJSON, function replacer(key, value) {
     // Preserve memory data
     if (key === 'memory') {
       return value;
@@ -329,11 +305,6 @@ function filterJSONstreet(streetJSON) {
 
     return compAttributes || value;
   });
-  // rename components
-  for (var renameKey in renameProps) {
-    const reKey = new RegExp(`"${renameKey}":`, 'g');
-    stringJSON = stringJSON.replaceAll(reKey, `"${renameProps[renameKey]}":`);
-  }
   return stringJSON;
 }
 
@@ -356,7 +327,9 @@ STREET.utils.filterJSONstreet = filterJSONstreet;
  */
 function getMixedValue(component, propertyName, source) {
   var value;
-  var reversedMixins = source.mixinEls.reverse();
+  // toReversed: `reverse()` would flip the entity's own mixin list in place
+  // on every serialized component (mixin precedence alternating per call).
+  var reversedMixins = source.mixinEls.toReversed();
   for (var i = 0; value === undefined && i < reversedMixins.length; i++) {
     var mixin = reversedMixins[i];
     /* eslint-disable-next-line no-prototype-builtins */
@@ -463,189 +436,20 @@ function getModifiedProperty(entity, componentName) {
   return diff;
 }
 
-// Legacy flattening migration (#1476): street-geo used to reference a single
-// flattening shape entity by id (`flatteningShape`); flattening volumes are
-// now declared per-entity via geo-flatten components. Move the reference onto
-// the target entity as a mesh-mode geo-flatten (preserving the legacy
-// flatten-onto-the-box behavior) and drop the deprecated property so a
-// re-save writes only the new form. Runs as a pre-pass because the street-geo
-// entity (reference-layers) and the shape live in different subtrees.
-function migrateLegacyFlatteningShape(entitiesData) {
-  let targetId = null;
-  for (const entityData of entitiesData) {
-    const components = entityData?.components;
-    const geoVal = components?.['street-geo'];
-    if (!geoVal) continue;
-    const isString = typeof geoVal === 'string';
-    const parsed = isString ? AFRAME.utils.styleParser.parse(geoVal) : geoVal;
-    if (!parsed || typeof parsed !== 'object') continue;
-    // 'create-default' was a transient sentinel the old UI could leave behind.
-    if (parsed.flatteningShape && parsed.flatteningShape !== 'create-default') {
-      targetId = parsed.flatteningShape;
-    }
-    delete parsed.flatteningShape;
-    if (isString) {
-      components['street-geo'] = AFRAME.utils.styleParser.stringify(parsed);
-    }
-  }
-  if (!targetId) return;
-
-  const attachToTarget = (nodes) => {
-    for (const node of nodes) {
-      if (!node || typeof node !== 'object') continue;
-      if (node.id === targetId) {
-        node.components = node.components || {};
-        if (!node.components['geo-flatten']) {
-          node.components['geo-flatten'] = 'mode: mesh';
-        }
-        return true;
-      }
-      if (Array.isArray(node.children) && attachToTarget(node.children)) {
-        return true;
-      }
-    }
-    return false;
-  };
-  attachToTarget(entitiesData);
-}
-
 /**
- * Legacy start pose → Starting View entity. Before the Starting View
- * existed, set-thumbnail pinned the opening view through the default
- * snapshot's camera state. There is now exactly one place a start pose
- * lives, so a saved scene with a default-snapshot pose and no
- * `viewer-start` entity gets one synthesized (top-level, at that pose)
- * before its entities are created. Idempotent: the entity is saved with
- * the scene on the next save and the check finds it from then on. The
- * snapshot's cameraState itself is left alone (the gallery's "fly to this
- * view" still reads it).
- *
- * Runs once per scene: `memory.viewerStartMigrated` (written on every save
- * once the scene has, or has had, a Starting View entity) says the entity
- * owns the start pose from then on, so deleting the entity and saving is a
- * durable off switch and the snapshot pose is not resurrected on the next
- * load. The store mirrors the flag for the save path.
+ * Mint the scene's top-level entities from saved data. Expects migrated data:
+ * every load path runs migrateSceneJSON (src/scene/migrations) first, so no
+ * legacy-format handling lives here or in createEntityFromObj.
  */
-function migrateDefaultSnapshotToViewerStart(entitiesData, memory) {
-  const owned =
-    !!memory?.viewerStartMigrated ||
-    (Array.isArray(entitiesData) && hasViewerStart(entitiesData));
-  useStore.setState({ viewerStartMigrated: owned });
-  if (owned || !Array.isArray(entitiesData)) return;
-  const { legacyStartCameraState: state } = resolveSavedCameraStates(memory);
-  if (!state || !state.position) return;
-  useStore.setState({ viewerStartMigrated: true });
-  const rot = state.rotation || {};
-  // Saved rotations are radians applied as XYZ (see applyCameraState /
-  // the fly-in's scratch camera); A-Frame rotation is degrees, YXZ.
-  const quaternion = new THREE.Quaternion().setFromEuler(
-    new THREE.Euler(rot.x || 0, rot.y || 0, rot.z || 0, 'XYZ')
-  );
-  const euler = new THREE.Euler().setFromQuaternion(quaternion, 'YXZ');
-  const deg = THREE.MathUtils.radToDeg;
-  // Saved data's top level holds the scene's direct children; user layers
-  // live under the street-container entry. The Starting View is a user
-  // layer (pinned to the top of the list, saved with the scene), so it
-  // goes there; a file with no container entry falls back to top level.
-  const container = entitiesData.find((e) => e && e.id === 'street-container');
-  const target = container
-    ? (container.children = container.children || [])
-    : entitiesData;
-  target.push({
-    element: 'a-entity',
-    components: {
-      position: {
-        x: state.position.x || 0,
-        y: state.position.y || 0,
-        z: state.position.z || 0
-      },
-      rotation: { x: deg(euler.x), y: deg(euler.y), z: deg(euler.z) },
-      'viewer-start': { fov: state.zoom || DEFAULT_FOV_DEGREES },
-      'data-layer-name': 'Starting View'
-    }
-  });
-  console.log(
-    '[migration] default snapshot pose → Starting View entity (viewer-start)'
-  );
-}
-STREET.utils.migrateDefaultSnapshotToViewerStart =
-  migrateDefaultSnapshotToViewerStart;
-
 function createEntities(entitiesData, parentEl) {
   const sceneElement = document.querySelector('a-scene');
   const removeEntities = ['environment', 'reference-layers'];
-  migrateLegacyFlatteningShape(entitiesData);
-  migrateMeasureLinesToShapes(entitiesData);
-  migrateImplicitStreetAlign(entitiesData);
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
   if (BATCHING_ENABLED) {
     beginBatching(sceneElement);
   }
   for (const entityData of entitiesData) {
-    // Legacy street-geo migrations, applied to the saved data before the
-    // entity is minted so the component (and any open editor panel) only
-    // ever sees migrated values.
-    const components = entityData.components;
-    const geoVal = components?.['street-geo'];
-    if (geoVal) {
-      const isString = typeof geoVal === 'string';
-      const parsed = isString ? AFRAME.utils.styleParser.parse(geoVal) : geoVal;
-      if (parsed && typeof parsed === 'object') {
-        // The layer's visibility used to be toggled via the entity's
-        // `visible` attribute. The new sidepanel exposes this through the
-        // map type ("No Map" = off), so convert any hidden geo entity into
-        // the equivalent maps:none state.
-        if (components.visible === false || components.visible === 'false') {
-          parsed.maps = 'none';
-          delete components.visible;
-        }
-        // blendingEnabled/blendMode presets → opacity (#1738). Only google3d
-        // ever rendered blending, but switching map type never reset the
-        // flag, so scenes saved on other map types can carry a stale
-        // blendingEnabled:true — those migrate to the (default) full
-        // opacity. The non-opacity modes (Darker/Lighter) were broken in
-        // practice and are dropped.
-        if (
-          parsed.blendingEnabled === true ||
-          parsed.blendingEnabled === 'true'
-        ) {
-          if (
-            (parsed.maps ?? 'google3d') === 'google3d' &&
-            parsed.opacity === undefined
-          ) {
-            parsed.opacity =
-              {
-                '30% Opacity': 30,
-                '60% Opacity': 60
-              }[parsed.blendMode ?? '30% Opacity'] ?? 100;
-          }
-        }
-        delete parsed.blendingEnabled;
-        delete parsed.blendMode;
-        // The single-plane mapbox2d layer was replaced by the tiled 2D
-        // basemap (#1962 step C); scenes saved on it load (and re-save) as
-        // the equivalent tiles2d map type.
-        if (parsed.maps === 'mapbox2d') {
-          parsed.maps = 'tiles2d';
-        }
-        if (isString) {
-          components['street-geo'] = AFRAME.utils.styleParser.stringify(parsed);
-        }
-      }
-    }
-
-    // Never apply a saved visible:false to the User Layers root. Some older
-    // scenes were saved with it (an old UI exposed an eye toggle on the
-    // container), which blanks the whole scene on load; and because the
-    // singleton #street-container element is reused across loads, it then
-    // blanks every scene loaded after it in the same session. Container
-    // visibility is session UI state, not scene data: ignored here, stripped
-    // on save (convertDOMElToObject), healed by newScene (street-utils.js).
-    if (entityData.id === 'street-container' && components) {
-      delete components.visible;
-    }
-
     const sceneChildElement = document.getElementById(entityData.id);
     if (sceneChildElement) {
       if (removeEntities.includes(entityData.id)) {
@@ -663,54 +467,6 @@ function createEntities(entitiesData, parentEl) {
 
 STREET.utils.createEntities = createEntities;
 
-/**
- * Apply a saved camera state to the current scene camera
- * @param {Object} cameraState - Camera state object with position, rotation, and zoom
- */
-function applyCameraState(cameraState) {
-  if (!cameraState) return;
-
-  const camera = AFRAME.scenes[0].camera;
-  if (!camera) {
-    console.error('[STREET.utils.applyCameraState] No camera found in scene');
-    return;
-  }
-
-  // Set position
-  if (cameraState.position) {
-    camera.position.set(
-      cameraState.position.x,
-      cameraState.position.y,
-      cameraState.position.z
-    );
-  }
-
-  // Set rotation
-  if (cameraState.rotation) {
-    camera.rotation.set(
-      cameraState.rotation.x,
-      cameraState.rotation.y,
-      cameraState.rotation.z
-    );
-  }
-
-  // Set zoom/FOV if applicable
-  if (cameraState.zoom && camera.fov !== undefined) {
-    camera.fov = cameraState.zoom;
-    camera.updateProjectionMatrix();
-  }
-
-  // Update camera
-  camera.updateMatrixWorld();
-
-  console.log(
-    '[STREET.utils.applyCameraState] Camera state applied:',
-    cameraState
-  );
-}
-
-STREET.utils.applyCameraState = applyCameraState;
-
 /*
 Add a new entity with a list of components and children (if exists)
  * @param {object} entityData Entity definition to add:
@@ -726,19 +482,6 @@ Add a new entity with a list of components and children (if exists)
  * @return {Element} Entity created
 */
 function createEntityFromObj(entityData, parentEl, beforeEl) {
-  // Strip legacy viewer-mode / WebXR components from a saved cameraRig
-  // entry. These were removed from the codebase along with the legacy
-  // viewer mode; ignoring them here lets old scenes load cleanly and
-  // re-save without the attrs. Scoped to the cameraRig — the only entity
-  // legacy saves wrote them to — so a user-authored entity carrying e.g.
-  // look-controls is not silently stripped on load/reparent/paste.
-  if (entityData.id === 'cameraRig' && entityData.components) {
-    for (const legacy of LEGACY_STRIPPED_COMPONENTS) {
-      if (legacy in entityData.components) {
-        delete entityData.components[legacy];
-      }
-    }
-  }
   // A saved cameraRig entry (legacy scenes stored one, typically carrying
   // only the now-stripped viewer-mode/controls) must never spawn a second
   // element: index.html already ships a static #cameraRig, and a duplicate id
@@ -801,31 +544,6 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
     entity.setAttribute(
       'data-asset-owner-uid',
       entityData['data-asset-owner-uid']
-    );
-  }
-
-  // Migrate legacy saved scenes:
-  // - street-segment used to store its vertical offset as an integer `level`
-  //   (1 level == 0.15m curb height); the current schema only knows metric
-  //   `elevation`. Without this conversion A-Frame drops the unknown property
-  //   and raised segments (e.g. sidewalks) would load flush with the road.
-  // - `type: building` was renamed to `type: boundary` (and the managed-street
-  //   `showBuildings` toggle to `showBoundaries`).
-  // - `surface: hatched` became a street-generated-striping treatment (#1728);
-  //   the migration touches the whole components object because it also adds
-  //   the striping component.
-  if (entityData.components?.['street-segment']) {
-    entityData.components['street-segment'] = migrateSegmentBuildingType(
-      migrateSegmentLevelToElevation(entityData.components['street-segment'])
-    );
-    migrateSegmentHatchedSurface(entityData.components);
-    // - street-generated-pedestrians lost its own `direction` (walks in the
-    //   segment direction instead).
-    migratePedestriansDirection(entityData.components);
-  }
-  if (entityData.components?.['managed-street']) {
-    entityData.components['managed-street'] = migrateShowBuildingsFlag(
-      entityData.components['managed-street']
     );
   }
 
@@ -1297,34 +1015,6 @@ function getUUIDFromPath(path) {
   return null; // return null or whatever default value you prefer if no UUID found
 }
 
-// this use os text input prompt, delete current scene, then load streetmix file
-function inputStreetmix() {
-  const streetmixURL = prompt(
-    'Please enter a Streetmix URL',
-    'https://streetmix.net/kfarr/3/example-street'
-  );
-  // clear scene data, create new blank scene.
-  // clearMetadata = true, clearUrlHash = false
-  STREET.utils.newScene(true, false);
-
-  setTimeout(function () {
-    window.location.hash = streetmixURL;
-  });
-
-  AFRAME.INSPECTOR.execute('entitycreate', {
-    id: createUniqueId(),
-    components: {
-      'streetmix-loader': {
-        streetmixStreetURL: streetmixURL,
-        synchronize: true
-      }
-    }
-  });
-  AFRAME.scenes[0].emit('newScene');
-}
-
-STREET.utils.inputStreetmix = inputStreetmix;
-
 // JSON loading starts here
 function getValidJSON(stringJSON) {
   // Preserve newlines, etc. - use valid JSON
@@ -1361,7 +1051,8 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   // the fallback; a ?camera= deep link (parked by the hash loader) beats
   // both. The viewport's newScene handler picks (scene-camera-pose.js)
   // once the entities exist in the DOM.
-  migrateDefaultSnapshotToViewerStart(streetObject.data, streetObject.memory);
+  const { viewerStartMigrated } = migrateSceneJSON(streetObject);
+  useStore.setState({ viewerStartMigrated });
   createEntities(streetObject.data, streetContainerEl);
   resolveCloudAssetUrls(streetContainerEl);
   useStore.getState().updateLoadingProgress(90, 'Finalizing...');

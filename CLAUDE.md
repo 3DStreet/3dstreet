@@ -208,6 +208,16 @@ to shared components, editor entry points and Firebase functions.
 **Visibility:** use `setAttribute('visible', ...)`, never raw `object3D.visible`
 (mesh batching).
 
+**Scene JSON (#2038):** `src/json-utils_1.1.js` holds the DOM→JSON serializer
+(`convertDOMElToObject`/`getElementData`/`filterJSONstreet`), the JSON→DOM
+hydrator (`createEntities`/`createEntityFromObj`) and the `set-loader-from-hash`
+URL dispatcher; it is being split up and its `STREET.utils` global retired, so
+prefer direct imports in new code. Load-time migrations are pure, AFRAME-free
+modules in `src/scene/migrations/` run once per load by `migrateSceneJSON`
+(and on paste by `migrateEntityData`), never inside the hydrator; register new
+ones in `src/scene/migrations/index.js` and test them in
+`test/editor/sceneMigrations.test.js`.
+
 **URL Hash Schemes:** Streetmix URL, StreetPlan URL, Cloud UUID (`#scenes/...`), Managed Street JSON
 
 **File Naming:** A-Frame: `kebab-case.js`, React: `PascalCase.js/jsx`, Styles: `.module.scss`

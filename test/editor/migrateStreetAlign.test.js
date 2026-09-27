@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { migrateImplicitStreetAlign } from '../../src/tested/migrate-street-align.js';
+import { migrateImplicitStreetAlign } from '../../src/scene/migrations/street-align.js';
 
 const street = (align) => ({
   id: 's',
