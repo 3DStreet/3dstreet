@@ -7,6 +7,10 @@
  * must keep working forever — old links live in Discord/docs/emails — and
  * self-upgrades to the path form on arrival via history.replaceState.
  *
+ * Scene ids are returned exactly as written: Firestore document ids are
+ * case-sensitive and Bollard Buddy (iOS) creates uppercase UUIDs, so
+ * normalizing case would make those scenes 404.
+ *
  * Pure string functions only (no window access) so they stay unit-testable:
  * test/core/scene-url-utils.test.js.
  */
@@ -25,20 +29,20 @@ const SCENE_HASH_RE = new RegExp(`#/?scenes/(${UUID_PATTERN})`, 'i');
 
 /**
  * @param {string} pathname - window.location.pathname
- * @returns {string|null} lowercase scene UUID, or null
+ * @returns {string|null} scene UUID as written (case preserved), or null
  */
 function getSceneIdFromPathname(pathname) {
   const match = (pathname || '').match(SCENE_PATHNAME_RE);
-  return match ? match[1].toLowerCase() : null;
+  return match ? match[1] : null;
 }
 
 /**
  * @param {string} hash - window.location.hash (leading '#' included)
- * @returns {string|null} lowercase scene UUID, or null
+ * @returns {string|null} scene UUID as written (case preserved), or null
  */
 function getSceneIdFromHash(hash) {
   const match = (hash || '').match(SCENE_HASH_RE);
-  return match ? match[1].toLowerCase() : null;
+  return match ? match[1] : null;
 }
 
 /**

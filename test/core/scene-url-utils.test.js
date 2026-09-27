@@ -19,10 +19,10 @@ describe('scene-url-utils', function () {
     it('tolerates a trailing slash', function () {
       assert.strictEqual(getSceneIdFromPathname(`/scenes/${UUID}/`), UUID);
     });
-    it('lowercases an uppercase UUID', function () {
+    it('preserves the case of an uppercase UUID (Firestore ids are case-sensitive)', function () {
       assert.strictEqual(
         getSceneIdFromPathname(`/scenes/${UUID.toUpperCase()}`),
-        UUID
+        UUID.toUpperCase()
       );
     });
     it('does not match the .json data endpoint', function () {
