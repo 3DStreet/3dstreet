@@ -306,9 +306,19 @@ function Toolbar() {
       if (useStore.getState().modal) return;
       const a = document.activeElement;
       if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
-      e.preventDefault();
       const playMode = getPlayModeSystem();
       const hotspotSystem = AFRAME.scenes[0]?.systems?.['focus-hotspot'];
+      // ?embed=true hides Edit, so its keyboard path is closed too: an
+      // idle embed has no level left to back out to, and opening the
+      // editor (or the sign-in modal) inside a host's <iframe> is wrong.
+      if (
+        useStore.getState().isEmbed &&
+        !hotspotSystem?.focusedEl &&
+        !playMode?.isPlaying
+      ) {
+        return;
+      }
+      e.preventDefault();
       if (hotspotSystem?.focusedEl) {
         // A focused hotspot is one level deeper than playing: Escape backs
         // out to the overview before it ever stops the session (focus is

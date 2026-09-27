@@ -157,7 +157,9 @@ resolves.
 ## Embedding
 
 `?embed=true` implies `?viewer=true` and hides the app switcher, byline,
-Edit action and profile button. Hosting sends no `X-Frame-Options` or
+Edit action and profile button. Escape still backs out of a hotspot and
+stops play, but never opens the editor (the viewer's second Escape).
+Hosting sends no `X-Frame-Options` or
 `frame-ancestors` header today (`public/firebase.json` sets only
 `Cache-Control`), so third-party pages can frame the app; adding one later
 must allow the campaign sites. The shuttle, Snapshot, the palette dock
