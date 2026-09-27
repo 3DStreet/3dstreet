@@ -33,7 +33,8 @@ import {
   mergePalettes,
   footprintRadius,
   findFreeSpotXZ,
-  interiorPointXZ
+  interiorPointXZ,
+  chooseTapArea
 } from './build-area-rules.js';
 import { boundsForEntity } from '../model-placeholder.js';
 import { lookupModelBounds } from '../../model-bounds.js';
@@ -344,34 +345,63 @@ AFRAME.registerSystem('build-area', {
     return best;
   },
 
-  // Fallback target for tap-to-place: the area under the centre of the
-  // view, else the first buildable area at its ring centroid.
-  pickDefaultTarget() {
+  // Target for tap-to-place (no drop point). The dock merges every
+  // area's palette, so the area under the view centre is used only when it
+  // offers `mixinId` and has room; otherwise the tap goes to another area
+  // that can take it, visible ones first, then the nearest
+  // (chooseTapArea). Its point is the centre hit, or a point guaranteed
+  // inside the area (interiorPointXZ; not the corner-average, which falls
+  // in the notch of an L- or U-shaped zone). Returns { area, point } or
+  // { reason } ('outside' | 'palette' | 'full').
+  pickTapTarget(mixinId) {
+    const areas = this.getBuildableAreas();
     const canvas = this.sceneEl.canvas;
+    const camera = this.sceneEl.camera;
+    let centre = null;
     if (canvas) {
       const rect = canvas.getBoundingClientRect();
-      const centre = this.pickArea(
+      centre = this.pickArea(
         rect.left + rect.width / 2,
         rect.top + rect.height / 2
       );
-      if (centre) return centre;
     }
-    // Centre of the view misses every area: use a point guaranteed inside
-    // the first area. Not the corner-average, which falls in the notch of
-    // an L- or U-shaped zone, outside the shape (interiorPointXZ).
-    const area = this.getBuildableAreas()[0];
-    if (!area) return null;
-    const ring = area.worldRing();
-    const inside = interiorPointXZ(ring);
-    if (!inside) return null;
-    const meanY = ring.reduce((sum, p) => sum + p.y, 0) / ring.length;
-    const point = new THREE.Vector3(inside.x, meanY, inside.z);
-    return { area, point, distance: 0 };
+    const cameraPos = new THREE.Vector3();
+    if (camera) camera.getWorldPosition(cameraPos);
+    const points = areas.map((area) => {
+      if (centre && centre.area === area) return centre.point;
+      const ring = area.worldRing();
+      const inside = interiorPointXZ(ring);
+      if (!inside) return null;
+      const meanY = ring.reduce((sum, p) => sum + p.y, 0) / ring.length;
+      return new THREE.Vector3(inside.x, meanY, inside.z);
+    });
+    const candidates = areas.map((area, i) => {
+      const point = points[i];
+      let visible = false;
+      if (point && camera) {
+        const ndc = point.clone().project(camera);
+        visible =
+          ndc.z > -1 &&
+          ndc.z < 1 &&
+          Math.abs(ndc.x) <= 1 &&
+          Math.abs(ndc.y) <= 1;
+      }
+      return {
+        offers: !!point && parsePalette(area.data.palette).includes(mixinId),
+        hasRoom: canPlace(area.visitorObjects().length, area.data.maxObjects),
+        underCentre: !!centre && centre.area === area,
+        visible,
+        distance: point ? point.distanceTo(cameraPos) : Infinity
+      };
+    });
+    const choice = chooseTapArea(candidates);
+    if (choice.reason) return choice;
+    return { area: areas[choice.index], point: points[choice.index].clone() };
   },
 
   /**
-   * Place a palette mixin at a screen point (drop) or at the default
-   * target (tap). Refuses, with a toast, a point outside every area, a
+   * Place a palette mixin at a screen point (drop) or at the tap target
+   * (pickTapTarget). Refuses, with a toast, a point outside every area, a
    * mixin the target area does not offer, and a full area. Returns the
    * new entity or null.
    */
@@ -379,10 +409,10 @@ AFRAME.registerSystem('build-area', {
     if (!this._active) return null;
     const target =
       clientX === undefined
-        ? this.pickDefaultTarget()
+        ? this.pickTapTarget(mixinId)
         : this.pickArea(clientX, clientY);
-    if (!target) {
-      this._notice('outside');
+    if (!target || target.reason) {
+      this._notice(target?.reason || 'outside');
       return null;
     }
     const { area, point } = target;

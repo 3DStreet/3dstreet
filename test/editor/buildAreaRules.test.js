@@ -4,7 +4,8 @@ import {
   serializePalette,
   canPlace,
   pointInRingXZ,
-  mergePalettes
+  mergePalettes,
+  chooseTapArea
 } from '../../src/aframe-components/play/build-area-rules.js';
 
 describe('build-area rules', () => {
@@ -184,5 +185,49 @@ describe('interiorPointXZ', () => {
 
   it('returns null for a degenerate ring', () => {
     expect(interiorPointXZ([{ x: 0, z: 0 }])).toBeNull();
+  });
+});
+
+describe('chooseTapArea', () => {
+  const area = (over) => ({
+    offers: true,
+    hasRoom: true,
+    underCentre: false,
+    visible: true,
+    distance: 10,
+    ...over
+  });
+  it('prefers the area under the view centre when it can take the object', () => {
+    expect(
+      chooseTapArea([area({ distance: 1 }), area({ underCentre: true })])
+    ).toEqual({ index: 1 });
+  });
+  it('skips a centre area that does not offer the object', () => {
+    expect(
+      chooseTapArea([area({ underCentre: true, offers: false }), area()])
+    ).toEqual({ index: 1 });
+  });
+  it('skips a full centre area when another has room', () => {
+    expect(
+      chooseTapArea([area({ underCentre: true, hasRoom: false }), area()])
+    ).toEqual({ index: 1 });
+  });
+  it('prefers a visible area, then the nearest', () => {
+    expect(
+      chooseTapArea([
+        area({ visible: false, distance: 1 }),
+        area({ distance: 20 }),
+        area({ distance: 5 })
+      ])
+    ).toEqual({ index: 2 });
+  });
+  it('explains a refusal', () => {
+    expect(chooseTapArea([area({ offers: false })])).toEqual({
+      reason: 'palette'
+    });
+    expect(
+      chooseTapArea([area({ offers: false }), area({ hasRoom: false })])
+    ).toEqual({ reason: 'full' });
+    expect(chooseTapArea([])).toEqual({ reason: 'outside' });
   });
 });

@@ -183,3 +183,37 @@ export function interiorPointXZ(ring, samples = 24) {
   }
   return best;
 }
+
+/**
+ * Which area a tap (no drop point) on a palette card goes to. The dock
+ * merges every area's palette, so the area under the view centre may not
+ * offer the object, or may be full while another area has room.
+ *
+ * `candidates`: one entry per buildable area,
+ *   { offers, hasRoom, underCentre, visible, distance }
+ * (`distance` from the camera; `visible` = in front of it, inside the
+ * view). Preference: the area under the view centre, then visible areas,
+ * then the nearest. Returns { index } of the chosen candidate, or
+ * { reason } when none can take the object: 'palette' when no area
+ * offers it, 'full' when every area that offers it is full, 'outside'
+ * when there are no areas.
+ */
+export function chooseTapArea(candidates) {
+  if (!Array.isArray(candidates) || candidates.length === 0) {
+    return { reason: 'outside' };
+  }
+  let best = -1;
+  const rank = (c) => [c.underCentre ? 0 : 1, c.visible ? 0 : 1, c.distance];
+  const better = (a, b) => {
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return a[i] < b[i];
+    }
+    return false;
+  };
+  candidates.forEach((c, i) => {
+    if (!c.offers || !c.hasRoom) return;
+    if (best === -1 || better(rank(c), rank(candidates[best]))) best = i;
+  });
+  if (best !== -1) return { index: best };
+  return { reason: candidates.some((c) => c.offers) ? 'full' : 'palette' };
+}
