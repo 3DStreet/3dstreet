@@ -194,10 +194,15 @@ and Open in 3DStreet stay. Example:
   whole class.
 - **Tap-to-place with several areas.** Dragging is exact. A tap (no drop
   point) uses the area under the centre of the view, else the first area.
-  With several areas offering different objects, a tap is refused when the
-  centre is over an area that does not offer the object, even if another
-  area does. A single area is unaffected. (The fallback point is guaranteed
+  It does not check that area offers the object or has room: with several
+  areas, a tap is refused as "not available" or "full" even when another
+  area would take it. A single area is unaffected. (The fallback point is guaranteed
   inside the area, L- and U-shaped ones included: `interiorPointXZ`.)
+- **Open in 3DStreet with a blocked tab.** The blank tab is opened inside
+  the click; if a popup blocker stops it anyway, the fallback `window.open`
+  runs after compression, outside the click, and is blocked too. With
+  `noopener` it returns null either way, so the failure is neither
+  detected nor shown, and the visitor loses their design.
 - **Test coverage.** The rules and the handoff are unit tested; the
   session lifecycle, refusal paths, snap-back, selection guard and
   `?embed=true` are verified by hand in headless Chromium only. They
