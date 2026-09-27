@@ -1,5 +1,6 @@
 /* global AFRAME, THREE, STREET */
 import useStore from '../../store.js';
+import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 
 /**
  * `viewer-start`, the scene's explicit starting vantage for a visitor.
@@ -29,9 +30,12 @@ import useStore from '../../store.js';
 AFRAME.registerComponent('viewer-start', {
   schema: {
     // Vertical field of view in degrees (camera `fov`; the saved
-    // cameraState shape calls it `zoom`). Future camera controls (a look-at
-    // target, an orbit radius) hang off this schema too.
-    fov: { default: 60 },
+    // cameraState shape calls it `zoom`). The default is the editor camera's
+    // resting fov (one constant, src/tested/scene-camera-pose.js), so the
+    // properties panel's reset returns the lens to what the editor opens
+    // with. Future camera controls (a look-at target, an orbit radius) hang
+    // off this schema too.
+    fov: { default: DEFAULT_FOV_DEGREES },
     // false = fixed camera while playing: visitors can only click hotspots
     // and go Back; orbit/pan/zoom/fly input is ignored (the viewer-start
     // system locks the shared controls' user input during play in `viewer`).
@@ -59,9 +63,19 @@ AFRAME.registerComponent('viewer-start', {
     this.update();
   },
 
-  update() {
+  update(oldData) {
     if (this._duplicate) return;
     this.system?.applyInputLock();
+    // A fov EDIT applies to the shared editor/viewer camera at once, so the
+    // author sees the lens they are setting (and Start's pre-Start snapshot
+    // then already carries it, so Stop keeps it rather than reverting). The
+    // first update after init passes an empty oldData: scene load and entity
+    // creation leave the camera alone, since the load fly-in and the Start
+    // glide own those moves. Typed, dragged, reset and undone edits all come
+    // through here with the previous value.
+    if (oldData?.fov !== undefined && oldData.fov !== this.data.fov) {
+      this.system?.applyFov(this.data.fov);
+    }
   },
 
   remove() {
@@ -89,7 +103,7 @@ export function viewerStartCameraState(el) {
   return {
     position: { x: position.x, y: position.y, z: position.z },
     rotation: { x: rotation.x, y: rotation.y, z: rotation.z },
-    zoom: el.components?.['viewer-start']?.data?.fov || 60
+    zoom: el.components?.['viewer-start']?.data?.fov || DEFAULT_FOV_DEGREES
   };
 }
 
@@ -189,6 +203,17 @@ AFRAME.registerSystem('viewer-start', {
   getStartCameraState() {
     const el = this.getActive();
     return el ? viewerStartCameraState(el) : null;
+  },
+
+  // Set the shared editor/viewer camera's lens right away (no glide): the
+  // same two writes focusCameraState's commitPose makes. Called for a fov
+  // edit on the Starting View; a bad value is ignored rather than clamped.
+  applyFov(fov) {
+    const camera = window.AFRAME?.INSPECTOR?.camera;
+    if (!camera || !Number.isFinite(fov) || fov <= 0) return false;
+    camera.fov = fov;
+    camera.updateProjectionMatrix();
+    return true;
   },
 
   // Glide the shared camera to the start pose. Public so the sidebar's

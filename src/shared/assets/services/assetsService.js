@@ -358,6 +358,12 @@ class AssetsServiceV2 {
 
         // Optimization attempt details (present for all GLB uploads)
         ...(optimizationMetadata ? { optimizationMetadata } : {}),
+        // Model-space bounds (meters) from the optimizer, top-level so every
+        // asset type can carry the same field. The scene loader hands them to
+        // model-placeholder to draw a ghost box before the GLB downloads (#2009).
+        ...(optimizationMetadata?.bounds
+          ? { bounds: optimizationMetadata.bounds }
+          : {}),
 
         // Attribution metadata extracted from the source GLB. Persisted as a
         // structured object so the mesh details modal can edit each field

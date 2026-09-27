@@ -149,7 +149,9 @@ export async function reoptimizeAsset(
     optimizedSourceUrl: newUrl,
     optimizedSourcePath: newPath,
     optimizedSourceSize: blob.size,
-    optimizationMetadata: metadata
+    optimizationMetadata: metadata,
+    // Refresh the placeholder bounds with the newly served geometry (#2009).
+    ...(metadata?.bounds ? { bounds: metadata.bounds } : {})
   });
 
   return {

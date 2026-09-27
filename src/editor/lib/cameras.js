@@ -1,4 +1,5 @@
 import Events from './Events';
+import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 
 // Save ortho camera FOV / position before switching to restore later.
 export let currentOrthoDir = '';
@@ -35,7 +36,9 @@ export function initCameras(inspector) {
   inspector.currentCameraEl.setAttribute('camera', 'active', false);
 
   // Create Inspector camera.
-  const perspectiveCamera = (inspector.camera = new THREE.PerspectiveCamera());
+  const perspectiveCamera = (inspector.camera = new THREE.PerspectiveCamera(
+    DEFAULT_FOV_DEGREES
+  ));
   perspectiveCamera.far = 20000; // Changed from 10000 to 20000
   perspectiveCamera.near = 0.01;
   perspectiveCamera.position.set(0, 15, 30);

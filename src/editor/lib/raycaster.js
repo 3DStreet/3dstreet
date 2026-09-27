@@ -71,13 +71,20 @@ export function initRaycaster(inspector) {
   function getBatchedIntersectedEl() {
     // BatchedMeshes are hosted on a dedicated batch-models-root a-entity via setObject3D,
     // so A-Frame's raycaster keeps the intersection (it has .el). The closest intersection
-    // may be a BatchedMesh — remap it to the real entity via _batchIdToEl[batchId].
+    // may be a BatchedMesh — remap it to the real entity via _batchIdToEl[batchId]. The
+    // model-placeholder ghost boxes (#2009) are one InstancedMesh on their own root entity
+    // in the same way; its instanceId indexes _placeholderEls.
     const intersections = mouseCursor.components.raycaster.intersections;
     if (!intersections || intersections.length === 0) return undefined;
     const closest = intersections[0];
-    if (!closest.object?.isBatchedMesh) return undefined;
-    const map = closest.object._batchIdToEl;
-    return map ? map[closest.batchId] || null : null;
+    if (closest.object?.isBatchedMesh) {
+      const map = closest.object._batchIdToEl;
+      return map ? map[closest.batchId] || null : null;
+    }
+    if (closest.object?._placeholderEls) {
+      return closest.object._placeholderEls[closest.instanceId] || null;
+    }
+    return undefined;
   }
 
   function getIntersectedEl() {

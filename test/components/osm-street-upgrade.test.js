@@ -207,6 +207,121 @@ describe('osm-streets upgrade (viewer creation path)', () => {
     );
   }, 30000);
 
+  it('extends a partially generated way instead of refusing (#2006)', async () => {
+    const comp = await osmStreetsComponent();
+    const scene = comp.el.sceneEl;
+    comp.addTileWays('t-long', [
+      rawWay('way-long', 'secondary', [
+        { x: 0, z: 0 },
+        { x: 0, z: 300 },
+        { x: 0, z: 600 },
+        { x: 0, z: 900 }
+      ])
+    ]);
+    const way = comp.allWays()[0];
+
+    // First generate covers 0–300 m (click at 100, ±200 m window) and
+    // stamps its centerline coverage on the street.
+    expect(comp.upgradeWay(way, { x: 0, z: 100 })).toBe(1);
+    const first = scene.querySelector('[managed-street]');
+    expect(first.getAttribute('data-osm-stretch')).toBeTruthy();
+
+    // Same spot again: fully covered here — nothing new.
+    expect(comp.upgradeWay(way, { x: 0, z: 100 })).toBe(0);
+    expect(comp.lastUpgradeOutcome.reason).toBe('already-generated');
+    expect(comp.upgradePlanAt({ x: 0, y: 0, z: 100 }).reason).toBe(
+      'already-generated'
+    );
+
+    // Farther along the same way: the uncovered remainder generates,
+    // butted flush against the first piece's end (boundary snap).
+    expect(comp.upgradePlanAt({ x: 0, y: 0, z: 500 }).reason).toBe('ok');
+    expect(comp.upgradeWay(way, { x: 0, z: 500 })).toBe(1);
+    const streets = scene.querySelectorAll('[managed-street]');
+    expect(streets).toHaveLength(2);
+    const stamped = streets[1].getAttribute('data-osm-stretch');
+    const startZ = parseFloat(stamped.split(';')[0].split(',')[1]);
+    expect(startZ).toBeCloseTo(300, 0);
+  });
+
+  it('mints an intersection even when the far side of a cut is a sliver (#2006)', async () => {
+    const comp = await osmStreetsComponent();
+    const scene = comp.el.sceneEl;
+    comp.addTileWays('t-sliver', [
+      rawWay('way-main', 'minor', [
+        { x: 0, z: 0 },
+        { x: 0, z: 400 }
+      ]),
+      rawWay('way-side', 'minor', [
+        { x: -80, z: 385 },
+        { x: 80, z: 385 }
+      ])
+    ]);
+    const [main] = comp.allWays();
+    // The crossing at z=385 leaves a <20 m far sliver that is dropped —
+    // with only ONE bordering street end the pad must still fill the cut
+    // (the old ≥2 rule left a bare hole here).
+    expect(comp.upgradeWay(main, { x: 0, z: 300 })).toBe(1);
+    const intersections = scene.querySelectorAll('[managed-intersection]');
+    expect(intersections).toHaveLength(1);
+
+    // With exactly one arm the pad renders as a PARTIAL intersection —
+    // asphalt stub + that arm's crosswalk — not the zero-arm disc, and
+    // no full geometry yet (plan exporter sees none).
+    const mi = intersections[0];
+    await vi.waitFor(
+      () => {
+        const comp2 = mi.components['managed-intersection'];
+        expect(comp2).toBeTruthy();
+        expect(comp2.lastGeometry).toBeNull();
+        const crosswalk = mi.querySelector('[data-layer-name^="Crosswalk"]');
+        expect(crosswalk).toBeTruthy();
+      },
+      { timeout: 15000 }
+    );
+  }, 30000);
+
+  it('keeps the through street continuous at a T and trims the side street (#2004 fix 2)', async () => {
+    const comp = await osmStreetsComponent();
+    const scene = comp.el.sceneEl;
+    comp.addTileWays('t-tee', [
+      rawWay('way-through', 'minor', [
+        { x: 0, z: 0 },
+        { x: 0, z: 400 }
+      ]),
+      rawWay('way-side', 'minor', [
+        { x: 0, z: 200 },
+        { x: 120, z: 200 }
+      ])
+    ]);
+    const [through, side] = comp.allWays();
+
+    // The side road TERMINATES on the through road: no cut, no seam —
+    // one continuous street, no intersection (previously this chopped
+    // the through street in two around a seam-band pad).
+    expect(comp.upgradeWay(through, { x: 0, z: 200 })).toBe(1);
+    expect(scene.querySelectorAll('[managed-intersection]')).toHaveLength(0);
+
+    // The side street's end pulls back to the through road's carriageway
+    // edge (10.4/2 + 2 = 7.2 m) instead of poking to its centerline.
+    expect(comp.upgradeWay(side, { x: 60, z: 200 })).toBe(1);
+    const streets = scene.querySelectorAll('[managed-street]');
+    expect(streets).toHaveLength(2);
+    const stamped = streets[1].getAttribute('data-osm-stretch');
+    const startX = parseFloat(stamped.split(';')[0].split(',')[0]);
+    expect(startX).toBeCloseTo(7.2, 1);
+  });
+
+  it('renders ribbons semitransparent so basemap labels read through', async () => {
+    const comp = await osmStreetsComponent();
+    const THREE = window.AFRAME.THREE;
+    // 0.65 × the layer opacity (1 by default); LessDepth keeps the
+    // builder's same-height cap/joint overlaps from double-blending.
+    expect(comp.material.opacity).toBeCloseTo(0.65, 5);
+    expect(comp.material.transparent).toBe(true);
+    expect(comp.material.depthFunc).toBe(THREE.LessDepth);
+  });
+
   it('returns 0 for a stretch below the generate minimum', async () => {
     const comp = await osmStreetsComponent();
     comp.addTileWays('t-stub', [

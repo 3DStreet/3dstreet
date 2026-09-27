@@ -15,6 +15,15 @@ The code is spread across five directories, so this file is the entry point:
 | `test/`                           | `editor/shape*.test.js`, `components/shape-*.test.js`                                                                                         |
 | `docs/`                           | `shape-vertex-editing.md` — how the on-canvas vertex handles, the measurement chips and the two buttons divide the work between them, and why |
 
+## Measurements
+
+The side lengths and angles are editor chips (`ShapeReadouts`) that exist only
+while the shape is selected. The enclosed area is a label the `shape`
+component itself builds and positions, so it tracks every re-derive, but it is
+shown only while the shape is selected too: `ShapeSidebar` calls
+`setAreaLabelVisible(true)` on mount and `false` on unmount. Nothing measures
+an unselected shape, in the viewer or during play.
+
 ## Vertex editing commands
 
 Vertex editing adds three commands to the undo/redo family:

@@ -128,6 +128,20 @@ tool integration**, including callers outside `src/editor/`.
 
 **Global access:** `STREET.catalog` array
 
+**Loading (#2009):** the scene initializes async (`AFRAME_ASYNC` +
+`emitReady()` in `index.html`) and the splash gates only the app shell.
+Textures are lazy `<img data-src data-placeholder>` assets: read their URL
+with `getAssetImageSrc()` (`src/lazy-textures.js`), never `img.src`; never
+enumerate `a-assets img` on mount; every lazy image needs a placeholder
+color (or `transparent` for cutouts) shown until it arrives. The sky
+background shows a per-preset gradient (`src/sky-placeholder.js`) until its
+equirect image downloads. Models show a ghost box of their precomputed
+bounds (`npm run assets:bounds` → `src/model-bounds.json`; user assets carry
+`bounds` on their Firestore doc) until the GLB lands. Scene asset progress is tracked by the
+`asset-load-status` system and shown by non-blocking indicators in the scene
+graph. **Read [asset loading](docs/asset-loading.md) before changing scene
+init, `<street-assets>`, texture references or load indicators.**
+
 **Asset utilities:** https://github.com/3dstreet/3dstreet-assets-dist
 
 ## Firebase
@@ -188,6 +202,8 @@ to shared components, editor entry points and Firebase functions.
 **Firestore emulator tests:** `npm run test:rules` — local-only (boots the firestore + auth emulators via `firebase emulators:exec`, runs vitest against `test/rules/`). Covers security rules AND the lifecycle email send service (`sendLifecycleEmail`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules` or `public/functions/email/`. Requires JDK 21+ on `PATH` (emulator dependency; if `java -version` shows an older default, prefix with `JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"`).
 
 **Deploy:** `npm run deploy` or `npm run deploy:staging`
+
+**Releases:** CalVer (`YYYY.M.patch`) tags plus a `CHANGELOG.md` entry; the deployed build stamp (`+sha`) advances on its own. `CHANGELOG.md` is user-facing (newsletters link to it), so write entries for users, not developers. Process: [docs/releasing.md](docs/releasing.md).
 
 ## Key Patterns
 

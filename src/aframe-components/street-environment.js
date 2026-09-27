@@ -1,5 +1,11 @@
 /* global AFRAME, THREE */
+import { createSkyPlaceholderTexture } from '../sky-placeholder.js';
 
+// Sky presets download an equirect JPEG from the assets CDN. Until it lands
+// the scene shows a generated gradient placeholder for the preset
+// (src/sky-placeholder.js) instead of the renderer's black clear color, and
+// the download is reported to the asset-load-status system as a texture keyed
+// `sky:<preset>` so the panel load sheen tracks it (#2009).
 AFRAME.registerComponent('street-environment', {
   schema: {
     preset: {
@@ -98,6 +104,11 @@ AFRAME.registerComponent('street-environment', {
         break;
       default: // 'color'
         this.setLights(0.8, 2.2);
+        this.backgroundImage = null;
+        // An in-flight sky download is no longer wanted; its callback
+        // checks this and lets go of the texture.
+        this.pendingBackground = null;
+        this.disposeSceneTexture();
         scene.background = new THREE.Color(this.data.backgroundColor);
         scene.environment = null;
     }
@@ -111,26 +122,89 @@ AFRAME.registerComponent('street-environment', {
     );
   },
 
+  /** Dispose the scene's current texture background (real or placeholder). */
+  disposeSceneTexture: function () {
+    const scene = this.el.sceneEl.object3D;
+    if (scene.background?.isTexture) {
+      scene.background.dispose();
+    }
+    scene.background = null;
+    scene.environment = null;
+  },
+
+  /** Show the preset's gradient placeholder as background and environment. */
+  showSkyPlaceholder: function (preset) {
+    const scene = this.el.sceneEl.object3D;
+    this.disposeSceneTexture();
+    const placeholder = createSkyPlaceholderTexture(preset);
+    scene.background = placeholder;
+    scene.environment = placeholder;
+  },
+
+  notifySky: function (name, preset, imagePath) {
+    this.el.sceneEl.emit(name, { id: 'sky:' + preset, src: imagePath }, false);
+  },
+
+  /**
+   * Download a sky image once even when presets flip back and forth while
+   * it is in flight: one promise per path, shared by every caller.
+   */
+  loadSkyTexture: function (imagePath) {
+    if (!this.skyLoads) this.skyLoads = new Map();
+    let load = this.skyLoads.get(imagePath);
+    if (!load) {
+      load = new Promise((resolve, reject) => {
+        this.textureLoader.load(imagePath, resolve, undefined, reject);
+      }).finally(() => this.skyLoads.delete(imagePath));
+      this.skyLoads.set(imagePath, load);
+    }
+    return load;
+  },
+
   setBackground: function (imagePath) {
     const scene = this.el.sceneEl.object3D;
-    this.textureLoader.load(imagePath, (texture) => {
-      // If we changed to color preset in the meantime or we switched to an other image, ignore this texture
-      if (
-        this.data?.preset === 'color' ||
-        imagePath !== this.backgroundImage ||
-        this.el.parentNode === null
-      ) {
-        texture.dispose();
-      } else {
-        if (scene.background?.isTexture) {
-          scene.background.dispose();
+    const preset = this.data.preset;
+    // Already downloading this sky: nothing to do.
+    if (this.pendingBackground === imagePath) return;
+    // Already showing it (the placeholder has no skySrc, so it never matches).
+    if (
+      scene.background?.isTexture &&
+      scene.background.userData.skySrc === imagePath
+    ) {
+      this.pendingBackground = null;
+      return;
+    }
+    this.showSkyPlaceholder(preset);
+    this.pendingBackground = imagePath;
+    this.notifySky('texture-loading', preset, imagePath);
+    this.loadSkyTexture(imagePath).then(
+      (texture) => {
+        // Only the download the component still wants gets applied. A
+        // shared load can hand the same texture to two callbacks: whichever
+        // runs first applies it; the other must not dispose it.
+        if (
+          this.pendingBackground !== imagePath ||
+          this.el.parentNode === null
+        ) {
+          if (scene.background !== texture) texture.dispose();
+          return;
         }
+        this.pendingBackground = null;
+        this.notifySky('texture-loaded', preset, imagePath);
+        this.disposeSceneTexture();
         texture.mapping = THREE.EquirectangularReflectionMapping;
         texture.colorSpace = THREE.SRGBColorSpace;
+        texture.userData.skySrc = imagePath;
         scene.background = texture;
         scene.environment = texture;
+      },
+      () => {
+        // Keep the placeholder: a gradient beats a black sky.
+        if (this.pendingBackground !== imagePath) return;
+        this.pendingBackground = null;
+        this.notifySky('texture-error', preset, imagePath);
       }
-    });
+    );
   },
 
   createLight: function (id, attributes) {

@@ -1,7 +1,9 @@
 import useStore from './store';
+import { registerEntityBounds } from './model-bounds.js';
 import {
   resolveSavedCameraStates,
-  hasViewerStart
+  hasViewerStart,
+  DEFAULT_FOV_DEGREES
 } from './tested/scene-camera-pose';
 import { createUniqueId } from './editor/lib/entity';
 import { beginBatching, BATCHING_ENABLED } from './batch-models';
@@ -558,7 +560,7 @@ function migrateDefaultSnapshotToViewerStart(entitiesData, memory) {
         z: state.position.z || 0
       },
       rotation: { x: deg(euler.x), y: deg(euler.y), z: deg(euler.z) },
-      'viewer-start': { fov: state.zoom || 60 },
+      'viewer-start': { fov: state.zoom || DEFAULT_FOV_DEGREES },
       'data-layer-name': 'Starting View'
     }
   });
@@ -1422,6 +1424,12 @@ async function resolveCloudAssetUrls(containerEl) {
       // may already be GC-purged. Re-resolving to that now-404 URL would clobber
       // a src the entity could otherwise still render from cache, so skip it.
       if (asset?.deleted) continue;
+      // Bounds stored by the optimizer at upload (or backfilled by the owner)
+      // let model-placeholder draw a ghost box before the GLB arrives (#2009).
+      // Runtime registry only: bounds never enter the scene JSON.
+      if (asset?.bounds && el.hasAttribute('gltf-model')) {
+        registerEntityBounds(el, asset.bounds);
+      }
       const servedUrl = getServedUrl(asset);
       if (!servedUrl) continue;
       if (el.hasAttribute('splat')) {

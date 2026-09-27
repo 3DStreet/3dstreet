@@ -258,11 +258,13 @@ what this boundary reaches.
 And what it **costs**, which crosses a feature boundary. An insertable length
 chip now draws over an angle caption and a muted caption regardless of camera
 distance, where the three were previously distance-sorted against each other.
-Beyond this feature: the shape's own area label and every measure-line label are
-`CSS2DObject`s with no `renderOrder` at all — band 0 — so a length chip draws
-over those too, and the area label is anchored at the centroid, the most crowded
-spot on a small shape. Accepted: a control the user is reaching for beats a
-caption they are not.
+Beyond this feature: the shape's own area label is a `CSS2DObject` with no
+`renderOrder` at all — band 0 — so a length chip draws over it too, and the
+area label is anchored at the centroid, the most crowded spot on a small shape.
+Accepted: a control the user is reaching for beats a caption they are not. (The
+area label is built by the `shape` component but, like the chips, shown only
+while the shape is selected: the panel calls `setAreaLabelVisible` on mount and
+unmount, so nothing measures an unselected shape, in the viewer or in play.)
 
 ## Why the on-canvas controls forward the wheel
 

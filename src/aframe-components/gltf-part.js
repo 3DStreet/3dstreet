@@ -41,6 +41,9 @@ AFRAME.registerComponent('gltf-part', {
       this._loadSettled = true;
       return;
     }
+    // Mirrors gltf-model's model-loading so the asset-load-status system can
+    // count this part as pending until model-loaded / model-error settles it.
+    el.emit('model-loading', { src: this.data.src, part: this.data.part });
     this.getModel(function (modelPart) {
       if (!modelPart) {
         self._loadSettled = true;

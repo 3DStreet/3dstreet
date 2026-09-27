@@ -169,7 +169,7 @@ AFRAME.registerComponent('splat', {
     // follows emits nothing, so the default state is an indeterminate
     // "Processing splat…". The fetch % is layered on top when available.
     this.showIndicator('Processing splat…');
-    this.el.emit('splat-loading', { src }, false);
+    this.el.emit('splat-loading', { src });
 
     try {
       // Dynamically load the Spark library (only loads once, ~500KB)
@@ -277,7 +277,7 @@ AFRAME.registerComponent('splat', {
       if (loadId !== this.loadId) return;
       this.rendered = true;
       this.hideIndicator();
-      this.el.emit('splat-loaded', { src }, false);
+      this.el.emit('splat-loaded', { src });
     } catch (error) {
       if (loadId !== this.loadId) return;
       console.error('[splat] Failed to load splat:', error);
@@ -291,11 +291,11 @@ AFRAME.registerComponent('splat', {
       // the file is truly bad). On upload failure the blob stays, but that
       // surfaces via the upload UI.
       if (/^blob:/i.test(src)) {
-        this.el.emit('splat-error', { src, error, preview: true }, false);
+        this.el.emit('splat-error', { src, error, preview: true });
         return;
       }
       this.showIndicatorError('Failed to load splat');
-      this.el.emit('splat-error', { src, error }, false);
+      this.el.emit('splat-error', { src, error });
       // Auto-clear, but only if no newer load has taken over in the meantime.
       setTimeout(() => {
         if (loadId === this.loadId) this.hideIndicator();

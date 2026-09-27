@@ -1,14 +1,18 @@
+import { getAssetImageSrc } from '@/lazy-textures';
+
+// Asset images injected by <street-assets> are lazy: they carry `data-src`
+// until a material first uses them (src/lazy-textures.js, #2009).
 export function getUrlFromId(assetId) {
   return (
-    assetId.length > 1 &&
-    document.querySelector(assetId) &&
-    document.querySelector(assetId).getAttribute('src')
+    assetId.length > 1 && getAssetImageSrc(document.querySelector(assetId))
   );
 }
 
 export function getIdFromUrl(url) {
   const escaped = url.replace(/'/g, "\\'");
-  return document.querySelector(`a-assets > [src='${escaped}']`)?.id;
+  return document.querySelector(
+    `a-assets > [src='${escaped}'], a-assets > [data-src='${escaped}']`
+  )?.id;
 }
 
 export function getFilename(url, converted = false) {

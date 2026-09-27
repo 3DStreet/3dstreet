@@ -1,0 +1,52 @@
+name: model-bounds
+
+# Keeps src/model-bounds.json (the placeholder ghost-box table, #2009) in
+# step with the models the app references. On pull requests that touch the
+# catalog, the legacy mixins, the generator script or the table itself, it
+# recomputes every referenced model's bounds from the assets CDN and fails
+# if the committed table differs, so a new catalog entry cannot land without
+# its bounds. Downloads are cached between runs.
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/catalog.json'
+      - 'src/assets.js'
+      - 'src/model-bounds.json'
+      - 'scripts/assets/compute-model-bounds.mjs'
+      - '.github/workflows/model-bounds.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check model bounds table
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache downloaded models
+        uses: actions/cache@v4
+        with:
+          path: .cache/model-bounds
+          key: model-bounds-${{ hashFiles('src/catalog.json', 'src/assets.js') }}
+          restore-keys: |
+            model-bounds-
+
+      - name: Check for drift
+        run: npm run assets:bounds:check

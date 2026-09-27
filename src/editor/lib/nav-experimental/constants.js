@@ -497,12 +497,13 @@ export const ROOF_CLEARANCE = 20; // metres above roof; >= EXIT + margin; tunabl
 // Default/normal field of view (degrees) the drone rise resets to (TH-71). A
 // LITERAL, not an attach-time `camera.fov` capture (which is unreliable on a
 // re-attach mid-zoom). 50 is THREE's PerspectiveCamera default = the inspector
-// camera's resting fov (it is constructed `new THREE.PerspectiveCamera()` with
-// no fov arg — see cameras.js). NOT 60 (the `|| 60` frustum-fit fallback
-// elsewhere is a defensive default, not the resting fov; using it would ship
-// drone view ~20% wider than every other view, violating the "normal FOV"
-// contract).
-export const DEFAULT_FOV_DEGREES = 50;
+// camera's resting fov (cameras.js constructs it with this value). NOT 60
+// (DEFAULT_MAP_FOV_DEGREES is the swoop-out target, a different thing; using
+// it would ship drone view ~20% wider than every other view, violating the
+// "normal FOV" contract). The value lives in src/tested/scene-camera-pose.js
+// since #2031 so the Starting View's schema, the editor camera and every
+// camera-state fallback share it; re-exported here for the nav modules.
+export { DEFAULT_FOV_DEGREES } from '../../../tested/scene-camera-pose.js';
 
 // Camera far-plane, tracked to the camera's distance from the scene centre
 // so a birds-eye view keeps distant geometry in frustum without over-
