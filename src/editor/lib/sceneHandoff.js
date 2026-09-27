@@ -3,6 +3,7 @@ import {
   DEFLATE_HASH_PREFIX,
   encodeSceneHash
 } from '../../tested/scene-hash-codec.js';
+import { getSceneIdFromPathname } from '../../tested/scene-url-utils.js';
 
 // Open the live scene in a fresh editor tab through the JSON-in-hash
 // loader (`#deflate-3dstreet-json:` in json-utils_1.1.js). Built for
@@ -44,6 +45,18 @@ export function buildHandoffScene({
   return scene;
 }
 
+/**
+ * Page URL the handoff hash is appended to. A cloud scene's canonical path
+ * (`/scenes/UUID`, #1970) is loaded before the hash is looked at, so a
+ * fork on that path would reopen the source scene and lose the visitor's
+ * objects: it goes to the root instead. The query is dropped too, so
+ * `?viewer=`, `?embed=` and `?camera=` never carry into the editor tab.
+ */
+export function handoffBaseUrl({ origin, pathname }) {
+  if (getSceneIdFromPathname(pathname)) return `${origin}/`;
+  return `${origin}${pathname}`;
+}
+
 /** `https://host/path#deflate-3dstreet-json:…` for a scene object. */
 export async function handoffUrlFor(scene, base) {
   const payload = await encodeSceneHash(JSON.stringify(scene));
@@ -77,7 +90,7 @@ export async function openSceneInNewEditor({ getCameraState } = {}) {
       sourceSceneId: STREET.utils.getCurrentSceneId() || null,
       cameraState: getCameraState ? getCameraState() : null
     });
-    const base = `${window.location.origin}${window.location.pathname}`;
+    const base = handoffBaseUrl(window.location);
     const url = await handoffUrlFor(scene, base);
     // A tab closed while compressing counts as blocked: offer the link.
     const opened = !!tab && !tab.closed;

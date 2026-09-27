@@ -150,6 +150,13 @@ scene id, deflates the JSON with the native `CompressionStream`
 Edit needs no account, Save opens sign-in and saves it as the visitor's own
 scene. The hash never reaches a server.
 
+**Base URL.** The hash goes on the site root, not the current path: a
+cloud scene's canonical `/scenes/UUID` path is loaded before the hash is
+read, so a fork on that path would reopen the source scene without the
+visitor's objects (`handoffBaseUrl`). The query is dropped too, so
+`?embed=`, `?viewer=` and `?camera=` never follow the visitor into the
+editor.
+
 **Why not JSONCrush** (the older `#crushed-3dstreet-json:` loader, still
 supported): it searches the whole string for repeated substrings on every
 pass, so it is super-linear and blocks the main thread. It froze the page
@@ -189,7 +196,7 @@ and Open in 3DStreet stay. Example:
 
 ```html
 <iframe
-  src="https://3dstreet.app/?embed=true#/scenes/SCENE_ID"
+  src="https://3dstreet.app/scenes/SCENE_ID?embed=true"
   width="100%"
   height="600"
   allow="fullscreen; clipboard-write"

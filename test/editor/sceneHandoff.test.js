@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   buildHandoffScene,
+  handoffBaseUrl,
   handoffUrlFor
 } from '../../src/editor/lib/sceneHandoff.js';
 import { decodeSceneHash } from '../../src/tested/scene-hash-codec.js';
@@ -82,5 +83,20 @@ describe('sceneHandoff', () => {
       await decodeSceneHash(url.slice(prefix.length))
     );
     expect(roundTrip).toEqual(scene);
+  });
+
+  it('forks a path-form cloud scene from the root, not its /scenes/ path', () => {
+    const origin = 'https://3dstreet.app';
+    const uuid = '0f1e2d3c-4b5a-6978-8a9b-0c1d2e3f4a5b';
+    expect(handoffBaseUrl({ origin, pathname: `/scenes/${uuid}` })).toBe(
+      `${origin}/`
+    );
+    expect(handoffBaseUrl({ origin, pathname: `/scenes/${uuid}/` })).toBe(
+      `${origin}/`
+    );
+    expect(handoffBaseUrl({ origin, pathname: '/' })).toBe(`${origin}/`);
+    expect(handoffBaseUrl({ origin, pathname: '/index.html' })).toBe(
+      `${origin}/index.html`
+    );
   });
 });
