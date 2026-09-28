@@ -2,6 +2,7 @@ import CommonComponents from './CommonComponents';
 import FeaturedComponents from './FeaturedComponents';
 import PropTypes from 'prop-types';
 import React from 'react';
+import { FormattedMessage } from 'react-intl';
 import Events from '../../lib/Events';
 import MixinMetadata from './MixinMetadata';
 import PanelFooter from './PanelFooter';
@@ -84,7 +85,12 @@ export default class ComponentsContainer extends React.Component {
         {entity.hasAttribute('data-no-transform') ? (
           <div className="sidepanelContent">
             <br />
-            <p>⚠️ Transformations disabled for this layer.</p>
+            <p>
+              <FormattedMessage
+                id="componentsContainer.transformsDisabled"
+                defaultMessage="⚠️ Transformations disabled for this layer."
+              />
+            </p>
           </div>
         ) : (
           <CommonComponents entity={entity} />

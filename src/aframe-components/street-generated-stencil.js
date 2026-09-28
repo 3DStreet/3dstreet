@@ -3,6 +3,11 @@
 import { BATCHING_ENABLED } from '../batch-models';
 import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
 import { getCurvedPlacement } from './street-path.js';
+import {
+  CLONE_INDEX_ATTR,
+  CLONE_KEY_ATTR,
+  createSlotCounter
+} from '../tested/clone-slots.js';
 
 // generate cloned stencils on a street surface
 AFRAME.registerComponent('street-generated-stencil', {
@@ -77,7 +82,10 @@ AFRAME.registerComponent('street-generated-stencil', {
       type: 'string',
       default: 'none',
       oneOf: ['none', 'inbound', 'outbound']
-    }
+    },
+    // Straight-space placements ("x z" keys) left empty by a per-object
+    // detach (#2011). See docs/per-object-detach.md.
+    skip: { type: 'array', default: [] }
   },
   init: function () {
     this.createdEntities = [];
@@ -129,6 +137,10 @@ AFRAME.registerComponent('street-generated-stencil', {
     // Calculate number of stencil groups that can fit in the length
     const numGroups = Math.floor(this.length / this.correctedSpacing);
 
+    // One slot per stencil the loops below would create; a stencil whose
+    // placement is a detached hole (skip) is counted but not created.
+    const slots = createSlotCounter(data.skip);
+
     // Create stencil groups along the street
     for (let groupIndex = 0; groupIndex < numGroups; groupIndex++) {
       const groupPosition =
@@ -137,10 +149,6 @@ AFRAME.registerComponent('street-generated-stencil', {
 
       // Create each stencil within the group
       stencilsToUse.forEach((stencilName, stencilIndex) => {
-        const clone = document.createElement('a-entity');
-        this.el.appendChild(clone);
-        clone.setAttribute('mixin', stencilName);
-
         // Calculate stencil position within group
         const stencilOffset =
           (stencilIndex - (stencilsToUse.length - 1) / 2) * data.padding;
@@ -151,6 +159,14 @@ AFRAME.registerComponent('street-generated-stencil', {
         let x = data.positionX;
         let y = data.positionY;
         let z = groupPosition + stencilOffset;
+
+        // The hole is keyed by the straight-space placement (#2011).
+        const slot = slots.next(x, z);
+        if (slot.skipped) return;
+
+        const clone = document.createElement('a-entity');
+        this.el.appendChild(clone);
+        clone.setAttribute('mixin', stencilName);
         let curveYaw = 0;
         const bent = getCurvedPlacement(this.el, x, z);
         if (bent) {
@@ -179,9 +195,10 @@ AFRAME.registerComponent('street-generated-stencil', {
 
         // Add metadata
         clone.classList.add('autocreated');
-        clone.setAttribute('data-no-transform', '');
         clone.setAttribute('data-layer-name', `Cloned Model • ${stencilName}`);
         clone.setAttribute('data-parent-component', this.attrName);
+        clone.setAttribute(CLONE_INDEX_ATTR, slot.index);
+        clone.setAttribute(CLONE_KEY_ATTR, slot.key);
         clone.setAttribute('polygon-offset', { factor: -2, units: -2 });
 
         // Lifecycle hook so batch-models frees this stencil's BatchedMesh slot from the entity's

@@ -1,6 +1,11 @@
 /* global AFRAME, STREET */
 import { createRNG } from '../lib/rng';
 import { getCurvedPlacement } from './street-path.js';
+import {
+  CLONE_INDEX_ATTR,
+  CLONE_KEY_ATTR,
+  createSlotCounter
+} from '../tested/clone-slots.js';
 
 // Helper function to get base rotation from catalog
 function getBaseRotationFromCatalog(mixinId) {
@@ -27,6 +32,13 @@ AFRAME.registerComponent('street-generated-clones', {
       default: 'none',
       oneOf: ['none', 'inbound', 'outbound']
     },
+
+    // Straight-space placements ("x z" keys) left empty by a per-object
+    // detach (#2011): a clone that would land there is not created, and a
+    // plain entity the user owns stands in its place. A layout change that
+    // puts nothing there any more simply forgets the hole — see
+    // docs/per-object-detach.md.
+    skip: { type: 'array', default: [] },
 
     // Mode-specific properties
     mode: { default: 'fixed', oneOf: ['fixed', 'random', 'single', 'fit'] },
@@ -114,6 +126,10 @@ AFRAME.registerComponent('street-generated-clones', {
 
     // Clear existing entities
     this.clearEntities();
+    // One slot per clone the mode below would create, in creation order;
+    // a clone whose placement is a detached hole (skip) is counted but not
+    // created.
+    this.slots = createSlotCounter(this.data.skip);
 
     // Generate new entities based on mode
     switch (this.data.mode) {
@@ -281,14 +297,37 @@ AFRAME.registerComponent('street-generated-clones', {
     if (!mixinId) {
       mixinId = this.getModelMixin();
     }
-    const clone = document.createElement('a-entity');
 
-    clone.setAttribute('mixin', mixinId);
+    // Get base rotation from catalog
+    const baseRotation = getBaseRotationFromCatalog(mixinId);
+
+    let rotationY = data.facing + baseRotation;
+    if (data.direction === 'inbound') {
+      rotationY = 0 + data.facing + baseRotation;
+    }
+    if (data.direction === 'outbound') {
+      rotationY = 180 - data.facing + baseRotation;
+    }
+    if (data.randomFacing) {
+      rotationY = this.rng() * 360 + baseRotation;
+    }
+
     // straight segment-local placement, bent onto the parent street's path
     // curve when one is active (position remapped, yaw follows the tangent)
     let x = positionX !== undefined ? positionX : data.positionX;
     let y = data.positionY;
     let z = positionZ;
+
+    // Every seeded draw for this clone (model pick, random facing) happens
+    // above, so a detached placement consumes the same RNG calls it would
+    // have and the clones after it keep their layout (#2011). The hole is
+    // keyed by the straight-space placement, before any bending.
+    const slot = this.slots.next(x, z);
+    if (slot.skipped) return;
+
+    const clone = document.createElement('a-entity');
+
+    clone.setAttribute('mixin', mixinId);
     let curveYaw = 0;
     const bent = getCurvedPlacement(this.el, x, z);
     if (bent) {
@@ -304,19 +343,6 @@ AFRAME.registerComponent('street-generated-clones', {
     }
     clone.setAttribute('position', { x, y, z });
 
-    // Get base rotation from catalog
-    const baseRotation = getBaseRotationFromCatalog(mixinId);
-
-    let rotationY = data.facing + baseRotation;
-    if (data.direction === 'inbound') {
-      rotationY = 0 + data.facing + baseRotation;
-    }
-    if (data.direction === 'outbound') {
-      rotationY = 180 - data.facing + baseRotation;
-    }
-    if (data.randomFacing) {
-      rotationY = this.rng() * 360 + baseRotation;
-    }
     if (bent) {
       clone.dataset.straightRotY = rotationY;
     }
@@ -324,9 +350,10 @@ AFRAME.registerComponent('street-generated-clones', {
 
     // Add common attributes
     clone.classList.add('autocreated');
-    clone.setAttribute('data-no-transform', '');
     clone.setAttribute('data-layer-name', 'Cloned Model • ' + mixinId);
     clone.setAttribute('data-parent-component', this.attrName);
+    clone.setAttribute(CLONE_INDEX_ATTR, slot.index);
+    clone.setAttribute(CLONE_KEY_ATTR, slot.key);
 
     this.el.appendChild(clone);
     this.createdEntities.push(clone);
