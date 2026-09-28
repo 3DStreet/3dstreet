@@ -906,8 +906,9 @@ describe('placement hierarchy composed with rays and landing gestures', () => {
     expect(f.controls.landingUpY).toBeCloseTo(2, 6);
   });
 
-  it('suspends only selected-subtree flatteners and restores them on close and detach', () => {
+  it('suspends only selected-subtree flatteners, only while a gesture runs', () => {
     const f = fixture();
+    f.surface(0);
     const own = { setSuspended: vi.fn() };
     f.el.components = { 'geo-flatten': own };
     const child = document.createElement('div');
@@ -920,22 +921,32 @@ describe('placement hierarchy composed with rays and landing gestures', () => {
     const other = { setSuspended: vi.fn() };
     outside.components = { 'geo-flatten': other };
     f.sceneEl.append(outside);
+    // Selection alone leaves the street flattening the terrain around it.
     f.attach();
+    expect(own.setSuspended).not.toHaveBeenCalled();
+    expect(nested.setSuspended).not.toHaveBeenCalled();
+    f.start();
     expect(own.setSuspended).toHaveBeenLastCalledWith(f.controls.probe, true);
     expect(nested.setSuspended).toHaveBeenLastCalledWith(
       f.controls.probe,
       true
     );
     expect(other.setSuspended).not.toHaveBeenCalled();
+    // Closing the editor mid-gesture ends it and releases the suspension.
     f.inspector.opened = false;
     f.frame();
+    expect(f.controls.isDragging).toBe(false);
     expect(own.setSuspended).toHaveBeenLastCalledWith(f.controls.probe, false);
     expect(nested.setSuspended).toHaveBeenLastCalledWith(
       f.controls.probe,
       false
     );
+    // Reopening with the entity still selected does not suspend again.
     f.inspector.opened = true;
     f.frame();
+    expect(own.setSuspended).toHaveBeenLastCalledWith(f.controls.probe, false);
+    // A gesture ended by detach (a new selection) releases it as well.
+    f.start();
     expect(own.setSuspended).toHaveBeenLastCalledWith(f.controls.probe, true);
     f.controls.detach();
     expect(own.setSuspended).toHaveBeenLastCalledWith(f.controls.probe, false);
@@ -1406,6 +1417,47 @@ function arcSeparation(arcTris, otherTris, arcAbove) {
   }
   return { min, columns };
 }
+
+describe('terrain flattening of the selection', () => {
+  // The selection keeps flattening the terrain around it; only a live gesture
+  // must sample terrain the item did not flatten itself. The build that
+  // suspended on attach left a selected street un-flattened for as long as it
+  // stayed selected (PR 2007 QA issue 3).
+  it('is suspended only for the duration of a gesture', () => {
+    const f = fixture();
+    f.surface(0);
+    const suspend = vi.spyOn(f.controls.probe, 'setFlatteningSuspended');
+    f.attach();
+    const calls = () => suspend.mock.calls.map(([v]) => v);
+    expect(calls()).not.toContain(true);
+    // Idle probing while selected never suspends either.
+    f.controls._refreshSupport();
+    expect(calls()).not.toContain(true);
+
+    f.start();
+    expect(suspend).toHaveBeenLastCalledWith(true);
+    f.pointer('pointermove', new THREE.Vector3(0.2, 0, 0));
+    f.frame();
+    expect(calls().at(-1)).toBe(true);
+    f.pointer('pointerup', new THREE.Vector3(0.3, 0, 0));
+    f.frame();
+    expect(f.controls.isDragging).toBe(false);
+    expect(suspend).toHaveBeenLastCalledWith(false);
+    expect(f.commits).toHaveLength(1);
+  });
+
+  it('is restored on a cancelled gesture too', () => {
+    const f = fixture();
+    f.surface(0);
+    const suspend = vi.spyOn(f.controls.probe, 'setFlatteningSuspended');
+    f.attach();
+    f.start();
+    expect(suspend).toHaveBeenLastCalledWith(true);
+    f.controls.endGesture('escape');
+    expect(suspend).toHaveBeenLastCalledWith(false);
+    expect(f.commits).toHaveLength(0);
+  });
+});
 
 describe('the flattened arc on screen', () => {
   const BASE = 5;

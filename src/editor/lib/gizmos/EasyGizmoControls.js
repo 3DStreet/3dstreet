@@ -1061,6 +1061,11 @@ class EasyGizmoControls extends GizmoPointerControls {
       }
     }
     this.isDragging = true;
+    // Only now: placement must not sample terrain the dragged item flattened
+    // itself, but a merely selected street keeps its flattening (the tiles
+    // regenerate once suspension changes, and the probe holds tile support
+    // until they have). Released in endGesture.
+    this.probe.setFlatteningSuspended(true);
     this.highlight(axis);
     this.dispatchEvent(this.mouseDownEvent);
     this.dispatchEvent(this.changeEvent);
@@ -1707,7 +1712,6 @@ class EasyGizmoControls extends GizmoPointerControls {
       this.probe.setFlatteningSuspended(false);
     } else if (!this._wasOpen && open && this.el) {
       this._addListeners();
-      this.probe.setFlatteningSuspended(true);
     }
     this._wasOpen = open;
   }
@@ -1780,7 +1784,10 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   _refreshSupport() {
-    this.probe.setFlatteningSuspended(this._inspectorOpen());
+    // Suspension is a property of the GESTURE, not of the selection: a
+    // selected street keeps flattening the terrain around it until a drag
+    // begins (see _onPointerDown) and gets it back the moment the drag ends.
+    this.probe.setFlatteningSuspended(this.isDragging && this._inspectorOpen());
     if (!this.object || !this._inspectorOpen()) return;
     this._updateBase();
     const baseY = this.currentBaseY();
@@ -2821,6 +2828,9 @@ class EasyGizmoControls extends GizmoPointerControls {
     const landing = this._landingPress;
 
     this.isDragging = false;
+    // The selection's own flattening comes back on every exit, commit or
+    // cancel: the terrain re-flattens around wherever the item ended up.
+    this.probe.setFlatteningSuspended(false);
     this.dragSnapshot = null;
     this.dragEl = null;
     this.dragObject = null;

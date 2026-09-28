@@ -49,11 +49,17 @@ Street height uses its road reference: managed streets transform the existing
 material-depth offset above their dirt origin; legacy streets and standalone
 segments use their origin. Other items retain bounding-box-base alignment.
 
-Easy mode temporarily suspends the selected subtree's terrain flatten volumes
+A gesture temporarily suspends the dragged subtree's terrain flatten volumes
 without changing serialized settings. Terrain is sampled after the selected
-shapes are removed and tile regeneration finishes. This avoids sampling terrain
-modified by the item being placed. Detach, disposal and editor close release the
-runtime suspension; unrelated flatten volumes remain active.
+shapes are removed and tile regeneration finishes; until then the probe holds
+tile support, so the first frames of a drag hold height rather than reading the
+item's own plateau. This avoids sampling terrain modified by the item being
+placed. The suspension lasts exactly as long as the gesture: a street that is
+merely selected keeps flattening the terrain around it (idle probes and landing
+targets read the flattened terrain, so a flattened street reads as supported),
+and every gesture exit, commit or cancel, restores it so the terrain
+re-flattens around wherever the item ended up. Detach, disposal and editor close
+release it too; unrelated flatten volumes remain active.
 
 ## Pointer ownership
 
