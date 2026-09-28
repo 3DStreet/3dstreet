@@ -51,10 +51,10 @@ curved street path. That placement identifies the clone; a detach leaves a
 
 ### Why holes are keyed by placement, not by slot index
 
-The rule a user can hold in their head: *the generator stops placing an
+The rule a user can hold in their head: _the generator stops placing an
 object at that spot; if its layout later changes so that nothing lands there
 any more, the spot is forgotten — every clone comes back and the detached
-object stays as your own.* Concretely:
+object stays as your own._ Concretely:
 
 - **Unrelated edits keep the hole:** changing models, facing, direction or
   colors regenerates the same placements, so the hole stays.
@@ -69,7 +69,7 @@ object stays as your own.* Concretely:
   sit near one of them. A spacing that still lands on the spot keeps it a
   hole.
 - **Nothing ever goes missing somewhere else.** An index-keyed hole would
-  instead follow the *n*-th clone of the new layout: one clone would vanish at
+  instead follow the _n_-th clone of the new layout: one clone would vanish at
   a new place while a regenerated one appeared on top of the detached object.
 
 Each hole is spent by the first clone that lands on it in a regeneration, so
@@ -79,22 +79,46 @@ spot) need two holes to both be detached; `skip` therefore keeps duplicate
 keys. `skip` entries that are not `"x z"` placements (for instance an index
 left by a pre-release build) are ignored, never mistaken for a hole.
 
-## Triggers
+## Triggers: any edit detaches
+
+A generated clone carries **no `data-no-transform`** marker (surfaces such as
+striping, rail and grass planes keep it). It is an editable object whose
+first edit detaches it, and that rule lives in one place: `routeCloneEdit`
+(`src/editor/lib/detachClone.js`), called by `Inspector.execute` before a
+command is built, so every door behaves the same without knowing about
+clones:
+
+| The user…                                         | Command in     | Becomes                                              |
+| ------------------------------------------------- | -------------- | ---------------------------------------------------- |
+| edits a Transform field, nudges with the keyboard | `entityupdate` | `detachclone` carrying the merged pose               |
+| picks another model in the dropdown               | `entityupdate` | `detachclone` with the new mixin                     |
+| changes any other component in the panel          | `entityupdate` | `detachclone` with that component on the new entity  |
+| presses Delete                                    | `entityremove` | `detachclone { remove: true }`: the spot stays empty |
+| presses Duplicate                                 | `entityclone`  | `entitycreate` of a plain copy; the clone stays      |
+| asks the AI to update the entity                  | `entityupdate` | same as the panel                                    |
+
+Each is one undo step and shows the toast. The panel's number fields scrub
+with a command per pointer move; the first one detaches the clone and the
+element disappears, so `DetachCloneCommand` remembers clone → plain entity
+(`rememberDetached`) and the router re-aims later commands still holding the
+removed clone at its replacement. Rename stays read-only on a clone (a name
+would not persist); the plain entity renames like any other.
+
+The doors below are the ones that do not go through a plain command:
 
 - **Drag-to-detach (primary).** The viewport gizmo (`src/editor/lib/viewport.js`)
-  attaches to a detachable clone — the one `data-no-transform` entity it
-  accepts — and the action bar's translate/rotate buttons stay lit for it. The
-  clone moves live during the drag, but no per-frame `entityupdate` is
-  recorded against it; on the gizmo's `mouseUp` the drag is committed as a
-  single `detachclone` with the dragged pose, so one Cmd-Z restores the clone
-  to its slot. Afterwards the sidebar shows a normal object panel with the
-  "Detached Model" layer name — that is how the user learns what happened
-  (same as Figma's detached instance).
+  attaches to a clone like any object. The clone moves live during the drag,
+  but no per-frame `entityupdate` is recorded against it (re-attaching the
+  gizmo to a new object mid-drag would break the drag); on the gizmo's
+  `mouseUp` the drag is committed as a single `detachclone` with the dragged
+  pose, so one Cmd-Z restores the clone to its slot.
 - **Toast.** `DetachCloneCommand.execute` posts a `STREET.notify` success
   toast saying the object left its generator and that Undo puts it back, so an
   accidental nudge is explained. Fires on redo and on the AI tool too.
-- **Detach button** on the autocreated sidebar (`Sidebar.jsx`, next to "Edit
-  Clone Settings"), for detaching without moving and for hard-to-grab objects.
+- **Detach pill** in the clone header (`CloneSidebarHeader.jsx`: the street's
+  cross-section strip with the clone's segment highlighted, "Placed by
+  <segment>" with an "Edit clone settings" pill, and Detach beside it), for
+  detaching without moving and for hard-to-grab objects.
 - **AI tool `detachClone`** (`DetachCloneCommand.llmTool`, picked up by the
   LLM registry like every command with that static). Generated clones have no
   id and are `autocreated`, so they are absent from the scene state the model
@@ -105,9 +129,9 @@ left by a pre-release build) are ignored, never mistaken for a hole.
   detachable generators or the generator's live slots so the model can
   correct itself (`resolveDetachToolArgs` in `detachClone.js`).
 
-`isDetachableClone(el)` is the single predicate both triggers and the UI gating
-use: an `autocreated` entity stamped with a slot index and a placement key
-whose parent still carries the named generator. Clones from surface generators (striping, rail,
+`isDetachableClone(el)` is the single predicate the router, the gizmo and
+the sidebar use: an `autocreated` entity stamped with a slot index and a
+placement key whose parent still carries the named generator. Clones from surface generators (striping, rail,
 grass) and clones created before slots existed (no stamp) are not detachable;
 Convert to Shapes remains the bulk path.
 

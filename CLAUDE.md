@@ -70,8 +70,10 @@ public/
 **Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones).
 Clones, stencils and pedestrians are placed in straight space and numbered in
 creation order: a generator's `skip` array holds `"x z"` placement holes for
-**per-object detach** (#2011; drag a clone or press Detach to turn it into a
-plain `Detached Model` entity). Read
+**per-object detach** (#2011): a clone carries no `data-no-transform`, and its
+first edit — gizmo drag, transform field, model change, Delete — detaches it
+into a plain `Detached Model` entity via the command-layer router
+`routeCloneEdit`. Read
 [docs/per-object-detach.md](docs/per-object-detach.md) before changing clone
 placement or creation order, seeded draws, `autocreated` handling or the
 gizmo's no-transform gating.

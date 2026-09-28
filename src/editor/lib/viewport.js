@@ -931,12 +931,12 @@ export function Viewport(inspector) {
   function attachControlsForSelection() {
     detachAllTransformControls();
     const el = inspector.selectedEntity;
-    // A detachable generated clone is the one no-transform entity that gets
-    // the stock gizmo: dragging it detaches it from its generator (#2011).
+    // (A generated street clone carries no no-transform marker: it gets
+    // the stock gizmo and a drag detaches it, #2011 — see objectChange.)
     if (
       !el ||
       !inspector.cursor.isPlaying ||
-      (el.hasAttribute('data-no-transform') && !isDetachableClone(el))
+      el.hasAttribute('data-no-transform')
     ) {
       return;
     }

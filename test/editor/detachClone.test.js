@@ -8,7 +8,9 @@ import {
   isDetachableClone,
   listCloneSlots,
   poseFromObject3D,
-  resolveDetachToolArgs
+  rememberDetached,
+  resolveDetachToolArgs,
+  routeCloneEdit
 } from '../../src/editor/lib/detachClone.js';
 
 // A segment element with a live generator component (the shape
@@ -41,7 +43,6 @@ function makeClone(
 ) {
   const clone = document.createElement('a-entity');
   if (autocreated) clone.classList.add('autocreated');
-  clone.setAttribute('data-no-transform', '');
   clone.setAttribute('mixin', mixin);
   clone.setAttribute('data-parent-component', componentName);
   if (index !== null) clone.setAttribute('data-clone-index', index);
@@ -250,6 +251,163 @@ describe('detachClone (#2011)', () => {
       const segment = makeSegment();
       const plain = makeClone(segment, { autocreated: false });
       expect(() => buildDetachCommands(plain)).toThrow(/not a detachable/);
+    });
+  });
+
+  describe('buildDetachCommands extras', () => {
+    it('remove: leaves the hole and creates nothing', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment, { index: 1, key: '0 20' });
+      const { commands } = buildDetachCommands(clone, {}, { remove: true });
+      expect(commands).toHaveLength(1);
+      expect(commands[0][1].value).toEqual(['0 20']);
+    });
+
+    it('carries a mixin swap and other component edits into the create', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const { commands } = buildDetachCommands(
+        clone,
+        {},
+        { mixin: 'suv-rig', components: { visible: false } }
+      );
+      const def = commands[1][1];
+      expect(def.mixin).toBe('suv-rig');
+      expect(def['data-layer-name']).toBe(DETACHED_LAYER_PREFIX + 'suv-rig');
+      expect(def.components.visible).toBe(false);
+      expect(def.components.position).toBe('1.5 0 -12');
+    });
+  });
+
+  // The command-layer rule: every door's edit on a clone becomes a detach.
+  describe('routeCloneEdit', () => {
+    it('leaves non-clone targets and unknown commands alone', () => {
+      const segment = makeSegment();
+      const plain = makeClone(segment, { autocreated: false });
+      expect(
+        routeCloneEdit('entityupdate', {
+          entity: plain,
+          component: 'position',
+          value: '1 2 3'
+        })
+      ).toBeNull();
+      expect(routeCloneEdit('entityupdate', {})).toBeNull();
+      expect(routeCloneEdit('entityupdate', null)).toBeNull();
+      const clone = makeClone(segment);
+      expect(routeCloneEdit('entityreparent', { entity: clone })).toBeNull();
+    });
+
+    it('turns a transform field edit into a detach at the merged pose', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      expect(
+        routeCloneEdit('entityupdate', {
+          entity: clone,
+          component: 'position',
+          property: 'x',
+          value: 2
+        })
+      ).toEqual({
+        cmdName: 'detachclone',
+        payload: { entity: clone, pose: { position: { x: 2, y: 0, z: -12 } } }
+      });
+      expect(
+        routeCloneEdit('entityupdate', {
+          entity: clone,
+          component: 'rotation',
+          value: '0 45 0'
+        }).payload.pose
+      ).toEqual({ rotation: '0 45 0' });
+    });
+
+    it('turns a model change into a detach with the new mixin', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      expect(
+        routeCloneEdit('entityupdate', {
+          entity: clone,
+          component: 'mixin',
+          value: 'suv-rig'
+        })
+      ).toEqual({
+        cmdName: 'detachclone',
+        payload: { entity: clone, pose: {}, mixin: 'suv-rig' }
+      });
+    });
+
+    it('carries any other component edit onto the detached entity', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      expect(
+        routeCloneEdit('entityupdate', {
+          entity: clone,
+          component: 'visible',
+          value: false
+        }).payload.components
+      ).toEqual({ visible: false });
+      expect(
+        routeCloneEdit('entityupdate', {
+          entity: clone,
+          component: 'shadow',
+          property: 'cast',
+          value: false
+        }).payload.components
+      ).toEqual({ shadow: { cast: false } });
+    });
+
+    it('turns delete into a hole and duplicate into a plain copy', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      // entityremove / entityclone take the entity itself as payload
+      expect(routeCloneEdit('entityremove', clone)).toEqual({
+        cmdName: 'detachclone',
+        payload: { entity: clone, remove: true }
+      });
+      const copy = routeCloneEdit('entityclone', clone);
+      expect(copy.cmdName).toBe('entitycreate');
+      expect(copy.payload.mixin).toBe('sedan-rig');
+      expect(copy.payload.parentEl).toBe(segment);
+      expect(copy.payload.components.position).toBe('1.5 0 -12');
+    });
+
+    it('re-aims an edit at a clone that was already detached', () => {
+      const segment = makeSegment();
+      document.body.appendChild(segment);
+      const clone = makeClone(segment);
+      const replacement = makeClone(segment, { autocreated: false, key: null });
+      rememberDetached(clone, replacement);
+      // still in the DOM: it is a live clone, so the edit detaches it
+      expect(
+        routeCloneEdit('entityupdate', {
+          entity: clone,
+          component: 'position',
+          value: '0 0 0'
+        }).cmdName
+      ).toBe('detachclone');
+      clone.remove();
+      expect(
+        routeCloneEdit('entityupdate', {
+          entity: clone,
+          component: 'position',
+          value: '0 0 0'
+        })
+      ).toEqual({
+        cmdName: 'entityupdate',
+        payload: { entity: replacement, component: 'position', value: '0 0 0' }
+      });
+      expect(routeCloneEdit('entityremove', clone)).toEqual({
+        cmdName: 'entityremove',
+        payload: replacement
+      });
+      replacement.remove();
+      expect(
+        routeCloneEdit('entityupdate', {
+          entity: clone,
+          component: 'position',
+          value: '0 0 0'
+        })
+      ).toBeNull();
+      segment.remove();
     });
   });
 

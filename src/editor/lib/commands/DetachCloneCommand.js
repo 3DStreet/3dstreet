@@ -2,6 +2,8 @@ import { MultiCommand } from './MultiCommand.js';
 import {
   buildDetachCommands,
   findCloneAtSlot,
+  forgetDetached,
+  rememberDetached,
   resolveDetachToolArgs
 } from '../detachClone.js';
 
@@ -13,8 +15,11 @@ import {
  * the plain entity and restores the slot, so the generator regenerates the
  * clone exactly where it was; redo replays both.
  *
- * Payload: `{ entity, pose? }` where `entity` is the autocreated clone and
- * `pose` optionally overrides position/rotation/scale ("x y z" strings).
+ * Payload: `{ entity, pose?, mixin?, components?, remove? }` where `entity`
+ * is the autocreated clone, `pose` optionally overrides position/rotation/
+ * scale ("x y z" strings or {x, y, z}), `mixin` / `components` carry the
+ * edit that triggered the detach (see routeCloneEdit), and `remove: true`
+ * leaves the hole without creating anything — delete on a clone.
  *
  * Composed from the existing entityupdate + entitycreate commands rather
  * than reimplementing either, so the detached entity is selected on create
@@ -68,32 +73,47 @@ export class DetachCloneCommand extends MultiCommand {
   }
 
   constructor(editor, payload) {
-    const { slot, commands } = buildDetachCommands(
-      payload.entity,
-      payload.pose
+    const cloneEl = payload.entity;
+    const { slot, commands } = buildDetachCommands(cloneEl, payload.pose, {
+      mixin: payload.mixin,
+      components: payload.components,
+      remove: payload.remove
+    });
+    // The create step hands back the plain entity: remember it so an edit
+    // still aimed at the removed clone element (a scrub in progress) is
+    // re-aimed at its replacement by routeCloneEdit.
+    super(editor, commands, (createdEl) =>
+      rememberDetached(cloneEl, createdEl)
     );
-    super(editor, commands);
     this.type = 'detachclone';
-    this.name = 'Detach Model';
+    this.remove = !!payload.remove;
+    this.name = this.remove ? 'Remove Model' : 'Detach Model';
     this.slot = slot;
+    this.cloneEl = cloneEl;
   }
 
   execute() {
     const result = super.execute();
-    // The drag trigger gives no other feedback than the sidebar's layer
-    // name, and a nudge on a clone is easy to do by accident: say what just
-    // happened and that Undo reverses it. Plain text like the other
-    // STREET.notify toasts (entity.js, clipboard.js); redo repeats it, which
-    // is accurate. Reached through the global: notify is an A-Frame
-    // component and unit tests have no scene.
+    if (this.remove) {
+      // The removed clone was the selection; land on its segment.
+      this.editor.selectEntity(this.slot.segmentEl);
+    }
+    // Every door is silent otherwise (a drag, a number field, Delete): say
+    // what just happened and that Undo reverses it. Plain text like the
+    // other STREET.notify toasts (entity.js, clipboard.js); redo repeats
+    // it, which is accurate. Reached through the global: notify is an
+    // A-Frame component and unit tests have no scene.
     globalThis.STREET?.notify?.successMessage?.(
-      'Detached from the street generator: this object is now a plain model you can move, rotate, duplicate or delete. Undo puts it back.'
+      this.remove
+        ? 'Removed from the street generator: that spot stays empty. Undo puts it back.'
+        : 'Detached from the street generator: this object is now a plain model you can move, rotate, duplicate or delete. Undo puts it back.'
     );
     return result;
   }
 
   undo() {
     super.undo();
+    forgetDetached(this.cloneEl);
     // The create step's undo cleared the selection; hand it to the clone the
     // generator just put back (same layout, so the same slot index) so the
     // user lands where they started.

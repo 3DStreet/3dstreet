@@ -8,7 +8,7 @@ import Events from '../../lib/Events';
 import Mixins from '../widgets/Mixins';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { FormattedMessage, useIntl } from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 import { ArrowLeftHookIcon } from '@shared/icons';
 import IntersectionSidebar from './IntersectionSidebar';
 import ManagedIntersectionSidebar from './ManagedIntersectionSidebar';
@@ -22,29 +22,7 @@ import UserLayersSidebar from './UserLayersSidebar';
 import PanelFooter from './PanelFooter';
 import AssetInfoPanel from './AssetInfoPanel';
 import EntityLabel from '../scenegraph/EntityLabel';
-// Per-object detach (#2011), offered next to "Edit Clone Settings" on a
-// generated clone whose generator supports slots. Function component so it
-// can read intl for the tooltip (Sidebar is a class without intl injected).
-const DetachCloneButton = ({ onClick }) => {
-  const intl = useIntl();
-  return (
-    <Button
-      variant={'toolbtn'}
-      onClick={onClick}
-      title={intl.formatMessage({
-        id: 'sidebar.detachCloneTitle',
-        defaultMessage:
-          'Make this one object editable on its own: it leaves the generator and becomes a plain model you can move, rotate, duplicate or delete. Dragging it in the viewport does the same.'
-      })}
-    >
-      <FormattedMessage id="sidebar.detachClone" defaultMessage="Detach" />
-    </Button>
-  );
-};
-
-DetachCloneButton.propTypes = {
-  onClick: PropTypes.func.isRequired
-};
+import CloneSidebarHeader from './CloneSidebarHeader';
 
 export default class Sidebar extends React.Component {
   static propTypes = {
@@ -65,14 +43,6 @@ export default class Sidebar extends React.Component {
 
   selectParentEntity = (entity) => {
     AFRAME.INSPECTOR.selectEntity(entity.parentElement);
-  };
-
-  // Per-object detach (#2011): the clone's slot is left empty in its
-  // generator and a plain, freely editable entity takes its place (and the
-  // selection). Same result as dragging the clone in the viewport, for
-  // detaching without moving or for hard-to-grab objects.
-  detachClone = (entity) => {
-    AFRAME.INSPECTOR.execute('detachclone', { entity });
   };
 
   onEntityUpdate = (detail) => {
@@ -174,57 +144,52 @@ export default class Sidebar extends React.Component {
           entity.id !== 'street-container' &&
           !hasOwnHeader ? (
             <>
-              {entity.classList.contains('autocreated') && (
-                <div className="sidepanelContent">
-                  <div className="flex items-center gap-2">
-                    <FormattedMessage
-                      id="sidebar.autocreatedEntity"
-                      defaultMessage="Autocreated Entity"
-                    />
-                  </div>
-                  {this.hasParentComponent(entity) && (
-                    <>
-                      <div className="collapsible-content">
-                        <div className="propertyRow">
-                          <label className="text">
-                            <FormattedMessage
-                              id="sidebar.managedBy"
-                              defaultMessage="Managed by"
-                            />
-                          </label>
-                          <input
-                            className="string"
-                            type="text"
-                            value={this.getParentComponentName(entity)}
-                            readOnly
-                          />
-                        </div>
-                      </div>
-                      <div id="sidebar-buttons">
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => this.selectParentEntity(entity)}
-                        >
-                          <ArrowLeftHookIcon />{' '}
+              {/* A generated street clone (#2011) gets the segment-panel
+                  treatment and, below, a normal object panel: any edit
+                  detaches it. Other autocreated entities (striping planes,
+                  labels…) keep the read-only "managed by" row. */}
+              {isDetachableClone(entity) ? (
+                <CloneSidebarHeader entity={entity} />
+              ) : (
+                entity.classList.contains('autocreated') &&
+                this.hasParentComponent(entity) && (
+                  <div className="sidepanelContent">
+                    <div className="collapsible-content">
+                      <div className="propertyRow">
+                        <label className="text">
                           <FormattedMessage
-                            id="sidebar.editCloneSettings"
-                            defaultMessage="Edit Clone Settings"
+                            id="sidebar.managedBy"
+                            defaultMessage="Managed by"
                           />
-                        </Button>
-                        {isDetachableClone(entity) && (
-                          <DetachCloneButton
-                            onClick={() => this.detachClone(entity)}
-                          />
-                        )}
+                        </label>
+                        <input
+                          className="string"
+                          type="text"
+                          value={this.getParentComponentName(entity)}
+                          readOnly
+                        />
                       </div>
-                    </>
-                  )}
-                </div>
+                    </div>
+                    <div id="sidebar-buttons">
+                      <Button
+                        variant={'toolbtn'}
+                        onClick={() => this.selectParentEntity(entity)}
+                      >
+                        <ArrowLeftHookIcon />{' '}
+                        <FormattedMessage
+                          id="sidebar.editSettings"
+                          defaultMessage="Edit Settings"
+                        />
+                      </Button>
+                    </div>
+                  </div>
+                )
               )}
               <div className="sidepanelContent">
                 <AssetInfoPanel entity={entity} />
                 {!!entity.mixinEls.length &&
-                  !entity.classList.contains('autocreated') && (
+                  (!entity.classList.contains('autocreated') ||
+                    isDetachableClone(entity)) && (
                     <div className="details">
                       <Mixins entity={entity} />
                     </div>

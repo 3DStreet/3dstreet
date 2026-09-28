@@ -197,8 +197,11 @@ function vec3String(value) {
  * user dragged the clone to — and defaults to the clone's current pose.
  * `id` is left for the command to assign.
  */
-export function buildDetachedDefinition(cloneEl, pose = {}) {
-  const mixin = cloneEl.getAttribute('mixin') || '';
+export function buildDetachedDefinition(cloneEl, pose = {}, extra = {}) {
+  const mixin =
+    extra.mixin !== undefined
+      ? extra.mixin
+      : cloneEl.getAttribute('mixin') || '';
   const components = {};
   for (const name of POSE_COMPONENTS) {
     const value = vec3String(
@@ -217,6 +220,9 @@ export function buildDetachedDefinition(cloneEl, pose = {}) {
       : cloneEl.getAttribute(name);
     components[name] = value === null || value === undefined ? '' : value;
   }
+  // Any other edit that triggered the detach (a component the panel set)
+  // lands on the plain entity as part of the same create.
+  Object.assign(components, extra.components || {});
   const definition = {
     parentEl: cloneEl.parentElement,
     'data-layer-name': DETACHED_LAYER_PREFIX + mixin,
@@ -224,6 +230,106 @@ export function buildDetachedDefinition(cloneEl, pose = {}) {
   };
   if (mixin) definition.mixin = mixin;
   return definition;
+}
+
+// The plain entity each detached clone element became, so an edit that keeps
+// targeting the (now removed) clone — the properties panel's number fields
+// scrub with a command per pointer move, and the first one detached the
+// clone — lands on its replacement instead of no-oping.
+const detachedFor = new WeakMap();
+
+export function rememberDetached(cloneEl, detachedEl) {
+  if (cloneEl && detachedEl) detachedFor.set(cloneEl, detachedEl);
+}
+
+export function forgetDetached(cloneEl) {
+  if (cloneEl) detachedFor.delete(cloneEl);
+}
+
+const POSE_COMPONENT_SET = new Set(POSE_COMPONENTS);
+
+// One axis of a vec3 edit merged into the clone's current value (A-Frame
+// hands back a {x, y, z} object; a plain DOM element a string).
+function mergeAxis(cloneEl, component, property, value) {
+  const raw = cloneEl.getAttribute(component);
+  let current = { x: 0, y: 0, z: 0 };
+  if (raw && typeof raw === 'object') {
+    current = { x: raw.x, y: raw.y, z: raw.z };
+  } else if (typeof raw === 'string') {
+    const [x, y, z] = raw.trim().split(/\s+/).map(Number);
+    current = { x: x || 0, y: y || 0, z: z || 0 };
+  }
+  return { ...current, [property]: Number(value) };
+}
+
+/**
+ * The command-layer rule that makes a generated clone an editable object
+ * whose first edit detaches it (#2011). Inspector.execute calls this before
+ * building a command; a non-null result replaces the command name and
+ * payload. Every door goes through here — properties panel, model dropdown,
+ * keyboard, layers panel, AI tools — so none of them needs to know about
+ * clones. The viewport gizmo is the one exception: it defers its commit to
+ * mouseUp and calls detachclone itself, because re-attaching the gizmo to a
+ * new object mid-drag would break the drag.
+ *
+ *   entityupdate  → detachclone carrying the edit (pose, mixin or any
+ *                   other component) so it is one undo step
+ *   entityremove  → detachclone { remove: true }: the spot stays empty
+ *   entityclone   → entitycreate of a plain copy; the clone stays generated
+ *
+ * An update aimed at a clone element that was already detached (removed
+ * from the DOM by its generator) is re-aimed at the plain entity it became.
+ */
+export function routeCloneEdit(cmdName, payload) {
+  // entityremove / entityclone take the entity itself as the payload.
+  const entity = payload?.nodeType === 1 ? payload : payload?.entity;
+  if (!entity) return null;
+
+  // The generator removed the clone element (it was detached): re-aim.
+  const replacement = detachedFor.get(entity);
+  if (replacement && !entity.parentElement) {
+    if (!replacement.isConnected) return null;
+    if (cmdName === 'entityupdate') {
+      return { cmdName, payload: { ...payload, entity: replacement } };
+    }
+    if (cmdName === 'entityremove' || cmdName === 'entityclone') {
+      return { cmdName, payload: replacement };
+    }
+    return null;
+  }
+
+  if (!isDetachableClone(entity)) return null;
+
+  if (cmdName === 'entityupdate') {
+    const { component, property, value } = payload;
+    const pose = {};
+    const extra = {};
+    if (POSE_COMPONENT_SET.has(component)) {
+      pose[component] = property
+        ? mergeAxis(entity, component, property, value)
+        : value;
+    } else if (component === 'mixin') {
+      extra.mixin = property ? undefined : String(value ?? '');
+      if (extra.mixin === undefined) return null;
+    } else if (component) {
+      extra.components = {
+        [component]: property ? { [property]: value } : value
+      };
+    } else {
+      return null;
+    }
+    return { cmdName: 'detachclone', payload: { entity, pose, ...extra } };
+  }
+  if (cmdName === 'entityremove') {
+    return { cmdName: 'detachclone', payload: { entity, remove: true } };
+  }
+  if (cmdName === 'entityclone') {
+    return {
+      cmdName: 'entitycreate',
+      payload: buildDetachedDefinition(entity)
+    };
+  }
+  return null;
 }
 
 /**
@@ -235,7 +341,7 @@ export function buildDetachedDefinition(cloneEl, pose = {}) {
  * back exactly where it was. Throws when the entity is not a detachable
  * clone.
  */
-export function buildDetachCommands(cloneEl, pose = {}) {
+export function buildDetachCommands(cloneEl, pose = {}, extra = {}) {
   const slot = getCloneSlot(cloneEl);
   if (!slot) {
     throw new Error('Entity is not a detachable generated clone');
@@ -245,24 +351,28 @@ export function buildDetachCommands(cloneEl, pose = {}) {
     segmentEl.getAttribute(componentName)?.skip ??
     segmentEl.components[componentName]?.data?.skip ??
     [];
-  return {
-    slot,
-    commands: [
-      [
-        'entityupdate',
-        {
-          entity: segmentEl,
-          component: componentName,
-          property: 'skip',
-          value: withSkippedHole(currentSkip, key),
-          // The generator's segment is not what the user is editing: the
-          // create step below selects the detached entity.
-          noSelectEntity: true
-        }
-      ],
-      ['entitycreate', buildDetachedDefinition(cloneEl, pose)]
+  const commands = [
+    [
+      'entityupdate',
+      {
+        entity: segmentEl,
+        component: componentName,
+        property: 'skip',
+        value: withSkippedHole(currentSkip, key),
+        // The generator's segment is not what the user is editing: the
+        // create step below selects the detached entity.
+        noSelectEntity: true
+      }
     ]
-  };
+  ];
+  // remove: the hole alone — "delete this one object" leaves its spot empty.
+  if (!extra.remove) {
+    commands.push([
+      'entitycreate',
+      buildDetachedDefinition(cloneEl, pose, extra)
+    ]);
+  }
+  return { slot, commands };
 }
 
 /**

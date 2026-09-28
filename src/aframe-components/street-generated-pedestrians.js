@@ -174,7 +174,6 @@ AFRAME.registerComponent('street-generated-pedestrians', {
 
       // Add metadata
       pedestrian.classList.add('autocreated');
-      pedestrian.setAttribute('data-no-transform', '');
       pedestrian.setAttribute('data-layer-name', 'Cloned Pedestrian');
       pedestrian.setAttribute('data-parent-component', this.attrName);
       pedestrian.setAttribute(CLONE_INDEX_ATTR, slot.index);

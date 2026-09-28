@@ -998,9 +998,6 @@
   "compass.rotateRightAria": {
     "defaultMessage": "Rotate right 90 degrees"
   },
-  "componentsContainer.detachableCloneHint": {
-    "defaultMessage": "This object is placed by its generator. Drag it in the viewport or press Detach to edit it on its own."
-  },
   "componentsContainer.transformsDisabled": {
     "defaultMessage": "⚠️ Transformations disabled for this layer."
   },
@@ -2393,8 +2390,8 @@
   "shareModal.webShareUnsupported": {
     "defaultMessage": "Web Share API is not supported in this browser"
   },
-  "sidebar.autocreatedEntity": {
-    "defaultMessage": "Autocreated Entity"
+  "sidebar.cloneEditHint": {
+    "defaultMessage": "Editing this object detaches it from the generator. Undo puts it back."
   },
   "sidebar.detachClone": {
     "defaultMessage": "Detach"
@@ -2403,7 +2400,10 @@
     "defaultMessage": "Make this one object editable on its own: it leaves the generator and becomes a plain model you can move, rotate, duplicate or delete. Dragging it in the viewport does the same."
   },
   "sidebar.editCloneSettings": {
-    "defaultMessage": "Edit Clone Settings"
+    "defaultMessage": "Edit clone settings"
+  },
+  "sidebar.editSettings": {
+    "defaultMessage": "Edit Settings"
   },
   "sidebar.geoloc": {
     "defaultMessage": "GeoLoc"
@@ -2416,6 +2416,9 @@
   },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"
+  },
+  "sidebar.placedBy": {
+    "defaultMessage": "Placed by {segment}"
   },
   "sidebar.positionSwitchToGeoloc": {
     "defaultMessage": "Click to show geolocated position (lat/lon) instead."

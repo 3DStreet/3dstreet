@@ -195,7 +195,6 @@ AFRAME.registerComponent('street-generated-stencil', {
 
         // Add metadata
         clone.classList.add('autocreated');
-        clone.setAttribute('data-no-transform', '');
         clone.setAttribute('data-layer-name', `Cloned Model • ${stencilName}`);
         clone.setAttribute('data-parent-component', this.attrName);
         clone.setAttribute(CLONE_INDEX_ATTR, slot.index);

@@ -122,6 +122,11 @@ describe('street-generated-clones skip holes', () => {
           e.getAttribute('data-parent-component') === 'street-generated-clones'
       )
     ).toBe(true);
+    // An editable object whose first edit detaches it (#2011): no UI-only
+    // freeze marker.
+    expect(
+      comp.createdEntities.some((e) => e.hasAttribute('data-no-transform'))
+    ).toBe(false);
   });
 
   it('leaves a hole empty and keeps the other clones in place', async () => {
