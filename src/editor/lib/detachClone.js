@@ -267,20 +267,32 @@ function mergeAxis(cloneEl, component, property, value) {
  * whose first edit detaches it (#2011). Inspector.execute calls this before
  * building a command; a non-null result replaces the command name and
  * payload. Every door goes through here — properties panel, model dropdown,
- * keyboard, layers panel, AI tools — so none of them needs to know about
- * clones. The viewport gizmo is the one exception: it defers its commit to
- * mouseUp and calls detachclone itself, because re-attaching the gizmo to a
- * new object mid-drag would break the drag.
+ * keyboard, layers panel, AI tools, the easy gizmo's one-shot commit — so
+ * none of them needs to know about clones. The stock TransformControls gizmo
+ * is the one exception: it defers its commit to mouseUp and calls detachclone
+ * itself, because it would otherwise record a command per drag frame and
+ * re-attaching the gizmo to a new object mid-drag would break the drag.
  *
  *   entityupdate  → detachclone carrying the edit (pose, mixin or any
  *                   other component) so it is one undo step
  *   entityremove  → detachclone { remove: true }: the spot stays empty
  *   entityclone   → entitycreate of a plain copy; the clone stays generated
+ *   multi         → each member routed as above; every member aimed at the
+ *                   same clone folds into ONE detachclone (a position and a
+ *                   rotation tuple from one gizmo release are one detach at
+ *                   the merged pose, not two). A batch that folds to a
+ *                   single command is returned as that command, so it keeps
+ *                   its own name and toast. MultiCommand builds its members
+ *                   directly, not through Inspector.execute, so a batch not
+ *                   unwrapped here would bypass the rule entirely — which is
+ *                   how the easy gizmo's drag silently moved a clone in place.
  *
  * An update aimed at a clone element that was already detached (removed
  * from the DOM by its generator) is re-aimed at the plain entity it became.
  */
 export function routeCloneEdit(cmdName, payload) {
+  if (cmdName === 'multi') return routeMultiCloneEdit(payload);
+
   // entityremove / entityclone take the entity itself as the payload.
   const entity = payload?.nodeType === 1 ? payload : payload?.entity;
   if (!entity) return null;
@@ -330,6 +342,68 @@ export function routeCloneEdit(cmdName, payload) {
     };
   }
   return null;
+}
+
+/**
+ * The `multi` branch of routeCloneEdit: `tuples` is MultiCommand's list of
+ * `[type, payload, callback?]`. Returns null when no member needed routing
+ * (the batch runs untouched), otherwise the routed batch — or, when it
+ * folds to one command, that command on its own.
+ */
+function routeMultiCloneEdit(tuples) {
+  if (!Array.isArray(tuples)) return null;
+  const out = [];
+  // clone element → index in `out` of the detachclone tuple it folded into
+  const detachAt = new Map();
+  let routedAny = false;
+  for (const tuple of tuples) {
+    if (!Array.isArray(tuple)) {
+      out.push(tuple);
+      continue;
+    }
+    const [type, payload, ...rest] = tuple;
+    const routed = routeCloneEdit(type, payload);
+    if (!routed) {
+      out.push(tuple);
+      continue;
+    }
+    routedAny = true;
+    if (routed.cmdName !== 'detachclone') {
+      out.push([routed.cmdName, routed.payload, ...rest]);
+      continue;
+    }
+    const cloneEl = routed.payload.entity;
+    const at = detachAt.get(cloneEl);
+    if (at === undefined) {
+      detachAt.set(cloneEl, out.length);
+      out.push(['detachclone', routed.payload, ...rest]);
+    } else {
+      out[at][1] = mergeDetachPayload(out[at][1], routed.payload);
+    }
+  }
+  if (!routedAny) return null;
+  if (out.length === 1 && Array.isArray(out[0])) {
+    return { cmdName: out[0][0], payload: out[0][1] };
+  }
+  return { cmdName: 'multi', payload: out };
+}
+
+/** Two detachclone payloads for the same clone, later edits winning. */
+function mergeDetachPayload(a, b) {
+  const merged = { ...a, ...b };
+  if (a.pose || b.pose) merged.pose = { ...a.pose, ...b.pose };
+  if (a.components || b.components) {
+    merged.components = { ...a.components };
+    for (const [name, value] of Object.entries(b.components ?? {})) {
+      const prev = merged.components[name];
+      merged.components[name] =
+        prev && typeof prev === 'object' && value && typeof value === 'object'
+          ? { ...prev, ...value }
+          : value;
+    }
+  }
+  if (a.remove || b.remove) merged.remove = true;
+  return merged;
 }
 
 /**
