@@ -113,3 +113,23 @@ describe('snapToDefaultView', () => {
     expect(cam.position.y).toBeCloseTo(15, 6);
   });
 });
+
+// Reset Camera View (action bar + View menu). A Starting View with a
+// non-default fov applies that lens to the shared camera; deleting the
+// Starting View leaves the lens behind with nothing left to edit it, so the
+// reset is the way back to the default (#2043).
+describe('resetZoom', () => {
+  it('resets the lens to the default fov along with the pose', () => {
+    const { cam, c } = rig();
+    expect(cam.fov).toBe(PREVIOUS_SCENE_FOV);
+    c.resetZoom();
+    expect(cam.fov).toBe(DEFAULT_FOV_DEGREES);
+    expect(cam.position.x).toBeCloseTo(0, 6);
+    expect(cam.position.y).toBeCloseTo(15, 6);
+    expect(cam.position.z).toBeCloseTo(30, 6);
+    const fresh = cam.clone();
+    fresh.fov = DEFAULT_FOV_DEGREES;
+    fresh.updateProjectionMatrix();
+    expect(cam.projectionMatrix.equals(fresh.projectionMatrix)).toBe(true);
+  });
+});
