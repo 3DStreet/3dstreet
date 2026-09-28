@@ -67,7 +67,16 @@ public/
 - `street-segment` - Individual lane/segment (drive-lane, bike-lane, sidewalk, etc.)
 - `intersection` - 4-way intersections (no managed equivalent yet)
 
-**Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones)
+**Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones).
+Clones, stencils and pedestrians are placed in straight space and numbered in
+creation order: a generator's `skip` array holds `"x z"` placement holes for
+**per-object detach** (#2011): a clone carries no `data-no-transform`, and its
+first edit — gizmo drag, transform field, model change, Delete — detaches it
+into a plain `Detached Model` entity via the command-layer router
+`routeCloneEdit`. Read
+[docs/per-object-detach.md](docs/per-object-detach.md) before changing clone
+placement or creation order, seeded draws, `autocreated` handling or the
+gizmo's no-transform gating.
 
 **Streets and geospatial:** curved street paths, basemaps, OSM buildings and
 terrain flattening span components, pure utilities and workers. **Read
@@ -120,6 +129,20 @@ tool integration**, including callers outside `src/editor/`.
 **UI usage:** Add Layer Panel (cards) + Model Dropdown (properties panel) query mixins via `getGroupedMixinOptions()`
 
 **Global access:** `STREET.catalog` array
+
+**Loading (#2009):** the scene initializes async (`AFRAME_ASYNC` +
+`emitReady()` in `index.html`) and the splash gates only the app shell.
+Textures are lazy `<img data-src data-placeholder>` assets: read their URL
+with `getAssetImageSrc()` (`src/lazy-textures.js`), never `img.src`; never
+enumerate `a-assets img` on mount; every lazy image needs a placeholder
+color (or `transparent` for cutouts) shown until it arrives. The sky
+background shows a per-preset gradient (`src/sky-placeholder.js`) until its
+equirect image downloads. Models show a ghost box of their precomputed
+bounds (`npm run assets:bounds` → `src/model-bounds.json`; user assets carry
+`bounds` on their Firestore doc) until the GLB lands. Scene asset progress is tracked by the
+`asset-load-status` system and shown by non-blocking indicators in the scene
+graph. **Read [asset loading](docs/asset-loading.md) before changing scene
+init, `<street-assets>`, texture references or load indicators.**
 
 **Asset utilities:** https://github.com/3dstreet/3dstreet-assets-dist
 
@@ -178,9 +201,17 @@ to shared components, editor entry points and Firebase functions.
 
 **Test:** `npm test` (Mocha + Vitest), `npm run lint`, `npm run prettier`
 
+**Debug logging:** one global switch (`src/shared/utils/debug.js`): `?debug=true`
+on the URL, or `localStorage.setItem('3dstreet.debug', 'true')` to persist.
+Gate verbose per-area console output (navigation, batching, ...) on
+`isDebugEnabled()` / `debugLog()`; never add a per-feature debug flag.
+Warnings and errors for real problems stay ungated.
+
 **Firestore emulator tests:** `npm run test:rules` — local-only (boots the firestore + auth emulators via `firebase emulators:exec`, runs vitest against `test/rules/`). Covers security rules AND the lifecycle email send service (`sendLifecycleEmail`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules` or `public/functions/email/`. Requires JDK 21+ on `PATH` (emulator dependency; if `java -version` shows an older default, prefix with `JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"`).
 
 **Deploy:** `npm run deploy` or `npm run deploy:staging`
+
+**Releases:** CalVer (`YYYY.M.patch`) tags plus a `CHANGELOG.md` entry; the deployed build stamp (`+sha`) advances on its own. `CHANGELOG.md` is user-facing (newsletters link to it), so write entries for users, not developers. Process: [docs/releasing.md](docs/releasing.md).
 
 ## Key Patterns
 
@@ -192,7 +223,18 @@ to shared components, editor entry points and Firebase functions.
 **Visibility:** use `setAttribute('visible', ...)`, never raw `object3D.visible`
 (mesh batching).
 
-**URL Hash Schemes:** Streetmix URL, StreetPlan URL, Cloud UUID (`#scenes/...`), Managed Street JSON
+**Transparent pass & splats (#1732, #1754):** Spark draws every splat as one
+transparent, non-depth-writing mesh at the scene origin, so its place among
+other transparent surfaces is pinned by `renderOrder`, not left to three.js's
+origin-distance sort. Ordinary content at 0 draws first (depth-writing
+surfaces occlude splats per pixel), splats next, then translucent reference
+map layers and the overlay band from 1 up (placeholders, shape fills, gizmos).
+Blended glTF materials that are cutouts or mostly opaque get a depth write at
+load. Constants and helpers live in `src/tested/transparent-layering.js`;
+read its header before adding a transparent surface or a `renderOrder`.
+
+**URL Schemes:** Cloud scenes use path URLs (`/scenes/UUID`, server-visible for unfurls/SEO, #1970; legacy `#/scenes/` hash links load forever and self-upgrade via `history.replaceState`; helpers in `src/tested/scene-url-utils.js`). App-state deep links stay hash-based: Streetmix URL, StreetPlan URL, Managed Street JSON, `#asset:`, `#mcp`
+Because the app now runs at a nested path, every static asset reference must be root-absolute (`/ui_assets/...`, `/assets/...`); a relative path resolves to `/scenes/ui_assets/...` and 404s.
 
 **File Naming:** A-Frame: `kebab-case.js`, React: `PascalCase.js/jsx`, Styles: `.module.scss`
 

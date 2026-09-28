@@ -20,7 +20,10 @@ every polyline end (so meeting/crossing ways read as joined), floated
 `RIBBON_BASE_Y` above the raster ground with a small class-ordered height
 step so the higher class wins where two ribbons overlap. Unlit
 `MeshBasicMaterial`, one draw call per tile, frustum-culled by bounding
-sphere. Per-class tint + stacking order live in
+sphere; semitransparent (0.65 × the street-geo layer opacity) so the
+basemap's baked street-name labels stay readable beneath the ribbons,
+with a LessDepth depth test so the builder's same-height cap/joint
+overlaps don't double-blend. Per-class tint + stacking order live in
 `src/tested/osm-street-style.js` (`ribbonStyleForClass`).
 
 Why not the library's `MVTOverlay` (the first cut, reverted before merge):
@@ -57,24 +60,39 @@ means the paid plan; the code keeps the roadmap's LOD term.) The upgrade
 (`upgradeWayAt`) converts the clicked stretch — the centerline clipped by
 arc length to ±`UPGRADE_WINDOW_M` of the click; a single OSM way can run
 for kilometers — into real managed streets via the editor command stack
-(one undoable step per generate): the stretch **splits at junctions**
-where other ways cross or terminate on it (`junctionsAlongStretch` /
-`splitStretchAtJunctions` in `src/tested/osm-street-import.js`, ends
-inset by half the crossing width plus curb-return room), each piece
+(one undoable step per generate): the stretch **splits at CROSSING
+junctions only** (`junctionsAlongStretch` classifies each junction
+`crossing` vs `terminal` in `src/tested/osm-street-import.js`; a side
+road TERMINATING on the stretch leaves it continuous, and the stretch's
+own ends trim back to the carriageway edge of any road THEY terminate on
+via `trimStretchEndsAtWays` — so side streets butt against the through
+road instead of poking to its centerline, #2004 fix 2). Cut ends inset
+by half the crossing road's CARRIAGEWAY width (sidewalks excluded,
+`importedCarriagewayMeters`) plus 2 m curb-return room. Each piece
 becomes ONE **path-following street** whose editable path shape carries
 the piece's Douglas–Peucker-simplified control points
 (`stretchForWindow`; the same curved-street mechanism as hand-drawn
 paths, `docs/curved-street-path.md`, `curveType: smooth`), degenerating
 to a plain straight street when a piece simplifies to a single chord,
-and a **`managed-intersection` is minted per junction** where ≥2
-generated street ends meet (proximity-deduped, so generating the
+and a **`managed-intersection` is minted per cut** bordered by ≥1
+generated street end (proximity-deduped, so generating the
 crossing way later reuses it — its snap radius picks the new street
-ends up automatically; pathed streets connect as geometry-only arms,
-see `docs/managed-intersection.md`). Cross-section rules from
+ends up automatically; pathed streets connect as geometry-only arms;
+with only one arm connected the pad renders as a PARTIAL intersection,
+see `docs/managed-intersection.md`). Every generated street carries a
+**`data-osm-stretch` coverage stamp** (compact centerline encoding,
+serialized with the scene): a later click on the same way clips its
+window against stamped coverage (`clipStretchToUncovered`, boundary
+snapped flush to the covered piece's endpoint) and **extends** the
+street along the uncovered remainder instead of refusing — pre-stamp
+scenes keep the old whole-way refusal. Cross-section rules from
 class + subclass + oneway (`streetJsonForWay`: one-way streets put every
 lane in the way direction, residential gets parking and unclassified
 doesn't, living streets go narrow, cycleways become bike lanes, lane
-count per direction scales with class),
+count per direction scales with class; `rail` → single ballasted track
+between sloped gravel berms, `transit` → flush tram track on concrete —
+one track per OSM way, parallel tracks are parallel ways; subclass
+`subway` is excluded from ribbons and generate),
 `sourceType: json-blob`, `playable: true` so `street-traffic` animates
 them in play mode. `upgradeNearFocus(radius, cap)` is the console
 convenience for demos. Upgraded streets are ordinary scene entities:
@@ -93,14 +111,28 @@ one attempt per endpoint, IndexedDB-cached per bbox, memoized per way id)
 and `pickOverpassWay` matches the way by geometry — the tiles don't carry
 OSM ids — preferring drivable ways so a footway hugging the road never
 shadows it. `crossSectionFromTags` (`src/tested/osm-way-tags.js`, pure +
-tested) builds the segments: `lanes` / `lanes:forward` / `lanes:backward`
-exact when tagged, `oneway` (motorways and roundabouts default one-way),
-`sidewalk`, `parking:lane:*` / `parking:*`, `cycleway:*` on the tagged
-side, `name`; every missing field falls back to the class rules, and
-`facts` records `osm` vs `default` per field so the chip can say
-"Market St · 4 lanes · sidewalks both sides" or "lanes not mapped (2
-assumed)". Generate waits up to 1.5 s for an in-flight answer, else uses
-the rules. Side convention: segments[0] is the way's forward-RIGHT side
+tested) builds the segments — tag coverage tracks #2004
+(strassenraumkarte parity; defaults ported from osmberlin/
+strassenraumkarte's `lanes.lua` lane model, Apache-2.0): `lanes` /
+`lanes:forward` / `lanes:backward` exact when tagged, `oneway` (motorways
+and roundabouts default one-way), `width` / `width:carriageway` (drive
+widths derived carriageway-minus-extras) and per-lane `width:lanes:*`,
+`sidewalk` sides + `sidewalk:*:width`, street parking old and new schema
+(`parking:lane:*` / `parking:*` with `:orientation` — parallel/diagonal/
+perpendicular at 2.2/4.5/5 m with matching parked-car spacing and facing —
+`:width`, and `:restriction` suppression), `cycleway:*` with `:width` and
+protection (`track` / `:separation` / `:buffer` insert a raised buffer
+divider), `turn:lanes*` (stencil arrows on the right lanes, `*:lanes`
+entries mapped driver-left-first), bus/PSV lanes inside ordinary roads
+(`bus:lanes*` designated positions or `lanes:bus*` curbside counts),
+`surface` (carriageway segments only), `name`; every missing field falls
+back to the class rules, and `facts` records `osm` vs `default` per field
+so the chip can say "Market St · 4 lanes · width 12 m · sidewalks both
+sides" or "lanes not mapped (2 assumed)". Generate waits up to 1.5 s for
+an in-flight answer, else uses the rules. Rail/transit ways never
+hydrate: the query only matches `highway` ways, so a click on a railway
+could only ever pick up a NEARBY road's tags — `streetDefinitionFor`
+guards against repainting a railway with them; railways are rules-only. Side convention: segments[0] is the way's forward-RIGHT side
 (managed-street lays segments out -x → +x and +z is forward). Tunnels and ferries are
 filtered. Real lane data arrives with the Overpass-backed hydrator
 (phase 6 below; `src/osm/overpass-fetch.js` is kept for exactly that).
@@ -157,8 +189,9 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
   insets to 0 — streets pop back intact. Then upgraded-street junctions
   get real intersections automatically.
 - **Phase 6 — full hydration + pinning.** The on-generate slice above
-  ships; remaining: osm2lanes-grade tag coverage (#826: `width`,
-  `turn:lanes`, `busway`, `shoulder`), hydrating ribbons ahead of the
+  ships; remaining: the rest of #2004's tag coverage (`shoulder`,
+  `placement`/`dual_carriageway`, crossing/signal nodes — #826 is
+  absorbed there), hydrating ribbons ahead of the
   click so the highlight shows real widths, provenance
   `{source: 'osm', wayId}` serialized per street (today:
   `data-osm-way-id` / `data-osm-source` / `data-osm-name` attributes); any
@@ -174,7 +207,9 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
 
 ## Related
 
-- #1930 (umbrella), #138 (OSM import), #826 (osm2streets), #1927
+- #1930 (umbrella), #2004 (cross-section fidelity / strassenraumkarte
+  parity), #2005 (lane-model tile service), #138 (OSM import), #826
+  (osm2streets, absorbed by #2004), #1927
   (managed-intersection prototype), `docs/managed-intersection.md`,
   `docs/curved-street-path.md`, `docs/geospatial-2d-25d-upgrade-plan.md`
   §5 (shared OSM fetch service; no architectural dependency between the

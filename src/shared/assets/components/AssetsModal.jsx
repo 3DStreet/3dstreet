@@ -142,9 +142,9 @@ const AssetsModal = ({
       ? { aspectRatio: `${width} / ${height}`, width: `${width}px` }
       : undefined;
 
-  // Generate scene URL for linking back to the editor
+  // Generate scene URL for linking back to the editor (path form, #1970)
   const sceneUrl = sceneId
-    ? `${window.location.origin}/#/scenes/${sceneId}`
+    ? `${window.location.origin}/scenes/${sceneId}`
     : null;
 
   const handleDelete = (e) => {

@@ -1,6 +1,7 @@
 /* global AFRAME */
 /* 3DStreet utils functions */
 import useStore from '@/store.js';
+import { clearedSceneUrl } from '@/tested/scene-url-utils.js';
 
 /*
  * create element with provided Id, clear old element data and replace with new HTML string
@@ -29,6 +30,15 @@ function checkOrCreateEntity(elementId, parentEl, layerName = null) {
  */
 export function newScene(clearMetaData = true, clearUrlHash = true) {
   AFRAME.INSPECTOR?.selectEntity(null);
+  // Forget the previous scene's asset load bookkeeping (#2009). Entity-keyed
+  // entries die with their elements on the tracker's next tick, but texture
+  // entries are keyed by asset id and would otherwise carry a stale error or
+  // pending state into every later scene of the session. Must run before the
+  // environment entity is re-created below: re-adding street-environment
+  // synchronously emits texture-loading for the default sky, and a reset
+  // after that would drop the entry, leaving the sky download untracked.
+  AFRAME.scenes[0].systems?.['asset-load-status']?.tracker?.reset();
+
   let environmentEl = document.getElementById('environment');
   if (environmentEl) environmentEl.removeAttribute('street-environment');
   environmentEl = checkOrCreateEntity(
@@ -68,10 +78,11 @@ export function newScene(clearMetaData = true, clearUrlHash = true) {
     AFRAME.scenes[0].setAttribute('metadata', 'authorId', '');
   }
 
-  // clear url hash
+  // clear url hash, and reset a path-form scene URL (/scenes/UUID) back to
+  // root (#1970)
   if (clearUrlHash) {
     setTimeout(function () {
-      window.location.hash = '';
+      window.history.replaceState(null, '', clearedSceneUrl(window.location));
     });
   }
 }

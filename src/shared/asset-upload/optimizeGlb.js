@@ -18,7 +18,10 @@
  * Metadata shape is preserved from the pre-worker version so callers
  * (uploadAsset.js, uploadAndPlaceAsset.js) don't change:
  *   { blob, metadata: { optimizationSkipped, reason?, inputBytes,
- *                       outputBytes, hadDraco?, hadWebP? } }
+ *                       outputBytes, hadDraco?, hadWebP?,
+ *                       bounds?: { min: [x,y,z], max: [x,y,z] } | null } }
+ * `bounds` (model-space meters) is hoisted onto the asset doc by
+ * assetsService.addAsset for the scene's placeholder boxes (#2009).
  */
 
 /**
@@ -119,6 +122,7 @@ export async function optimizeGlb(
             inputBytes,
             outputBytes: d.outputBytes,
             hadDraco: d.hadDraco,
+            bounds: d.bounds || null,
             hadWebP: d.hadWebP
           }
         });
@@ -136,6 +140,7 @@ export async function optimizeGlb(
           inputBytes,
           outputBytes: d.outputBytes,
           hadDraco: d.hadDraco,
+          bounds: d.bounds || null,
           hadWebP: d.hadWebP
         }
       });

@@ -1,5 +1,9 @@
 /* global AFRAME, customElements, STREET */
 const catalog = require('./catalog.json');
+require('./lazy-textures.js'); // patches the material system for lazy <img data-src> textures
+// Alpha cut-off shared by every lane marking, stencil and crosswalk mixin below
+// (why: src/tested/street-segment-utils.js).
+const { MARKING_ALPHA_TEST } = require('./tested/street-segment-utils.js');
 
 // Expose catalog to STREET global for component access
 if (typeof STREET !== 'undefined') {
@@ -8,6 +12,14 @@ if (typeof STREET !== 'undefined') {
 
 const assetBasePath = 'https://assets.3dstreet.app/'; // use this path if none specified in index.html assets tag
 
+// Textures are injected as <img data-src="..."> (no `src`): they download on
+// first use by a material, not at page load. See src/lazy-textures.js (#2009).
+// Read their URL with getAssetImageSrc(), never `img.src`.
+// data-placeholder is what a surface shows while its texture is still
+// downloading: the texture's measured average color (multiplied by the
+// material's own color), or "transparent" for alpha-cutout atlases and
+// striping, which are hidden until the image arrives instead of rendering
+// as solid quads. Re-measure with a canvas average if an image changes.
 function buildAssetHTML(assetUrl, categories) {
   console.log('[street]', 'Using street assets from', assetUrl);
   const surfacesRoughness = 0.8;
@@ -20,7 +32,7 @@ function buildAssetHTML(assetUrl, categories) {
         `,
     fixtures: `
         <!-- fixtures -->
-        <img id="wayfinding-map" src="${assetUrl}objects/wayfinding.jpg" crossorigin="anonymous" />
+        <img id="wayfinding-map" data-src="${assetUrl}objects/wayfinding.jpg" data-placeholder="#5b5e5c" crossorigin="anonymous" />
         <a-asset-item id="brt-station-model" src="${assetUrl}sets/brt-station/gltf-exports/draco/brt-station.glb"></a-asset-item>
         <a-mixin shadow id="brt-station" gltf-model="#brt-station-model" ></a-mixin>
         <a-mixin shadow id="outdoor_dining" gltf-part="src: #streetProps; part: outdoor_dining"></a-mixin>
@@ -103,12 +115,12 @@ function buildAssetHTML(assetUrl, categories) {
       `,
     'segment-textures': `  
         <!-- segment mixins with textures -->
-        <img id="seamless-road" src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate.jpg" crossorigin="anonymous">
-        <img id="seamless-sandy-road" src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate-sandy.webp" crossorigin="anonymous">
-        <img id="seamless-bright-road" src="${assetUrl}materials/asphalthd_Base_Color.jpg" crossorigin="anonymous">
-        <img id="seamless-sidewalk" src="${assetUrl}materials/TexturesCom_FloorsRegular0301_1_seamless_S.jpg" crossorigin="anonymous">
-        <img id="hatched-base" src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" crossorigin="anonymous">
-        <img id="hatched-normal" src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" crossorigin="anonymous">
+        <img id="seamless-road" data-src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate.webp" data-placeholder="#72726c" crossorigin="anonymous">
+        <img id="seamless-sandy-road" data-src="${assetUrl}materials/TexturesCom_Roads0086_1_seamless_S_rotate-sandy.webp" data-placeholder="#958b79" crossorigin="anonymous">
+        <img id="seamless-bright-road" data-src="${assetUrl}materials/asphalthd_Base_Color.jpg" data-placeholder="#9a9994" crossorigin="anonymous">
+        <img id="seamless-sidewalk" data-src="${assetUrl}materials/TexturesCom_FloorsRegular0301_1_seamless_S.webp" data-placeholder="#989c99" crossorigin="anonymous">
+        <img id="hatched-base" data-src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" data-placeholder="#767673" crossorigin="anonymous">
+        <img id="hatched-normal" data-src="${assetUrl}materials/seamless-lane-with-hatch-half.jpg" data-placeholder="#767673" crossorigin="anonymous">
         <a-mixin shadow="cast: false" id="drive-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 25;offset:0.55 0;src:#seamless-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="sandy-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.3 5;offset:0.55 0;src:#seamless-sandy-road;"></a-mixin>
         <a-mixin shadow="cast: false" id="bright-lane" geometry="width:3;height:150;primitive:plane" material="roughness:${surfacesRoughness};repeat:0.6 50;offset:0.55 0;src:#seamless-bright-road;color:#dddddd"></a-mixin>
@@ -127,53 +139,53 @@ function buildAssetHTML(assetUrl, categories) {
       `,
     'lane-separator': `
         <!-- v2 lane separator markings -->
-        <img id="striping-solid-stripe" src="${assetUrl}materials/striping-solid-stripe-128-1024.webp" crossorigin="anonymous" />
-        <img id="striping-dashed-stripe" src="${assetUrl}materials/striping-dashed-stripe-128-1024.webp" crossorigin="anonymous" />
-        <img id="striping-solid-double" src="${assetUrl}materials/striping-solid-double-256-1024.webp" crossorigin="anonymous" />
-        <img id="striping-solid-dashed" src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" crossorigin="anonymous" />
-        <img id="striping-solid-dashed-mirror" src="${assetUrl}materials/striping-solid-dashed-mirror-256-1024.webp" crossorigin="anonymous" />
-        <img id="striping-crosswalk-zebra" src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" crossorigin="anonymous" />
+        <img id="striping-solid-stripe" data-src="${assetUrl}materials/striping-solid-stripe-128-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
+        <img id="striping-dashed-stripe" data-src="${assetUrl}materials/striping-dashed-stripe-128-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
+        <img id="striping-solid-double" data-src="${assetUrl}materials/striping-solid-double-256-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
+        <img id="striping-solid-dashed" data-src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
+        <img id="striping-solid-dashed-mirror" data-src="${assetUrl}materials/striping-solid-dashed-mirror-256-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
+        <img id="striping-crosswalk-zebra" data-src="${assetUrl}materials/striping-solid-dashed-256-1024.webp" data-placeholder="transparent" crossorigin="anonymous" />
         <!-- legacy lane separator markings using atlas uv -->
-        <img id="markings-atlas" src="${assetUrl}materials/lane-markings-atlas_1024.png" crossorigin="anonymous" />
+        <img id="markings-atlas" data-src="${assetUrl}materials/lane-markings-atlas_1024.png" data-placeholder="transparent" crossorigin="anonymous" />
         <a-mixin id="markings"></a-mixin>
-        <a-mixin shadow="cast: false" id="solid-stripe" geometry="primitive: plane; width:0.2; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 8; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 5;"></a-mixin>
-        <a-mixin shadow="cast: false" id="dashed-stripe" geometry="primitive: plane; width:0.2; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;"></a-mixin>
-        <a-mixin shadow="cast: false" id="short-dashed-stripe" geometry="primitive: plane; width:0.2; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 50;"></a-mixin>
-        <a-mixin shadow="cast: false" id="short-dashed-stripe-yellow" geometry="primitive: plane; width:0.2; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 50;color:#f7d117;"></a-mixin>
-        <a-mixin shadow="cast: false" id="solid-doubleyellow" geometry="primitive: plane; width:0.5; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 4; column: 3; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;"></a-mixin>
-        <a-mixin shadow="cast: false" id="solid-dashed" geometry="primitive: plane; width:0.4; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 4; column: 2; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;"></a-mixin>
-        <a-mixin shadow="cast: false" id="solid-dashed-yellow" geometry="primitive: plane; width:0.4; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 4; column: 2; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 25;color:#f7d117;"></a-mixin>
-        <a-mixin shadow="cast: false" id="crosswalk-zebra" geometry="primitive: plane; width:2; height:12; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 4; column: 4; row: 1" material="src: #markings-atlas;alphaTest: 0;transparent:true;repeat:1 2;"></a-mixin>
+        <a-mixin shadow="cast: false" id="solid-stripe" geometry="primitive: plane; width:0.2; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 8; column: 3; row: 1" material="src: #markings-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;repeat:1 5;"></a-mixin>
+        <a-mixin shadow="cast: false" id="dashed-stripe" geometry="primitive: plane; width:0.2; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;repeat:1 25;"></a-mixin>
+        <a-mixin shadow="cast: false" id="short-dashed-stripe" geometry="primitive: plane; width:0.2; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;repeat:1 50;"></a-mixin>
+        <a-mixin shadow="cast: false" id="short-dashed-stripe-yellow" geometry="primitive: plane; width:0.2; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 8; column: 4; row: 1" material="src: #markings-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;repeat:1 50;color:#f7d117;"></a-mixin>
+        <a-mixin shadow="cast: false" id="solid-doubleyellow" geometry="primitive: plane; width:0.5; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 4; column: 3; row: 1" material="src: #markings-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;repeat:1 25;"></a-mixin>
+        <a-mixin shadow="cast: false" id="solid-dashed" geometry="primitive: plane; width:0.4; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 4; column: 2; row: 1" material="src: #markings-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;repeat:1 25;"></a-mixin>
+        <a-mixin shadow="cast: false" id="solid-dashed-yellow" geometry="primitive: plane; width:0.4; height:150; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 4; column: 2; row: 1" material="src: #markings-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;repeat:1 25;color:#f7d117;"></a-mixin>
+        <a-mixin shadow="cast: false" id="crosswalk-zebra" geometry="primitive: plane; width:2; height:12; skipCache: true;" atlas-uvs="totalRows: 1; totalColumns: 4; column: 4; row: 1" material="src: #markings-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;repeat:1 2;"></a-mixin>
       `,
     stencils: `  
         <!-- stencil markings -->
-        <img id="stencils-atlas" src="${assetUrl}materials/stencils-atlas_2048.png" crossorigin="anonymous" />
+        <img id="stencils-atlas" data-src="${assetUrl}materials/stencils-atlas_2048.png" data-placeholder="transparent" crossorigin="anonymous" />
         <a-mixin id="stencils"></a-mixin>
-        <a-mixin shadow="cast: false" id="right" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="left" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 3" material="src: #stencils-atlas;alphaTest: 0;transparent:true;" ></a-mixin>
-        <a-mixin shadow="cast: false" id="both" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 1" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="all" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 1" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="left-straight" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 3" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="right-straight" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="straight" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 4" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="sharrow" scale="1.5 3 1" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 8; column: 2; row: 3" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="bike-arrow" scale="1 4 1" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 2; totalColumns: 8; column: 1; row: 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="word-bus" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 4" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="word-lane" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 4" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="word-taxi" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 3" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="word-only" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 3" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="word-only-small" scale="2.5 2 2.5" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 3" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="word-yield" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="word-slow" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="word-xing" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 1" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="word-stop" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 1" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="word-loading-small" scale="2.75 1.75 2.75" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 4; column: 4; row: 1" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="perpendicular-stalls" scale="5 10 5" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 8; column: 5; row: 4" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="parking-t" scale="1.5 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 16; column: 4; row: 7" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="painted-safety-zone" scale="8 8 8" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 4" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="hash-left" scale="3 6 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 8; column: 7; row: 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="hash-right" scale="3 6 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 8; column: 8; row: 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
-        <a-mixin shadow="cast: false" id="hash-chevron" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 2" material="src: #stencils-atlas;alphaTest: 0;transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="right" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 2" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="left" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 3" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;" ></a-mixin>
+        <a-mixin shadow="cast: false" id="both" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 1" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="all" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 3; row: 1" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="left-straight" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 3" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="right-straight" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 2" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="straight" scale="2 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 2; row: 4" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="sharrow" scale="1.5 3 1" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 8; column: 2; row: 3" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="bike-arrow" scale="1 4 1" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 2; totalColumns: 8; column: 1; row: 2" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-bus" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 4" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-lane" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 4" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-taxi" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 3" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-only" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 3" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-only-small" scale="2.5 2 2.5" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 3" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-yield" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 2" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-slow" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 2" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-xing" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 1; row: 1" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-stop" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 8; column: 2; row: 1" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="word-loading-small" scale="2.75 1.75 2.75" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 4; column: 4; row: 1" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="perpendicular-stalls" scale="5 10 5" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 8; column: 5; row: 4" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="parking-t" scale="1.5 2 2" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 8; totalColumns: 16; column: 4; row: 7" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="painted-safety-zone" scale="8 8 8" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 4" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="hash-left" scale="3 6 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 8; column: 7; row: 2" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="hash-right" scale="3 6 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 8; column: 8; row: 2" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
+        <a-mixin shadow="cast: false" id="hash-chevron" scale="3 3 3" geometry="primitive: plane; skipCache: true;" atlas-uvs="totalRows: 4; totalColumns: 4; column: 4; row: 2" material="src: #stencils-atlas;alphaTest: ${MARKING_ALPHA_TEST};transparent:true;"></a-mixin>
       `,
     'vehicles-transit': `
         <!-- vehicles-transit -->
@@ -193,25 +205,25 @@ function buildAssetHTML(assetUrl, categories) {
         <a-mixin shadow id="crosswalk-rainbow-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/crosswalk-rainbow.png)"></a-mixin>
         <a-mixin shadow id="crosswalk-double-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/crosswalk-double.png)"></a-mixin>
         <a-mixin shadow id="crosswalk-piano-box" geometry="primitive: box; height: 0.1; width: 2; depth: 10" material="src: url(${assetUrl}materials/crosswalk-piano.png)"></a-mixin>
-        <a-mixin shadow id="crosswalk-rainbow" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-rainbow.png; transparent: true;"></a-mixin>
-        <a-mixin shadow id="crosswalk-double" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-double.png; transparent: true;"></a-mixin>
-        <a-mixin shadow id="crosswalk-mural" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-mural.png; transparent: true;"></a-mixin>
-        <a-mixin shadow id="crosswalk-piano" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-piano.png; transparent: true;"></a-mixin>
+        <a-mixin shadow id="crosswalk-rainbow" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-rainbow.png; alphaTest: ${MARKING_ALPHA_TEST}; transparent: true;"></a-mixin>
+        <a-mixin shadow id="crosswalk-double" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-double.png; alphaTest: ${MARKING_ALPHA_TEST}; transparent: true;"></a-mixin>
+        <a-mixin shadow id="crosswalk-mural" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-mural.png; alphaTest: ${MARKING_ALPHA_TEST}; transparent: true;"></a-mixin>
+        <a-mixin shadow id="crosswalk-piano" geometry="primitive: plane; width:2; height:12; skipCache: true;" material="src:${assetUrl}materials/crosswalk-piano.png; alphaTest: ${MARKING_ALPHA_TEST}; transparent: true;"></a-mixin>
         <a-mixin shadow id="traffic-calming-bumps" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/traffic-calming-bumps.glb)"></a-mixin>
         <a-mixin shadow id="corner-island" gltf-model="url(${assetUrl}sets/uoregon/gltf-exports/draco/corner-island.glb)"></a-mixin>
         `,
     sky: `
         <!-- sky -->
-        <img id="sky" src="${assetUrl}images/skies/2048-polyhaven-wasteland_clouds_puresky.jpeg" crossorigin="anonymous" />
-        <img id="sky-night" src="${assetUrl}images/AdobeStock_286725174-min.jpeg" crossorigin="anonymous" />
+        <img id="sky" data-src="${assetUrl}images/skies/2048-polyhaven-wasteland_clouds_puresky.jpeg" data-placeholder="#65808f" crossorigin="anonymous" />
+        <img id="sky-night" data-src="${assetUrl}images/AdobeStock_286725174-min.jpeg" data-placeholder="#212e36" crossorigin="anonymous" />
       `,
     grounds: `
         <!-- grounds -->
-        <img id="grass-texture" src="${assetUrl}materials/TexturesCom_Grass0052_1_seamless_S.jpg" crossorigin="anonymous">
-        <img id="compacted-gravel-texture" src="${assetUrl}materials/compacted-gravel_color.webp" crossorigin="anonymous">
-        <img id="parking-lot-texture" src="${assetUrl}materials/TexturesCom_Roads0111_1_seamless_S.jpg" crossorigin="anonymous">
-        <img id="asphalt-texture" src="${assetUrl}materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.jpg" crossorigin="anonymous">
-        <img id="sandy-asphalt-texture" src="${assetUrl}materials/sandy-asphalt-texture_color.webp" crossorigin="anonymous">
+        <img id="grass-texture" data-src="${assetUrl}materials/TexturesCom_Grass0052_1_seamless_S.webp" data-placeholder="#929729" crossorigin="anonymous">
+        <img id="compacted-gravel-texture" data-src="${assetUrl}materials/compacted-gravel_color.webp" data-placeholder="#c6a078" crossorigin="anonymous">
+        <img id="parking-lot-texture" data-src="${assetUrl}materials/TexturesCom_Roads0111_1_seamless_S.jpg" data-placeholder="#75726d" crossorigin="anonymous">
+        <img id="asphalt-texture" data-src="${assetUrl}materials/TexturesCom_AsphaltDamaged0057_1_seamless_S.webp" data-placeholder="#6c6b6b" crossorigin="anonymous">
+        <img id="sandy-asphalt-texture" data-src="${assetUrl}materials/sandy-asphalt-texture_color.webp" data-placeholder="#8b8173" crossorigin="anonymous">
 
         <!-- legacy plane-based grounds for compatibility with 0.4.2 and earlier scenes, not used for new streets -->
         <a-mixin shadow id="ground-grass" rotation="-90 0 0" geometry="primitive:plane;height:150;width:40" material="src:#grass-texture;repeat:5 5;roughness:1"></a-mixin>

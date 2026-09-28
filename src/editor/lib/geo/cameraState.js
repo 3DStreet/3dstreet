@@ -17,6 +17,7 @@ import {
   COMPASS_NORTH_TOLERANCE_DEGREES
 } from '../nav-experimental/index.js';
 import { GeoFrameError, getGeoFrame, worldToLatLon } from './geoFrame.js';
+import { DEFAULT_FOV_DEGREES } from '../../../tested/scene-camera-pose.js';
 
 function round(v, places = 2) {
   const f = 10 ** places;
@@ -90,7 +91,7 @@ async function waitForCompass(controls, timeoutMs) {
 export function planViewGroundExtent(camera = inspectorCamera()) {
   const pos = new THREE.Vector3();
   camera.getWorldPosition(pos);
-  const halfV = ((camera.fov || 60) * Math.PI) / 360;
+  const halfV = ((camera.fov || DEFAULT_FOV_DEGREES) * Math.PI) / 360;
   const height = 2 * pos.y * Math.tan(halfV);
   return {
     widthMeters: round(height * (camera.aspect || 1), 1),

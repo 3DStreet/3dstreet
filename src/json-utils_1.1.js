@@ -1,7 +1,9 @@
 import useStore from './store';
+import { registerEntityBounds } from './model-bounds.js';
 import {
   resolveSavedCameraStates,
-  hasViewerStart
+  hasViewerStart,
+  DEFAULT_FOV_DEGREES
 } from './tested/scene-camera-pose';
 import { createUniqueId } from './editor/lib/entity';
 import { beginBatching, BATCHING_ENABLED } from './batch-models';
@@ -16,6 +18,12 @@ import {
 } from './tested/street-segment-utils';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
+import {
+  getSceneIdFromPathname,
+  getSceneIdFromHash,
+  scenePath,
+  upgradedSceneUrlFromHash
+} from './tested/scene-url-utils';
 
 /* global AFRAME, Node */
 // Components removed alongside the legacy viewer mode. Stripped from
@@ -32,10 +40,13 @@ window.STREET = {};
 var assetsUrl;
 STREET.utils = {};
 STREET.store = useStore;
-function getSceneUuidFromURLHash() {
-  const currentHash = window.location.hash;
-  const match = currentHash.match(/#\/scenes\/([a-zA-Z0-9-]+)/);
-  return match && match[1] ? match[1] : null;
+function getSceneUuidFromURL() {
+  // Path form (/scenes/UUID) is canonical; legacy hash form (#/scenes/UUID)
+  // is still honored forever (#1970).
+  return (
+    getSceneIdFromPathname(window.location.pathname) ||
+    getSceneIdFromHash(window.location.hash)
+  );
 }
 
 function getCurrentSceneId() {
@@ -44,7 +55,7 @@ function getCurrentSceneId() {
   const scene = AFRAME.scenes[0];
   let currentSceneId = scene?.getAttribute('metadata')?.sceneId;
   // console.log('currentSceneId from scene metadata', currentSceneId);
-  const urlSceneId = getSceneUuidFromURLHash();
+  const urlSceneId = getSceneUuidFromURL();
   // console.log('urlSceneId', urlSceneId);
   if (!currentSceneId) {
     // console.log('no currentSceneId from state');
@@ -558,7 +569,7 @@ function migrateDefaultSnapshotToViewerStart(entitiesData, memory) {
         z: state.position.z || 0
       },
       rotation: { x: deg(euler.x), y: deg(euler.y), z: deg(euler.z) },
-      'viewer-start': { fov: state.zoom || 60 },
+      'viewer-start': { fov: state.zoom || DEFAULT_FOV_DEGREES },
       'data-layer-name': 'Starting View'
     }
   });
@@ -869,22 +880,51 @@ AFRAME.registerComponent('set-loader-from-hash', {
     // using play instead of init method so scene loads before setting its metadata component
     if (!this.runOnce) {
       this.runOnce = true;
+      this.urlCameraState = null;
+      // Canonical path-form cloud scene URL: /scenes/UUID (#1970). Query
+      // params compose normally here, so the camera vantage deep link
+      // (#1605) is a real ?camera= query param.
+      const pathSceneId = getSceneIdFromPathname(window.location.pathname);
+      if (pathSceneId) {
+        this.urlCameraState = decodeCameraStateFromParam(
+          new URLSearchParams(window.location.search).get('camera')
+        );
+        useStore.getState().startLoadingScene('Loading scene...');
+        console.log(
+          '[set-loader-from-hash]',
+          'Load 3DStreet scene from path URL',
+          pathSceneId
+        );
+        this.fetchJSON(`${scenePath(pathSceneId)}.json`);
+        return;
+      }
       // get hash from window
       let streetURL = window.location.hash.substring(1);
       if (!streetURL) {
         return;
       }
+      // Legacy hash scene link (#/scenes/UUID or #scenes/UUID.json,
+      // optionally ?camera=… inside the hash). Old links in Discord/docs/
+      // emails must keep working forever; they self-upgrade to the path form
+      // so a copied URL is the server-visible one (#1970). Gated on the
+      // prefix so a JSON-blob hash that merely mentions a scene URL can't
+      // rewrite the address bar.
+      if (streetURL.startsWith('/scenes/') || streetURL.startsWith('scenes/')) {
+        const upgradedURL = upgradedSceneUrlFromHash(window.location);
+        if (upgradedURL) {
+          window.history.replaceState(null, '', upgradedURL);
+        }
+      }
       // Camera vantage deep link: #/scenes/UUID?camera=px,py,pz,rx,ry,rz,fov
       // (e.g. snapshot gallery "open scene at capture pose", #1605). Strip
       // the param before the path is used to build the fetch URL; the decoded
       // pose overrides the scene's default snapshot camera in fetchJSON.
-      this.urlCameraState = null;
       if (streetURL.startsWith('/scenes/') && streetURL.includes('?')) {
-        const [scenePath, queryString] = streetURL.split('?');
+        const [hashScenePath, queryString] = streetURL.split('?');
         this.urlCameraState = decodeCameraStateFromParam(
           new URLSearchParams(queryString).get('camera')
         );
-        streetURL = scenePath;
+        streetURL = hashScenePath;
       }
       // `#mcp` (with optional `=PORT`) is the MCP relay auto-pair URL —
       // handled by AIChatPanel, not the scene loader. Without this bail,
@@ -1083,7 +1123,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
               });
 
               // Clear the hash to avoid "URI Too Long" errors in auth
-              window.location.hash = '';
+              window.history.replaceState(
+                null,
+                '',
+                window.location.pathname + window.location.search
+              );
 
               // Open Geo Modal
               setModal('geo');
@@ -1422,6 +1466,12 @@ async function resolveCloudAssetUrls(containerEl) {
       // may already be GC-purged. Re-resolving to that now-404 URL would clobber
       // a src the entity could otherwise still render from cache, so skip it.
       if (asset?.deleted) continue;
+      // Bounds stored by the optimizer at upload (or backfilled by the owner)
+      // let model-placeholder draw a ghost box before the GLB arrives (#2009).
+      // Runtime registry only: bounds never enter the scene JSON.
+      if (asset?.bounds && el.hasAttribute('gltf-model')) {
+        registerEntityBounds(el, asset.bounds);
+      }
       const servedUrl = getServedUrl(asset);
       if (!servedUrl) continue;
       if (el.hasAttribute('splat')) {

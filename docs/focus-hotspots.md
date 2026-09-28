@@ -71,6 +71,20 @@ unit-tested), for owners and visitors alike:
 | no Starting View          | autosaved editor pose (`memory.cameraState`) |
 | nothing saved             | default overview                             |
 
+The lens is part of the pose: a load with no saved fov (a blank scene, a
+pose saved without `zoom`) lands at `DEFAULT_FOV_DEGREES`, never at the fov
+the previous scene left on the shared camera. File › New › Blank Scene once
+kept it for the rest of the session, and the next save wrote it into the
+new scene (#2037). `createBlankScene` emits through `emitNewScene({})` like
+every other load route, so a late-initializing viewport replays the blank
+scene's detail, not the previous scene's saved pose. A blank scene does not
+fly in at all: `createBlankScene` erases the scene, snaps the camera to the
+bare-boot pose (`controls.snapToDefaultView()`, the same position and fov
+`cameras.js` constructs) and emits `newScene` with `skipFlyIn`, so the save
+the New modal fires on that event records the default view rather than the
+previous scene's pose. A save during a real load's glide still records the
+transient camera (pre-existing; edit within the first 3 s to hit it).
+
 Pressing **Start** (and Reset) glides to the same Starting View. Legacy
 scenes that pinned their opening view through the default snapshot's
 camera state get a Starting View synthesized at load
@@ -87,6 +101,16 @@ Nothing in the load path depends on auth.
   pose itself, the same as Preview Start: `ExperimentalControls.focus`
   routes `viewer-start` targets to the system's `goToStart`. Nothing but
   position/rotation/`viewer-start` serializes.
+- **fov is a lens setting, applied live:** the editor and viewer share
+  one camera, so editing `fov` in the panel sets that camera's lens at
+  once (typed, dragged, reset or undone; `viewer-start` `update` →
+  system `applyFov`), while position/rotation stay Preview-only. The
+  row's reset returns it to `DEFAULT_FOV_DEGREES`
+  (`src/tested/scene-camera-pose.js`, 50: THREE's default and the
+  editor camera's resting fov), which is also the schema default and
+  every camera-state `zoom` fallback. A scene saved before #2031 whose
+  Starting View was exactly the old default of 60 reloads at 50, by
+  decision (no migration).
 - **Play:** the system glides the shared editor/viewer camera to the
   start pose on `play-mode-start` (`controls.focusCameraState`, which
   honors `fov` as `zoom`) and, for editor-origin sessions only, restores

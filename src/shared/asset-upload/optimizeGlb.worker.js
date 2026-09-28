@@ -61,6 +61,7 @@ async function loadDeps() {
       ]);
       return {
         WebIO: core.WebIO,
+        getBounds: core.getBounds,
         ALL_EXTENSIONS: extensions.ALL_EXTENSIONS,
         functions,
         decoderModule,
@@ -72,10 +73,33 @@ async function loadDeps() {
   return depsPromise;
 }
 
+/**
+ * Model-space bounds of the document's default scene, `{ min, max }` in
+ * meters, or null. Stored on the asset doc so the scene can draw a
+ * placeholder box before the GLB downloads (#2009, model-placeholder).
+ */
+function sceneBounds(document, getBounds) {
+  try {
+    const root = document.getRoot();
+    const scene = root.getDefaultScene() || root.listScenes()[0];
+    if (!scene) return null;
+    const b = getBounds(scene);
+    const round = (v) => Math.round(v * 10000) / 10000;
+    const min = b.min.map(round);
+    const max = b.max.map(round);
+    if (![...min, ...max].every(Number.isFinite)) return null;
+    if (min.every((v, i) => v === max[i])) return null;
+    return { min, max };
+  } catch (err) {
+    return null;
+  }
+}
+
 async function optimize(originalBytes) {
   const inputBytes = originalBytes.byteLength;
   const {
     WebIO,
+    getBounds,
     ALL_EXTENSIONS,
     functions,
     decoderModule,
@@ -132,7 +156,8 @@ async function optimize(originalBytes) {
       reason: 'already_optimized',
       outputBytes: inputBytes,
       hadDraco: true,
-      hadWebP: true
+      hadWebP: true,
+      bounds: sceneBounds(document, getBounds)
     };
   }
 
@@ -157,6 +182,9 @@ async function optimize(originalBytes) {
 
   const output = await io.writeBinary(document);
   const outputBytes = output.byteLength;
+  // Bounds of what is actually served (post-simplify; the original differs
+  // by at most the simplify error tolerance).
+  const bounds = sceneBounds(document, getBounds);
 
   if (outputBytes >= inputBytes && !wasJson) {
     return {
@@ -164,7 +192,8 @@ async function optimize(originalBytes) {
       reason: 'not_smaller',
       outputBytes,
       hadDraco: hasDraco,
-      hadWebP: hasWebP
+      hadWebP: hasWebP,
+      bounds
     };
   }
 
@@ -173,7 +202,8 @@ async function optimize(originalBytes) {
     bytes: output,
     outputBytes,
     hadDraco: hasDraco,
-    hadWebP: hasWebP
+    hadWebP: hasWebP,
+    bounds
   };
 }
 

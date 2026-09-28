@@ -82,3 +82,93 @@ describe('street-generated-stencil direction', () => {
     expect(await stencilRotationY(el)).toBe(45);
   });
 });
+
+// Per-object detach (#2011): stencil slots count group by group, stencil by
+// stencil within a group; a skipped slot is left empty.
+// Generators set position/rotation on freshly created a-entities; those
+// attribute writes are buffered until the entity initializes, so wait for
+// every clone to load before reading its pose back.
+const whenLoaded = (entities) =>
+  Promise.all(
+    entities.map((e) =>
+      e.hasLoaded
+        ? null
+        : new Promise((resolve) =>
+            e.addEventListener('loaded', resolve, { once: true })
+          )
+    )
+  );
+
+describe('street-generated-stencil skip holes', () => {
+  it('detaches one stencil of a zero-padding group, not the whole group', async () => {
+    const el = await makeSegment('outbound');
+    // padding 0 stacks both stencils of a group on one placement
+    el.setAttribute(
+      'street-generated-stencil',
+      'modelsArray: left, right; spacing: 25; padding: 0'
+    );
+    const comp = el.components['street-generated-stencil'];
+    expect(comp.createdEntities).toHaveLength(8);
+    const key = comp.createdEntities[0].getAttribute('data-clone-key');
+    expect(comp.createdEntities[1].getAttribute('data-clone-key')).toBe(key);
+
+    el.setAttribute('street-generated-stencil', 'skip', [key]);
+    expect(comp.createdEntities).toHaveLength(7);
+    expect(comp.createdEntities[0].getAttribute('mixin')).toBe('right');
+
+    el.setAttribute('street-generated-stencil', 'skip', [key, key]);
+    expect(comp.createdEntities).toHaveLength(6);
+  });
+
+  const slotIndexes = (comp) =>
+    comp.createdEntities.map((e) => Number(e.getAttribute('data-clone-index')));
+
+  it('stamps stencils with consecutive slot indexes across groups', async () => {
+    const el = await makeSegment('outbound');
+    el.setAttribute(
+      'street-generated-stencil',
+      'modelsArray: left, right; spacing: 25; padding: 2'
+    );
+    const comp = el.components['street-generated-stencil'];
+    // floor(100 / 25) = 4 groups × 2 stencils
+    expect(slotIndexes(comp)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    expect(comp.createdEntities.map((e) => e.getAttribute('mixin'))).toEqual([
+      'left',
+      'right',
+      'left',
+      'right',
+      'left',
+      'right',
+      'left',
+      'right'
+    ]);
+  });
+
+  it('leaves holes empty and keeps the other stencils in place', async () => {
+    const el = await makeSegment('outbound');
+    el.setAttribute(
+      'street-generated-stencil',
+      'modelsArray: left, right; spacing: 25; padding: 2'
+    );
+    const comp = el.components['street-generated-stencil'];
+    await whenLoaded(comp.createdEntities);
+    const before = new Map(
+      comp.createdEntities.map((e) => [
+        Number(e.getAttribute('data-clone-index')),
+        e.getAttribute('position').z
+      ])
+    );
+    expect(new Set(before.values()).size).toBe(before.size);
+
+    const keyOf = (slot) =>
+      comp.createdEntities[slot].getAttribute('data-clone-key');
+    el.setAttribute('street-generated-stencil', 'skip', [keyOf(0), keyOf(5)]);
+
+    expect(slotIndexes(comp)).toEqual([1, 2, 3, 4, 6, 7]);
+    await whenLoaded(comp.createdEntities);
+    for (const stencil of comp.createdEntities) {
+      const slot = Number(stencil.getAttribute('data-clone-index'));
+      expect(stencil.getAttribute('position').z).toBe(before.get(slot));
+    }
+  });
+});

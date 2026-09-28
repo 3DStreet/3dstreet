@@ -24,10 +24,34 @@ command layer. Coverage is every command route — properties panel, AI chat,
 gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
 or component code.
 
+**Per-object detach (#2011):** a generated clone (clones/stencil/pedestrians)
+carries no `data-no-transform`; it is an editable object whose first edit
+detaches it. `Inspector.execute` runs `routeCloneEdit` before building a
+command: `entityupdate` on a clone becomes `detachclone` carrying the edit
+(pose, mixin or component), `entityremove` becomes a hole-only detach,
+`entityclone` a plain copy. `detachclone` appends the clone's `"x z"`
+placement key to the generator's `skip` (a hole; forgotten if the layout stops
+landing there) and creates the plain `Detached Model` entity, as one undo
+entry composed from `entityupdate` + `entitycreate`. The viewport gizmo
+defers its commit to `mouseUp` and calls `detachclone` itself; the clone
+sidebar header (`CloneSidebarHeader.jsx`) has a Detach pill; the AI chat has
+the `detachClone` tool (addresses a clone by segment + generator + slot, since
+clones have no id and are not in the scene state). Predicate, router and
+payload builders live in `src/editor/lib/detachClone.js`; doc is
+[docs/per-object-detach.md](../per-object-detach.md).
+
 **Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
 spans `src/aframe-components/`, `src/editor/components/elements/`, `src/editor/lib/` and
 `src/editor/lib/commands/`; [docs/shapes.md](../shapes.md) is the entry point and carries the file
 map, the vertex-editing commands and the sticky-style rule.
+
+**Custom shaders in the viewport:** the scene renders with a logarithmic
+depth buffer (`index.html`), so any raw `ShaderMaterial` drawn into it (the
+`InfiniteGridHelper` grid in `src/editor/lib/`, the ghost boxes in
+`src/aframe-components/model-placeholder.js`) must include three's `<common>`
+and `logdepthbuf` pars/vertex/fragment chunks. Without them its depth is on a
+different scale from every built-in material and it occludes, or is occluded
+by, real geometry at random (#1988, #2009).
 
 **Street gizmos:** always-on viewport handles for managed streets (endpoint
 nodes that rewrite position/rotation/length, segment width bars), additive to

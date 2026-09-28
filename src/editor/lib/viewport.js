@@ -19,6 +19,7 @@ import {
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
 import { isManagedStreetSegment } from './entity';
+import { isDetachableClone, poseFromObject3D } from './detachClone.js';
 import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import { isBatched, syncBatchedSubtree } from '../../batch-models';
@@ -342,8 +343,11 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
 
       // Batched entities have their original mesh tree stripped at batch time, so
       // setFromObject finds no geometry under them. batch-models stashes a per-entity-local
-      // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in.
-      const cachedBbox = this.object._batchLocalBbox;
+      // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in. A model
+      // still downloading has no mesh either; model-placeholder mirrors its ghost box's
+      // local bounds the same way (#2009).
+      const cachedBbox =
+        this.object._batchLocalBbox || this.object._placeholderBbox;
       if (cachedBbox) {
         this.object.updateWorldMatrix(false, false);
         auxLocalBbox.copy(cachedBbox).applyMatrix4(this.object.matrixWorld);
@@ -662,6 +666,13 @@ export function Viewport(inspector) {
   // already post-mutation by the time objectChange fires (#1663).
   let transformPreDragValues = null;
 
+  // Drag-to-detach (#2011): a generated clone under the gizmo is moved live
+  // like any object, but no per-frame entityupdate is recorded against it —
+  // the generator would regenerate it anyway. The drag is committed once on
+  // mouseUp as a single `detachclone` command (skip the slot + create a plain
+  // entity at the dragged pose), so one undo puts the clone back in its slot.
+  let detachDragPending = false;
+
   transformControls.addEventListener('objectChange', () => {
     const object = transformControls.object;
     if (object === undefined) {
@@ -700,6 +711,11 @@ export function Viewport(inspector) {
     selectionBox.setFromObject(object);
 
     updateHelpers(object);
+
+    if (isDetachableClone(object.el)) {
+      detachDragPending = true;
+      return;
+    }
 
     // Emit update event for watcher.
     let component;
@@ -759,6 +775,15 @@ export function Viewport(inspector) {
 
   transformControls.addEventListener('mouseUp', () => {
     controls.enabled = true;
+    if (!detachDragPending) return;
+    detachDragPending = false;
+    const object = transformControls.object;
+    const el = object?.el;
+    if (!el || !isDetachableClone(el)) return;
+    // Pose first: the command's generator update removes this clone element.
+    // The detached entity is selected on create, which re-routes the gizmo.
+    const pose = poseFromObject3D(object);
+    inspector.execute('detachclone', { entity: el, pose });
   });
 
   shapeVertexControls.addEventListener('mouseDown', () => {
@@ -916,7 +941,14 @@ export function Viewport(inspector) {
   // deep link beats all (src/tested/scene-camera-pose.js). Same rule for
   // owners and visitors, so nothing here depends on auth.
   const onNewScene = (detail) => {
-    const { editorCameraState = null, urlCameraState = null } = detail || {};
+    const {
+      editorCameraState = null,
+      urlCameraState = null,
+      skipFlyIn = false
+    } = detail || {};
+    // A blank scene (createBlankScene) has already snapped the camera to the
+    // default view; there is nothing to fly to.
+    if (skipFlyIn) return;
     const viewerStart = sceneEl.systems['viewer-start'];
     const flyIn = () =>
       controls.newSceneCameraZoom(
@@ -1045,6 +1077,8 @@ export function Viewport(inspector) {
   function attachControlsForSelection() {
     detachAllTransformControls();
     const el = inspector.selectedEntity;
+    // (A generated street clone carries no no-transform marker: it gets
+    // the stock gizmo and a drag detaches it, #2011 — see objectChange.)
     if (
       !el ||
       !inspector.cursor.isPlaying ||
@@ -1177,6 +1211,13 @@ export function Viewport(inspector) {
         selectionBox.setFromObject(object);
         selectionBox.visible = true;
       } else if (object.el.hasAttribute('gltf-model')) {
+        // A model still downloading may already have its ghost box bounds
+        // (model-placeholder, #2009): size from those now, then again from
+        // the real mesh below once it lands.
+        if (object._placeholderBbox) {
+          selectionBox.setFromObject(object);
+          selectionBox.visible = true;
+        }
         const listener = (event) => {
           if (event.target !== object.el) return; // we got an event for a child, ignore
           object.el.removeEventListener('model-loaded', listener);

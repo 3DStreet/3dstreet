@@ -49,6 +49,8 @@ const ActionBar = ({ selectedEntity }) => {
   // signal the CURRENT SELECTION can't be transformed. A managed street's
   // segments dim the same way (#1806): street-align owns segment transforms,
   // so the gizmo layer gives them width bars only, no move/rotate gizmo.
+  // (Generated street clones carry no such marker: dragging one detaches
+  // it, #2011.)
   const selectionNotTransformable =
     !!selectedEntity?.hasAttribute('data-no-transform') ||
     isManagedStreetSegment(selectedEntity);

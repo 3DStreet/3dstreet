@@ -30,7 +30,10 @@ To cut one:
 1. Decide the new CalVer base. Same month as the last release → bump the patch
    (`2026.6.0` → `2026.6.1`). New month → roll the date (`2026.7.0`).
 2. Bump `version` in `package.json`.
-3. Add an entry to `CHANGELOG.md`.
+3. Add an entry to `CHANGELOG.md`. Write it for users (newsletters link there) and
+   make PR numbers full markdown links, e.g.
+   `[#1974](https://github.com/3DStreet/3dstreet/pull/1974)`; GitHub does
+   not autolink `#123` in rendered markdown files.
 4. Commit, then tag and push:
    ```
    git tag 2026.6.0

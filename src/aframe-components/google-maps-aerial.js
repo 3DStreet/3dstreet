@@ -7,6 +7,7 @@ import {
   TileFlatteningPlugin,
   ReorientationPlugin
 } from '3d-tiles-renderer/plugins';
+import { applyReferenceLayerOpacity } from '../tested/transparent-layering.js';
 
 // The pre-0.5.0 setLatLonToYUp() oriented the tileset with +Y altitude,
 // +X north, +Z east. ReorientationPlugin's default frame is +X west,
@@ -100,6 +101,14 @@ AFRAME.registerComponent('google-maps-aerial', {
     });
     this.tiles.registerPlugin(this.reorientationPlugin);
 
+    // Streaming activity for the editor's asset-load indicators (#2009):
+    // tiles never "finish", so they report active/idle rather than loaded.
+    this.onTilesLoadStart = () =>
+      this.el.emit('stream-active', { kind: 'tiles' });
+    this.onTilesLoadEnd = () => this.el.emit('stream-idle', { kind: 'tiles' });
+    this.tiles.addEventListener('tiles-load-start', this.onTilesLoadStart);
+    this.tiles.addEventListener('tiles-load-end', this.onTilesLoadEnd);
+
     this.tiles.addEventListener('load-model', ({ scene }) => {
       // Apply opacity to each tile as it loads, before its first render —
       // no per-frame traversal, and no flash of opaque tiles popping in.
@@ -148,24 +157,11 @@ AFRAME.registerComponent('google-maps-aerial', {
 
   // Set opacity on every material under `object`, once — tiles keep their
   // stock materials (no custom shader), so there is no extra draw cost when
-  // opacity is 1 and only standard alpha blending when it is below 1.
+  // opacity is 1 and only standard alpha blending when it is below 1. While
+  // translucent the tiles are overlays drawn after the splats, so they blend
+  // over them instead of hiding them (#1754).
   applyOpacityToObject: function (object) {
-    const opacity = this.data.opacity;
-    const transparent = opacity < 1;
-    object.traverse((obj) => {
-      if (obj.material) {
-        const materials = Array.isArray(obj.material)
-          ? obj.material
-          : [obj.material];
-        for (const material of materials) {
-          if (material.transparent !== transparent) {
-            material.transparent = transparent;
-            material.needsUpdate = true;
-          }
-          material.opacity = opacity;
-        }
-      }
-    });
+    applyReferenceLayerOpacity(object, this.data.opacity);
   },
 
   applyOpacityToLoadedTiles: function () {
@@ -380,6 +376,9 @@ AFRAME.registerComponent('google-maps-aerial', {
         this.offsetEl.removeFromParent();
         this.offsetEl = null;
       }
+      this.tiles.removeEventListener('tiles-load-start', this.onTilesLoadStart);
+      this.tiles.removeEventListener('tiles-load-end', this.onTilesLoadEnd);
+      this.el.emit('stream-idle', { kind: 'tiles' });
       this.tiles.dispose();
       this.tiles = null;
       this.reorientationPlugin = null;

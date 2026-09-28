@@ -81,7 +81,7 @@
     "defaultMessage": "Driveable Tuk-tuk"
   },
   "addLayer.card.flyableHelicopter.desc": {
-    "defaultMessage": "A flyable helicopter with arcade physics (GTA/Battlefield style), styled after a Coast Guard MH-65 Dolphin. Press Play, then W/S climb/descend, A/D yaw, arrow-key cyclic, Space to auto-hover."
+    "defaultMessage": "A flyable helicopter with arcade physics (GTA/Battlefield style), styled after a Coast Guard MH-65 Dolphin. Press Play, then W/S climb/descend, left/right arrows to turn, up/down arrows to tilt, A/D to strafe, Space to auto-hover."
   },
   "addLayer.card.flyableHelicopter.name": {
     "defaultMessage": "Flyable Helicopter"
@@ -1013,6 +1013,9 @@
   "compass.rotateRightAria": {
     "defaultMessage": "Rotate right 90 degrees"
   },
+  "componentsContainer.transformsDisabled": {
+    "defaultMessage": "⚠️ Transformations disabled for this layer."
+  },
   "confirmModal.confirm": {
     "defaultMessage": "Confirm"
   },
@@ -1057,6 +1060,15 @@
   },
   "entity.dragToReorder": {
     "defaultMessage": "Drag to reorder"
+  },
+  "entity.load.error": {
+    "defaultMessage": "Didn't load. The file may be missing or invalid."
+  },
+  "entity.load.pending": {
+    "defaultMessage": "Loading 3D model…"
+  },
+  "entity.load.timedOut": {
+    "defaultMessage": "Still loading. Slow connection or large file."
   },
   "entity.removeEntity": {
     "defaultMessage": "Remove entity"
@@ -1170,7 +1182,7 @@
     "defaultMessage": "Stability Assist"
   },
   "flyControls.tipKeys": {
-    "defaultMessage": "W/S climb/descend · A/D yaw · arrows tilt · Space auto-hover"
+    "defaultMessage": "W/S climb/descend · ←/→ turn · ↑/↓ tilt · A/D strafe · Space auto-hover"
   },
   "flyControls.tipMisc": {
     "defaultMessage": "R = reset · C = camera · tilt forward to build speed"
@@ -1197,10 +1209,10 @@
     "defaultMessage": "Collective"
   },
   "flyModeControls.gamepadHint": {
-    "defaultMessage": "Gamepad: RT/LT climb/descend · left stick tilt · LB/RB yaw · B hover · right stick camera/look · Y reset · X camera"
+    "defaultMessage": "Gamepad: RT/LT climb/descend · left stick tilt · right stick turn · LB/RB strafe · B hover · Y reset · X camera"
   },
   "flyModeControls.keyboardHint": {
-    "defaultMessage": "W/S climb/descend (release to hover) · A/D yaw · arrows tilt · Space hover hold · drag = orbit/look · R reset · C camera"
+    "defaultMessage": "W/S climb/descend (release to hover) · ←/→ turn · ↑/↓ tilt · A/D strafe · Space hover hold · drag = orbit/look · R reset · C camera"
   },
   "flyModeControls.liftPower": {
     "defaultMessage": "Rotor power"
@@ -1600,6 +1612,9 @@
   },
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
+  },
+  "loadingSceneModal.errorTitle": {
+    "defaultMessage": "Could not load scene"
   },
   "managedIntersectionSidebar.awaitingStreets": {
     "defaultMessage": "No streets connected yet — move managed street ends within the snap radius."
@@ -2390,11 +2405,20 @@
   "shareModal.webShareUnsupported": {
     "defaultMessage": "Web Share API is not supported in this browser"
   },
-  "sidebar.autocreatedEntity": {
-    "defaultMessage": "Autocreated Entity"
+  "sidebar.cloneEditHint": {
+    "defaultMessage": "Editing this object detaches it from the generator. Undo puts it back."
+  },
+  "sidebar.detachClone": {
+    "defaultMessage": "Detach"
+  },
+  "sidebar.detachCloneTitle": {
+    "defaultMessage": "Make this one object editable on its own: it leaves the generator and becomes a plain model you can move, rotate, duplicate or delete. Dragging it in the viewport does the same."
   },
   "sidebar.editCloneSettings": {
-    "defaultMessage": "Edit Clone Settings"
+    "defaultMessage": "Edit clone settings"
+  },
+  "sidebar.editSettings": {
+    "defaultMessage": "Edit Settings"
   },
   "sidebar.geoloc": {
     "defaultMessage": "GeoLoc"
@@ -2407,6 +2431,9 @@
   },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"
+  },
+  "sidebar.placedBy": {
+    "defaultMessage": "Placed by {segment}"
   },
   "sidebar.positionSwitchToGeoloc": {
     "defaultMessage": "Click to show geolocated position (lat/lon) instead."

@@ -7,7 +7,8 @@ import {
   COMPASS_NORTH_TOLERANCE_DEGREES,
   COMPASS_ROTATE_STEP_DEGREES,
   PLAN_VIEW_DURATION_MS,
-  COMPASS_UNBOUNDED_PLAN_VIEW_HEIGHT_METRES
+  COMPASS_UNBOUNDED_PLAN_VIEW_HEIGHT_METRES,
+  DEFAULT_FOV_DEGREES
 } from './constants.js';
 import { cameraTiltDegrees, viewRayGroundPoint } from './navMath.js';
 
@@ -128,7 +129,7 @@ export class CompassController {
     // over current XZ. Either way, lift to a height that frames the
     // whole scene (or a sensible default for unbounded scenes).
     const bounds = this._ctx.bounds.getBounds();
-    const fov = (camera.fov || 60) * DEG2RAD;
+    const fov = (camera.fov || DEFAULT_FOV_DEGREES) * DEG2RAD;
     const aspect = camera.aspect || 1;
     // Vertical fov gives the height-fit; horizontal fov fits the width.
     // Use the smaller of the two so the radius fits both ways with margin.

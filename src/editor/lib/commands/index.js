@@ -1,5 +1,6 @@
 import { ComponentAddCommand } from './ComponentAddCommand.js';
 import { ComponentRemoveCommand } from './ComponentRemoveCommand.js';
+import { DetachCloneCommand } from './DetachCloneCommand.js';
 import { EntityCloneCommand } from './EntityCloneCommand.js';
 import { EntityCreateCommand } from './EntityCreateCommand.js';
 import { EntityPasteCommand } from './EntityPasteCommand.js';
@@ -20,6 +21,7 @@ import { StreetReloadCommand } from './StreetReloadCommand.js';
 export const commandsByType = new Map();
 commandsByType.set('componentadd', ComponentAddCommand);
 commandsByType.set('componentremove', ComponentRemoveCommand);
+commandsByType.set('detachclone', DetachCloneCommand);
 commandsByType.set('entityclone', EntityCloneCommand);
 commandsByType.set('entitycreate', EntityCreateCommand);
 commandsByType.set('entitypaste', EntityPasteCommand);

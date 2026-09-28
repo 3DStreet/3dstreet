@@ -31,6 +31,7 @@
 // (unit-tested, DOM-free).
 
 import { computeIntersectionGeometry } from '../tested/managed-intersection-utils.js';
+import { getAssetImageSrc, getAssetPlaceholderColor } from '../lazy-textures';
 import { getTravelledWaySegments } from './street-layout-utils';
 import {
   BASE_SURFACE_DEPTH,
@@ -124,7 +125,9 @@ AFRAME.registerComponent('managed-intersection', {
     // street's position/length for real; deleting the intersection later
     // leaves streets at their last snapped extent.
     snapStreets: { type: 'boolean', default: true },
-    // Radius of the placeholder pad shown while fewer than 2 streets connect.
+    // Radius of the placeholder pad shown while NO street connects. With
+    // exactly one connected arm the pad is a partial intersection instead
+    // (that arm's mouth stub + crosswalk — see buildPartialPlaceholder).
     placeholderRadius: { type: 'number', default: 6 }
   },
 
@@ -466,13 +469,15 @@ AFRAME.registerComponent('managed-intersection', {
           this.pendingSnap = true;
         }
       }
+    } else if (arms.length === 1) {
+      this.buildPartialPlaceholder(arms[0]);
     } else {
       this.buildPlaceholder();
     }
 
-    // Latest computed geometry (null while the placeholder pad shows), read
-    // by the plan exporter (planModel.js) so DXF/PDF linework always matches
-    // the rendered intersection.
+    // Latest computed geometry (null while a placeholder — disc or
+    // partial — shows), read by the plan exporter (planModel.js) so
+    // DXF/PDF linework always matches the rendered intersection.
     this.lastGeometry = geometry;
 
     this.lastSignature = this.computeSignature();
@@ -643,16 +648,22 @@ AFRAME.registerComponent('managed-intersection', {
     if (this.asphaltMaterial) return this.asphaltMaterial;
     const img = document.getElementById('asphalt-texture');
     if (img) {
-      const texture = new THREE.TextureLoader().load(img.src);
+      // Tinted with the texture's placeholder average until it arrives (#2009).
+      const material = new THREE.MeshStandardMaterial({
+        color: getAssetPlaceholderColor(img) || '#ffffff',
+        roughness: 1
+      });
+      const texture = new THREE.TextureLoader().load(
+        getAssetImageSrc(img),
+        () => material.color.set('#ffffff')
+      );
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(0.25, 0.25); // ~1 tile per 4m, like the legacy box
       texture.colorSpace = THREE.SRGBColorSpace;
+      material.map = texture;
       this.asphaltTexture = texture;
-      this.asphaltMaterial = new THREE.MeshStandardMaterial({
-        map: texture,
-        roughness: 1
-      });
+      this.asphaltMaterial = material;
     } else {
       this.asphaltMaterial = new THREE.MeshStandardMaterial({
         color: 0x555555,
@@ -666,17 +677,26 @@ AFRAME.registerComponent('managed-intersection', {
     if (this.sidewalkMaterial) return this.sidewalkMaterial;
     const img = document.getElementById('seamless-sidewalk');
     if (img) {
-      const texture = new THREE.TextureLoader().load(img.src);
+      // Darkens the texture to match the sidewalk mixin; tinted with the
+      // texture's placeholder average until it arrives (#2009).
+      const tint = new THREE.Color(0xcccccc);
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(
+          getAssetPlaceholderColor(img) || '#ffffff'
+        ).multiply(tint),
+        roughness: 0.8
+      });
+      const texture = new THREE.TextureLoader().load(
+        getAssetImageSrc(img),
+        () => material.color.copy(tint)
+      );
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.RepeatWrapping;
       texture.repeat.set(0.5, 0.5); // match the legacy intersection curbs
       texture.colorSpace = THREE.SRGBColorSpace;
+      material.map = texture;
       this.sidewalkTexture = texture;
-      this.sidewalkMaterial = new THREE.MeshStandardMaterial({
-        map: texture,
-        roughness: 0.8,
-        color: 0xcccccc
-      });
+      this.sidewalkMaterial = material;
     } else {
       this.sidewalkMaterial = new THREE.MeshStandardMaterial({
         color: 0xbbbbbb,
@@ -733,6 +753,65 @@ AFRAME.registerComponent('managed-intersection', {
     const group = new THREE.Group();
     group.add(mesh);
     this.el.setObject3D('managed-intersection', group);
+  },
+
+  /**
+   * Exactly ONE connected arm: render a PARTIAL intersection instead of
+   * the disc — the arm's roadway continued as an asphalt stub reaching
+   * just past the junction center, with that arm's crosswalk band at its
+   * mouth — so an intersection still waiting for its cross street reads
+   * as unfinished road, not a floating circle. The full polygon (and
+   * snapping, and `lastGeometry` for the plan exporter) still arrives
+   * only when a second arm connects.
+   */
+  buildPartialPlaceholder: function (arm) {
+    const dir = arm.dir; // outward from the junction, along the street
+    const n = { x: -dir.z, z: dir.x };
+    const width = Math.max(1, arm.road.max - arm.road.min);
+    const mid = (arm.road.min + arm.road.max) / 2;
+    // Mouth line at the street's end node, centered on its roadway.
+    const mouth = {
+      center: {
+        x: arm.point.x + n.x * mid,
+        z: arm.point.z + n.z * mid
+      },
+      dir,
+      normal: n,
+      width
+    };
+
+    // Stub from the mouth toward — and half a roadway past — the
+    // junction center, so the pad fills the cut like half a built
+    // intersection.
+    const dist = Math.hypot(arm.point.x, arm.point.z);
+    const depth = Math.max(4, dist + width / 2);
+    const half = width / 2;
+    const corner = (alongM, side) => ({
+      x: mouth.center.x - dir.x * alongM + n.x * half * side,
+      z: mouth.center.z - dir.z * alongM + n.z * half * side
+    });
+    const quad = [
+      corner(0, -1),
+      corner(0, 1),
+      corner(depth, 1),
+      corner(depth, -1)
+    ];
+    // makeSlab extrudes in (x, -z) shape space: keep the winding CCW there
+    // so the slab's top face points up whatever the arm's heading.
+    const area = quad.reduce((sum, p, i) => {
+      const q = quad[(i + 1) % quad.length];
+      return sum + (p.x * -q.z - q.x * -p.z);
+    }, 0);
+    if (area < 0) quad.reverse();
+
+    const group = new THREE.Group();
+    group.add(this.makeSlab(quad, SURFACE_TOP, this.getAsphaltMaterial()));
+    this.el.setObject3D('managed-intersection', group);
+
+    const crosswalkDef = CROSSWALK_MIXINS[this.data.crosswalk];
+    if (crosswalkDef) {
+      this.addCrosswalk(mouth, crosswalkDef, this.armLabel(arm, 0));
+    }
   },
 
   // --- treatment entities (crosswalks, traffic control) --------------------

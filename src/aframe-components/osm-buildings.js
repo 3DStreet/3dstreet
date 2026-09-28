@@ -2,6 +2,7 @@
 import { tilesWithinRadius, EQUATOR_M } from '../tested/osm-tile-math.js';
 import { BuildingTileClient } from '../osm/building-tile-client.js';
 import { VECTOR_TILE_SOURCES } from '../tested/basemap-providers.js';
+import { referenceLayerRenderOrder } from '../tested/transparent-layering.js';
 
 const THREE = AFRAME.THREE;
 
@@ -106,7 +107,9 @@ AFRAME.registerComponent('osm-buildings', {
   },
 
   // One shared material for every tile mesh, so opacity is a single write
-  // (same transparent-flag handling as tiled-basemap's materials).
+  // (same transparent-flag handling as tiled-basemap's materials). While
+  // translucent the tile meshes are overlays drawn after the splats, so the
+  // buildings blend over them instead of hiding them (#1754).
   applyOpacity: function () {
     const opacity = this.data.opacity;
     const transparent = opacity < 1;
@@ -115,6 +118,10 @@ AFRAME.registerComponent('osm-buildings', {
       this.material.needsUpdate = true;
     }
     this.material.opacity = opacity;
+    const renderOrder = referenceLayerRenderOrder(opacity);
+    for (const entry of this.loadedTiles.values()) {
+      if (entry.mesh) entry.mesh.renderOrder = renderOrder;
+    }
   },
 
   reset: function () {
@@ -260,6 +267,7 @@ AFRAME.registerComponent('osm-buildings', {
     // where it matters: buildings shade the street and each other.
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+    mesh.renderOrder = referenceLayerRenderOrder(this.data.opacity);
     // setObject3D fires object3dset, which bvh-geometry listens for.
     this.el.setObject3D('tile-' + key, mesh);
     this.loadedTiles.set(key, { mesh });

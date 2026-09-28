@@ -12,6 +12,7 @@ import posthog from 'posthog-js';
 import useStore from '../../../../store.js';
 import { fileJSON } from '@/editor/lib/SceneUtils';
 import { commonMessages } from '@/editor/i18n/commonMessages';
+import { scenePath } from '@/tested/scene-url-utils.js';
 
 const SCENES_PER_PAGE = 20;
 // Static descriptors so formatjs can extract the tab labels (a dynamic
@@ -72,7 +73,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
         author: sceneData.author
       };
       localStorage.setItem('sceneData', JSON.stringify(fullData));
-      const newTabUrl = `#/scenes/${scene.id}`;
+      const newTabUrl = scenePath(scene.id);
       const newTab = window.open(newTabUrl, '_blank');
       newTab.focus();
     } else {
@@ -91,10 +92,8 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
         })
       );
       createElementsForScenesFromJSON(sceneData.data, sceneData.memory);
-      // This runs in a click handler, not during render — the immutability rule
-      // can't see that and flags the global write as a false positive.
-      // eslint-disable-next-line react-hooks/immutability
-      window.location.hash = `#/scenes/${scene.id}`;
+      // Path-form scene URL without reloading (#1970)
+      window.history.pushState(null, '', scenePath(scene.id));
 
       const sceneId = scene.id;
       const sceneTitle = sceneData.title;
