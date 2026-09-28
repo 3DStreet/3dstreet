@@ -78,8 +78,6 @@ const AppMenu = ({ currentUser }) => {
     setModal,
     isGridVisible,
     setIsGridVisible,
-    lowPowerMode,
-    setLowPowerMode,
     panelsVisible,
     setPanelsVisible,
     saveScene,
@@ -642,19 +640,6 @@ const AppMenu = ({ currentUser }) => {
                 defaultMessage="Show Grid"
               />
               <div className="RightSlot">G</div>
-            </Menubar.CheckboxItem>
-            <Menubar.CheckboxItem
-              className="MenubarCheckboxItem"
-              checked={lowPowerMode}
-              onCheckedChange={setLowPowerMode}
-            >
-              <Menubar.ItemIndicator className="MenubarItemIndicator">
-                <AwesomeIcon icon={faCheck} size={14} />
-              </Menubar.ItemIndicator>
-              <FormattedMessage
-                id="appMenu.view.lowPowerMode"
-                defaultMessage="Low Power Mode"
-              />
             </Menubar.CheckboxItem>
             <Menubar.CheckboxItem
               className="MenubarCheckboxItem"

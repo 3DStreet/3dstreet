@@ -341,9 +341,6 @@
   "appMenu.view.focusOnSelection": {
     "defaultMessage": "Focus on Selection"
   },
-  "appMenu.view.lowPowerMode": {
-    "defaultMessage": "Low Power Mode"
-  },
   "appMenu.view.navigationControls": {
     "defaultMessage": "Navigation Controls"
   },
@@ -1000,9 +997,6 @@
   },
   "compass.rotateRightAria": {
     "defaultMessage": "Rotate right 90 degrees"
-  },
-  "componentsContainer.transformsDisabled": {
-    "defaultMessage": "⚠️ Transformations disabled for this layer."
   },
   "confirmModal.confirm": {
     "defaultMessage": "Confirm"
@@ -2396,20 +2390,11 @@
   "shareModal.webShareUnsupported": {
     "defaultMessage": "Web Share API is not supported in this browser"
   },
-  "sidebar.cloneEditHint": {
-    "defaultMessage": "Editing this object detaches it from the generator. Undo puts it back."
-  },
-  "sidebar.detachClone": {
-    "defaultMessage": "Detach"
-  },
-  "sidebar.detachCloneTitle": {
-    "defaultMessage": "Make this one object editable on its own: it leaves the generator and becomes a plain model you can move, rotate, duplicate or delete. Dragging it in the viewport does the same."
+  "sidebar.autocreatedEntity": {
+    "defaultMessage": "Autocreated Entity"
   },
   "sidebar.editCloneSettings": {
-    "defaultMessage": "Edit clone settings"
-  },
-  "sidebar.editSettings": {
-    "defaultMessage": "Edit Settings"
+    "defaultMessage": "Edit Clone Settings"
   },
   "sidebar.geoloc": {
     "defaultMessage": "GeoLoc"
@@ -2422,9 +2407,6 @@
   },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"
-  },
-  "sidebar.placedBy": {
-    "defaultMessage": "Placed by {segment}"
   },
   "sidebar.positionSwitchToGeoloc": {
     "defaultMessage": "Click to show geolocated position (lat/lon) instead."

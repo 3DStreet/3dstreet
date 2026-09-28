@@ -9,39 +9,20 @@
  * 417 MB file, saturating the link and several cores for minutes. That is the
  * usability problem on a screen share or video call.
  *
- * This module holds the pure policy (which knobs, which values) so it stays
- * unit-testable (test/core/splat-streaming.test.js). The `splat` system in
- * src/aframe-components/splat.js applies the result to the live SparkRenderer
- * and its SplatPager; none of these need a reload.
+ * This module holds the pure policy so it stays unit-testable
+ * (test/core/splat-streaming.test.js). The `splat` system in
+ * src/aframe-components/splat.js applies the result to the live SparkRenderer;
+ * nothing here needs a reload.
  *
  * Measured on the #2047 scene (static camera, Spark 2.2.0, desktop budget):
  *   default budget            117 of 139 chunks, 352 MB
  *   lodSplatScale 0.5          85 chunks,         256 MB
  *   lodSplatScale 0.25         58 chunks,         176 MB
  * Capping the budget helps sub-linearly (the chunk is the unit of fetch), so
- * pacing the fetchers and pausing while hidden matter as much as the budget.
- * `lodRenderScale` is deliberately NOT a lever: it has no bandwidth effect
- * while the budget binds, and values above ~1.5 make distant splats vanish.
+ * pausing while hidden matters as much as the budget. `lodRenderScale` is
+ * deliberately NOT a lever: it has no bandwidth effect while the budget binds,
+ * and values above ~1.5 make distant splats vanish.
  */
-
-/**
- * The two streaming profiles. `standard` is Spark's own defaults (so applying
- * it is a no-op on a fresh renderer); `dataSaver` is the "I'm on a call"
- * profile: half the LOD budget, one chunk in flight at a time, and a pause
- * between chunk fetches so the peak rate is bounded instead of link-saturating.
- */
-export const STREAMING_PROFILES = Object.freeze({
-  standard: Object.freeze({
-    lodSplatScale: 1,
-    numFetchers: 3,
-    fetchPauseMs: 0
-  }),
-  dataSaver: Object.freeze({
-    lodSplatScale: 0.5,
-    numFetchers: 1,
-    fetchPauseMs: 250
-  })
-});
 
 /**
  * A .rad whose total splat count (input splats + LOD nodes, `RadMeta.count`)
@@ -67,25 +48,15 @@ export function budgetScaleForSplatCount(splatCount) {
 }
 
 /**
- * Resolve the settings to apply to the SparkRenderer / SplatPager.
+ * Resolve the settings to apply to the SparkRenderer.
  * @param {object} [options]
- * @param {boolean} [options.dataSaver=false] - Low Power / data-saver toggle
  * @param {number} [options.largestRadSplats=0] - RadMeta.count of the largest
  *   paged splat currently in the scene (0 / undefined when none)
- * @returns {{ lodSplatScale: number, numFetchers: number, fetchPauseMs: number }}
+ * @returns {{ lodSplatScale: number }}
  */
-export function resolveStreamingSettings({
-  dataSaver = false,
-  largestRadSplats = 0
-} = {}) {
-  const profile = dataSaver
-    ? STREAMING_PROFILES.dataSaver
-    : STREAMING_PROFILES.standard;
+export function resolveStreamingSettings({ largestRadSplats = 0 } = {}) {
   return {
-    lodSplatScale:
-      profile.lodSplatScale * budgetScaleForSplatCount(largestRadSplats),
-    numFetchers: profile.numFetchers,
-    fetchPauseMs: profile.fetchPauseMs
+    lodSplatScale: budgetScaleForSplatCount(largestRadSplats)
   };
 }
 

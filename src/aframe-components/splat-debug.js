@@ -186,9 +186,9 @@ const splatDebug = {
       sortDirty: sr.sortDirty,
       lodSplatScale: sr.lodSplatScale,
       maxPagedSplats: sr.maxPagedSplats,
-      // Streaming pacing (#2047): what the splat system resolved from the
-      // Low Power toggle + the largest .rad in the scene, and the live pager
-      // state it drives (queue, in-flight fetchers, pause between chunks).
+      // Streaming pacing (#2047): the budget the splat system resolved from
+      // the largest .rad in the scene, the visibility fetch gate, and the
+      // live pager state (queue, in-flight fetchers, resident pages).
       streaming: readStreaming(sr)
     };
     console.log('[splat-debug] snapshot', snap);

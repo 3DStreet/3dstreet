@@ -3,7 +3,6 @@
 // Import direct from the constants module (not the @shared/assets barrel, which
 // would pull React/Firebase into this early-loaded A-Frame bundle).
 import { SPLAT_EXTENSIONS } from '@shared/assets/constants.js';
-import useStore from '../store.js';
 import {
   resolveStreamingSettings,
   shouldFetchForVisibility
@@ -465,10 +464,8 @@ AFRAME.registerComponent('splat', {
  * src/tested/splat-streaming.js):
  *  - fetching pauses while the document is hidden (in-flight chunks finish,
  *    then the pager's queue waits; nothing renders anyway),
- *  - the Low Power Mode toggle (store `lowPowerMode`) applies the data-saver
- *    profile: half the LOD budget, one fetcher, a pause between chunks,
  *  - a huge scan (RAD header count above HUGE_SCAN_SPLATS) caps the budget.
- * All of these are live SparkRenderer / SplatPager properties — no reload.
+ * Both are live SparkRenderer / SplatPager properties — no reload.
  */
 AFRAME.registerSystem('splat', {
   init: function () {
@@ -477,19 +474,6 @@ AFRAME.registerSystem('splat', {
     // SplatMesh -> total splat count from its RAD header (RadMeta.count).
     // The largest one drives the huge-scan budget cap.
     this.pagedSplatCounts = new Map();
-    // The SplatPager the streaming settings were last applied to. Spark
-    // creates the pager lazily on the first LOD traversal (and reads
-    // numLodFetchers only then), so tick() re-applies when it appears.
-    this.configuredPager = null;
-
-    this.dataSaver = !!useStore.getState().lowPowerMode;
-    this.unsubscribeStore = useStore.subscribe((state) => {
-      const enabled = !!state.lowPowerMode;
-      if (enabled !== this.dataSaver) {
-        this.dataSaver = enabled;
-        this.applyStreamingSettings();
-      }
-    });
 
     this.onVisibilityChange = () => this.applyFetchGate();
     document.addEventListener('visibilitychange', this.onVisibilityChange);
@@ -534,16 +518,6 @@ AFRAME.registerSystem('splat', {
     }
   },
 
-  tick: function () {
-    const sr = this.sparkRenderer;
-    if (!sr || !sr.pager || sr.pager === this.configuredPager) return;
-    // The pager was just created (first LOD traversal): fetchPause and
-    // numFetchers live on it, not on the renderer, so apply them now.
-    this.configuredPager = sr.pager;
-    this.applyStreamingSettings();
-    this.applyFetchGate();
-  },
-
   /**
    * Record a paged splat's total splat count (from its RAD header) so the
    * huge-scan budget cap can consider it. Re-applies the settings.
@@ -560,7 +534,7 @@ AFRAME.registerSystem('splat', {
   },
 
   /**
-   * The settings the policy resolves for the current toggle + scene contents.
+   * The settings the policy resolves for the current scene contents.
    * Exposed for STREET.splatDebug.snapshot().
    */
   getStreamingSettings: function () {
@@ -568,31 +542,18 @@ AFRAME.registerSystem('splat', {
     this.pagedSplatCounts.forEach((count) => {
       if (count > largestRadSplats) largestRadSplats = count;
     });
-    return resolveStreamingSettings({
-      dataSaver: this.dataSaver,
-      largestRadSplats
-    });
+    return resolveStreamingSettings({ largestRadSplats });
   },
 
   /**
-   * Push the resolved budget / fetcher count / fetch pause onto the live
-   * SparkRenderer and SplatPager. driveLod re-traverses on its own when the
-   * budget (maxSplats) changes, so no dirty flag is needed. Lowering
-   * numFetchers mid-stream lets in-flight chunks finish and then admits
-   * fewer; nothing is cancelled.
+   * Push the resolved LOD budget onto the live SparkRenderer. driveLod
+   * re-traverses on its own when the budget (maxSplats) changes, so no dirty
+   * flag is needed.
    */
   applyStreamingSettings: function () {
     const sr = this.sparkRenderer;
     if (!sr) return;
-    const settings = this.getStreamingSettings();
-    sr.lodSplatScale = settings.lodSplatScale;
-    // Read by Spark only when it constructs the pager; the pager's own copy
-    // is what driveFetchers checks afterwards.
-    sr.numLodFetchers = settings.numFetchers;
-    if (sr.pager) {
-      sr.pager.numFetchers = settings.numFetchers;
-      sr.pager.fetchPause = settings.fetchPauseMs;
-    }
+    sr.lodSplatScale = this.getStreamingSettings().lodSplatScale;
   },
 
   /**

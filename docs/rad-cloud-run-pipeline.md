@@ -191,12 +191,13 @@ properties, no reload:
    renderer copies the flag onto the pager only on a traversal, and there are
    no traversals while hidden). In-flight chunks finish, the queue waits, and
    the pager is kicked on resume. Also in `public/splat-viewer.html`.
-3. **Low Power Mode** (View menu, store `lowPowerMode`, the "I'm on a call"
-   switch) applies the data-saver profile: `lodSplatScale` 0.5, one fetcher,
-   250 ms between chunk fetches so peak rate is bounded.
-4. **Huge scans:** a `.rad` whose header `count` exceeds 5M splats halves the
+3. **Huge scans:** a `.rad` whose header `count` exceeds 5M splats halves the
    LOD budget on its own (`HUGE_SCAN_*`). Reported by the component from
    `PagedSplats.getRadMeta()` before any chunk is queued.
+
+A user-facing data-saver profile (`lodSplatScale` 0.5, `numLodFetchers` 1,
+`pager.fetchPause` between chunks) is the natural "I'm on a call" switch and
+belongs with Low Power Mode (#1723) when that lands; it is not wired today.
 
 Not levers: `lodRenderScale` (no bandwidth effect while the budget binds;
 above ~1.5 distant splats vanish) and `maxPagedSplats` (a pool size, not a cap;
