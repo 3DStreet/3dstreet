@@ -66,6 +66,16 @@ Other editor handles are tested before claiming a press. Capture does not confer
 priority over another listener on the same node and phase. Once claimed, the
 gesture follows its initiating pointer until release or cancellation.
 
+Native pointer capture is a convenience, not the ownership mechanism. Chrome
+drops capture mid-drag as soon as a pointermove reports no buttons held, which a
+macOS trackpad produces during a real drag (a second finger brushing the pad,
+three-finger drag, drag lock), with the real pointerup still to come. A
+`lostpointercapture` for the owning pointer therefore never ends the gesture:
+the window listeners keep following that pointer by id, capture is re-acquired
+on the next move that reports the button down, and the drag ends on pointerup,
+pointercancel, blur or Escape as usual. Treating the loss as a cancel restored
+the press pose on release, which users saw as the object snapping back.
+
 Translation records pointer movement and evaluates it once per scene frame.
 Release queues the final coordinate for the next frame token, so finishing a drag
 does not spend a second path-query budget within one frame. Cancellation restores

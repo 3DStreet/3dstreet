@@ -154,14 +154,21 @@ function fixture({ base = 0, cameraY = 10 } = {}) {
     controls.attach(el);
     f.frame();
   };
-  f.pointer = (type, world, pointerType = 'mouse', pointerId = 1) => {
+  f.pointer = (
+    type,
+    world,
+    pointerType = 'mouse',
+    pointerId = 1,
+    init = {}
+  ) => {
     const point = world.clone().project(camera);
     const event = new MouseEvent(type, {
       clientX: (point.x + 1) * 600,
       clientY: (1 - point.y) * 400,
       button: 0,
       bubbles: true,
-      cancelable: true
+      cancelable: true,
+      ...init
     });
     Object.defineProperties(event, {
       pointerType: { value: pointerType },
@@ -1008,19 +1015,64 @@ describe('release, touch and attachment lifecycle', () => {
     expect(f.commits).toHaveLength(1);
   });
 
-  it('cancels only when native capture is lost by the owning pointer', () => {
+  // Chrome drops native capture mid-drag as soon as a pointermove reports no
+  // buttons held, which macOS trackpads produce during a real drag, with the
+  // real pointerup still to come. The build that cancelled on that loss
+  // restored the press pose on release (the reported snap-back). Ownership
+  // is by pointer id on window listeners, so the gesture survives the loss.
+  it('keeps the drag alive when native capture is lost and commits on release', () => {
     const f = fixture();
     f.surface(0);
     f.attach();
-    f.start('touch');
-    f.pointer('pointermove', new THREE.Vector3(0.2, 0, 0), 'touch');
+    f.start();
+    f.pointer('pointermove', new THREE.Vector3(0.2, 0, 0));
     f.frame();
-    f.pointer('lostpointercapture', new THREE.Vector3(0.2, 0, 0), 'touch', 2);
+    expect(f.object.position.x).toBeCloseTo(0.2, 3);
+    f.pointer('lostpointercapture', new THREE.Vector3(0.2, 0, 0));
     expect(f.controls.isDragging).toBe(true);
-    f.pointer('lostpointercapture', new THREE.Vector3(0.2, 0, 0), 'touch');
-    expect(f.controls.isDragging).toBe(false);
-    expect(f.object.position.x).toBe(0);
+    expect(f.object.position.x).toBeCloseTo(0.2, 3);
     expect(f.commits).toHaveLength(0);
+    f.pointer('pointermove', new THREE.Vector3(0.3, 0, 0));
+    f.frame();
+    expect(f.object.position.x).toBeCloseTo(0.3, 3);
+    f.pointer('pointerup', new THREE.Vector3(0.35, 0, 0));
+    f.frame();
+    expect(f.controls.isDragging).toBe(false);
+    expect(f.object.position.x).toBeCloseTo(0.35, 3);
+    expect(f.commits).toHaveLength(1);
+  });
+
+  it('re-acquires native capture on the next move that reports the button down', () => {
+    const f = fixture();
+    f.surface(0);
+    f.attach();
+    const setPointerCapture = vi.fn();
+    f.canvas.setPointerCapture = setPointerCapture;
+    f.start();
+    expect(setPointerCapture).toHaveBeenCalledTimes(1);
+    f.pointer('lostpointercapture', new THREE.Vector3(0.1, 0, 0));
+    // Reported with no button held: the browser would refuse, so no attempt.
+    f.pointer('pointermove', new THREE.Vector3(0.2, 0, 0), 'mouse', 1, {
+      buttons: 0
+    });
+    expect(setPointerCapture).toHaveBeenCalledTimes(1);
+    f.pointer('pointermove', new THREE.Vector3(0.25, 0, 0), 'mouse', 1, {
+      buttons: 1
+    });
+    expect(setPointerCapture).toHaveBeenCalledTimes(2);
+    expect(setPointerCapture).toHaveBeenLastCalledWith(1);
+    // Re-acquired: the next pressed move does not ask again.
+    f.pointer('pointermove', new THREE.Vector3(0.3, 0, 0), 'mouse', 1, {
+      buttons: 1
+    });
+    expect(setPointerCapture).toHaveBeenCalledTimes(2);
+    expect(f.controls.isDragging).toBe(true);
+    // A loss reported for another pointer is not this gesture's.
+    f.pointer('lostpointercapture', new THREE.Vector3(0.3, 0, 0), 'mouse', 2);
+    f.pointer('pointermove', new THREE.Vector3(0.3, 0, 0), 'mouse', 1, {
+      buttons: 1
+    });
+    expect(setPointerCapture).toHaveBeenCalledTimes(2);
   });
   it('keeps the chevron connection visible when both ends are outside opposite edges', () => {
     const f = fixture();

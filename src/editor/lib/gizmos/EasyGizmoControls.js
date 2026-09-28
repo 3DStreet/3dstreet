@@ -337,6 +337,8 @@ class EasyGizmoControls extends GizmoPointerControls {
     this._armed = false;
     this._pressWasClaimed = false;
     this._pointerId = null;
+    // Native capture dropped by the browser mid-gesture (see _onLostCapture).
+    this._captureLost = false;
     this._lastPointerType = 'mouse';
     this._wasOpen = false;
     this._frameSystem = null;
@@ -1050,6 +1052,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     if (this.startDrag(axis, event) === false) return;
     // Ownership is independent of whether native capture is available.
     this._pointerId = event.pointerId ?? null;
+    this._captureLost = false;
     if (canvas && canvas.setPointerCapture && event.pointerId !== undefined) {
       try {
         canvas.setPointerCapture(event.pointerId);
@@ -1102,6 +1105,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     if (this.isDragging) {
       if (!this._ownsPointer(event)) return;
       this._suppress(event);
+      this._reacquireCapture(event);
       this.updateMouse(event);
       this._trackDrag(event);
       return;
@@ -1160,11 +1164,36 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   _onLostCapture = (event) => {
-    // Browsers release capture after pointerup, before the queued frame runs.
+    // Losing native capture is not the end of the gesture. Browsers release
+    // capture after pointerup, before the queued frame runs, and Chrome also
+    // drops it mid-drag the moment a pointermove reports no buttons held —
+    // which macOS trackpads produce during a real drag (three-finger drag,
+    // drag lock) with the real pointerup still to come. Cancelling here
+    // restored the press pose on release, the reported snap-back. Ownership
+    // never depended on capture: the window listeners follow the claiming
+    // pointer by id, so the drag carries on and ends on pointerup,
+    // pointercancel, blur or Escape like any other. Capture is re-acquired
+    // on the next move that reports the button down again, so a cursor
+    // passing over a panel does not read as leaving the canvas.
     if (this.isDragging && this._ownsPointer(event) && !this._releasePending) {
-      this.endGesture('pointercancel');
+      this._captureLost = true;
     }
   };
+
+  _reacquireCapture(event) {
+    if (!this._captureLost || !event.buttons) return;
+    const canvas = this._canvas();
+    if (!canvas || !canvas.setPointerCapture || event.pointerId === undefined) {
+      return;
+    }
+    try {
+      canvas.setPointerCapture(event.pointerId);
+      this._captureLost = false;
+    } catch {
+      // Not in an active-buttons state as far as the browser is concerned;
+      // the window listeners keep following the pointer regardless.
+    }
+  }
 
   _onBlur() {
     if (!this.isDragging) return;
@@ -2813,6 +2842,7 @@ class EasyGizmoControls extends GizmoPointerControls {
       }
     }
     this._pointerId = null;
+    this._captureLost = false;
 
     this.dispatchEvent(this.mouseUpEvent);
     if (this._lastPointerType !== 'mouse') {
