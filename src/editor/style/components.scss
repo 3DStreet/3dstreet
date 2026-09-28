@@ -1394,6 +1394,30 @@ a.help-linkhover {
     padding: 10px 12px 8px;
     border-bottom: 1px solid variables.$black-800;
   }
+  /* Generated-clone header (#2011): "Placed by <segment>" + the edit /
+     detach pills under the strip, then a one-line hint. Same rhythm as the
+     footnote above it. */
+  .clone-origin {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid variables.$black-800;
+    font-size: 12px;
+  }
+  .clone-origin-actions {
+    display: flex;
+    gap: 6px;
+    flex: none;
+  }
+  .clone-hint {
+    margin: 0;
+    padding: 8px 12px 4px;
+    color: variables.$lightgray-200;
+    font-size: 12px;
+    line-height: 1.4;
+  }
   /* Footnote under the bars, shared by both panels (segment: street name +
      "Edit street" pill; street: stats + tap-a-lane hint). Fixed height so
      the content below sits at the same pixel whichever panel is showing. */

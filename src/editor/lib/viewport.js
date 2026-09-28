@@ -15,6 +15,7 @@ import {
 import { copyCameraPosition } from './cameras';
 import { initRaycaster } from './raycaster';
 import { isManagedStreetSegment } from './entity';
+import { isDetachableClone, poseFromObject3D } from './detachClone.js';
 import { captureNavDiscovery } from './navAnalytics.js';
 import Events from './Events';
 import { isBatched, syncBatchedSubtree } from '../../batch-models';
@@ -629,6 +630,13 @@ export function Viewport(inspector) {
   // already post-mutation by the time objectChange fires (#1663).
   let transformPreDragValues = null;
 
+  // Drag-to-detach (#2011): a generated clone under the gizmo is moved live
+  // like any object, but no per-frame entityupdate is recorded against it —
+  // the generator would regenerate it anyway. The drag is committed once on
+  // mouseUp as a single `detachclone` command (skip the slot + create a plain
+  // entity at the dragged pose), so one undo puts the clone back in its slot.
+  let detachDragPending = false;
+
   transformControls.addEventListener('objectChange', () => {
     const object = transformControls.object;
     if (object === undefined) {
@@ -667,6 +675,11 @@ export function Viewport(inspector) {
     selectionBox.setFromObject(object);
 
     updateHelpers(object);
+
+    if (isDetachableClone(object.el)) {
+      detachDragPending = true;
+      return;
+    }
 
     // Emit update event for watcher.
     let component;
@@ -734,6 +747,15 @@ export function Viewport(inspector) {
         transformPreDragValues
       );
     }
+    if (!detachDragPending) return;
+    detachDragPending = false;
+    const object = transformControls.object;
+    const el = object?.el;
+    if (!el || !isDetachableClone(el)) return;
+    // Pose first: the command's generator update removes this clone element.
+    // The detached entity is selected on create, which re-routes the gizmo.
+    const pose = poseFromObject3D(object);
+    inspector.execute('detachclone', { entity: el, pose });
   });
 
   shapeVertexControls.addEventListener('mouseDown', () => {
@@ -814,7 +836,14 @@ export function Viewport(inspector) {
   // deep link beats all (src/tested/scene-camera-pose.js). Same rule for
   // owners and visitors, so nothing here depends on auth.
   const onNewScene = (detail) => {
-    const { editorCameraState = null, urlCameraState = null } = detail || {};
+    const {
+      editorCameraState = null,
+      urlCameraState = null,
+      skipFlyIn = false
+    } = detail || {};
+    // A blank scene (createBlankScene) has already snapped the camera to the
+    // default view; there is nothing to fly to.
+    if (skipFlyIn) return;
     const viewerStart = sceneEl.systems['viewer-start'];
     const flyIn = () =>
       controls.newSceneCameraZoom(
@@ -917,6 +946,8 @@ export function Viewport(inspector) {
   function attachControlsForSelection() {
     detachAllTransformControls();
     const el = inspector.selectedEntity;
+    // (A generated street clone carries no no-transform marker: it gets
+    // the stock gizmo and a drag detaches it, #2011 — see objectChange.)
     if (
       !el ||
       !inspector.cursor.isPlaying ||

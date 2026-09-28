@@ -5,6 +5,7 @@ import {
   TilesFadePlugin,
   XYZTilesOverlay
 } from '3d-tiles-renderer/plugins';
+import { applyReferenceLayerOpacity } from '../tested/transparent-layering.js';
 
 // Web Mercator equatorial circumference in meters. GeneratedSurfacePlugin's
 // planar mode emits the whole world as a 1×1 normalized square centered at
@@ -165,24 +166,10 @@ AFRAME.registerComponent('tiled-basemap', {
 
   // Set opacity on every material under `object`, once — tiles keep their
   // stock materials, so no extra draw cost at opacity 1 and only standard
-  // alpha blending below it (same as google-maps-aerial).
+  // alpha blending below it (same as google-maps-aerial). While translucent
+  // the tiles are overlays drawn after the splats (#1754).
   applyOpacityToObject: function (object) {
-    const opacity = this.data.opacity;
-    const transparent = opacity < 1;
-    object.traverse((obj) => {
-      if (obj.material) {
-        const materials = Array.isArray(obj.material)
-          ? obj.material
-          : [obj.material];
-        for (const material of materials) {
-          if (material.transparent !== transparent) {
-            material.transparent = transparent;
-            material.needsUpdate = true;
-          }
-          material.opacity = opacity;
-        }
-      }
-    });
+    applyReferenceLayerOpacity(object, this.data.opacity);
   },
 
   applyOpacityToLoadedTiles: function () {

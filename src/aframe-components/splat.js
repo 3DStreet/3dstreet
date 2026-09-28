@@ -3,18 +3,15 @@
 // Import direct from the constants module (not the @shared/assets barrel, which
 // would pull React/Firebase into this early-loaded A-Frame bundle).
 import { SPLAT_EXTENSIONS } from '@shared/assets/constants.js';
+import { SPLAT_RENDER_ORDER } from '../tested/transparent-layering.js';
 
 // Spark library is loaded dynamically to reduce initial bundle size (~500KB)
 let SplatMesh = null;
 let SparkRenderer = null;
 // PagedSplats is needed for local .rad previews: we construct it ourselves from
-// in-memory bytes (see loadSplat) because SplatMesh's paged===true path can't be
-// told a fileType.
+// in-memory bytes (see loadSplat) so a blob: URL with no extension to sniff
+// still resolves its type from the magic bytes.
 let PagedSplats = null;
-// Spark's own extension→SplatFileType mapper. We use it for blob: previews
-// (which have no extension to sniff) so the hint we pass is a real SplatFileType
-// enum value rather than the bare extension, since the two can differ.
-let getSplatFileTypeFromPath = null;
 let sparkLoadPromise = null;
 
 /**
@@ -23,7 +20,7 @@ let sparkLoadPromise = null;
  */
 async function loadSparkLibrary() {
   if (SplatMesh && SparkRenderer) {
-    return { SplatMesh, SparkRenderer, PagedSplats, getSplatFileTypeFromPath };
+    return { SplatMesh, SparkRenderer, PagedSplats };
   }
 
   if (!sparkLoadPromise) {
@@ -33,14 +30,8 @@ async function loadSparkLibrary() {
       SplatMesh = module.SplatMesh;
       SparkRenderer = module.SparkRenderer;
       PagedSplats = module.PagedSplats;
-      getSplatFileTypeFromPath = module.getSplatFileTypeFromPath;
       console.log('[splat] Spark library loaded');
-      return {
-        SplatMesh,
-        SparkRenderer,
-        PagedSplats,
-        getSplatFileTypeFromPath
-      };
+      return { SplatMesh, SparkRenderer, PagedSplats };
     });
   }
 
@@ -173,11 +164,8 @@ AFRAME.registerComponent('splat', {
 
     try {
       // Dynamically load the Spark library (only loads once, ~500KB)
-      const {
-        SplatMesh: LoadedSplatMesh,
-        PagedSplats: LoadedPagedSplats,
-        getSplatFileTypeFromPath: sparkGetFileType
-      } = await loadSparkLibrary();
+      const { SplatMesh: LoadedSplatMesh, PagedSplats: LoadedPagedSplats } =
+        await loadSparkLibrary();
       if (loadId !== this.loadId) return;
 
       // Initialize the SparkRenderer if not already done
@@ -199,9 +187,10 @@ AFRAME.registerComponent('splat', {
       // for cloud URLs.
       //
       // A blob: preview is the only case Spark can't sniff: the URL has no
-      // extension AND .splat is headerless. There we map the upload's `format`
-      // hint to a real SplatFileType via Spark's own getSplatFileTypeFromPath,
-      // falling back to the raw hint.
+      // extension AND .splat is headerless. There we pass the upload's `format`
+      // hint as the fileType: for every format we accept (SPLAT_EXTENSIONS) the
+      // SplatFileType enum value IS the extension. (Spark 2.2 no longer exports
+      // its path→type mapper, and the two only differ for formats we don't offer.)
       const noQuery = src.split(/[?#]/)[0];
       const lastSeg = noQuery.slice(noQuery.lastIndexOf('/') + 1);
       const urlExt = lastSeg.includes('.')
@@ -215,10 +204,7 @@ AFRAME.registerComponent('splat', {
         : (this.data.format || '').toLowerCase();
       const isRad = ext === 'rad';
       // Only hint fileType when Spark can't sniff it (blob: preview).
-      let fileType;
-      if (!hasSniffableExt && ext) {
-        fileType = sparkGetFileType ? sparkGetFileType(`x.${ext}`) || ext : ext;
-      }
+      const fileType = !hasSniffableExt && ext ? ext : undefined;
 
       // Local .rad preview (blob: URL): SplatMesh's `paged: true` path builds
       // PagedSplats with only `{ rootUrl }`, dropping our fileType, and a blob:
@@ -474,6 +460,11 @@ AFRAME.registerSystem('splat', {
         renderer: this.el.renderer,
         enableLod: true
       });
+      // One transparent, non-depth-writing mesh at the scene origin draws
+      // every splat. Pin where it lands in the transparent pass: after every
+      // ordinary surface (so depth-writing ones occlude it per pixel) and
+      // before the overlays (#1732, #1754). See transparent-layering.js.
+      this.sparkRenderer.renderOrder = SPLAT_RENDER_ORDER;
       this.el.object3D.add(this.sparkRenderer);
     } catch (error) {
       console.error('[splat] Failed to initialize SparkRenderer:', error);

@@ -1,4 +1,5 @@
 import { canRenameEntity } from '../../lib/entity';
+import { isDetachableClone } from '../../lib/detachClone.js';
 import { Button } from '../elements';
 import ComponentsContainer from './ComponentsContainer';
 import CommonComponents from './CommonComponents';
@@ -21,6 +22,8 @@ import UserLayersSidebar from './UserLayersSidebar';
 import PanelFooter from './PanelFooter';
 import AssetInfoPanel from './AssetInfoPanel';
 import EntityLabel from '../scenegraph/EntityLabel';
+import CloneSidebarHeader from './CloneSidebarHeader';
+
 export default class Sidebar extends React.Component {
   static propTypes = {
     entity: PropTypes.object
@@ -141,52 +144,52 @@ export default class Sidebar extends React.Component {
           entity.id !== 'street-container' &&
           !hasOwnHeader ? (
             <>
-              {entity.classList.contains('autocreated') && (
-                <div className="sidepanelContent">
-                  <div className="flex items-center gap-2">
-                    <FormattedMessage
-                      id="sidebar.autocreatedEntity"
-                      defaultMessage="Autocreated Entity"
-                    />
-                  </div>
-                  {this.hasParentComponent(entity) && (
-                    <>
-                      <div className="collapsible-content">
-                        <div className="propertyRow">
-                          <label className="text">
-                            <FormattedMessage
-                              id="sidebar.managedBy"
-                              defaultMessage="Managed by"
-                            />
-                          </label>
-                          <input
-                            className="string"
-                            type="text"
-                            value={this.getParentComponentName(entity)}
-                            readOnly
-                          />
-                        </div>
-                      </div>
-                      <div id="sidebar-buttons">
-                        <Button
-                          variant={'toolbtn'}
-                          onClick={() => this.selectParentEntity(entity)}
-                        >
-                          <ArrowLeftHookIcon />{' '}
+              {/* A generated street clone (#2011) gets the segment-panel
+                  treatment and, below, a normal object panel: any edit
+                  detaches it. Other autocreated entities (striping planes,
+                  labels…) keep the read-only "managed by" row. */}
+              {isDetachableClone(entity) ? (
+                <CloneSidebarHeader entity={entity} />
+              ) : (
+                entity.classList.contains('autocreated') &&
+                this.hasParentComponent(entity) && (
+                  <div className="sidepanelContent">
+                    <div className="collapsible-content">
+                      <div className="propertyRow">
+                        <label className="text">
                           <FormattedMessage
-                            id="sidebar.editCloneSettings"
-                            defaultMessage="Edit Clone Settings"
+                            id="sidebar.managedBy"
+                            defaultMessage="Managed by"
                           />
-                        </Button>
+                        </label>
+                        <input
+                          className="string"
+                          type="text"
+                          value={this.getParentComponentName(entity)}
+                          readOnly
+                        />
                       </div>
-                    </>
-                  )}
-                </div>
+                    </div>
+                    <div id="sidebar-buttons">
+                      <Button
+                        variant={'toolbtn'}
+                        onClick={() => this.selectParentEntity(entity)}
+                      >
+                        <ArrowLeftHookIcon />{' '}
+                        <FormattedMessage
+                          id="sidebar.editSettings"
+                          defaultMessage="Edit Settings"
+                        />
+                      </Button>
+                    </div>
+                  </div>
+                )
               )}
               <div className="sidepanelContent">
                 <AssetInfoPanel entity={entity} />
                 {!!entity.mixinEls.length &&
-                  !entity.classList.contains('autocreated') && (
+                  (!entity.classList.contains('autocreated') ||
+                    isDetachableClone(entity)) && (
                     <div className="details">
                       <Mixins entity={entity} />
                     </div>

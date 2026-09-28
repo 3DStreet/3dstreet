@@ -55,7 +55,7 @@
     "@mapbox/vector-tile": "^3.0.0",
     "@react-google-maps/api": "^2.20.8",
     "@sentry/react": "^10.40.0",
-    "@sparkjsdev/spark": "^2.1.0",
+    "@sparkjsdev/spark": "^2.2.0",
     "@stripe/react-stripe-js": "^6.0.0",
     "@stripe/stripe-js": "^9.0.0",
     "@tarikjabiri/dxf": "^2.8.9",

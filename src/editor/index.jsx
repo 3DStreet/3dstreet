@@ -20,6 +20,7 @@ import {
   notifyRefusal,
   refuseGuardedTransform
 } from './lib/transformGuard.js';
+import { routeCloneEdit } from './lib/detachClone.js';
 import { LocaleProvider } from './i18n/LocaleProvider';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
@@ -255,6 +256,14 @@ Inspector.prototype = {
   },
 
   execute: function (cmdName, payload, optionalName, callback = undefined) {
+    // A generated street clone is an editable object whose first edit
+    // detaches it (#2011): re-route the edit here, before the command is
+    // built, so every door behaves the same.
+    const routed = routeCloneEdit(cmdName, payload);
+    if (routed) {
+      cmdName = routed.cmdName;
+      payload = routed.payload;
+    }
     const Cmd = commandsByType.get(cmdName);
     if (!Cmd) {
       console.error(`Command ${cmdName} not found`);
