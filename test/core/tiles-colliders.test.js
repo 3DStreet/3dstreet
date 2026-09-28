@@ -250,3 +250,152 @@ describe('tiles-colliders TilesColliderSet bookkeeping', () => {
     assert.strictEqual(physics.removed.length, 2);
   });
 });
+
+describe('tiles-colliders build order + safety net (#2030)', () => {
+  let isSafetyNetSurface;
+  let TILES_SAFETY_NET_Y;
+  let tileDistanceToPoint;
+
+  before(() => {
+    global.THREE = require('three');
+    ({
+      TilesColliderSet,
+      isSafetyNetSurface,
+      TILES_SAFETY_NET_Y,
+      tileDistanceToPoint
+    } = require('../../src/aframe-components/play/tiles-colliders.js'));
+  });
+
+  after(() => {
+    delete global.THREE;
+  });
+
+  function stubPhysics() {
+    return {
+      active: true,
+      world: {},
+      added: [],
+      addStaticTrimesh(vertices, indices) {
+        const body = { triangles: indices.length / 3 };
+        this.added.push(body);
+        return body;
+      },
+      removeBody() {}
+    };
+  }
+
+  /** A tile whose bounding volume is a sphere at `center` (radius 1). */
+  function tileAt(x, y, z) {
+    const THREE = global.THREE;
+    const root = new THREE.Object3D();
+    root.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1)));
+    const sphere = new THREE.Sphere(new THREE.Vector3(x, y, z), 1);
+    return {
+      name: `tile(${x},${y},${z})`,
+      engineData: {
+        scene: root,
+        boundingVolume: {
+          distanceToPoint: (p) => Math.max(0, sphere.distanceToPoint(p))
+        }
+      }
+    };
+  }
+
+  function stubTiles(group) {
+    return {
+      visibleTiles: null,
+      group,
+      addEventListener() {},
+      removeEventListener() {}
+    };
+  }
+
+  it('REGRESSION: builds the tiles nearest the spawn first', () => {
+    // visibleTiles iterates in traversal order, so the tile under the
+    // player used to build at an arbitrary point in the drain while
+    // the helicopter was already falling through it.
+    const physics = stubPhysics();
+    const set = new TilesColliderSet(physics, stubTiles(null), {
+      focus: { x: 0, y: 0, z: 0 }
+    });
+    clearInterval(set.interval);
+    const far = tileAt(900, 0, 0);
+    const farther = tileAt(0, 0, 1500);
+    const near = tileAt(10, 0, 0);
+    const mid = tileAt(300, 0, 0);
+    const under = tileAt(0, -1, 0);
+    for (const t of [far, farther, near, mid, under]) set.enqueue(t);
+    set.drainQueue(); // one pass = 3 builds
+    assert.deepStrictEqual(
+      [...set.bodies.keys()].map((t) => t.name),
+      [under.name, near.name, mid.name]
+    );
+    assert.strictEqual(set.queue.size, 2);
+    set.drainQueue();
+    assert.deepStrictEqual([...set.bodies.keys()].map((t) => t.name).slice(3), [
+      far.name,
+      farther.name
+    ]);
+    set.dispose();
+  });
+
+  it('measures distance in the tileset frame (group transform applied)', () => {
+    const THREE = global.THREE;
+    // Tileset group shifted +1000 on X: a tile at local x=1000 sits at
+    // the world origin, where the focus is.
+    const group = new THREE.Object3D();
+    group.position.set(-1000, 0, 0);
+    group.updateMatrixWorld(true);
+    group.matrixWorldInverse = group.matrixWorld.clone().invert();
+    const set = new TilesColliderSet(stubPhysics(), stubTiles(group), {
+      focus: { x: 0, y: 0, z: 0 }
+    });
+    clearInterval(set.interval);
+    const atWorldOrigin = tileAt(1000, 0, 0);
+    const atLocalOrigin = tileAt(0, 0, 0);
+    set.enqueue(atLocalOrigin);
+    set.enqueue(atWorldOrigin);
+    assert.deepStrictEqual(
+      set._queuedByDistance().map((t) => t.name),
+      [atWorldOrigin.name, atLocalOrigin.name]
+    );
+    set.dispose();
+  });
+
+  it('keeps insertion order without a focus or without bounding volumes', () => {
+    const set = new TilesColliderSet(stubPhysics(), stubTiles(null));
+    clearInterval(set.interval);
+    const a = tileAt(500, 0, 0);
+    const b = tileAt(1, 0, 0);
+    set.enqueue(a);
+    set.enqueue(b);
+    assert.deepStrictEqual(set._queuedByDistance(), [a, b]);
+    set.setFocus({ x: 0, y: 0, z: 0 });
+    assert.deepStrictEqual(set._queuedByDistance(), [b, a]);
+    // Tiles with no bounding volume sort last, in insertion order.
+    const bare1 = { name: 'bare1', engineData: { scene: null } };
+    const bare2 = { name: 'bare2', engineData: { scene: null } };
+    set.enqueue(bare1);
+    set.enqueue(bare2);
+    assert.deepStrictEqual(
+      set._queuedByDistance().map((t) => t.name),
+      [b.name, a.name, 'bare1', 'bare2']
+    );
+    assert.strictEqual(
+      tileDistanceToPoint(bare1, new global.THREE.Vector3()),
+      Infinity
+    );
+    set.dispose();
+  });
+
+  it('isSafetyNetSurface tells the deep pad from real ground', () => {
+    assert.strictEqual(isSafetyNetSurface(TILES_SAFETY_NET_Y), true);
+    assert.strictEqual(isSafetyNetSurface(TILES_SAFETY_NET_Y + 0.05), true);
+    assert.strictEqual(isSafetyNetSurface(0), false);
+    assert.strictEqual(isSafetyNetSurface(-0.05), false); // flat pad
+    assert.strictEqual(isSafetyNetSurface(-120), false); // deep terrain
+    assert.strictEqual(isSafetyNetSurface(null), false);
+    assert.strictEqual(isSafetyNetSurface(undefined), false);
+    assert.strictEqual(isSafetyNetSurface(-Infinity), false);
+  });
+});
