@@ -89,6 +89,11 @@ export class EasyGizmoProbe {
     }
   }
 
+  /** Tiles a suspension change un-flattened are still regenerating. */
+  hasPendingRegeneration() {
+    return !this._tilesReady();
+  }
+
   _tilesReady() {
     // Shape removal regenerates tiles on their next update, not synchronously.
     for (const layer of this._pendingFlatteningLayers) {

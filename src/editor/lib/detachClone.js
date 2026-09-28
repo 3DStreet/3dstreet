@@ -248,18 +248,26 @@ export function forgetDetached(cloneEl) {
 
 const POSE_COMPONENT_SET = new Set(POSE_COMPONENTS);
 
-// One axis of a vec3 edit merged into the clone's current value (A-Frame
-// hands back a {x, y, z} object; a plain DOM element a string).
-function mergeAxis(cloneEl, component, property, value) {
-  const raw = cloneEl.getAttribute(component);
-  let current = { x: 0, y: 0, z: 0 };
+// A vec3 in either of the shapes a pose value takes: the {x, y, z} object
+// A-Frame hands back (or the panel sends) or the "x y z" string a plain DOM
+// element / the AI chat carries.
+function toVec3(raw) {
   if (raw && typeof raw === 'object') {
-    current = { x: raw.x, y: raw.y, z: raw.z };
-  } else if (typeof raw === 'string') {
-    const [x, y, z] = raw.trim().split(/\s+/).map(Number);
-    current = { x: x || 0, y: y || 0, z: z || 0 };
+    return { x: raw.x, y: raw.y, z: raw.z };
   }
-  return { ...current, [property]: Number(value) };
+  if (typeof raw === 'string') {
+    const [x, y, z] = raw.trim().split(/\s+/).map(Number);
+    return { x: x || 0, y: y || 0, z: z || 0 };
+  }
+  return { x: 0, y: 0, z: 0 };
+}
+
+// One axis of a vec3 edit merged into the clone's current value.
+function mergeAxis(cloneEl, component, property, value) {
+  return {
+    ...toVec3(cloneEl.getAttribute(component)),
+    [property]: Number(value)
+  };
 }
 
 /**
@@ -378,20 +386,40 @@ function routeMultiCloneEdit(tuples) {
       detachAt.set(cloneEl, out.length);
       out.push(['detachclone', routed.payload, ...rest]);
     } else {
-      out[at][1] = mergeDetachPayload(out[at][1], routed.payload);
+      out[at][1] = mergeDetachPayload(
+        out[at][1],
+        routed.payload,
+        POSE_COMPONENT_SET.has(payload?.component) ? payload.property : null
+      );
     }
   }
   if (!routedAny) return null;
   if (out.length === 1 && Array.isArray(out[0])) {
-    return { cmdName: out[0][0], payload: out[0][1] };
+    const [cmdName, payload, callback] = out[0];
+    return callback ? { cmdName, payload, callback } : { cmdName, payload };
   }
   return { cmdName: 'multi', payload: out };
 }
 
-/** Two detachclone payloads for the same clone, later edits winning. */
-function mergeDetachPayload(a, b) {
+/**
+ * Two detachclone payloads for the same clone, later edits winning. `axis`
+ * names the one axis the later member edited, when it was a per-axis edit:
+ * such a member builds its vector from the clone's CURRENT attribute
+ * (mergeAxis), which knows nothing of the members before it, so only that
+ * axis is taken from it and the rest keeps what earlier members set.
+ */
+function mergeDetachPayload(a, b, axis = null) {
   const merged = { ...a, ...b };
-  if (a.pose || b.pose) merged.pose = { ...a.pose, ...b.pose };
+  if (a.pose || b.pose) {
+    merged.pose = { ...a.pose };
+    for (const [component, value] of Object.entries(b.pose ?? {})) {
+      const prev = merged.pose[component];
+      merged.pose[component] =
+        axis && prev !== undefined
+          ? { ...toVec3(prev), [axis]: value[axis] }
+          : value;
+    }
+  }
   if (a.components || b.components) {
     merged.components = { ...a.components };
     for (const [name, value] of Object.entries(b.components ?? {})) {

@@ -339,6 +339,13 @@ class EasyGizmoControls extends GizmoPointerControls {
     this._pointerId = null;
     // Native capture dropped by the browser mid-gesture (see _onLostCapture).
     this._captureLost = false;
+    // A press suspended the selection's flattening and the tiles have not
+    // regenerated yet: the drag's reference support is re-seeded once they
+    // have (see _advance).
+    this._dragReferencePending = false;
+    // The canvas rectangle, read at most once per scene frame (_canvasRect).
+    this._rect = null;
+    this._rectToken = undefined;
     this._lastPointerType = 'mouse';
     this._wasOpen = false;
     this._frameSystem = null;
@@ -359,10 +366,16 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.pathEvaluationEnabled = true;
 
     this._onEntityUpdate = (detail) => {
-      if (this.el && !this.isDragging && this._inspectorOpen()) {
-        if (detail?.entity === this.el) this.deriveLocalBox();
-        this._refreshSupport();
-      }
+      if (!this.el || this.isDragging || !this._inspectorOpen()) return;
+      // Only an update in this selection's own lineage can move its base or
+      // change its box. Support changing beneath it from elsewhere (a street
+      // edited under it, tiles streaming in) is the idle probe's job; probing
+      // here for every entity would raycast the scene once per entity of a
+      // batch command and once per pointer move of an unrelated scrub.
+      const entity = detail?.entity;
+      if (!entity || !this._inLineage(entity)) return;
+      if (entity === this.el || this.el.contains(entity)) this.deriveLocalBox();
+      this._refreshSupport();
     };
     // Bound once rather than per frame: the path evaluator takes the probe as
     // an argument, which is what keeps its own module free of raycasting.
@@ -913,6 +926,32 @@ class EasyGizmoControls extends GizmoPointerControls {
     return !!AFRAME.INSPECTOR?.opened;
   }
 
+  /** The attached entity, one of its ancestors, or one of its descendants. */
+  _inLineage(entity) {
+    if (entity === this.el) return true;
+    if (typeof entity.contains !== 'function') return false;
+    return this.el.contains(entity) || entity.contains(this.el);
+  }
+
+  /**
+   * The canvas rectangle, read at most once per scene frame. Every matrix
+   * update (twice per frame while attached) and every pointer move mapped
+   * through it, and each read is a forced layout flush; with React panels
+   * re-rendering per entityupdate during a drag that was layout thrash on the
+   * hot path. A resize lands on the next frame. Without a frame clock (unit
+   * fixtures) it reads live.
+   */
+  _canvasRect() {
+    if (!this.domElement) return null;
+    const token = this.sceneEl ? this.sceneEl.time : undefined;
+    if (token !== undefined && this._rect && this._rectToken === token) {
+      return this._rect;
+    }
+    this._rect = this.domElement.getBoundingClientRect();
+    this._rectToken = token;
+    return this._rect;
+  }
+
   /** Claim before canvas listeners; see docs/easy-gizmo.md#pointer-ownership. */
   _addListeners() {
     if (this._armed) return;
@@ -1049,7 +1088,19 @@ class EasyGizmoControls extends GizmoPointerControls {
       this.highlight(axis);
       this.dispatchEvent({ type: 'axisHoverChange', axis });
     }
-    if (this.startDrag(axis, event) === false) return;
+    // Before the reference support is measured: placement must not sample
+    // terrain the dragged item flattened itself. A merely selected street
+    // keeps its flattening; this is released on every gesture exit, and here
+    // when the press does not become a drag. Tiles regenerate asynchronously
+    // and the probe withholds tile support until they have, so the reference
+    // is re-seeded once they are (see _advance).
+    this.probe.setFlatteningSuspended(true);
+    this._dragReferencePending = this.probe.hasPendingRegeneration();
+    if (this.startDrag(axis, event) === false) {
+      this.probe.setFlatteningSuspended(false);
+      this._dragReferencePending = false;
+      return;
+    }
     // Ownership is independent of whether native capture is available.
     this._pointerId = event.pointerId ?? null;
     this._captureLost = false;
@@ -1061,11 +1112,6 @@ class EasyGizmoControls extends GizmoPointerControls {
       }
     }
     this.isDragging = true;
-    // Only now: placement must not sample terrain the dragged item flattened
-    // itself, but a merely selected street keeps its flattening (the tiles
-    // regenerate once suspension changes, and the probe holds tile support
-    // until they have). Released in endGesture.
-    this.probe.setFlatteningSuspended(true);
     this.highlight(axis);
     this.dispatchEvent(this.mouseDownEvent);
     this.dispatchEvent(this.changeEvent);
@@ -1208,6 +1254,11 @@ class EasyGizmoControls extends GizmoPointerControls {
   _onCanvasLeave() {
     if (!this.isDragging) return;
     if (this._releasePending) return;
+    // Without native capture the canvas sees the cursor cross its edge (the
+    // browser dropped capture on a phantom button-up, see _onLostCapture),
+    // which is not the user letting go: the window listeners still own the
+    // pointer, and the real pointerup ends the gesture.
+    if (this._captureLost) return;
     if (this.axis === 'move') {
       this._releasePending = { reason: 'mouseleave' };
     } else {
@@ -1421,9 +1472,7 @@ class EasyGizmoControls extends GizmoPointerControls {
   _layoutEdges() {
     // The same rectangle the pointer is mapped through, so the edge is sized
     // in the pixels the user sees, for any camera.
-    const rect = this.domElement
-      ? this.domElement.getBoundingClientRect()
-      : null;
+    const rect = this._canvasRect();
     if (!rect || !rect.width || !rect.height || !(this.squareSide > 0)) return;
     this._edgeScreenW = rect.width;
     this._edgeScreenH = rect.height;
@@ -1784,10 +1833,10 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   _refreshSupport() {
-    // Suspension is a property of the GESTURE, not of the selection: a
+    // Flattening suspension is a property of the GESTURE, not of the
+    // selection, and is owned by the press and the gesture exits alone: a
     // selected street keeps flattening the terrain around it until a drag
-    // begins (see _onPointerDown) and gets it back the moment the drag ends.
-    this.probe.setFlatteningSuspended(this.isDragging && this._inspectorOpen());
+    // begins and gets it back the moment the drag ends.
     if (!this.object || !this._inspectorOpen()) return;
     this._updateBase();
     const baseY = this.currentBaseY();
@@ -2540,6 +2589,18 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.dragStartXZ.set(_p.x, 0, _p.z);
     this._lastProcessedXZ = { x: _p.x, z: _p.z };
     this._pendingXZ = null;
+    this._seedDragReference(baseY);
+  }
+
+  /**
+   * The support the drag follows and the clearance it preserves above it,
+   * from a fresh probe beneath the object. Taken at the press, and again once
+   * tiles the press un-flattened have regenerated: until then the probe
+   * withholds tile support, so a flattened street pressed over tiles would
+   * otherwise carry its own plateau as the reference for the whole gesture
+   * and read every sample of real terrain as a step.
+   */
+  _seedDragReference(baseY) {
     this._refreshSupport();
     if (this.supportY === null) {
       // No support at all under the object is a reachable state; treat its own
@@ -2588,7 +2649,7 @@ class EasyGizmoControls extends GizmoPointerControls {
 
   /** Horizontal cursor travel since the press, in screen pixels. */
   _shallowDragPixels() {
-    const rect = this.domElement.getBoundingClientRect();
+    const rect = this._canvasRect();
     return ((this.mouse.x - this._dragStartMouseX) * rect.width) / 2;
   }
 
@@ -2633,8 +2694,8 @@ class EasyGizmoControls extends GizmoPointerControls {
 
   /** A world point's horizontal screen position, in pixels from the centre. */
   _screenX(worldPoint) {
-    if (!this.domElement) return null;
-    const rect = this.domElement.getBoundingClientRect();
+    const rect = this._canvasRect();
+    if (!rect) return null;
     _rotProject.copy(worldPoint).project(this.camera);
     return (_rotProject.x * rect.width) / 2;
   }
@@ -2752,6 +2813,10 @@ class EasyGizmoControls extends GizmoPointerControls {
     if (!this.isDragging || this.axis !== 'move' || !this._pendingXZ) return;
     const target = this._pendingXZ;
     this._pendingXZ = null;
+    if (this._dragReferencePending && !this.probe.hasPendingRegeneration()) {
+      this._dragReferencePending = false;
+      this._seedDragReference(this.currentBaseY());
+    }
     const baseY = this.currentBaseY();
     const startY = _p.y;
     const result = evaluatePath({
@@ -2831,6 +2896,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     // The selection's own flattening comes back on every exit, commit or
     // cancel: the terrain re-flattens around wherever the item ended up.
     this.probe.setFlatteningSuspended(false);
+    this._dragReferencePending = false;
     this.dragSnapshot = null;
     this.dragEl = null;
     this.dragObject = null;

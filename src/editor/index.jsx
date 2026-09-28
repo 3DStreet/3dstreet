@@ -254,6 +254,8 @@ Inspector.prototype = {
       if (routed.cmdName !== cmdName) optionalName = undefined;
       cmdName = routed.cmdName;
       payload = routed.payload;
+      // A batch that folded to one member carries that member's callback.
+      if (routed.callback && !callback) callback = routed.callback;
     }
     const Cmd = commandsByType.get(cmdName);
     if (!Cmd) {

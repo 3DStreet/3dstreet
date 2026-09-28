@@ -444,6 +444,68 @@ describe('detachClone (#2011)', () => {
       });
     });
 
+    it('merges per-axis pose members instead of replacing the vector', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', property: 'x', value: 5 }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', property: 'z', value: 7 }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'rotation', value: '0 90 0' }
+          ]
+        ])
+      ).toEqual({
+        cmdName: 'detachclone',
+        payload: {
+          entity: clone,
+          pose: { position: { x: 5, y: 0, z: 7 }, rotation: '0 90 0' }
+        }
+      });
+      // A whole-vector member followed by a per-axis one keeps the vector.
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', value: '3 4 5' }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', property: 'y', value: 9 }
+          ]
+        ]).payload.pose
+      ).toEqual({ position: { x: 3, y: 9, z: 5 } });
+    });
+
+    it("carries a folded member's callback", () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const cb = () => {};
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'mixin', value: 'tree' },
+            cb
+          ]
+        ])
+      ).toEqual({
+        cmdName: 'detachclone',
+        payload: { entity: clone, pose: {}, mixin: 'tree' },
+        callback: cb
+      });
+      expect(
+        routeCloneEdit('multi', [['entityclone', clone, cb]])
+      ).toMatchObject({ cmdName: 'entitycreate', callback: cb });
+    });
+
     it('routes each member of a mixed batch and keeps the others in place', () => {
       const segment = makeSegment();
       const clone = makeClone(segment);

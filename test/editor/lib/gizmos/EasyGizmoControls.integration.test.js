@@ -1053,6 +1053,28 @@ describe('release, touch and attachment lifecycle', () => {
     expect(f.commits).toHaveLength(1);
   });
 
+  it('ignores a canvas mouseleave while native capture is lost', () => {
+    const f = fixture();
+    f.surface(0);
+    f.attach();
+    f.start();
+    f.pointer('pointermove', new THREE.Vector3(0.2, 0, 0));
+    f.frame();
+    f.pointer('lostpointercapture', new THREE.Vector3(0.2, 0, 0));
+    // Without capture the canvas sees the cursor cross into a side panel.
+    f.canvas.dispatchEvent(new Event('mouseleave'));
+    f.frame();
+    expect(f.controls.isDragging).toBe(true);
+    expect(f.commits).toHaveLength(0);
+    f.pointer('pointermove', new THREE.Vector3(0.3, 0, 0));
+    f.frame();
+    expect(f.object.position.x).toBeCloseTo(0.3, 3);
+    f.pointer('pointerup', new THREE.Vector3(0.35, 0, 0));
+    f.frame();
+    expect(f.commits).toHaveLength(1);
+    expect(f.object.position.x).toBeCloseTo(0.35, 3);
+  });
+
   it('re-acquires native capture on the next move that reports the button down', () => {
     const f = fixture();
     f.surface(0);
@@ -1446,6 +1468,61 @@ describe('terrain flattening of the selection', () => {
     expect(f.commits).toHaveLength(1);
   });
 
+  // A press un-flattens the tiles beneath the selection, which regenerate
+  // asynchronously; the probe withholds tile support until they have. The
+  // build that seeded the drag's reference before suspending carried the
+  // street's own plateau as the reference for the whole gesture, so every
+  // sample of real terrain read as a step and the street floated across the
+  // drag. The reference is re-seeded once the tiles are back.
+  it('re-seeds the drag reference once the un-flattened tiles regenerate', () => {
+    const f = fixture();
+    f.surface(-1, { kind: 'tiles', slope: 0.8 });
+    f.attach();
+    const ready = vi.spyOn(f.controls.probe, '_tilesReady');
+    ready.mockReturnValue(false);
+    f.start();
+    expect(f.controls._dragReferencePending).toBe(true);
+    // Tiles withheld: nothing beneath, so the object holds its height.
+    f.pointer('pointermove', new THREE.Vector3(0.2, 0, 0));
+    f.frame();
+    expect(f.object.position.y).toBeCloseTo(0, 3);
+    expect(f.controls._dragReferencePending).toBe(true);
+    // Regenerated: the reference is taken from the real terrain at the
+    // current column (-0.84, clearance 0.84) and the slope is followed.
+    ready.mockReturnValue(true);
+    f.pointer('pointermove', new THREE.Vector3(0.5, 0, 0));
+    f.frame();
+    expect(f.controls._dragReferencePending).toBe(false);
+    expect(f.object.position.x).toBeCloseTo(0.5, 3);
+    expect(f.object.position.y).toBeCloseTo(0.24, 3);
+    f.pointer('pointerup', new THREE.Vector3(0.5, 0, 0));
+    f.frame();
+    expect(f.commits).toHaveLength(1);
+  });
+
+  it('measures the press reference after suspending, and releases a press that is not a drag', () => {
+    const f = fixture({ base: 2 });
+    f.surface(0);
+    f.attach();
+    const order = [];
+    vi.spyOn(f.controls.probe, 'setFlatteningSuspended').mockImplementation(
+      (v) => order.push(['suspend', v])
+    );
+    vi.spyOn(f.controls, '_seedDragReference').mockImplementation(() =>
+      order.push(['seed'])
+    );
+    f.start();
+    expect(order).toEqual([['suspend', true], ['seed']]);
+    f.controls.endGesture('escape');
+    order.length = 0;
+    // A landing press with no target does not become a drag.
+    f.controls.landingUpY = null;
+    f.controls.startDrag = () => false;
+    f.pointer('pointerdown', f.controls.moveGroup.position);
+    expect(f.controls.isDragging).toBe(false);
+    expect(order.at(-1)).toEqual(['suspend', false]);
+  });
+
   it('is restored on a cancelled gesture too', () => {
     const f = fixture();
     f.surface(0);
@@ -1456,6 +1533,46 @@ describe('terrain flattening of the selection', () => {
     f.controls.endGesture('escape');
     expect(suspend).toHaveBeenLastCalledWith(false);
     expect(f.commits).toHaveLength(0);
+  });
+});
+
+describe('work per frame and per event', () => {
+  it('re-probes on an entityupdate only for its own lineage', () => {
+    const f = fixture();
+    f.surface(0);
+    f.attach();
+    const probe = vi.spyOn(f.controls.probe, 'probeColumn');
+    const other = document.createElement('div');
+    f.sceneEl.append(other);
+    f.controls._onEntityUpdate({ entity: other });
+    f.controls._onEntityUpdate({});
+    f.controls._onEntityUpdate({ entity: { id: 'no-dom' } });
+    expect(probe).not.toHaveBeenCalled();
+    const child = document.createElement('div');
+    f.el.append(child);
+    f.controls._onEntityUpdate({ entity: child });
+    expect(probe).toHaveBeenCalledTimes(1);
+    f.controls._onEntityUpdate({ entity: f.el });
+    expect(probe).toHaveBeenCalledTimes(2);
+    f.controls._onEntityUpdate({ entity: f.sceneEl });
+    expect(probe).toHaveBeenCalledTimes(3);
+  });
+
+  it('reads the canvas rectangle at most once per scene frame', () => {
+    const f = fixture();
+    f.surface(0);
+    f.attach();
+    const rect = vi.spyOn(f.canvas, 'getBoundingClientRect');
+    // A new frame: one read serves both matrix updates and every pointer
+    // move mapped through the canvas until the next frame.
+    f.frame();
+    f.controls.updateMatrixWorld(true);
+    f.pointer('pointermove', new THREE.Vector3(0.1, 0, 0));
+    f.pointer('pointermove', new THREE.Vector3(0.2, 0, 0));
+    expect(rect).toHaveBeenCalledTimes(1);
+    f.frame();
+    f.controls.updateMatrixWorld(true);
+    expect(rect).toHaveBeenCalledTimes(2);
   });
 });
 

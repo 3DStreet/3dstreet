@@ -53,8 +53,11 @@ A gesture temporarily suspends the dragged subtree's terrain flatten volumes
 without changing serialized settings. Terrain is sampled after the selected
 shapes are removed and tile regeneration finishes; until then the probe holds
 tile support, so the first frames of a drag hold height rather than reading the
-item's own plateau. This avoids sampling terrain modified by the item being
-placed. The suspension lasts exactly as long as the gesture: a street that is
+item's own plateau, and the drag's reference support and clearance are
+re-seeded from a fresh probe the moment the tiles are back (the press measures
+its reference after suspending, so a flattened street never carries its own
+plateau as the reference). This avoids sampling terrain modified by the item
+being placed. The suspension lasts exactly as long as the gesture: a street that is
 merely selected keeps flattening the terrain around it (idle probes and landing
 targets read the flattened terrain, so a flattened street reads as supported),
 and every gesture exit, commit or cancel, restores it so the terrain
@@ -78,7 +81,9 @@ macOS trackpad produces during a real drag (a second finger brushing the pad,
 three-finger drag, drag lock), with the real pointerup still to come. A
 `lostpointercapture` for the owning pointer therefore never ends the gesture:
 the window listeners keep following that pointer by id, capture is re-acquired
-on the next move that reports the button down, and the drag ends on pointerup,
+on the next move that reports the button down, a canvas `mouseleave` seen while
+capture is lost is ignored (without capture the canvas sees the cursor cross
+into a side panel, which is not a release), and the drag ends on pointerup,
 pointercancel, blur or Escape as usual. Treating the loss as a cancel restored
 the press pose on release, which users saw as the object snapping back.
 
@@ -86,6 +91,15 @@ Translation records pointer movement and evaluates it once per scene frame.
 Release queues the final coordinate for the next frame token, so finishing a drag
 does not spend a second path-query budget within one frame. Cancellation restores
 the press snapshot instead of committing that queued movement.
+
+## Work per frame and per event
+
+The canvas rectangle is read at most once per scene frame (`_canvasRect`):
+every matrix update and every pointer move maps through it, and each read is
+a forced layout flush. An `entityupdate` re-probes support only when the
+updated entity is the selection, an ancestor or a descendant; support changing
+beneath it from elsewhere is the idle probe's job, so a batch command over many
+entities or a scrub on an unrelated entity costs no scene raycasts here.
 
 ## Flattened frame
 
