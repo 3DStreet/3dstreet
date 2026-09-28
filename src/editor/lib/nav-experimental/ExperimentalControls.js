@@ -71,14 +71,10 @@ import {
   DEFAULT_FOV_DEGREES
 } from './constants.js';
 import { captureNavDiscovery } from '../navAnalytics.js';
+import { isDebugEnabled } from '../../../shared/utils/debug.js';
 // Frozen import path: the Compass widget imports `needleScreenAngle` from this
 // module. Re-export it from its new home (the compass controller).
 export { needleScreenAngle } from './compassController.js';
-
-const NAV_DEBUG = (() => {
-  if (typeof window === 'undefined' || !window.location) return false;
-  return new URLSearchParams(window.location.search).get('navDebug') === 'true';
-})();
 
 export class ExperimentalControls extends THREE.EventDispatcher {
   constructor(camera, domElement, sceneEl) {
@@ -383,7 +379,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._onTick(delta)
     );
 
-    if (NAV_DEBUG) {
+    if (isDebugEnabled()) {
       console.info('[nav-experimental] ExperimentalControls active.');
     }
   }
@@ -628,12 +624,22 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     });
   }
 
+  // Reset Camera View (action bar + View menu): the default overview at the
+  // default lens. The fov is part of the reset because nothing else restores
+  // it once a Starting View that set a non-default fov is deleted: the lens
+  // it applied stays on the shared camera for the rest of the session and
+  // the next autosave writes it into `memory.cameraState`, so the scene keeps
+  // opening telephoto/wide with no entity left to edit (#2043).
   resetZoom() {
     if (this._disabledByOrtho) return;
     const camera = this._camera;
     this.center.set(0, 1.6, 0);
     camera.position.set(0, 15, 30);
     camera.lookAt(this.center);
+    if (camera.fov !== DEFAULT_FOV_DEGREES) {
+      camera.fov = DEFAULT_FOV_DEGREES;
+      camera.updateProjectionMatrix();
+    }
     camera.updateMatrixWorld();
     // Invalidate the legit-pose snapshot so a subsequent
     // recovery never tweens back to the pre-reset pose. It re-seeds on the
@@ -651,18 +657,15 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // the default overview at the default fov, applied at once — no tween.
   // Used by New › Blank Scene so a new scene opens exactly like an empty
   // editor does, and so a save fired on that newScene event records this
-  // pose, not the previous scene's (#2037). resetZoom keeps its place as
-  // the position-only reset behind the action bar's button.
+  // pose, not the previous scene's (#2037). Same pose and lens as resetZoom
+  // (the action bar's Reset Camera View), plus a cancel of any in-flight
+  // load glide.
   snapToDefaultView() {
     if (this._disabledByOrtho) return;
     // A load fly-in still gliding would otherwise carry on writing the
     // camera over the snapped pose.
     this._runner.cancel();
     this.resetZoom();
-    const camera = this._camera;
-    camera.fov = DEFAULT_FOV_DEGREES;
-    camera.updateProjectionMatrix();
-    camera.updateMatrixWorld();
   }
 
   // Reconstruct the look-at target of a stored pose (position + Euler

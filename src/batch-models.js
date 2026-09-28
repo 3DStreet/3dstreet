@@ -2,6 +2,7 @@
 
 import { releaseSharedSource } from './sharedTextureSources';
 import { waitForImage } from './lazy-textures.js';
+import { debugLog } from './shared/utils/debug.js';
 
 // Static batching feature flag.
 // The flag is used to conditionnaly register the gltf-model component override and batch models, so it can't be
@@ -21,6 +22,11 @@ export const BATCHING_ENABLED = window.BATCHING_ENABLED ?? true;
 // reference member is representative. Set window.BATCH_SKINNED_MESHES = false before the bundle
 // loads to keep skinned meshes unbatched (A/B benchmarking).
 export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
+
+// Per-group progress logging ("batched X", "not batched Y: reason", "popping Z"...) is a
+// console line per model group per scene and drowns the console on any real street (#2043),
+// so it only prints with the global debug switch on (`?debug=true`, see shared/utils/debug.js).
+// Warnings about loads that never settle and BVH failures stay on console.warn unconditionally.
 
 // Automatic runtime batching of repeated gltf-model, gltf-part, and geometry+material (stencil)
 // entities. Each is a "provider" (getBatchProvider) exposing a batch key, strip/reload behavior,
@@ -406,7 +412,7 @@ function markDeferredLoads(gltfEntities) {
     }
   }
   if (deferredCount) {
-    console.log(
+    debugLog(
       `[batch-models] deferring ${deferredCount} GLB load(s) across ${groupsWithDeferred} src(s)`
     );
   }
@@ -542,7 +548,7 @@ function ensureOriginalBvh(el) {
     }
   });
   if (built || skipped) {
-    console.log(
+    debugLog(
       `[batch-models] BVH on ${describeEl(el)}: built ${built}, skipped ${skipped} (< ${MIN_TRIANGLES_FOR_BVH} tris)`
     );
   }
@@ -1041,7 +1047,7 @@ function batchMergedByMaterial(batchRootEl, key, members) {
   }
   batched.computeBoundsTree?.();
 
-  console.log(
+  debugLog(
     `[batch-models] merged "${key}": ${perMember.length} members, ${geometryBySignature.size} geometr(ies), 1 draw call`
   );
   return group;
@@ -1056,7 +1062,7 @@ function batchGroup(batchRootEl, key, members) {
   const src = getSrc(members[0]);
   const refMesh = members[0].getObject3D('mesh');
   if (!refMesh) {
-    console.log(
+    debugLog(
       `[batch-models] not batched "${key}": reference member has no mesh (src: ${src})`
     );
     return null;
@@ -1065,13 +1071,13 @@ function batchGroup(batchRootEl, key, members) {
   const { materialGroups, skipReasons, castShadow, receiveShadow } =
     collectRefSubMeshes(refMesh, members[0].object3D.matrixWorld);
   if (skipReasons.length > 0) {
-    console.log(
+    debugLog(
       `[batch-models] not batched "${key}" (${members.length} members): ${skipReasons.join(', ')} (src: ${src})`
     );
     return null;
   }
   if (materialGroups.size === 0) {
-    console.log(
+    debugLog(
       `[batch-models] not batched "${key}": no batchable sub-meshes (src: ${src})`
     );
     return null;
@@ -1189,7 +1195,7 @@ function batchGroup(batchRootEl, key, members) {
     finalizeStrippedMember(el, inEditor);
   }
 
-  console.log(
+  debugLog(
     `[batch-models] batched "${key}": ${members.length} members, ${materialGroups.size} draw call(s) (src: ${src})`
   );
 
@@ -1327,7 +1333,7 @@ function processKeyGroup(key, entities) {
     const blocking = getBlockingComponents(el);
     if (blocking.length > 0) reason = `has components [${blocking.join(', ')}]`;
     if (reason) {
-      console.log(
+      debugLog(
         `[batch-models] not batched ${describeEl(el)}: ${reason} (src: ${getSrc(el)})`
       );
       setStatus(el, false, reason);
@@ -1342,7 +1348,7 @@ function processKeyGroup(key, entities) {
   if (members.length < 2) {
     if (members.length === 1) {
       const reason = 'only 1 instance';
-      console.log(
+      debugLog(
         `[batch-models] not batched "${key}": ${reason} (src: ${getSrc(members[0])})`
       );
       setStatus(members[0], false, reason);
@@ -1458,7 +1464,7 @@ export async function batchModels(sceneEl) {
   // mid-load) were handed back: regroup them by their current key and give them one more round.
   // Anything that moves again stays unbatched; the release sweep below still frees it.
   if (moved.length > 0) {
-    console.log(
+    debugLog(
       `[batch-models] regrouping ${moved.length} entit(y/ies) whose key changed during the pass`
     );
     await Promise.all(
@@ -1494,7 +1500,7 @@ function groupByBatchKey(entities) {
     const key = getBatchKey(el);
     if (!key) {
       const reason = 'no gltf-model src';
-      console.log(`[batch-models] not batched ${describeEl(el)}: ${reason}`);
+      debugLog(`[batch-models] not batched ${describeEl(el)}: ${reason}`);
       setStatus(el, false, reason);
       continue;
     }
@@ -1597,12 +1603,12 @@ async function batchKeyGroupWhenReady(
     }
   }
   if (detached > 0) {
-    console.log(
+    debugLog(
       `[batch-models] "${key}": skipped ${detached} entit(y/ies) detached during the pass`
     );
   }
   if (movedCount > 0) {
-    console.log(
+    debugLog(
       `[batch-models] "${key}": ${movedCount} entit(y/ies) changed key during the pass`
     );
   }
@@ -1791,7 +1797,7 @@ function repackLateUnbatched(sceneEl, key) {
 
   if (group) {
     for (const el of candidates) addLateMember(group, el);
-    console.log(
+    debugLog(
       `[batch-models] late-batched ${candidates.length} into "${key}" (${group.activeMemberCount} members)`
     );
   } else {
@@ -1800,7 +1806,7 @@ function repackLateUnbatched(sceneEl, key) {
       sceneEl._batchModelsBuilt = (sceneEl._batchModelsBuilt || []).concat(
         built
       );
-      console.log(
+      debugLog(
         `[batch-models] late-built group "${key}" (${candidates.length} members)`
       );
     }
@@ -1959,7 +1965,7 @@ export function expandBatchedMeshesForExport(root) {
 export function popMember(el) {
   if (!isBatched(el)) return false;
   const provider = getBatchProvider(el);
-  console.log(
+  debugLog(
     `[batch-models] popping ${describeEl(el)}: dropping slot + reloading`
   );
   removeMember(el);
@@ -1996,7 +2002,7 @@ export function removeMember(el) {
   delete el.object3D._batchStatus;
   delete el.object3D._batchLocalBbox;
   delete el.object3D._batchGroup;
-  console.log(
+  debugLog(
     `[batch-models] removed ${describeEl(el)} (${slots.length} slot(s))`
   );
   if (group) {
@@ -2012,7 +2018,7 @@ export function removeMember(el) {
       const idx = sceneEl._batchModelsBuilt.indexOf(group);
       if (idx >= 0) sceneEl._batchModelsBuilt.splice(idx, 1);
     }
-    console.log(`[batch-models] tore down empty group "${group.key}"`);
+    debugLog(`[batch-models] tore down empty group "${group.key}"`);
   }
   return true;
 }
