@@ -9,17 +9,26 @@
 /* global THREE */
 
 import {
-  ARC_NEAR_FRAC,
-  ARC_REACH_FRAC,
+  ARC_FLAT_CLEAR_FRAC,
+  ARC_FLAT_RADIUS_FRAC,
+  ARC_HEAD_RADIUS,
+  ARC_LIFT_MAX_DEG,
+  ARC_LIFT_SLACK_FRAC,
+  ARC_LIFT_SYMMETRIC,
+  ARC_MIN_TUBE_PX,
+  ARC_TUBE_RADIUS,
   CHEVRON_MAX,
   DODGE_HYSTERESIS_FRAC,
   FOLLOW_TAN,
+  HEAD_BASE_FLAT_FRAC,
+  HEAD_BASE_FRAC,
+  LANDING_BAR_HEIGHT_FRAC,
   SQUARE_MAX_METRES,
   SQUARE_MIN_METRES,
   SQUARE_TARGET_METRES,
   SQUARE_TARGET_PX,
   STEP_METRES,
-  STRIP_HALF_FRAC
+  STRIP_NARROW_FRAC
 } from './easyGizmoConstants.js';
 
 export function lerp(a, b, t) {
@@ -98,89 +107,162 @@ export function continuityAllowance(subSpanMetres) {
 }
 
 /**
- * Where the flattened handle sits relative to the object's base, given the gaps
- * to the nearest landing bar on each side.
+ * The flattened layout's clearances, in metres, derived from what is drawn.
+ *
+ * - `tubeWorld`: the arc tube's drawn thickness, with its pixel minimum.
+ * - `clearance`: how far the flattened arc's centre line sits from the move
+ *   strip's, before any lift: the larger of the strip's and its arrowheads'
+ *   half-heights, the arc's own half-thickness (its heads', which are the
+ *   thickest part) and a visible gap between them.
+ * - `stripClear`: the closest a flattened landing bar's centre may come to the
+ *   strip's: the two half-heights plus the same gap. The strip and a flattened
+ *   bar stand in one plane, so this holds on screen exactly.
+ */
+export function dodgeExtents(S, metresPerPixel, t) {
+  const tubeWorld = Math.max(S * 0.06, ARC_MIN_TUBE_PX * metresPerPixel);
+  const arcHalfThickness = (ARC_HEAD_RADIUS * tubeWorld) / ARC_TUBE_RADIUS;
+  const gap = S * ARC_FLAT_CLEAR_FRAC;
+  const headBase = lerp(HEAD_BASE_FRAC, HEAD_BASE_FLAT_FRAC, t);
+  const handleHeight = S * Math.max(STRIP_NARROW_FRAC, headBase);
+  return {
+    tubeWorld,
+    clearance: handleHeight / 2 + gap + arcHalfThickness,
+    stripClear: (S * (STRIP_NARROW_FRAC + LANDING_BAR_HEIGHT_FRAC)) / 2 + gap
+  };
+}
+
+/**
+ * How much further the flattened arc is moved from the move handle, in metres,
+ * to make up for parallax.
+ *
+ * The flattened arc is a horizontal ring whose drawn front is up to its radius
+ * nearer the camera than the strip, so seen from elevation θ it is drawn up to
+ * `radius · tan θ` lower (camera above) or higher (camera below) than its
+ * height. The world clearance absorbs a small part of that; this is the rest.
+ *
+ * `elevationDeg` is the elevation from the camera to the handle as drawn,
+ * positive with the camera above. `side` is +1 with the arc above the strip and
+ * −1 below. With `symmetric` false, the lift applies only when the camera and
+ * the arc are on the same side, the one case where parallax at rest draws the
+ * arc toward the handle.
+ */
+export function flatArcLift(
+  S,
+  elevationDeg,
+  side,
+  symmetric = ARC_LIFT_SYMMETRIC
+) {
+  const deg = symmetric
+    ? Math.abs(elevationDeg)
+    : Math.max(0, side * elevationDeg);
+  const rad = (Math.min(deg, ARC_LIFT_MAX_DEG) * Math.PI) / 180;
+  return (
+    S * Math.max(0, ARC_FLAT_RADIUS_FRAC * Math.tan(rad) - ARC_LIFT_SLACK_FRAC)
+  );
+}
+
+/**
+ * Where the flattened handle sits relative to the object's base, and which side
+ * of it the arc takes, given the gaps to the nearest landing bar on each side.
  *
  * `gapBelow` / `gapAbove` are positive distances in metres, or null for no bar
- * on that side. `latches` carries the previous state of the four hysteretic
- * thresholds and is returned updated; pass null to seed.
+ * on that side. `stripClear` is the closest a bar may come to the strip
+ * (`dodgeExtents`). `latches` carries the arc's previous side and is returned
+ * updated; pass null to seed.
  *
  * Returns `{ flipArc, shift, latches }`, where `shift` is a signed offset in
- * metres applied to the whole handle — square and arc together.
+ * metres applied to the whole handle — square and arc together — and `flipArc`
+ * puts the arc above the strip.
  */
-export function computeDodge({ S, gapBelow, gapAbove, latches }) {
-  const reach = ARC_REACH_FRAC * S;
-  const near = ARC_NEAR_FRAC * S;
-  const clear = STRIP_HALF_FRAC * S;
-  const leave = 1 + DODGE_HYSTERESIS_FRAC;
+export function computeDodge({ stripClear, gapBelow, gapAbove, latches }) {
   const below =
     gapBelow === null || gapBelow === undefined ? Infinity : gapBelow;
   const above =
     gapAbove === null || gapAbove === undefined ? Infinity : gapAbove;
-  const prev = latches || {};
 
-  const next = {
-    belowInReach: latchByHysteresis(
-      below,
-      reach,
-      reach * leave,
-      prev.belowInReach ?? null
-    ),
-    aboveInReach: latchByHysteresis(
-      above,
-      reach,
-      reach * leave,
-      prev.aboveInReach ?? null
-    ),
-    belowNear: latchByHysteresis(
-      below,
-      near,
-      near * leave,
-      prev.belowNear ?? null
-    ),
-    aboveNear: latchByHysteresis(
-      above,
-      near,
-      near * leave,
-      prev.aboveNear ?? null
-    )
-  };
-
-  // Rule 1 protects the ARC, which reaches 0.47 S from the base, so it is keyed
-  // on the arc's own reach on BOTH sides. Flipping onto a bar that is itself
-  // within reach trades one occlusion for another, so with a bar in reach
-  // either side the arc stays where it would have been anyway.
-  const flipArc = next.belowInReach && !next.aboveInReach;
-
-  // Rules 2 and 3 protect the STRIP, whose half-height is 0.11 S, so 0.15 S is
-  // their scale. They can both apply — rule 2's condition is a strict subset of
-  // rule 1's — and they demand opposite shifts, so the nearer bar wins.
-  let shift = 0;
-  const wantUp = next.belowNear ? near - below : null;
-  const wantDown = next.aboveNear ? -(near - above) : null;
-  if (wantUp !== null && wantDown !== null) {
-    shift = below <= above ? wantUp : wantDown;
-  } else if (wantUp !== null) {
-    shift = wantUp;
-  } else if (wantDown !== null) {
-    shift = wantDown;
-  }
-
-  // The winning shift moves the handle up to 0.15 S TOWARD the loser's bar,
-  // which may itself be within 0.15 S — so a dodge meant to keep one bar
-  // reachable can seat the handle on the other. Clamp to the band that clears
-  // both; where no such band exists, clear the nearer bar and accept the
-  // farther one as occluded.
-  const lowLimit = clear - below;
-  const highLimit = above - clear;
+  // The handle moves only as far as it must to keep `stripClear` from each bar:
+  // up off a bar close below, down off one close above. Where no position
+  // clears both, it clears the nearer bar and the farther is accepted as
+  // occluded.
+  const lowLimit = stripClear - below;
+  const highLimit = above - stripClear;
+  let shift;
   if (lowLimit <= highLimit) {
-    shift = Math.min(Math.max(shift, lowLimit), highLimit);
+    shift = Math.min(Math.max(0, lowLimit), highLimit);
   } else {
     shift = below <= above ? lowLimit : highLimit;
   }
   if (!Number.isFinite(shift)) shift = 0;
 
-  return { flipArc, shift, latches: next };
+  // The arc takes the side of the strip with more room, measured from the
+  // handle where it now sits. With no bar on either side it returns to its
+  // default side, below. Nothing here depends on the camera, so orbiting never
+  // moves it.
+  let flipArc = false;
+  if (below !== Infinity || above !== Infinity) {
+    const roomBelow = below + shift;
+    const roomAbove = above - shift;
+    const leave = 1 + DODGE_HYSTERESIS_FRAC;
+    flipArc = latches?.flipArc
+      ? !(roomAbove * leave < roomBelow)
+      : roomBelow * leave < roomAbove;
+  }
+
+  return { flipArc, shift, latches: { flipArc } };
+}
+
+/**
+ * Offset each side of a convex polygon along its own outward normal, joining
+ * neighbouring sides with a mitre.
+ *
+ * `points` is flat `[x0, y0, x1, y1, …]` in either winding, and `count` how
+ * many vertices of it to use. Side `i` runs from vertex `i` to `i + 1`, and
+ * `offsets[i]` moves it outward (negative moves it inward). The result is
+ * written into `out`, flat, where vertex `i` is the meeting point of offset
+ * sides `i − 1` and `i`, so side `i` of the result is offset side `i`.
+ */
+export function offsetConvexPolygon(
+  points,
+  offsets,
+  out = [],
+  count = points.length / 2
+) {
+  let area = 0;
+  for (let i = 0; i < count; i++) {
+    const j = (i + 1) % count;
+    area +=
+      points[2 * i] * points[2 * j + 1] - points[2 * j] * points[2 * i + 1];
+  }
+  const turn = area >= 0 ? 1 : -1;
+  for (let i = 0; i < count; i++) {
+    const h = (i + count - 1) % count;
+    const j = (i + 1) % count;
+    const x = points[2 * i];
+    const y = points[2 * i + 1];
+    // Outward normals of the side arriving at this vertex and the one leaving.
+    let ax = turn * (y - points[2 * h + 1]);
+    let ay = turn * (points[2 * h] - x);
+    let bx = turn * (points[2 * j + 1] - y);
+    let by = turn * (x - points[2 * j]);
+    const la = Math.hypot(ax, ay) || 1;
+    const lb = Math.hypot(bx, by) || 1;
+    ax /= la;
+    ay /= la;
+    bx /= lb;
+    by /= lb;
+    // Solve a·p = a·v + dA and b·p = b·v + dB for p = v + q.
+    const dA = offsets[h];
+    const dB = offsets[i];
+    const det = ax * by - ay * bx;
+    if (Math.abs(det) < 1e-9) {
+      out[2 * i] = x + bx * dB;
+      out[2 * i + 1] = y + by * dB;
+    } else {
+      out[2 * i] = x + (dA * by - dB * ay) / det;
+      out[2 * i + 1] = y + (dB * ax - dA * bx) / det;
+    }
+  }
+  return out;
 }
 
 /**

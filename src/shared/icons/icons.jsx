@@ -391,9 +391,9 @@ export const Translate24Icon = () => (
   </svg>
 );
 
-// Easy mode: the move/rotate gizmo's own glyph — a footprint square with a
-// curved arrow round it, so it reads as "move and turn" rather than as either
-// one alone.
+// The easy move gizmo's own glyph, drawn as the gizmo looks: a square with a
+// marker on each side, inside a ring whose two arrowheads point into the gap
+// at the top.
 export const EasyTransform24Icon = () => (
   <svg
     width="24"
@@ -402,23 +402,20 @@ export const EasyTransform24Icon = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M12 8.5L16.5 12L12 15.5L7.5 12L12 8.5Z" fill="white" />
+    <path d="M8.5 8.5H15.5V15.5H8.5Z" fill="white" />
+    <path d="M10.8 8.5H13.2L12 6.9Z" fill="white" />
+    <path d="M10.8 15.5H13.2L12 17.1Z" fill="white" />
+    <path d="M8.5 10.8V13.2L6.9 12Z" fill="white" />
+    <path d="M15.5 10.8V13.2L17.1 12Z" fill="white" />
     <path
-      d="M5.4 8.9A8 8 0 0 1 18.6 8.9"
+      d="M17 3.34A10 10 0 1 1 7 3.34"
       stroke="white"
       strokeWidth="1.6"
       strokeLinecap="round"
       fill="none"
     />
-    <path d="M19.9 5.4L19.2 9.6L15.2 8.2L19.9 5.4Z" fill="white" />
-    <path
-      d="M18.6 15.1A8 8 0 0 1 5.4 15.1"
-      stroke="white"
-      strokeWidth="1.6"
-      strokeLinecap="round"
-      fill="none"
-    />
-    <path d="M4.1 18.6L4.8 14.4L8.8 15.8L4.1 18.6Z" fill="white" />
+    <path d="M17.8 1.95L16.2 4.73L15.09 2.24Z" fill="white" />
+    <path d="M6.2 1.95L7.8 4.73L8.91 2.24Z" fill="white" />
   </svg>
 );
 

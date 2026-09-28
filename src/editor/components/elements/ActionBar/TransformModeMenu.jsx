@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react';
 import { DropdownMenu } from 'radix-ui';
 import classNames from 'classnames';
-import { useIntl } from 'react-intl';
+import { defineMessages, useIntl } from 'react-intl';
 import Events from '../../../lib/Events';
+import { Button } from '../../elements';
+import {
+  DEFAULT_TRANSFORM_MODE,
+  MOVE_GIZMO_MODES
+} from '../../../lib/transformModes.js';
 import styles from './ActionBar.module.scss';
 import '../../../style/AppMenu.scss';
 import {
@@ -26,6 +31,21 @@ const ICONS = {
   easy: EasyTransform24Icon
 };
 
+const LABELS = defineMessages({
+  easy: {
+    id: 'actionBar.transformMenu.easy',
+    defaultMessage: 'Move'
+  },
+  translate: {
+    id: 'actionBar.transformMenu.translate',
+    defaultMessage: 'Advanced move'
+  },
+  rotate: {
+    id: 'actionBar.transformMenu.rotate',
+    defaultMessage: 'Advanced rotate'
+  }
+});
+
 const TransformModeMenu = ({
   transformMode,
   changeTransformMode,
@@ -34,7 +54,9 @@ const TransformModeMenu = ({
   const intl = useIntl();
   const [open, setOpen] = useState(false);
   // Keep the last representable mode while hand, shape or scale is active.
-  const [lastMode, setLastMode] = useState('translate');
+  const [lastMode, setLastMode] = useState(() =>
+    ICONS[transformMode] ? transformMode : DEFAULT_TRANSFORM_MODE
+  );
 
   useEffect(() => {
     if (ICONS[transformMode]) setLastMode(transformMode);
@@ -62,33 +84,7 @@ const TransformModeMenu = ({
     window.addEventListener('keyup', swallow, true);
   };
 
-  const Icon = ICONS[lastMode] || Translate24Icon;
-  const items = [
-    {
-      mode: 'translate',
-      shortcut: 't',
-      label: intl.formatMessage({
-        id: 'actionBar.transformMenu.translate',
-        defaultMessage: 'Move'
-      })
-    },
-    {
-      mode: 'rotate',
-      shortcut: 'e',
-      label: intl.formatMessage({
-        id: 'actionBar.transformMenu.rotate',
-        defaultMessage: 'Rotate'
-      })
-    },
-    {
-      mode: 'easy',
-      shortcut: 'm',
-      label: intl.formatMessage({
-        id: 'actionBar.transformMenu.easy',
-        defaultMessage: 'Move and rotate'
-      })
-    }
-  ];
+  const Icon = ICONS[lastMode];
 
   return (
     // Explicitly non-modal. A modal menu puts pointer-events: none on the rest
@@ -97,9 +93,9 @@ const TransformModeMenu = ({
     // menu in the editor whose dismissal region is the viewport.
     <DropdownMenu.Root open={open} onOpenChange={setOpen} modal={false}>
       <DropdownMenu.Trigger asChild>
-        <button
-          type="button"
-          className={classNames({
+        <Button
+          variant="toolbtn"
+          className={classNames(styles.menuTrigger, {
             [styles.active]: !!ICONS[transformMode],
             // Mode is TOOL state, not per-object state: the button stays
             // clickable with a non-transformable entity selected and dims to
@@ -110,11 +106,11 @@ const TransformModeMenu = ({
           title={intl.formatMessage({
             id: 'actionBar.transformTool',
             defaultMessage:
-              'Transform Tool - move and rotate the selected object'
+              'Move tools (m) - Choose how to move and rotate the selected object'
           })}
         >
           <Icon />
-        </button>
+        </Button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content
@@ -124,17 +120,18 @@ const TransformModeMenu = ({
           sideOffset={8}
           onEscapeKeyDown={onEscapeKeyDown}
         >
-          {items.map((item) => {
-            const ItemIcon = ICONS[item.mode];
+          {MOVE_GIZMO_MODES.map((mode) => {
+            const ItemIcon = ICONS[mode];
             return (
               <DropdownMenu.Item
-                key={item.mode}
+                key={mode}
                 className="MenubarItem"
-                onSelect={() => changeTransformMode(item.mode)}
+                onSelect={() => changeTransformMode(mode)}
               >
                 <ItemIcon />
-                <span className={styles.menuLabel}>{item.label}</span>
-                <div className="RightSlot">{item.shortcut}</div>
+                <span className={styles.menuLabel}>
+                  {intl.formatMessage(LABELS[mode])}
+                </span>
               </DropdownMenu.Item>
             );
           })}

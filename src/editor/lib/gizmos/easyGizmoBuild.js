@@ -6,13 +6,16 @@
 // and detach() only show, hide and re-lay-out — which makes a per-selection
 // leak structurally impossible rather than merely fixed.
 
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import {
   ARC_HEAD_RADIUS,
   ARC_PICK_WIDTH_MULT,
   ARC_RADIAL_SEGMENTS,
   ARC_TUBE_RADIUS,
   ARC_TUBULAR_SEGMENTS,
-  ARC_HALF_SWEEP_DEG
+  ARC_HALF_SWEEP_DEG,
+  EDGE_COLOR,
+  EDGE_PX
 } from './easyGizmoConstants.js';
 
 /** Owns disposable resources, including the probe; attachment cleanup lives in controls. */
@@ -100,6 +103,22 @@ export function makeMaterial(color, opacity, solid) {
     depthTest: false,
     depthWrite: false,
     side: solid ? THREE.FrontSide : THREE.DoubleSide
+  });
+}
+
+/**
+ * The dark edge drawn just outside a yellow part, so it stays legible on pale
+ * ground. A screen-space line, so its width is the same number of pixels at
+ * every zoom; drawn over the scene like every other gizmo material.
+ */
+export function makeEdgeMaterial() {
+  return new LineMaterial({
+    color: EDGE_COLOR,
+    linewidth: EDGE_PX,
+    worldUnits: false,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false
   });
 }
 

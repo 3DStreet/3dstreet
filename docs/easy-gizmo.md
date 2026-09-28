@@ -1,9 +1,37 @@
 # Easy move/rotate gizmo
 
-The easy toolbar mode combines horizontal movement, yaw
+The easy toolbar mode combines horizontal movement, vertical adjustment, yaw
 rotation and explicit landing buttons. Its implementation lives in
 `src/editor/lib/gizmos/`. The viewport routes selection and camera changes;
 the controller owns gesture state, presentation and ground queries.
+
+## Vertical adjustment and visual feedback
+
+Drag the yellow double-headed arrow above the movement pad to raise or lower
+the selected object. It moves along world Y without changing horizontal
+position or rotation. The arrow is sized with the gizmo and may extend beyond
+the object. It hides above a 70-degree viewing elevation; an existing vertical
+drag continues until release. No modifier key is required.
+
+The drag follows a world-Y line through the grab point, so perspective changes
+do not change which point is held. It uses the normal move command and undo
+path. Landing estimates update during the drag from the sampled column.
+
+Controls have dark outlines only when hovered or active. The vertical and
+shallow horizontal arrows keep their external shoulders without a line across
+the shaft/head join. A shallow landing target appears as a single outlined
+stroke while retaining a broader clickable region. The cyan shaft's picking
+tube is 1.5 times its visible thickness; nearest-hit picking still applies.
+
+The cyan outlines use a private depth-tested render of the visible rotation
+surfaces. Separate surface IDs retain the visible head rims and the shaft's
+actual junction with each head. A cropped, supersampled composite keeps these
+edges visible over scene objects without including yellow controls or picking
+proxies. Cropped dimensions are bucketed to reduce reallocations and capped at
+1024 pixels per axis. Oversized/near-plane views may therefore use less than
+two samples per axis. The overlay handles ordinary canvas rendering; offscreen
+targets and XR use the underlying geometry without the hover outline. Capture
+paths that hide editor helpers continue to hide the whole gizmo.
 
 ## Placement surfaces
 

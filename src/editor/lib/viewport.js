@@ -2,6 +2,10 @@ import { TransformControls } from './TransformControls.js';
 import { ShapeVertexControls } from './ShapeVertexControls.js';
 import { StreetNodeControls } from './gizmos/StreetNodeControls.js';
 import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
+import { EasyGizmoControls } from './gizmos/EasyGizmoControls.js';
+import { installEasyGizmoOutline } from './gizmos/easyGizmoOutline.js';
+import { easyGizmoCommandName } from './gizmos/easyGizmoMessages.js';
+import { DEFAULT_TRANSFORM_MODE } from './transformModes.js';
 import { computeRibbonOutline } from '@/tested/street-path-utils.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
@@ -646,13 +650,11 @@ export function Viewport(inspector) {
   inspector.streetNodeControls = streetNodeControls;
   inspector.segmentWidthControls = segmentWidthControls;
 
-  // Easy mode: one combined move/rotate handle that follows the ground. It is
-  // the stock gizmo's alternative for a transform mode, not an additive handle.
-  // Load on demand so the experimental controller stays out of the core budget.
-  let easyGizmoControls = null;
   // The app's transform mode, tracked here because `'easy'` deliberately never
   // reaches TransformControls.setMode() — see the transformmodechange handler.
-  let transformMode = 'translate';
+  // Published read-only so a toolbar mounted later starts from the live mode.
+  let transformMode = DEFAULT_TRANSFORM_MODE;
+  inspector.transformMode = transformMode;
 
   // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls
   // mutates the object. The undo command can't capture this itself:
@@ -800,7 +802,7 @@ export function Viewport(inspector) {
     });
   });
 
-  function wireEasyGizmo(easyGizmoCommandName) {
+  function wireEasyGizmo(commandName) {
     easyGizmoControls.addEventListener('mouseDown', () => {
       controls.enabled = false;
       hoverBox.visible = false;
@@ -815,6 +817,23 @@ export function Viewport(inspector) {
       syncBatchedSubtree(object.el);
       selectionBox.setFromObject(object);
       updateHelpers(object);
+      // Keeps the properties panel in step with the drag. An event rather than
+      // a command: the whole gesture is committed once, as one undo step, on
+      // release. Only for the selected entity, because a detach caused by a
+      // new selection restores the old one after the selection has moved on,
+      // and its panel is being replaced.
+      if (easyGizmoControls.el !== inspector.selectedEntity) return;
+      const rotating = easyGizmoControls.axis === 'rotate';
+      const d = THREE.MathUtils.radToDeg;
+      Events.emit('entityupdate', {
+        entity: object.el,
+        component: rotating ? 'rotation' : 'position',
+        value: rotating
+          ? `${d(object.rotation.x)} ${d(object.rotation.y)} ${d(
+              object.rotation.z
+            )}`
+          : `${object.position.x} ${object.position.y} ${object.position.z}`
+      });
     });
     // The scene's hover box tracks the gizmo's own hover state rather than
     // being cleared once on mouseDown: hovering a control and moving away
@@ -841,7 +860,7 @@ export function Viewport(inspector) {
         'entityupdate',
         { entity: evt.entity, ...c }
       ]);
-      inspector.execute('multi', commands, easyGizmoCommandName(evt.name));
+      inspector.execute('multi', commands, commandName(evt.name));
     });
   }
 
@@ -851,32 +870,21 @@ export function Viewport(inspector) {
   sceneHelpers.add(shapeVertexControls);
   sceneHelpers.add(streetNodeControls);
   sceneHelpers.add(segmentWidthControls);
-  Promise.all([
-    import('./gizmos/EasyGizmoControls.js'),
-    import('./gizmos/easyGizmoMessages.js')
-  ])
-    .then(([{ EasyGizmoControls }, { easyGizmoCommandName }]) => {
-      easyGizmoControls = new EasyGizmoControls(
-        inspector.camera,
-        inspector.container,
-        sceneEl
-      );
-      wireEasyGizmo(easyGizmoCommandName);
-      sceneHelpers.add(easyGizmoControls);
-      inspector.easyGizmoControls = easyGizmoControls;
-      Events.emit('easygizmoready');
-      // The chunk can land after a selection has already been made, so the
-      // router runs again rather than waiting for the next one.
-      if (transformMode === 'easy' && inspector.selectedEntity) {
-        attachControlsForSelection();
-      }
-    })
-    .catch((error) => {
-      console.error('Could not load easy move/rotate controls', error);
-      globalThis.STREET?.notify?.errorMessage(
-        'Easy move/rotate could not load. Reload to try again.'
-      );
-    });
+  // The easy gizmo is the default transform control, so it is constructed with
+  // the viewport. It is one combined move/rotate handle that follows the
+  // ground: the stock gizmo's alternative for a transform mode, not an
+  // additive handle.
+  const easyGizmoControls = new EasyGizmoControls(
+    inspector.camera,
+    inspector.container,
+    sceneEl
+  );
+  easyGizmoControls.registry.add(
+    installEasyGizmoOutline(sceneEl, easyGizmoControls)
+  );
+  wireEasyGizmo(easyGizmoCommandName);
+  sceneHelpers.add(easyGizmoControls);
+  inspector.easyGizmoControls = easyGizmoControls;
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
@@ -955,7 +963,7 @@ export function Viewport(inspector) {
         transformControls.camera = perspective;
         streetNodeControls.camera = perspective;
         segmentWidthControls.camera = perspective;
-        if (easyGizmoControls) easyGizmoControls.camera = perspective;
+        easyGizmoControls.camera = perspective;
         controls.setCamera(perspective);
         updateAspectRatio();
         controls.handlePlanViewRequest();
@@ -966,7 +974,7 @@ export function Viewport(inspector) {
     transformControls.camera = data.camera;
     streetNodeControls.camera = data.camera;
     segmentWidthControls.camera = data.camera;
-    if (easyGizmoControls) easyGizmoControls.camera = data.camera;
+    easyGizmoControls.camera = data.camera;
     updateAspectRatio();
   });
 
@@ -975,7 +983,7 @@ export function Viewport(inspector) {
     transformControls.enabled = true;
     streetNodeControls.enabled = true;
     segmentWidthControls.enabled = true;
-    if (easyGizmoControls) easyGizmoControls.enabled = true;
+    easyGizmoControls.enabled = true;
     controls.enabled = true;
   }
   enableControls();
@@ -990,7 +998,7 @@ export function Viewport(inspector) {
     segmentWidthControls.detach();
     // Called on EVERY selection, including ones the easy gizmo never attached
     // to, so its detach is idempotent.
-    if (easyGizmoControls) easyGizmoControls.detach();
+    easyGizmoControls.detach();
   }
 
   function attachStockGizmo(el, forceMode) {
@@ -1049,7 +1057,7 @@ export function Viewport(inspector) {
       segmentWidthControls.attach(el);
       return;
     }
-    if (easyGizmoControls && transformMode === 'easy') {
+    if (transformMode === 'easy') {
       if (easyGizmoControls.accepts(el)) {
         easyGizmoControls.attach(el);
       } else {
@@ -1063,8 +1071,8 @@ export function Viewport(inspector) {
   }
 
   Events.on('transformmodechange', (mode) => {
-    if (mode === 'easy' && !easyGizmoControls) return;
     transformMode = mode;
+    inspector.transformMode = mode;
     // `'easy'` MUST NOT REACH setMode. TransformControls stores the mode
     // verbatim and its gizmo then indexes a picker table by it on every matrix
     // update, with no guard and regardless of visibility — so an unknown mode
