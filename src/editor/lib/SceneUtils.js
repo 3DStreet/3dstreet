@@ -8,12 +8,27 @@ import {
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.js';
 import { getCurrentCameraState } from '@/editor/lib/cameraUtils.js';
+import { scenePath } from '@/tested/scene-url-utils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/services/firebase';
 
 export function createBlankScene() {
+  // Order matters, all in one task so nothing renders in between:
+  // 1. erase the old scene, 2. put the camera where a bare boot puts it,
+  // 3. announce the new scene. A blank scene has no saved pose to fly to,
+  // so it opens the way an empty editor does — snapped to the default
+  // overview at the default fov — with no load fly-in. The New modal saves
+  // the new scene on this very event, so by then the camera already IS the
+  // default pose rather than the previous scene's (#2037).
   STREET.utils.newScene();
-  AFRAME.scenes[0].emit('newScene');
+  // A ?camera= deep link parked by a cloud load that never finished must
+  // not ride into the next scene loaded after this one.
+  delete AFRAME.scenes[0].pendingSceneLoadCamera;
+  AFRAME.INSPECTOR?.controls?.snapToDefaultView?.();
+  // Emit through the shared helper (not a bare emit) so the parked
+  // "last newScene detail" a late-initializing viewport replays is this
+  // scene's, not the previous scene's saved camera pose.
+  STREET.utils.emitNewScene({ skipFlyIn: true });
 }
 
 export function inputStreetmix() {
@@ -345,8 +360,9 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
   AFRAME.scenes[0].setAttribute('metadata', 'authorId', currentUser.uid);
 
-  // Change the hash URL without reloading
-  window.location.hash = `#/scenes/${sceneId}`;
+  // Change the URL to the path form without reloading (#1970). The old
+  // #/scenes/ hash form still loads but is no longer written anywhere.
+  window.history.pushState(null, '', scenePath(sceneId));
   return sceneId;
 }
 

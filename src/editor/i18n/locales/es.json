@@ -533,6 +533,7 @@
   "jobHealthModal.recentRuns": "Ejecuciones recientes",
   "jobHealthModal.title": "Estado del sistema",
   "loadingSceneModal.dismiss": "Descartar",
+  "loadingSceneModal.errorTitle": "No se pudo cargar la escena",
   "managedIntersectionSidebar.awaitingStreets": "Aún no hay calles conectadas — acerca los extremos de calles gestionadas dentro del radio de ajuste.",
   "managedIntersectionSidebar.connectedStreets": "{count,plural,one{# calle conectada} other{# calles conectadas}}",
   "managedStreetSidebar.changePath": "Cambiar ruta…",

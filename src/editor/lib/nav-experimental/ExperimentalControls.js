@@ -67,7 +67,8 @@ import {
   MAP_PIVOT_BOUNDS_RADIUS_METRES,
   MAP_PIVOT_FAR_ACCEPT_GAIN,
   WHEEL_ZOOM_LATERAL_CAP_LOWER_BOUND_METRES,
-  FOCUS_EMPTY_BBOX_DISTANCE_METRES
+  FOCUS_EMPTY_BBOX_DISTANCE_METRES,
+  DEFAULT_FOV_DEGREES
 } from './constants.js';
 import { captureNavDiscovery } from '../navAnalytics.js';
 // Frozen import path: the Compass widget imports `needleScreenAngle` from this
@@ -646,6 +647,24 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._funnel.commitMove('reset');
   }
 
+  // The pose a bare editor boot constructs its camera with (cameras.js):
+  // the default overview at the default fov, applied at once — no tween.
+  // Used by New › Blank Scene so a new scene opens exactly like an empty
+  // editor does, and so a save fired on that newScene event records this
+  // pose, not the previous scene's (#2037). resetZoom keeps its place as
+  // the position-only reset behind the action bar's button.
+  snapToDefaultView() {
+    if (this._disabledByOrtho) return;
+    // A load fly-in still gliding would otherwise carry on writing the
+    // camera over the snapped pose.
+    this._runner.cancel();
+    this.resetZoom();
+    const camera = this._camera;
+    camera.fov = DEFAULT_FOV_DEGREES;
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
+  }
+
   // Reconstruct the look-at target of a stored pose (position + Euler
   // rotation): cast the pose's forward ray and, where it dips below the
   // horizon, intersect the ground plane — the legacy EditorControls
@@ -681,6 +700,12 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // the ?camera= deep-link's 7th param). Runs through the runner so it
     // obeys the single-writer discipline: any committed user motion or the
     // mode-manager enabled=false handoff cancels it like every other tween.
+    //
+    // The lens is part of the pose: with no saved fov (a blank scene, a
+    // pose saved without `zoom`) the fly-in lands at DEFAULT_FOV_DEGREES, not
+    // at whatever fov the previous scene left on the shared camera. Before
+    // this, File > New > Blank Scene kept the last scene's fov for the rest
+    // of the session and the next save wrote it into the new scene (#2037).
     const startPos = new THREE.Vector3(0, 30, 60);
     const startLookAt = new THREE.Vector3(0, 1.6, 0);
     let endPos;
@@ -701,7 +726,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       endLookAt = startLookAt.clone();
     }
     const fromFov = camera.fov;
-    const toFov = (snapshotCameraState && snapshotCameraState.zoom) || fromFov;
+    const toFov =
+      (snapshotCameraState && snapshotCameraState.zoom) || DEFAULT_FOV_DEGREES;
     const curPos = new THREE.Vector3();
     const curLook = new THREE.Vector3();
     const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);

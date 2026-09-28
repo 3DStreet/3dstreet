@@ -828,7 +828,14 @@ export function Viewport(inspector) {
   // deep link beats all (src/tested/scene-camera-pose.js). Same rule for
   // owners and visitors, so nothing here depends on auth.
   const onNewScene = (detail) => {
-    const { editorCameraState = null, urlCameraState = null } = detail || {};
+    const {
+      editorCameraState = null,
+      urlCameraState = null,
+      skipFlyIn = false
+    } = detail || {};
+    // A blank scene (createBlankScene) has already snapped the camera to the
+    // default view; there is nothing to fly to.
+    if (skipFlyIn) return;
     const viewerStart = sceneEl.systems['viewer-start'];
     const flyIn = () =>
       controls.newSceneCameraZoom(
