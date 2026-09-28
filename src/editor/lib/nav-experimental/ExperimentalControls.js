@@ -647,6 +647,24 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._funnel.commitMove('reset');
   }
 
+  // The pose a bare editor boot constructs its camera with (cameras.js):
+  // the default overview at the default fov, applied at once — no tween.
+  // Used by New › Blank Scene so a new scene opens exactly like an empty
+  // editor does, and so a save fired on that newScene event records this
+  // pose, not the previous scene's (#2037). resetZoom keeps its place as
+  // the position-only reset behind the action bar's button.
+  snapToDefaultView() {
+    if (this._disabledByOrtho) return;
+    // A load fly-in still gliding would otherwise carry on writing the
+    // camera over the snapped pose.
+    this._runner.cancel();
+    this.resetZoom();
+    const camera = this._camera;
+    camera.fov = DEFAULT_FOV_DEGREES;
+    camera.updateProjectionMatrix();
+    camera.updateMatrixWorld();
+  }
+
   // Reconstruct the look-at target of a stored pose (position + Euler
   // rotation): cast the pose's forward ray and, where it dips below the
   // horizon, intersect the ground plane — the legacy EditorControls

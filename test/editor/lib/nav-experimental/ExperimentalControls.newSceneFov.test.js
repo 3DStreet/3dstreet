@@ -84,3 +84,32 @@ describe('newSceneCameraZoom lens', () => {
     expect(cam.projectionMatrix.equals(fresh.projectionMatrix)).toBe(true);
   });
 });
+
+// New › Blank Scene does not fly in: it snaps to the pose a bare editor boot
+// constructs (cameras.js), so the save the New modal fires on the newScene
+// event already sees the default view, not the previous scene's.
+describe('snapToDefaultView', () => {
+  it('puts the camera at the default overview and default fov at once', () => {
+    const { cam, c } = rig();
+    expect(cam.fov).toBe(PREVIOUS_SCENE_FOV);
+    c.snapToDefaultView();
+    expect(cam.fov).toBe(DEFAULT_FOV_DEGREES);
+    expect(cam.position.x).toBeCloseTo(0, 6);
+    expect(cam.position.y).toBeCloseTo(15, 6);
+    expect(cam.position.z).toBeCloseTo(30, 6);
+    const fresh = cam.clone();
+    fresh.fov = DEFAULT_FOV_DEGREES;
+    fresh.updateProjectionMatrix();
+    expect(cam.projectionMatrix.equals(fresh.projectionMatrix)).toBe(true);
+  });
+
+  it('cancels a load fly-in still in flight', () => {
+    const { cam, c } = rig();
+    c.newSceneCameraZoom({ position: { x: 5, y: 20, z: 40 }, zoom: 72 });
+    H.tickAll(c, 16, 10);
+    c.snapToDefaultView();
+    H.tickAll(c, 16, Math.ceil(FLY_IN_MS / 16));
+    expect(cam.fov).toBe(DEFAULT_FOV_DEGREES);
+    expect(cam.position.y).toBeCloseTo(15, 6);
+  });
+});

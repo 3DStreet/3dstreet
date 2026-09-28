@@ -77,7 +77,13 @@ the previous scene left on the shared camera. File › New › Blank Scene once
 kept it for the rest of the session, and the next save wrote it into the
 new scene (#2037). `createBlankScene` emits through `emitNewScene({})` like
 every other load route, so a late-initializing viewport replays the blank
-scene's empty detail, not the previous scene's saved pose.
+scene's detail, not the previous scene's saved pose. A blank scene does not
+fly in at all: `createBlankScene` erases the scene, snaps the camera to the
+bare-boot pose (`controls.snapToDefaultView()`, the same position and fov
+`cameras.js` constructs) and emits `newScene` with `skipFlyIn`, so the save
+the New modal fires on that event records the default view rather than the
+previous scene's pose. A save during a real load's glide still records the
+transient camera (pre-existing; edit within the first 3 s to hit it).
 
 Pressing **Start** (and Reset) glides to the same Starting View. Legacy
 scenes that pinned their opening view through the default snapshot's
