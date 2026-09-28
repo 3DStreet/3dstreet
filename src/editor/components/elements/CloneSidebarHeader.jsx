@@ -9,7 +9,8 @@ import { getEntityDisplayName } from '../../lib/entity';
  * placed the clone (that segment's bar is highlighted; a click selects it,
  * "Edit street" selects the street), a footnote names the segment with an
  * "Edit clone settings" pill, and Detach sits beside it as the explicit
- * action. Everything below is a normal object panel: a clone carries no
+ * action, with "Detach all" (#2036) for every clone of the same generator.
+ * Everything below is a normal object panel: a clone carries no
  * no-transform marker, and any edit (a transform field, the model dropdown,
  * a gizmo drag, Delete) detaches it through routeCloneEdit.
  */
@@ -51,6 +52,26 @@ const CloneSidebarHeader = ({ entity }) => {
             <FormattedMessage
               id="sidebar.detachClone"
               defaultMessage="Detach"
+            />
+          </button>
+          <button
+            type="button"
+            className="cross-section-edit-street"
+            title={intl.formatMessage({
+              id: 'sidebar.detachAllClonesTitle',
+              defaultMessage:
+                'Make every object this generator places editable on its own: each becomes a plain model you can move, rotate, duplicate or delete, and the generator is removed. Undo puts them back.'
+            })}
+            onClick={() =>
+              AFRAME.INSPECTOR.execute('detachallclones', {
+                entity: segmentEl,
+                component: entity.getAttribute('data-parent-component')
+              })
+            }
+          >
+            <FormattedMessage
+              id="sidebar.detachAllClones"
+              defaultMessage="Detach all"
             />
           </button>
         </span>

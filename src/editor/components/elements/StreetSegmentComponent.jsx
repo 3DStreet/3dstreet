@@ -2,6 +2,9 @@ import Events from '../../lib/Events';
 import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
+import { isDetachableGenerator } from '@/tested/clone-slots.js';
+import { listGeneratorClones } from '../../lib/detachClone.js';
 import {
   ClonedTreesIcon,
   StencilsIcon,
@@ -45,6 +48,42 @@ const MoreChevron = ({ up }) => (
   </svg>
 );
 MoreChevron.propTypes = { up: PropTypes.bool };
+
+// "Detach all" (#2036): every clone this generator places becomes a plain
+// model the user owns and the generator is removed, as one undo step. The
+// per-generator rung between detaching one object (drag it, or Detach on
+// its panel) and Convert to Shapes on the street. Only offered while the
+// generator has live clones; a generator placing nothing is just removed.
+const DetachAllButton = ({ entity, componentName }) => {
+  const intl = useIntl();
+  return (
+    <button
+      type="button"
+      className="generator-detach-all"
+      title={intl.formatMessage({
+        id: 'sidebar.detachAllClonesTitle',
+        defaultMessage:
+          'Make every object this generator places editable on its own: each becomes a plain model you can move, rotate, duplicate or delete, and the generator is removed. Undo puts them back.'
+      })}
+      onClick={(event) => {
+        event.stopPropagation();
+        AFRAME.INSPECTOR.execute('detachallclones', {
+          entity,
+          component: componentName
+        });
+      }}
+    >
+      <FormattedMessage
+        id="sidebar.detachAllClones"
+        defaultMessage="Detach all"
+      />
+    </button>
+  );
+};
+DetachAllButton.propTypes = {
+  entity: PropTypes.object.isRequired,
+  componentName: PropTypes.string.isRequired
+};
 
 /**
  * Single street-generated-* component rendered as a condensed section.
@@ -445,6 +484,16 @@ export default class Component extends React.Component {
     return parts[1] && parts[1] !== '1' ? `${parts[0]} ${parts[1]}` : parts[0];
   }
 
+  // Whether "Detach all" has anything to detach: a slot-aware generator
+  // (clones, stencil, pedestrians) with at least one live clone in the DOM.
+  canDetachAll = () => {
+    const componentName = this.props.name;
+    return (
+      isDetachableGenerator(componentName) &&
+      listGeneratorClones(this.props.entity, componentName).length > 0
+    );
+  };
+
   render() {
     const componentName = this.props.name;
     const componentDisplayName = this.getDisplayName(componentName);
@@ -466,6 +515,12 @@ export default class Component extends React.Component {
               {moreOpen ? 'less' : 'more'}
               <MoreChevron up={moreOpen} />
             </button>
+          )}
+          {this.canDetachAll() && (
+            <DetachAllButton
+              entity={this.props.entity}
+              componentName={componentName}
+            />
           )}
           <a
             title="Remove component"

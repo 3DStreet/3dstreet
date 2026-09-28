@@ -135,6 +135,43 @@ placement key whose parent still carries the named generator. Clones from surfac
 grass) and clones created before slots existed (no stamp) are not detachable;
 Convert to Shapes remains the bulk path.
 
+## Detach all: every clone of one generator (#2036)
+
+Detach has three rungs: one object (above), one generator (this section) and
+the whole street (Convert to Shapes, #1215). "Make every car in this lane
+mine" / "turn this row of stencils into plain markings I can copy and edit"
+is the middle one, the beta-era per-segment detach that Convert to Shapes
+replaced (census in #2011: used roughly 20x as often as the whole-street
+bake). Same instinct as rasterize in Photoshop or detach instance in Figma.
+
+- **Command** `detachallclones` (`DetachAllClonesCommand`, payload
+  `{ entity: segmentEl, component }`): a MultiCommand of one `entitycreate`
+  per live clone of the generator, each the same plain
+  `Detached Model • <mixin>` definition a per-object detach makes
+  (`buildDetachedDefinition`, so a stencil's `geometry`/`polygon-offset`/
+  `batch-member` come along), followed by a `componentremove` of the
+  generator itself, so nothing regenerates and its `skip` bookkeeping goes
+  with it. Builder: `buildDetachAllCommands` in `detachClone.js`;
+  `listGeneratorClones` is the clone census it and the UI share (detachable
+  clones only, slot order).
+- **Undo** is one entry: the generator comes back with its previous data
+  (earlier per-object holes included) and regenerates the clones exactly
+  where they were, and the plain entities are removed. The creates run with
+  `noSelectEntity` (an `entitycreate` option added for this) and the batch
+  lands the selection on the segment once, after execute and after undo.
+- **Doors:** a **Detach all** pill in the generator's header on the segment
+  panel (`StreetSegmentComponent.jsx`, shown only while the generator has
+  live clones; a generator placing nothing is just removed with the trash
+  icon), the same pill beside Detach in the clone header
+  (`CloneSidebarHeader.jsx`), and the AI tool **`detachAllClones`**
+  (`segmentId` + `component`, resolved by `resolveDetachAllToolArgs`; errors
+  list the segment's detachable generators, or say the generator has no
+  live clones left and point at `componentRemove`).
+- **Toast** on completion, in the per-object voice: "N objects detached from
+  the street generator … Undo puts them back."
+- **Not detach-all:** surface generators (striping, rail) stay whole-street;
+  Convert to Shapes remains the bake for the whole street.
+
 ## Accepted trade-offs
 
 - A layout change (spacing, count, mode, seed, length) forgets the hole, so
@@ -145,7 +182,8 @@ Convert to Shapes remains the bulk path.
   to a regenerated duplicate). Same behavior as any hand-placed object today.
 - A detached vehicle or pedestrian is no longer part of the play-mode moving
   cast (`street-traffic` finds its cast via `data-parent-component`): it stays
-  put as scenery while traffic animates around it. The managed street's
+  put as scenery while traffic animates around it. Detach all empties a
+  lane's cast the same way; whichever solution lands for one applies to both. The managed street's
   show-vehicles toggle still covers it (`getVehicleEntities` selects by mixin
   category under the street, not by generator).
 - Managed Street JSON export describes generators, not children, so detached
@@ -161,7 +199,8 @@ Convert to Shapes remains the bulk path.
   exports like any hand-placed model.
 - **PDF / DXF plan view:** the plan model (`src/editor/lib/plan/planModel.js`)
   treats a `Detached Model • …` entity as a clone, so a detached stencil stays
-  on the markings layer behind the export modal's Clones toggle. Without that
+  on the markings layer behind the export modal's Clones toggle (a whole row
+  from Detach all included). Without that
   rule it would vanish: its layer name no longer starts with `Cloned `, and the
   loose-shapes pass skips anything owned by a street.
 

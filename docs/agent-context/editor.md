@@ -38,7 +38,14 @@ sidebar header (`CloneSidebarHeader.jsx`) has a Detach pill; the AI chat has
 the `detachClone` tool (addresses a clone by segment + generator + slot, since
 clones have no id and are not in the scene state). Predicate, router and
 payload builders live in `src/editor/lib/detachClone.js`; doc is
-[docs/per-object-detach.md](../per-object-detach.md).
+[docs/per-object-detach.md](../per-object-detach.md). **Detach all (#2036)**
+is the per-generator rung: `detachallclones` (`DetachAllClonesCommand`,
+payload `{ entity: segmentEl, component }`) creates one plain `Detached
+Model` entity per live clone of a generator (`entitycreate` with the
+`noSelectEntity` option) and removes the generator (`componentremove`) as one
+undo entry, selection landing on the segment; doors are the Detach all pill
+in the generator header (`StreetSegmentComponent.jsx`), the clone header, and
+the `detachAllClones` AI tool.
 
 **Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
 spans `src/aframe-components/`, `src/editor/components/elements/`, `src/editor/lib/` and

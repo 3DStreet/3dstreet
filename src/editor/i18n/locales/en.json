@@ -2396,6 +2396,12 @@
   "sidebar.cloneEditHint": {
     "defaultMessage": "Editing this object detaches it from the generator. Undo puts it back."
   },
+  "sidebar.detachAllClones": {
+    "defaultMessage": "Detach all"
+  },
+  "sidebar.detachAllClonesTitle": {
+    "defaultMessage": "Make every object this generator places editable on its own: each becomes a plain model you can move, rotate, duplicate or delete, and the generator is removed. Undo puts them back."
+  },
   "sidebar.detachClone": {
     "defaultMessage": "Detach"
   },

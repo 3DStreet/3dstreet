@@ -17,7 +17,10 @@ import { getEditableEntity } from './commands/llmToolGuards.js';
  * `autocreated` marker so it saves, moves, duplicates and deletes like any
  * hand-placed object. This module holds the pure/DOM-only pieces that
  * DetachCloneCommand, the sidebar Detach button and the viewport's
- * drag-to-detach share. Entry point: docs/per-object-detach.md.
+ * drag-to-detach share, plus the per-generator rung built on them:
+ * "Detach all" (DetachAllClonesCommand, #2036) turns every live clone of one
+ * generator into such a plain entity and removes the generator. Entry point:
+ * docs/per-object-detach.md.
  */
 
 export const DETACHED_LAYER_PREFIX = 'Detached Model • ';
@@ -97,6 +100,59 @@ export function listCloneSlots(segmentEl, componentName) {
     if (Number.isInteger(index) && index >= 0) slots.push(index);
   }
   return slots.sort((a, b) => a - b);
+}
+
+/**
+ * The live clones a generator currently has in the DOM, in creation (slot)
+ * order: the elements a "Detach all" turns into plain entities (#2036).
+ * Only detachable clones count (see getCloneSlot); a generator whose
+ * clones predate slot stamping yields none.
+ */
+export function listGeneratorClones(segmentEl, componentName) {
+  const clones = [];
+  if (!segmentEl) return clones;
+  for (const child of segmentEl.children) {
+    if (child.getAttribute?.('data-parent-component') !== componentName) {
+      continue;
+    }
+    const slot = getCloneSlot(child);
+    if (slot && slot.componentName === componentName) clones.push(child);
+  }
+  return clones.sort(
+    (a, b) =>
+      Number(a.getAttribute(CLONE_INDEX_ATTR)) -
+      Number(b.getAttribute(CLONE_INDEX_ATTR))
+  );
+}
+
+/**
+ * Resolve the `detachAllClones` AI tool's arguments to the
+ * `{ entity, component }` payload DetachAllClonesCommand takes, or throw a
+ * readable error: the segment's detachable generators when `component` is
+ * wrong or missing, or that the generator has no live clones left.
+ */
+export function resolveDetachAllToolArgs(args = {}) {
+  const { segmentId, component } = args;
+  const segmentEl = getEditableEntity(segmentId, { role: 'segment' });
+  const generators = Object.keys(segmentEl.components || {}).filter(
+    isDetachableGenerator
+  );
+  if (!component || !segmentEl.components?.[component]) {
+    throw new Error(
+      `Entity ${segmentId} has no '${component}' component. Detachable generators on it: ${generators.join(', ') || '(none)'}`
+    );
+  }
+  if (!isDetachableGenerator(component)) {
+    throw new Error(
+      `'${component}' is a surface generator and cannot be detached per object. Detachable generators on ${segmentId}: ${generators.join(', ') || '(none)'}`
+    );
+  }
+  if (listGeneratorClones(segmentEl, component).length === 0) {
+    throw new Error(
+      `'${component}' on ${segmentId} has no live clones to detach (all detached already, or it places nothing). Use componentRemove to remove the generator itself.`
+    );
+  }
+  return { entity: segmentEl, component };
 }
 
 /**
@@ -373,6 +429,43 @@ export function buildDetachCommands(cloneEl, pose = {}, extra = {}) {
     ]);
   }
   return { slot, commands };
+}
+
+/**
+ * The undoable steps of "Detach all" (#2036), as `[type, payload]` tuples
+ * for MultiCommand: one `entitycreate` per live clone of the generator (the
+ * same plain `Detached Model` entity a per-object detach makes, same mixin,
+ * pose and segment), then a `componentremove` of the generator itself, so
+ * nothing regenerates and its `skip` bookkeeping goes with it. Undo runs
+ * them in reverse: the generator comes back with its previous data (holes
+ * included) and regenerates the clones exactly where they were, and the
+ * plain entities are removed. Throws when the generator is not a detachable
+ * one or has no live clones (then there is nothing to detach; removing the
+ * generator is a plain componentremove).
+ */
+export function buildDetachAllCommands(segmentEl, componentName) {
+  if (!segmentEl?.components?.[componentName]) {
+    throw new Error(`Segment has no '${componentName}' generator`);
+  }
+  if (!isDetachableGenerator(componentName)) {
+    throw new Error(
+      `'${componentName}' is not a detachable generator (clones, stencil, pedestrians)`
+    );
+  }
+  const clones = listGeneratorClones(segmentEl, componentName);
+  if (clones.length === 0) {
+    throw new Error(`'${componentName}' has no live clones to detach`);
+  }
+  const commands = clones.map((cloneEl) => [
+    'entitycreate',
+    // The batch lands the selection on the segment once, at the end.
+    { ...buildDetachedDefinition(cloneEl), noSelectEntity: true }
+  ]);
+  commands.push([
+    'componentremove',
+    { entity: segmentEl, component: componentName }
+  ]);
+  return { clones, commands };
 }
 
 /**
