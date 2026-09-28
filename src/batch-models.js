@@ -2,6 +2,7 @@
 
 import { releaseSharedSource } from './sharedTextureSources';
 import { waitForImage } from './lazy-textures.js';
+import { debugLog } from './shared/utils/debug.js';
 
 // Static batching feature flag.
 // The flag is used to conditionnaly register the gltf-model component override and batch models, so it can't be
@@ -23,20 +24,9 @@ export const BATCHING_ENABLED = window.BATCHING_ENABLED ?? true;
 export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
 
 // Per-group progress logging ("batched X", "not batched Y: reason", "popping Z"...) is a
-// console line per model group per scene and drowns the console on any real street (#2043).
-// It is off by default; opt in with `?batchDebug=true` on the URL (the same convention as
-// `?navDebug=true`) or by setting window.BATCHING_DEBUG = true before the bundle loads.
+// console line per model group per scene and drowns the console on any real street (#2043),
+// so it only prints with the global debug switch on (`?debug=true`, see shared/utils/debug.js).
 // Warnings about loads that never settle and BVH failures stay on console.warn unconditionally.
-const BATCHING_DEBUG = (() => {
-  if (window.BATCHING_DEBUG !== undefined) return !!window.BATCHING_DEBUG;
-  if (!window.location) return false;
-  return (
-    new URLSearchParams(window.location.search).get('batchDebug') === 'true'
-  );
-})();
-function debugLog(...args) {
-  if (BATCHING_DEBUG) console.log(...args);
-}
 
 // Automatic runtime batching of repeated gltf-model, gltf-part, and geometry+material (stencil)
 // entities. Each is a "provider" (getBatchProvider) exposing a batch key, strip/reload behavior,

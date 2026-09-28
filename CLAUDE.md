@@ -192,6 +192,12 @@ to shared components, editor entry points and Firebase functions.
 
 **Test:** `npm test` (Mocha + Vitest), `npm run lint`, `npm run prettier`
 
+**Debug logging:** one global switch (`src/shared/utils/debug.js`): `?debug=true`
+on the URL, or `localStorage.setItem('3dstreet.debug', 'true')` to persist.
+Gate verbose per-area console output (navigation, batching, ...) on
+`isDebugEnabled()` / `debugLog()`; never add a per-feature debug flag.
+Warnings and errors for real problems stay ungated.
+
 **Firestore emulator tests:** `npm run test:rules` — local-only (boots the firestore + auth emulators via `firebase emulators:exec`, runs vitest against `test/rules/`). Covers security rules AND the lifecycle email send service (`sendLifecycleEmail`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules` or `public/functions/email/`. Requires JDK 21+ on `PATH` (emulator dependency; if `java -version` shows an older default, prefix with `JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"`).
 
 **Deploy:** `npm run deploy` or `npm run deploy:staging`

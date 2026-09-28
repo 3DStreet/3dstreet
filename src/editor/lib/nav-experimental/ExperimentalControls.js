@@ -71,14 +71,10 @@ import {
   DEFAULT_FOV_DEGREES
 } from './constants.js';
 import { captureNavDiscovery } from '../navAnalytics.js';
+import { isDebugEnabled } from '../../../shared/utils/debug.js';
 // Frozen import path: the Compass widget imports `needleScreenAngle` from this
 // module. Re-export it from its new home (the compass controller).
 export { needleScreenAngle } from './compassController.js';
-
-const NAV_DEBUG = (() => {
-  if (typeof window === 'undefined' || !window.location) return false;
-  return new URLSearchParams(window.location.search).get('navDebug') === 'true';
-})();
 
 export class ExperimentalControls extends THREE.EventDispatcher {
   constructor(camera, domElement, sceneEl) {
@@ -383,7 +379,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._onTick(delta)
     );
 
-    if (NAV_DEBUG) {
+    if (isDebugEnabled()) {
       console.info('[nav-experimental] ExperimentalControls active.');
     }
   }
