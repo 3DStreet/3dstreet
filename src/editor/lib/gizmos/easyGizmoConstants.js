@@ -125,24 +125,11 @@ export const ARC_MIN_TUBE_PX = 3;
 // because S runs about 1.5 m at an 8 m camera to 6.3 m at 150 m. Written in
 // metres these would fire at the right moment at exactly one zoom.
 
-/** Half the flattened strip's height, as a fraction of S. Also the closest the
- * handle may be shifted to a landing bar. */
-export const STRIP_HALF_FRAC = 0.11;
-
-/** How far from the base the arc starts, as a fraction of S — and therefore the
- * scale at which a bar crowds the strip. */
-export const ARC_NEAR_FRAC = 0.15;
-
-/** How far from the base the arc reaches, as a fraction of S. A bar beyond it
- * cannot be under the arc whichever side the arc takes, which is what makes it
- * the right threshold for the flip rule. */
-export const ARC_REACH_FRAC = 0.47;
-
 /**
- * Hysteresis band on each dodge threshold, as a fraction of the threshold: a
- * rule engages at its own figure and disengages at that figure plus this much.
- * Without a pair the handle jumps back and forth as an object crosses a kerb.
- * Relative rather than absolute because every threshold here scales with S.
+ * Hysteresis on the choice of the arc's side, as a fraction of the room on the
+ * side it is on: the arc moves only once the other side has this much more.
+ * Without it the arc jumps back and forth as an object crosses a kerb between
+ * two surfaces. Relative rather than absolute because the room scales with S.
  */
 export const DODGE_HYSTERESIS_FRAC = 0.15;
 
@@ -160,6 +147,15 @@ export const LANDING_HIDE_GAP_METRES = 0.05;
 
 /** Outline stroke of a landing target, as a fraction of its side. */
 export const LANDING_OUTLINE_FRAC = 0.08;
+
+/**
+ * The move square's side in the round presentation, as a fraction of S.
+ * Chosen. The landing outline's interior is 0.84 S (`1 − 2 ·
+ * LANDING_OUTLINE_FRAC`), so 0.79 leaves an empty band of 0.025 S each side,
+ * which is what keeps an outline close underneath from reading as part of a
+ * bigger square; 0.84 closes it.
+ */
+export const MOVE_PLATE_ROUND_FRAC = 0.79;
 
 /** Height of a landing outline once it has flattened, as a fraction of its
  * width. Matches the move strip's narrowness so the two flattened controls read
@@ -277,9 +273,19 @@ export const ARC_STEP_DEG = ARC_HALF_SWEEP_DEG / ARC_TUBULAR_SEGMENTS;
  */
 export const ARC_FLAT_SWEEP_DEG = Math.round(30 / ARC_STEP_DEG) * ARC_STEP_DEG;
 
-/** Hit region as a multiple of the drawn tube's width — a tube's width of slack
- * either side, because the drawn tube is about 3 px across. */
-export const ARC_PICK_WIDTH_MULT = 3;
+/** Quarter-tube-width picking slack on each side keeps nearby landing targets reachable. */
+export const ARC_PICK_WIDTH_MULT = 1.5;
+
+// Vertical control dimensions are fractions of the screen-scaled gizmo size,
+// independent of object bounds. Near overhead, Y motion is not observable.
+export const VERTICAL_HIDE_ABOVE_DEG = 70;
+export const VERTICAL_CENTRE_ABOVE_PAD_FRAC = 1.8;
+export const VERTICAL_SHAFT_LENGTH_FRAC = 1.4;
+export const VERTICAL_SHAFT_WIDTH_FRAC = 0.12;
+export const VERTICAL_HEAD_LENGTH_FRAC = 0.28;
+export const VERTICAL_HEAD_BASE_FRAC = 0.34;
+export const VERTICAL_PICK_WIDTH_FRAC = 0.5;
+export const VERTICAL_PICK_LENGTH_FRAC = 2.1;
 
 /** Ring radius as a multiple of S, in each presentation. A flat ring seen from
  * a near-horizontal camera is foreshortened to a shallow bow, so the flattened
@@ -301,6 +307,83 @@ export const HEAD_LEN_FLAT_FRAC = 0.28;
 /** The flattened strip's extents, as fractions of S. */
 export const STRIP_LEN_FRAC = 2.2;
 export const STRIP_NARROW_FRAC = 0.22;
+
+// --- edges and derived dodge extents -------------------------------------
+
+/**
+ * Draw orders for a landing target, chosen per frame so that where a target
+ * and the move handle overlap on screen, the one drawn on top is the one a
+ * press there would hit. A target on the camera's side of the handle's plane is
+ * nearer along any ray through both, so it is drawn over the handle and the
+ * arc; one on the far side is drawn beneath them. A flattened target stands in
+ * the handle's own plane, where the arc is nearer, so it is always beneath.
+ */
+export const RENDER_ORDER_LANDING_NEAR = RENDER_ORDER_BASE + 6;
+export const RENDER_ORDER_LANDING_FAR = RENDER_ORDER_BASE - 1;
+
+/**
+ * The part of the flattened arc's parallax that its world clearance already
+ * absorbs, as a fraction of S. The lift is the rest. Chosen: no larger than the
+ * smallest value that keeps the arc clear of the move handle anywhere measured.
+ */
+export const ARC_LIFT_SLACK_FRAC = 0.05;
+
+/**
+ * Upper bound, in degrees, on the elevation the flattened arc's lift is
+ * computed from. The flattened presentation is held for a drag while the camera
+ * or the object can keep moving, so the elevation can grow far past the
+ * flattened range; the lift grows with its tangent, and without a bound it can
+ * carry the arc out of view. The bound only keeps the lift finite. A drag held
+ * flat past about 25° can still put the arc across the move handle.
+ */
+export const ARC_LIFT_MAX_DEG = 30;
+
+/**
+ * Whether the flattened arc is lifted away from the move handle whichever side
+ * of it the camera is on (true), or only when the camera and the arc are on
+ * the same side of the strip (false).
+ *
+ * At rest only the same-side case needs it: the flat ring's near edge is drawn
+ * toward the handle from that side and away from it from the other. During a
+ * rotate drag, though, the ring turns with the object and its far points can
+ * come back across the handle from either side, so lifting on both sides keeps
+ * more clearance while rotating. The cost is that in the commonest low view,
+ * camera above with the arc below the strip, the arc sits noticeably further
+ * below the strip than it needs to at rest.
+ */
+export const ARC_LIFT_SYMMETRIC = true;
+
+/** The yellow parts' edge colour: near-black rather than pure black, so it
+ * reads as an outline and not as a second fill. */
+export const EDGE_COLOR = 0x111111;
+
+/** The edge's width, in CSS pixels: visible against pale ground at a glance,
+ * while staying well inside the thinnest yellow stroke it outlines, a far
+ * landing outline at about 3 px. */
+export const EDGE_PX = 1.5;
+
+/** The edge's opacity as a fraction of its part's. It fades with the part and
+ * stays a little lighter than it, so emphasis is still only an opacity change,
+ * and a dimmed part's edge dims too. */
+export const EDGE_OPACITY_RATIO = 0.8;
+
+/** How face-on a chevron must be seen, as the cosine between its plane's
+ * normal and the view ray, before its edge starts to show. Below this it is
+ * close enough to edge-on that an outline would draw over it rather than
+ * around it. */
+export const EDGE_FACING_HIDE = 0.2;
+
+/** The facing at which a chevron's edge is fully shown; it fades in smoothly
+ * from `EDGE_FACING_HIDE`, so orbiting past the threshold does not pop. */
+export const EDGE_FACING_FULL = 0.5;
+
+/** Caps the edge's offset on a side seen nearly edge-on, where the on-screen
+ * distance per metre of offset tends to zero. */
+export const EDGE_MAX_STRETCH = 4;
+
+/** Below every gizmo fill, so an edge that falls under a neighbouring part is
+ * covered by it rather than drawn across it. */
+export const RENDER_ORDER_EDGE = RENDER_ORDER_BASE - 3;
 
 // --- commit --------------------------------------------------------------
 

@@ -24,6 +24,8 @@
  * runs first, so window capture is forced rather than chosen. See _addListeners.
  */
 
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { GizmoPointerControls } from './GizmoPointerControls.js';
 import { metresPerPixel } from '../shapeEditRules.js';
 import Events from '../Events.js';
@@ -36,12 +38,15 @@ import {
 } from './easyGizmoGround.js';
 import {
   computeDodge,
+  dodgeExtents,
   decideEasyPress,
   deriveLocalBoxOf,
   easeInOutCubic,
+  flatArcLift,
   elevationAngleDegrees,
   latchByHysteresis,
   lerp,
+  offsetConvexPolygon,
   chevronLayout,
   lastVisiblePointOnSegment,
   squareSideMetres
@@ -51,19 +56,19 @@ import {
   makeArcGeometries,
   makeArcHeadGeometries,
   makeArrowheadGeometry,
+  makeEdgeMaterial,
   makeMaterial
 } from './easyGizmoBuild.js';
 import { shouldCaptureKeyEvent } from '../keyCapture.js';
 import {
-  ARC_FLAT_CLEAR_FRAC,
   ARC_FLAT_RADIUS_FRAC,
   ARC_FLAT_SWEEP_DEG,
   ARC_FULL_SWEEP_DEG,
   ARC_HALF_SWEEP_DEG,
   ARC_HEAD_LEN,
   ARC_HEAD_OFFSET_DEG,
+  ARC_LIFT_SYMMETRIC,
   ARC_HEAD_RADIUS,
-  ARC_MIN_TUBE_PX,
   ARC_ROUND_RADIUS_FRAC,
   ARC_STEP_DEG,
   ARC_TUBE_RADIUS,
@@ -75,6 +80,11 @@ import {
   CHEVRON_SPACING_FRAC,
   COLOR_MOVE,
   COLOR_ROTATE,
+  EDGE_FACING_FULL,
+  EDGE_FACING_HIDE,
+  EDGE_MAX_STRETCH,
+  EDGE_OPACITY_RATIO,
+  EDGE_PX,
   HEAD_BASE_FLAT_FRAC,
   HEAD_BASE_FRAC,
   HEAD_LEN_FLAT_FRAC,
@@ -85,6 +95,15 @@ import {
   LANDING_HIDE_GAP_METRES,
   LANDING_OUTLINE_FRAC,
   LANDING_SHOW_GAP_METRES,
+  VERTICAL_HIDE_ABOVE_DEG,
+  VERTICAL_CENTRE_ABOVE_PAD_FRAC,
+  VERTICAL_SHAFT_LENGTH_FRAC,
+  VERTICAL_SHAFT_WIDTH_FRAC,
+  VERTICAL_HEAD_LENGTH_FRAC,
+  VERTICAL_HEAD_BASE_FRAC,
+  VERTICAL_PICK_WIDTH_FRAC,
+  VERTICAL_PICK_LENGTH_FRAC,
+  MOVE_PLATE_ROUND_FRAC,
   OPACITY_ACTION,
   OPACITY_DIM,
   OPACITY_FLAT_BOOST,
@@ -99,6 +118,9 @@ import {
   REGIME_TRANSITION_MS,
   RENDER_ORDER_BASE,
   RENDER_ORDER_CHEVRON,
+  RENDER_ORDER_EDGE,
+  RENDER_ORDER_LANDING_FAR,
+  RENDER_ORDER_LANDING_NEAR,
   ROTATE_LEVER_FLOOR_FRAC,
   ROTATE_LEVER_PROBE_RAD,
   STRIP_LEN_FRAC,
@@ -178,6 +200,36 @@ const _qZ = new THREE.Quaternion();
 const _right = new THREE.Vector3();
 const _edgePoint = new THREE.Vector3();
 const _edgeProjection = new THREE.Vector3();
+const _edgeMid = new THREE.Vector3();
+const _edgeSegmentStart = new THREE.Vector3();
+const _edgeSegmentEnd = new THREE.Vector3();
+const _edgeAlong = new THREE.Vector3();
+const _edgeNormal = new THREE.Vector3();
+const _edgeU = new THREE.Vector3();
+const _edgeV = new THREE.Vector3();
+const _edgePlane = new THREE.Vector3();
+const _edgeCentroid = new THREE.Vector3();
+const _edgeToParent = new THREE.Matrix4();
+const _edgeWorld = [0, 1, 2, 3].map(() => new THREE.Vector3());
+const _edgeFlat = new Float64Array(8);
+const _edgeOffsets = new Float64Array(4);
+const _edgeOut = new Float64Array(8);
+
+// Outlines in their meshes' own frames: the unit quad every plate and bar is
+// drawn from, and the unit arrowhead.
+const QUAD_OUTLINE = [
+  [-0.5, -0.5],
+  [0.5, -0.5],
+  [0.5, 0.5],
+  [-0.5, 0.5]
+];
+const TRIANGLE_OUTLINE = [
+  [-0.5, -0.5],
+  [0.5, -0.5],
+  [0, 0.5]
+];
+const OMIT_QUAD_HORIZONTAL = [0, 2];
+const OMIT_QUAD_VERTICAL = [1, 3];
 
 /**
  * Orient a flat arrowhead: apex along `dir`, lying in the plane whose normal is
@@ -270,6 +322,9 @@ class EasyGizmoControls extends GizmoPointerControls {
     this._pickHit = false;
     this._dragStartMouseX = 0;
     this._dragMpp = 0;
+    this._dragVerticalAlongStart = 0;
+    this._dragVerticalPoint = new THREE.Vector3();
+    this._dragStartWorld = new THREE.Vector3();
     this._dragRotPxPerRad = 0;
     this._dragRotPxPerRadCap = 0;
     this._pendingXZ = null;
@@ -374,6 +429,7 @@ class EasyGizmoControls extends GizmoPointerControls {
         flat: this._material(COLOR_ROTATE, OPACITY_REST, false),
         solid: this._material(COLOR_ROTATE, OPACITY_REST, true)
       },
+      vertical: { flat: this._material(COLOR_MOVE, OPACITY_REST, false) },
       landingDown: { flat: this._material(COLOR_MOVE, OPACITY_REST, false) },
       landingUp: { flat: this._material(COLOR_MOVE, OPACITY_REST, false) },
       // Invisible and shared by every pick proxy: a drawn one would paint a
@@ -382,18 +438,77 @@ class EasyGizmoControls extends GizmoPointerControls {
       // The pair of arrowheads that fade with the transition.
       moveHeadFading: this._material(COLOR_MOVE, OPACITY_REST, false)
     };
-
     this.arrowheadGeometry = reg.add(makeArrowheadGeometry());
     this.quadGeometry = reg.add(new THREE.PlaneGeometry(1, 1));
 
     this._buildMoveHandle();
+    this._buildVerticalHandle();
     this._buildArc();
     this.landingDownGroup = this._buildLandingTarget('landingDown');
     this.landingUpGroup = this._buildLandingTarget('landingUp');
     this.add(this.landingDownGroup);
     this.add(this.landingUpGroup);
+    this._buildEdges();
 
     this.visible = false;
+  }
+
+  /**
+   * A thin dark edge just outside every yellow part, so each stays legible on
+   * pale ground. The cyan arc has none.
+   *
+   * Each edge is a screen-space line with its geometry allocated once, at the
+   * most segments it will ever need, and rewritten in place each frame. Its
+   * bounds are never recomputed after that, so it is never frustum-culled.
+   */
+  _buildEdges() {
+    const reg = this.registry;
+    this.edgeMaterials = {
+      move: reg.add(makeEdgeMaterial()),
+      moveFading: reg.add(makeEdgeMaterial()),
+      landingDown: reg.add(makeEdgeMaterial()),
+      landingUp: reg.add(makeEdgeMaterial()),
+      vertical: reg.add(makeEdgeMaterial())
+    };
+    this.plateEdge = this._edge(this.moveGroup, this.edgeMaterials.move, 4);
+    // The ±Z pair survives the flattened presentation; the ±X pair fades.
+    this.zHeadsEdge = this._edge(this.moveGroup, this.edgeMaterials.move, 8);
+    this.xHeadsEdge = this._edge(
+      this.moveGroup,
+      this.edgeMaterials.moveFading,
+      8
+    );
+    this.verticalShaftEdge = this._edge(
+      this.verticalGroup,
+      this.edgeMaterials.vertical,
+      4
+    );
+    this.verticalHeadsEdge = this._edge(
+      this.verticalGroup,
+      this.edgeMaterials.vertical,
+      8
+    );
+    [this.landingDownGroup, this.landingUpGroup].forEach((group) => {
+      const ud = group.userData;
+      // An outer and inner rectangle, collapsing to one shallow stroke.
+      ud.edge = this._edge(group, this.edgeMaterials[ud.gizmoAxis], 8);
+      ud.chevrons.forEach((chev) => {
+        chev.userData.edge = this._edge(chev, reg.add(makeEdgeMaterial()), 3);
+        chev.userData.edgeFacing = 1;
+      });
+    });
+  }
+
+  _edge(parent, material, maxSegments) {
+    const geometry = this.registry.add(new LineSegmentsGeometry());
+    geometry.setPositions(new Float32Array(maxSegments * 6));
+    const edge = new LineSegments2(geometry, material);
+    edge.frustumCulled = false;
+    edge.raycast = neverPicked;
+    edge.renderOrder = RENDER_ORDER_EDGE;
+    edge.userData.isEdge = true;
+    parent.add(edge);
+    return edge;
   }
 
   _buildMoveHandle() {
@@ -444,6 +559,40 @@ class EasyGizmoControls extends GizmoPointerControls {
       this.moveHeads.push(head);
     });
     this.add(this.moveGroup);
+  }
+
+  _buildVerticalHandle() {
+    this.verticalGroup = new THREE.Group();
+    this.verticalGroup.name = 'easyGizmoVertical';
+    this.verticalGroup.userData.gizmoAxis = 'vertical';
+
+    this.verticalShaft = this._mesh(
+      this.quadGeometry,
+      this.materials.vertical.flat,
+      RENDER_ORDER_BASE + 1
+    );
+    this.verticalGroup.add(this.verticalShaft);
+
+    this.verticalHeads = [-1, 1].map((sign) => {
+      const head = this._mesh(
+        this.arrowheadGeometry,
+        this.materials.vertical.flat,
+        RENDER_ORDER_BASE + 2
+      );
+      head.userData.sign = sign;
+      this.verticalGroup.add(head);
+      return head;
+    });
+
+    this.verticalPick = this._mesh(
+      this.quadGeometry,
+      this.materials.pick,
+      RENDER_ORDER_BASE + 2
+    );
+    this.verticalPick.visible = false;
+    this.verticalPick.userData.isPickProxy = true;
+    this.verticalGroup.add(this.verticalPick);
+    this.add(this.verticalGroup);
   }
 
   _buildArc() {
@@ -569,7 +718,7 @@ class EasyGizmoControls extends GizmoPointerControls {
       const strip = this._mesh(
         this.quadGeometry,
         material,
-        RENDER_ORDER_BASE + 6
+        RENDER_ORDER_LANDING_NEAR
       );
       strip.rotation.x = -Math.PI / 2;
       outline.add(strip);
@@ -578,7 +727,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     const pick = this._mesh(
       this.quadGeometry,
       this.materials.pick,
-      RENDER_ORDER_BASE + 6
+      RENDER_ORDER_LANDING_NEAR
     );
     pick.rotation.x = -Math.PI / 2;
     pick.visible = false;
@@ -1069,6 +1218,7 @@ class EasyGizmoControls extends GizmoPointerControls {
 
   getPickers() {
     const pickers = [this.moveGroup, this.arcGroup];
+    if (this.verticalGroup.visible) pickers.push(this.verticalGroup);
     if (this.landingDownGroup.visible) pickers.push(this.landingDownGroup);
     if (this.landingUpGroup.visible) pickers.push(this.landingUpGroup);
     return pickers;
@@ -1105,6 +1255,7 @@ class EasyGizmoControls extends GizmoPointerControls {
    * throughout its fade-in.
    */
   _isInert(axis) {
+    if (axis === 'vertical') return false;
     if (this._isLandingAxis(axis)) {
       const group =
         axis === 'landingUp' ? this.landingUpGroup : this.landingDownGroup;
@@ -1126,16 +1277,33 @@ class EasyGizmoControls extends GizmoPointerControls {
   highlight(axis) {
     const flat = this._shallowAmount;
     const groups = [
-      { group: this.moveGroup, slot: this.materials.move, flatness: flat },
-      { group: this.arcGroup, slot: this.materials.rotate, flatness: flat },
+      {
+        group: this.moveGroup,
+        slot: this.materials.move,
+        edge: this.edgeMaterials.move,
+        flatness: flat
+      },
+      {
+        group: this.arcGroup,
+        slot: this.materials.rotate,
+        flatness: flat
+      },
+      {
+        group: this.verticalGroup,
+        slot: this.materials.vertical,
+        edge: this.edgeMaterials.vertical,
+        flatness: 0
+      },
       {
         group: this.landingDownGroup,
         slot: this.materials.landingDown,
+        edge: this.edgeMaterials.landingDown,
         flatness: this.landingDownGroup.userData.faceAmount
       },
       {
         group: this.landingUpGroup,
         slot: this.materials.landingUp,
+        edge: this.edgeMaterials.landingUp,
         flatness: this.landingUpGroup.userData.faceAmount
       }
     ];
@@ -1145,7 +1313,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     const someActive =
       mouse && groups.some((g) => g.group.userData.gizmoAxis === activeAxis);
 
-    groups.forEach(({ group, slot, flatness }) => {
+    groups.forEach(({ group, slot, edge, flatness }) => {
       const active = group.userData.gizmoAxis === activeAxis;
       let level = OPACITY_REST;
       if (active && this.isDragging) level = OPACITY_ACTION;
@@ -1154,8 +1322,14 @@ class EasyGizmoControls extends GizmoPointerControls {
       const opacity = Math.min(level + OPACITY_FLAT_BOOST * flatness, 1);
       if (slot.flat) slot.flat.opacity = opacity;
       if (slot.solid) slot.solid.opacity = opacity;
+      const outlined =
+        active && (mouse || this.isDragging || (pressed && pressed.armed));
+      if (edge) edge.opacity = outlined ? opacity * EDGE_OPACITY_RATIO : 0;
       if (group === this.moveGroup) {
         this.materials.moveHeadFading.opacity = opacity * (1 - flat);
+        this.edgeMaterials.moveFading.opacity = outlined
+          ? this.materials.moveHeadFading.opacity * EDGE_OPACITY_RATIO
+          : 0;
       }
     });
 
@@ -1178,6 +1352,11 @@ class EasyGizmoControls extends GizmoPointerControls {
       group.userData.chevrons.forEach((chev) => {
         const fade = chev.userData.fade === undefined ? 1 : chev.userData.fade;
         chev.material.opacity = Math.min(base, 1) * fade;
+        chev.userData.edge.material.opacity = engaged
+          ? chev.material.opacity *
+            EDGE_OPACITY_RATIO *
+            chev.userData.edgeFacing
+          : 0;
       });
     });
   }
@@ -1192,11 +1371,283 @@ class EasyGizmoControls extends GizmoPointerControls {
    */
   updateMatrixWorld(force) {
     this._checkEditorClosedEdge();
-    if (this.el && this.object && this.object.parent && this._inspectorOpen()) {
+    const laidOut =
+      this.el && this.object && this.object.parent && this._inspectorOpen();
+    if (laidOut) {
       this._layoutFrame();
       if (!this._frameSystem) this._advanceBeforeRender();
     }
     super.updateMatrixWorld(force);
+    // After the traversal, so every part's world matrix is this frame's.
+    if (laidOut) this._layoutEdges();
+  }
+
+  // --- edges ------------------------------------------------------------
+
+  _layoutEdges() {
+    // The same rectangle the pointer is mapped through, so the edge is sized
+    // in the pixels the user sees, for any camera.
+    const rect = this.domElement
+      ? this.domElement.getBoundingClientRect()
+      : null;
+    if (!rect || !rect.width || !rect.height || !(this.squareSide > 0)) return;
+    this._edgeScreenW = rect.width;
+    this._edgeScreenH = rect.height;
+    this.camera.updateMatrixWorld();
+
+    const openShallow = this._shallowAmount >= 0.99;
+    this._edgeBegin(this.plateEdge);
+    this._edgeAddMesh(
+      this.plateEdge,
+      this.movePlate,
+      QUAD_OUTLINE,
+      openShallow ? OMIT_QUAD_VERTICAL : null
+    );
+    this._edgeEnd(this.plateEdge);
+
+    this._edgeBegin(this.zHeadsEdge);
+    this._edgeAddMesh(
+      this.zHeadsEdge,
+      this.moveHeads[2],
+      TRIANGLE_OUTLINE,
+      null,
+      openShallow ? this.moveHeads[2].userData.outlineBaseGap : null
+    );
+    this._edgeAddMesh(
+      this.zHeadsEdge,
+      this.moveHeads[3],
+      TRIANGLE_OUTLINE,
+      null,
+      openShallow ? this.moveHeads[3].userData.outlineBaseGap : null
+    );
+    this._edgeEnd(this.zHeadsEdge);
+
+    this.xHeadsEdge.visible = this.moveHeads[0].visible;
+    if (this.xHeadsEdge.visible) {
+      this._edgeBegin(this.xHeadsEdge);
+      this._edgeAddMesh(this.xHeadsEdge, this.moveHeads[0], TRIANGLE_OUTLINE);
+      this._edgeAddMesh(this.xHeadsEdge, this.moveHeads[1], TRIANGLE_OUTLINE);
+      this._edgeEnd(this.xHeadsEdge);
+    }
+
+    this.verticalShaftEdge.visible = this.verticalGroup.visible;
+    this.verticalHeadsEdge.visible = this.verticalGroup.visible;
+    if (this.verticalGroup.visible) {
+      this._edgeBegin(this.verticalShaftEdge);
+      this._edgeAddMesh(
+        this.verticalShaftEdge,
+        this.verticalShaft,
+        QUAD_OUTLINE,
+        OMIT_QUAD_HORIZONTAL
+      );
+      this._edgeEnd(this.verticalShaftEdge);
+      this._edgeBegin(this.verticalHeadsEdge);
+      this.verticalHeads.forEach((head) => {
+        this._edgeAddMesh(
+          this.verticalHeadsEdge,
+          head,
+          TRIANGLE_OUTLINE,
+          null,
+          head.userData.outlineBaseGap
+        );
+      });
+      this._edgeEnd(this.verticalHeadsEdge);
+    }
+
+    this._layoutLandingEdge(this.landingDownGroup);
+    this._layoutLandingEdge(this.landingUpGroup);
+  }
+
+  _layoutLandingEdge(group) {
+    if (!group.visible) return;
+    const ud = group.userData;
+    const outline = ud.outline;
+    const edge = ud.edge;
+    const stroke = LANDING_OUTLINE_FRAC;
+    const halfH = ud.outlineHeight / 2;
+    this._edgeBegin(edge);
+    if (!ud.bars[1].visible) {
+      this._edgeAddRect(edge, outline, 0.5, -stroke / 2, stroke / 2, 1);
+    } else {
+      // Outside the outer rectangle, and inside the inner one.
+      this._edgeAddRect(edge, outline, 0.5, -halfH, halfH, 1);
+      const innerX = 0.5 - ud.sideStroke;
+      this._edgeAddRect(
+        edge,
+        outline,
+        innerX,
+        stroke - halfH,
+        halfH - stroke,
+        -1
+      );
+    }
+    this._edgeEnd(edge);
+
+    for (const chev of ud.chevrons) {
+      if (!chev.visible) continue;
+      const chevEdge = chev.userData.edge;
+      this._edgeBegin(chevEdge);
+      this._edgeAddMesh(chevEdge, chev, TRIANGLE_OUTLINE);
+      this._edgeEnd(chevEdge);
+    }
+  }
+
+  _edgeBegin(edge) {
+    _edgeToParent.copy(edge.parent.matrixWorld).invert();
+    edge.userData.segments = 0;
+  }
+
+  _edgeEnd(edge) {
+    const geometry = edge.geometry;
+    geometry.instanceCount = edge.userData.segments;
+    geometry.attributes.instanceStart.data.needsUpdate = true;
+  }
+
+  /** A mesh's outline, given in its own frame (z = 0), edged outward. */
+  _edgeAddMesh(
+    edge,
+    mesh,
+    outline,
+    omittedSegments = null,
+    baseGapHalf = null
+  ) {
+    for (let i = 0; i < outline.length; i++) {
+      _edgeWorld[i]
+        .set(outline[i][0], outline[i][1], 0)
+        .applyMatrix4(mesh.matrixWorld);
+    }
+    this._edgeAddPolygon(edge, outline.length, 1, omittedSegments, baseGapHalf);
+  }
+
+  /** A rectangle in a landing outline's own frame, which lies in its XZ plane:
+   * ±halfX across and `z0`…`z1` deep. `sign` −1 edges it on the inside. */
+  _edgeAddRect(edge, outline, halfX, z0, z1, sign) {
+    _edgeWorld[0].set(-halfX, 0, z0);
+    _edgeWorld[1].set(halfX, 0, z0);
+    _edgeWorld[2].set(halfX, 0, z1);
+    _edgeWorld[3].set(-halfX, 0, z1);
+    for (let i = 0; i < 4; i++) _edgeWorld[i].applyMatrix4(outline.matrixWorld);
+    this._edgeAddPolygon(edge, 4, sign);
+  }
+
+  /**
+   * Append the offset outline of the convex polygon in `_edgeWorld`.
+   *
+   * Offset along the in-plane normal, sized so the line sits half its width
+   * from the side measured perpendicular to the side on screen. Measuring
+   * along the projected normal instead under-measures on any side oblique to
+   * the view. Each side is measured at its own depth.
+   */
+  _edgeAddPolygon(
+    edge,
+    count,
+    sign,
+    omittedSegments = null,
+    baseGapHalf = null
+  ) {
+    const a = _edgeWorld[0];
+    _edgeU.subVectors(_edgeWorld[1], a);
+    _edgeV.subVectors(_edgeWorld[2], a);
+    _edgePlane.crossVectors(_edgeU, _edgeV);
+    if (_edgePlane.lengthSq() < 1e-20 || _edgeU.lengthSq() < 1e-20) return;
+    _edgePlane.normalize();
+    _edgeU.normalize();
+    _edgeV.crossVectors(_edgePlane, _edgeU);
+
+    _edgeCentroid.set(0, 0, 0);
+    for (let i = 0; i < count; i++) _edgeCentroid.add(_edgeWorld[i]);
+    _edgeCentroid.multiplyScalar(1 / count);
+
+    const eps = this.squareSide * 1e-3;
+    for (let i = 0; i < count; i++) {
+      const p = _edgeWorld[i];
+      const q = _edgeWorld[(i + 1) % count];
+      _edgeMid.subVectors(p, a);
+      _edgeFlat[2 * i] = _edgeMid.dot(_edgeU);
+      _edgeFlat[2 * i + 1] = _edgeMid.dot(_edgeV);
+      _edgeMid.addVectors(p, q).multiplyScalar(0.5);
+      _edgeAlong.subVectors(q, p).normalize();
+      _edgeNormal.crossVectors(_edgeAlong, _edgePlane);
+      _edgePoint.subVectors(_edgeMid, _edgeCentroid);
+      if (_edgeNormal.dot(_edgePoint) < 0) _edgeNormal.negate();
+      _edgeOffsets[i] = sign * this._edgeOffsetAt(eps);
+    }
+    offsetConvexPolygon(_edgeFlat, _edgeOffsets, _edgeOut, count);
+
+    for (let i = 0; i < count; i++) {
+      if (omittedSegments && omittedSegments.includes(i)) continue;
+      const j = (i + 1) % count;
+      _edgePoint
+        .copy(a)
+        .addScaledVector(_edgeU, _edgeOut[2 * i])
+        .addScaledVector(_edgeV, _edgeOut[2 * i + 1])
+        .applyMatrix4(_edgeToParent);
+      _edgeMid
+        .copy(a)
+        .addScaledVector(_edgeU, _edgeOut[2 * j])
+        .addScaledVector(_edgeV, _edgeOut[2 * j + 1])
+        .applyMatrix4(_edgeToParent);
+      if (i === 0 && baseGapHalf !== null) {
+        const gap = Math.min(Math.max(baseGapHalf, 0), 0.499);
+        _edgeSegmentStart.copy(_edgePoint);
+        _edgeSegmentEnd.lerpVectors(_edgePoint, _edgeMid, 0.5 - gap);
+        this._edgeAppendSegment(edge, _edgeSegmentStart, _edgeSegmentEnd);
+        _edgeSegmentStart.lerpVectors(_edgePoint, _edgeMid, 0.5 + gap);
+        _edgeSegmentEnd.copy(_edgeMid);
+        this._edgeAppendSegment(edge, _edgeSegmentStart, _edgeSegmentEnd);
+      } else {
+        this._edgeAppendSegment(edge, _edgePoint, _edgeMid);
+      }
+    }
+  }
+
+  _edgeAppendSegment(edge, start, end) {
+    const array = edge.geometry.attributes.instanceStart.data.array;
+    let k = edge.userData.segments * 6;
+    array[k++] = start.x;
+    array[k++] = start.y;
+    array[k++] = start.z;
+    array[k++] = end.x;
+    array[k++] = end.y;
+    array[k] = end.z;
+    edge.userData.segments++;
+  }
+
+  /**
+   * The in-plane offset, in metres, that puts the edge line's centre half its
+   * width from the side on screen, for the side at `_edgeMid` running along
+   * `_edgeAlong` with outward normal `_edgeNormal`. From the screen Jacobian at
+   * that point, so it is exact for the side's own depth and angle.
+   */
+  _edgeOffsetAt(eps) {
+    const m = this._edgeScreen(_edgeMid, _edgeProjection);
+    const mx = m.x;
+    const my = m.y;
+    _edgePoint.copy(_edgeMid).addScaledVector(_edgeAlong, eps);
+    const e = this._edgeScreen(_edgePoint, _edgeProjection);
+    const ex = (e.x - mx) / eps;
+    const ey = (e.y - my) / eps;
+    _edgePoint.copy(_edgeMid).addScaledVector(_edgeNormal, eps);
+    const n = this._edgeScreen(_edgePoint, _edgeProjection);
+    const nx = (n.x - mx) / eps;
+    const ny = (n.y - my) / eps;
+    const alongPx = Math.hypot(ex, ey);
+    const across = alongPx > 0 ? Math.abs(nx * ey - ny * ex) / alongPx : 0;
+    const perMetre = Math.max(across, Math.hypot(nx, ny) / EDGE_MAX_STRETCH);
+    return perMetre > 0 && Number.isFinite(perMetre)
+      ? EDGE_PX / 2 / perMetre
+      : 0;
+  }
+
+  /** A world point in CSS pixels on the canvas, written into `out` (x, y). */
+  _edgeScreen(point, out) {
+    out.copy(point).project(this.camera);
+    out.set(
+      ((out.x + 1) / 2) * this._edgeScreenW,
+      ((1 - out.y) / 2) * this._edgeScreenH,
+      0
+    );
+    return out;
   }
 
   _advanceBeforeRender() {
@@ -1505,7 +1956,8 @@ class EasyGizmoControls extends GizmoPointerControls {
     _centre.set(worldPos.x, baseY, worldPos.z);
     this._refreshShallowFrame(yaw);
     const shallowYaw = this._shallowYaw;
-    const dodge = this._resolveDodge(S, baseY, now);
+    const extents = dodgeExtents(S, mpp, t);
+    const dodge = this._resolveDodge(extents.stripClear, baseY, now);
     const shift = dodge.shift * t;
 
     // --- move handle ---------------------------------------------------
@@ -1537,12 +1989,19 @@ class EasyGizmoControls extends GizmoPointerControls {
 
     const stripLen = S * STRIP_LEN_FRAC;
     const stripNarrow = S * STRIP_NARROW_FRAC;
-    const halfZ = lerp(S / 2, stripLen / 2, t);
+    // Inset inside a landing outline of side S, so the outline reads as a
+    // separate ring around it.
+    const plate = S * MOVE_PLATE_ROUND_FRAC;
+    const halfZ = lerp(plate / 2, stripLen / 2, t);
     // Lerped with the plate rather than pinned: the ±X heads fade across the
     // change while the plate narrows underneath them, so a fixed half-width
     // would leave them floating clear of the strip's edge mid-transition.
-    const halfX = lerp(S / 2, stripNarrow / 2, t);
-    this.movePlate.scale.set(lerp(S, stripLen, t), lerp(S, stripNarrow, t), 1);
+    const halfX = lerp(plate / 2, stripNarrow / 2, t);
+    this.movePlate.scale.set(
+      lerp(plate, stripLen, t),
+      lerp(plate, stripNarrow, t),
+      1
+    );
 
     const headBase = S * lerp(HEAD_BASE_FRAC, HEAD_BASE_FLAT_FRAC, t);
     const headLen = S * lerp(HEAD_LEN_FRAC, HEAD_LEN_FLAT_FRAC, t);
@@ -1560,6 +2019,7 @@ class EasyGizmoControls extends GizmoPointerControls {
         alongZ ? sign * reach : 0
       );
       head.scale.set(headBase, headLen, 1);
+      head.userData.outlineBaseGap = stripNarrow / (2 * headBase);
       aimArrowhead(head, head.userData.dir, _hd);
       // The ±X pair fades out where movement is restricted to left and right:
       // an arrowhead promising the other axis would be lying. Drives the
@@ -1567,21 +2027,61 @@ class EasyGizmoControls extends GizmoPointerControls {
       if (head.userData.fades) head.visible = t < 0.99;
     });
 
+    // --- vertical handle -----------------------------------------------
+    // A camera-facing world-Y arrow, deliberately detached from object bounds.
+    // It stays above the pad in both round and flattened presentations.
+    const verticalElevation = Math.abs(this._elevationToDegrees(_centre));
+    this.verticalGroup.visible =
+      (this.isDragging && this.axis === 'vertical') ||
+      verticalElevation < VERTICAL_HIDE_ABOVE_DEG;
+    this.verticalGroup.position.set(
+      _centre.x,
+      _centre.y + S * VERTICAL_CENTRE_ABOVE_PAD_FRAC,
+      _centre.z
+    );
+    this.verticalGroup.quaternion.copy(this._shallowQuat);
+    const shaftLength = S * VERTICAL_SHAFT_LENGTH_FRAC;
+    const shaftWidth = S * VERTICAL_SHAFT_WIDTH_FRAC;
+    const verticalHeadLength = S * VERTICAL_HEAD_LENGTH_FRAC;
+    const verticalHeadBase = S * VERTICAL_HEAD_BASE_FRAC;
+    this.verticalShaft.scale.set(shaftWidth, shaftLength, 1);
+    this.verticalHeads.forEach((head) => {
+      const sign = head.userData.sign;
+      head.position.set(0, sign * (shaftLength + verticalHeadLength) * 0.5, 0);
+      head.scale.set(verticalHeadBase, verticalHeadLength, 1);
+      head.userData.outlineBaseGap = shaftWidth / (2 * verticalHeadBase);
+      _hd.set(0, sign, 0);
+      aimArrowhead(head, _hd, Z_AXIS);
+    });
+    this.verticalPick.scale.set(
+      S * VERTICAL_PICK_WIDTH_FRAC,
+      S * VERTICAL_PICK_LENGTH_FRAC,
+      1
+    );
+
     // --- rotate arc -----------------------------------------------------
     const radius = S * lerp(ARC_ROUND_RADIUS_FRAC, ARC_FLAT_RADIUS_FRAC, t);
-    const tubeWorld = Math.max(S * 0.06, ARC_MIN_TUBE_PX * mpp);
-    // The arc's half-thickness is its HEAD's, under the group's vertical scale
-    // — the cone's circular section is drawn as an ellipse, so the head radius
-    // alone would understate it.
-    const arcHalfThickness = (ARC_HEAD_RADIUS * tubeWorld) / ARC_TUBE_RADIUS;
-    const clearance =
-      stripNarrow / 2 + arcHalfThickness + S * ARC_FLAT_CLEAR_FRAC;
+    const tubeWorld = extents.tubeWorld;
     // The flat ring sits in the strip's own plane and would cross it on screen
-    // at every near-horizontal view, so it clears by the two half-thicknesses
-    // plus a small gap — derived, so it tracks both as either changes.
+    // at every near-horizontal view, so it is held clear of the strip and its
+    // arrowheads by their half-heights, its own and a small gap. Its drawn
+    // front is nearer the camera than the strip, so parallax moves it on screen
+    // by up to its radius times the tangent of the elevation; the lift makes up
+    // the rest of that. The elevation is taken to the handle as drawn, shift
+    // included, because the shift changes how far the camera looks down on it.
+    // Both are scaled by the flatten amount, so the round presentation is
+    // untouched.
+    const side = dodge.flipArc ? 1 : -1;
+    _v.set(_centre.x, _centre.y + shift, _centre.z);
+    const lift = flatArcLift(
+      S,
+      this._elevationToDegrees(_v),
+      side,
+      ARC_LIFT_SYMMETRIC
+    );
     this.arcGroup.position.set(
       _centre.x,
-      _centre.y + shift + (dodge.flipArc ? 1 : -1) * t * clearance,
+      _centre.y + shift + side * t * (extents.clearance + lift),
       _centre.z
     );
 
@@ -1659,9 +2159,9 @@ class EasyGizmoControls extends GizmoPointerControls {
    * shift can be a kerb-height stale and the user is looking straight at the
    * control they just let go of.
    */
-  _resolveDodge(S, baseY, now) {
+  _resolveDodge(stripClear, baseY, now) {
     const live = computeDodge({
-      S,
+      stripClear,
       gapBelow: this.landingDownY === null ? null : baseY - this.landingDownY,
       gapAbove: this.landingUpY === null ? null : this.landingUpY - baseY,
       latches: this._dodgeLatches
@@ -1743,11 +2243,24 @@ class EasyGizmoControls extends GizmoPointerControls {
     const f = this._advanceAnim(ud.anim, ud.faceAmount, now);
     ud.faceAmount = f;
 
+    // Drawn over the handle only from the side a press would reach it first.
+    this.camera.getWorldPosition(_camPos);
+    const cameraSide = Math.sign(_camPos.y - baseY);
+    const order =
+      f < 0.5 && Math.sign(targetY - baseY) === cameraSide
+        ? RENDER_ORDER_LANDING_NEAR
+        : RENDER_ORDER_LANDING_FAR;
+    if (ud.renderOrder !== order) {
+      ud.renderOrder = order;
+      for (const bar of ud.bars) bar.renderOrder = order;
+      ud.pick.renderOrder = order;
+    }
+
     // The outline, laid out for a rectangle one wide and `h` tall. At h = 1
     // this is exactly the square, and the stroke is the same on all four bars
     // at every h — which is the whole reason this is not a group scale.
     const stroke = LANDING_OUTLINE_FRAC;
-    const h = lerp(1, LANDING_BAR_HEIGHT_FRAC, f);
+    const h = lerp(1, stroke, f);
     const bars = ud.bars;
     // A bar's own quarter turn maps its local X and Y onto the group's X and Z,
     // and scale applies before rotation.
@@ -1756,12 +2269,18 @@ class EasyGizmoControls extends GizmoPointerControls {
     bars[1].position.set(0, 0, -(h - stroke) / 2);
     bars[1].scale.set(1, stroke, 1);
     const side = Math.max(h - 2 * stroke, 1e-4);
-    bars[2].position.set((1 - stroke) / 2, 0, 0);
-    bars[2].scale.set(stroke, side, 1);
-    bars[3].position.set(-(1 - stroke) / 2, 0, 0);
-    bars[3].scale.set(stroke, side, 1);
+    // The side bars thin away from the inside as the outline flattens. At the
+    // endpoint the far horizontal bar also disappears, leaving one stroke.
+    const sideStroke = Math.max(stroke * (1 - f), 1e-4);
+    bars[2].position.set((1 - sideStroke) / 2, 0, 0);
+    bars[2].scale.set(sideStroke, side, 1);
+    bars[3].position.set(-(1 - sideStroke) / 2, 0, 0);
+    bars[3].scale.set(sideStroke, side, 1);
+    bars[1].visible = bars[2].visible = bars[3].visible = f < 0.99;
+    ud.outlineHeight = h;
+    ud.sideStroke = sideStroke;
     // The clickable area is the rectangle, not the square it came from.
-    ud.pick.scale.set(1, h, 1);
+    ud.pick.scale.set(1, lerp(1, LANDING_BAR_HEIGHT_FRAC, f), 1);
 
     if (f > 0) {
       // The bars lie in the outline's horizontal plane, so facing the camera
@@ -1831,6 +2350,10 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.cameraRight(_right);
     _hd.crossVectors(_right, UP).applyAxisAngle(UP, -yaw);
     _v.set(0, dir, 0);
+    // The same plane normal in world space, for how face-on each chevron's
+    // edge is seen.
+    _edgeNormal.crossVectors(_right, UP);
+    this.camera.getWorldPosition(_camPos);
     let lastChevron = null;
     let nearestTarget = Infinity;
     for (let i = 0; i < chevrons.length; i++) {
@@ -1858,6 +2381,16 @@ class EasyGizmoControls extends GizmoPointerControls {
       // render black under a lit material.
       aimArrowhead(chev, _v, _hd);
       chev.userData.fade = fade;
+      // An edge-on chevron, seen from overhead, would be all edge.
+      _edgeMid
+        .set(group.position.x, targetY - dir * u, group.position.z)
+        .sub(_camPos)
+        .normalize();
+      chev.userData.edgeFacing = THREE.MathUtils.smoothstep(
+        Math.abs(_edgeMid.dot(_edgeNormal)),
+        EDGE_FACING_HIDE,
+        EDGE_FACING_FULL
+      );
     }
     // Keep the final direction mark visible when the landing button is outside
     // the viewport. It remains on the vertical connection and cannot be picked.
@@ -1925,6 +2458,16 @@ class EasyGizmoControls extends GizmoPointerControls {
         entity:
           axis === 'landingUp' ? this._landingUpEntity : this._landingDownEntity
       };
+      return;
+    }
+
+    if (axis === 'vertical') {
+      this.object.getWorldPosition(this._dragStartWorld);
+      this._dragVerticalPoint.copy(this._pickPoint);
+      const along = this._verticalRayAlong();
+      if (along === null) return false;
+      this._dragVerticalAlongStart = along;
+      this._refreshSupport();
       return;
     }
 
@@ -2060,6 +2603,19 @@ class EasyGizmoControls extends GizmoPointerControls {
     return (_rotProject.x * rect.width) / 2;
   }
 
+  /** Offset along the latched world-Y axis closest to the current pointer ray. */
+  _verticalRayAlong() {
+    const ray = this.raycaster.ray;
+    _delta.subVectors(ray.origin, this._dragVerticalPoint);
+    const a = ray.direction.lengthSq();
+    const b = ray.direction.dot(UP);
+    const d = ray.direction.dot(_delta);
+    const e = UP.dot(_delta);
+    const denominator = a - b * b;
+    if (!(denominator > 1e-6)) return null;
+    return (a * e - b * d) / denominator;
+  }
+
   /**
    * What a pointer move does, by axis.
    *
@@ -2079,6 +2635,20 @@ class EasyGizmoControls extends GizmoPointerControls {
         this._landingPress.armed = armed;
         this.highlight(this.axis);
       }
+      return;
+    }
+    if (this.axis === 'vertical') {
+      const along = this._verticalRayAlong();
+      if (along === null) return;
+      this.setWorldPosition(
+        this._dragStartWorld.x,
+        this._dragStartWorld.y + along - this._dragVerticalAlongStart,
+        this._dragStartWorld.z
+      );
+      const baseY = this.currentBaseY();
+      this._applyColumn(resplitColumn(this.probe.lastHits, baseY), baseY);
+      this.dispatchEvent(this.changeEvent);
+      this.dispatchEvent(this.objectChangeEvent);
       return;
     }
     if (this.axis === 'rotate') {

@@ -13,9 +13,9 @@ import { shouldCaptureKeyEvent } from './keyCapture.js';
 const os = getOS();
 
 // While the first-person kit (?wasd=on) is off, the nav controls do not
-// claim w/a/s/d, so the legacy w/s/d shortcuts (translate/scale/clone)
-// stay live ALONGSIDE their t/l/c replacements — launch keeps the exact
-// legacy keymap, and the eventual flag flip removes only the legacy keys.
+// claim w/a/s/d, so the legacy s/d shortcuts (scale/clone) stay live
+// ALONGSIDE their l/c replacements — launch keeps the legacy keymap, and the
+// eventual flag flip removes only the legacy keys.
 const wasdNav = isWasdNav();
 
 export const Shortcuts = {
@@ -38,18 +38,6 @@ export const Shortcuts = {
       }
     }
 
-    // t: translate (was 'w' until 2026-05-09; remapped because the
-    // experimental nav controls bind w/a/s/d for camera movement).
-    // 'w' still translates while the WASD kit is gated off.
-    if (keyCode === 84 || (!wasdNav && keyCode === 87)) {
-      Events.emit('transformmodechange', 'translate');
-    }
-
-    // e: rotate
-    if (keyCode === 69) {
-      Events.emit('transformmodechange', 'rotate');
-    }
-
     // r: shape draw tool (was the ruler until 2026-08; shapes measure now)
     if (keyCode === 82) {
       Events.emit('toolchange', 'shape');
@@ -66,9 +54,10 @@ export const Shortcuts = {
       Events.emit('transformmodechange', 'scale');
     }
 
-    // m: easy-mode move/rotate gizmo
-    if (keyCode === 77 && AFRAME.INSPECTOR.easyGizmoControls) {
-      Events.emit('transformmodechange', 'easy');
+    // m: step through the move gizmos in menu order. The toolbar resolves
+    // the next one, because only it knows when the hand or shape tool is on.
+    if (keyCode === 77) {
+      Events.emit('transformmodecycle');
     }
 
     // o: transform space
