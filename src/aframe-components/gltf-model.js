@@ -8,6 +8,7 @@ import {
   removeMember,
   BATCHING_ENABLED
 } from '../batch-models';
+import { applyBlendedSurfaceDepth } from '../tested/transparent-layering.js';
 
 // Share one decoded THREE.Source across textures (within and across GLBs) that embed the
 // byte-identical image. The server bakes images[].extras.imageHash; GLTFLoader.loadImageSource
@@ -323,6 +324,10 @@ export const gltfModelPlus = {
         // Downgrade MeshPhysicalMaterial to MeshStandardMaterial for better performance.
         // Extensions like KHR_materials_specular cause the GLTFLoader to create
         // MeshPhysicalMaterial which is more expensive to render.
+        // In the same pass, blended (alphaMode BLEND) materials that are really
+        // cutouts or mostly opaque get a depth write, so splats and other
+        // transparent surfaces behind them are occluded instead of painting
+        // over them (#1732; see transparent-layering.js).
         const convertedMaterials = new Map();
         self.model.traverse((node) => {
           if (node.isMesh) {
@@ -330,21 +335,23 @@ export const gltfModelPlus = {
               ? node.material
               : [node.material];
             for (let i = 0; i < materials.length; i++) {
-              const mat = materials[i];
-              if (mat.isMeshBasicMaterial) continue;
-              if (!mat.isMeshPhysicalMaterial) continue;
-              let newMat = convertedMaterials.get(mat);
-              if (!newMat) {
-                newMat = new THREE.MeshStandardMaterial();
-                newMat.copy(mat);
-                mat.dispose();
-                convertedMaterials.set(mat, newMat);
+              let mat = materials[i];
+              if (mat.isMeshPhysicalMaterial) {
+                let newMat = convertedMaterials.get(mat);
+                if (!newMat) {
+                  newMat = new THREE.MeshStandardMaterial();
+                  newMat.copy(mat);
+                  mat.dispose();
+                  convertedMaterials.set(mat, newMat);
+                }
+                if (Array.isArray(node.material)) {
+                  node.material[i] = newMat;
+                } else {
+                  node.material = newMat;
+                }
+                mat = newMat;
               }
-              if (Array.isArray(node.material)) {
-                node.material[i] = newMat;
-              } else {
-                node.material = newMat;
-              }
+              applyBlendedSurfaceDepth(mat);
             }
           }
         });
