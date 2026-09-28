@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { FormattedMessage } from 'react-intl';
+import { useIntl } from 'react-intl';
 import useStore from '@/store';
 import { Loader } from '@shared/icons';
+import { ConfirmModal } from '@shared/components/ConfirmModal';
 import styles from './LoadingSceneModal.module.scss';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 
@@ -13,6 +14,7 @@ const LoadingSceneModal = () => {
   const message = useStore((state) => state.loadingSceneMessage);
   const error = useStore((state) => state.loadingSceneError);
   const timeoutRef = useRef(null);
+  const intl = useIntl();
 
   useEffect(() => {
     if (isLoadingScene && !error) {
@@ -46,37 +48,37 @@ const LoadingSceneModal = () => {
     useStore.getState().finishLoadingScene();
   };
 
+  if (error) {
+    // Genuine fetch/parse failure: use the themed dialog rather than bare text
+    // on the loading overlay.
+    return (
+      <ConfirmModal
+        isOpen
+        title={intl.formatMessage({
+          id: 'loadingSceneModal.errorTitle',
+          defaultMessage: 'Could not load scene'
+        })}
+        message={error}
+        confirmLabel={intl.formatMessage(commonMessages.retry)}
+        cancelLabel={intl.formatMessage({
+          id: 'loadingSceneModal.dismiss',
+          defaultMessage: 'Dismiss'
+        })}
+        onConfirm={handleRetry}
+        onCancel={handleDismiss}
+      />
+    );
+  }
+
   return (
     <div className={styles.loadingModalWrapper}>
-      {error ? (
-        <div className={styles.errorContent}>
-          <span className={styles.errorMessage}>{error}</span>
-          <div className={styles.errorButtons}>
-            <button className={styles.retryButton} onClick={handleRetry}>
-              <FormattedMessage {...commonMessages.retry} />
-            </button>
-            <button className={styles.dismissButton} onClick={handleDismiss}>
-              <FormattedMessage
-                id="loadingSceneModal.dismiss"
-                defaultMessage="Dismiss"
-              />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className={styles.spinnerBox}>
-            <Loader className={styles.spinner} />
-          </div>
-          <div className={styles.progressBarContainer}>
-            <div
-              className={styles.progressBar}
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <span className={styles.message}>{message}</span>
-        </>
-      )}
+      <div className={styles.spinnerBox}>
+        <Loader className={styles.spinner} />
+      </div>
+      <div className={styles.progressBarContainer}>
+        <div className={styles.progressBar} style={{ width: `${progress}%` }} />
+      </div>
+      <span className={styles.message}>{message}</span>
     </div>
   );
 };

@@ -53,7 +53,7 @@ async function postAIImageToDiscord(userId, imageUrl, prompt, modelName, sceneId
     const truncatedPrompt = prompt.length > 200 ? prompt.substring(0, 200) + '...' : prompt;
 
     // Construct scene URL if sceneId is provided
-    const sceneUrl = sceneId ? `https://3dstreet.app/#scenes/${sceneId}` : null;
+    const sceneUrl = sceneId ? `https://3dstreet.app/scenes/${sceneId}` : null;
 
     // Determine footer text based on source parameter
     // Default to 'editor' for backwards compatibility
@@ -118,7 +118,7 @@ async function postAIVideoToDiscord(userId, videoUrl, prompt, modelName, duratio
     const truncatedPrompt = prompt.length > 200 ? prompt.substring(0, 200) + '...' : prompt;
 
     // Construct scene URL if sceneId is provided
-    const sceneUrl = sceneId ? `https://3dstreet.app/#scenes/${sceneId}` : null;
+    const sceneUrl = sceneId ? `https://3dstreet.app/scenes/${sceneId}` : null;
 
     // Create Discord message with video
     // Include video URL in description so Discord can auto-embed it
