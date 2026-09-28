@@ -146,6 +146,15 @@ init, `<street-assets>`, texture references or load indicators.**
 
 **Asset utilities:** https://github.com/3dstreet/3dstreet-assets-dist
 
+**Splat streaming (#2047):** `.rad` splats stream against a fixed Spark LOD
+budget, not a bandwidth governor. The `splat` system owns the pacing policy
+(`src/tested/splat-streaming.js`): fetching pauses while the document is
+hidden, Low Power Mode applies a data-saver profile, huge scans cap the
+budget, and the converter drops spherical harmonics (`RAD_MAX_SH`). Read the
+"Steady-state streaming cost" section of
+[docs/rad-cloud-run-pipeline.md](docs/rad-cloud-run-pipeline.md) before
+changing SparkRenderer / SplatPager settings or `build-lod` flags.
+
 ## Firebase
 
 **Firestore:** `scenes` collection (data, title, authorId, timestamps), `/users/{uid}/tokenProfile` (genToken, credToken)

@@ -3,6 +3,11 @@
 // Import direct from the constants module (not the @shared/assets barrel, which
 // would pull React/Firebase into this early-loaded A-Frame bundle).
 import { SPLAT_EXTENSIONS } from '@shared/assets/constants.js';
+import useStore from '../store.js';
+import {
+  resolveStreamingSettings,
+  shouldFetchForVisibility
+} from '../tested/splat-streaming.js';
 
 // Spark library is loaded dynamically to reduce initial bundle size (~500KB)
 let SplatMesh = null;
@@ -137,6 +142,7 @@ AFRAME.registerComponent('splat', {
 
     // Remove existing splat mesh and any leftover indicator if any
     if (this.splatMesh) {
+      this.system.unregisterPagedSplats(this.splatMesh);
       this.el.removeObject3D('mesh');
       this.splatMesh = null;
     }
@@ -271,6 +277,23 @@ AFRAME.registerComponent('splat', {
       // Set the splat mesh directly on the entity (like gltf-model does)
       this.el.setObject3D('mesh', this.splatMesh);
 
+      // Streaming budget for huge scans (#2047): the RAD header carries the
+      // file's total splat count (input splats + LOD nodes). Report it to the
+      // system as soon as the header lands — before any chunk is queued — so
+      // a 9M-splat scan streams under a capped LOD budget from its first
+      // traversal rather than pulling 84% of the file at the desktop default.
+      if (splatMesh.paged && typeof splatMesh.paged.getRadMeta === 'function') {
+        splatMesh.paged
+          .getRadMeta()
+          .then(({ meta }) => {
+            if (loadId !== this.loadId || !meta) return;
+            this.system.registerPagedSplats(splatMesh, meta.count);
+          })
+          .catch(() => {
+            // A header failure surfaces through splatMesh.initialized below.
+          });
+      }
+
       // mesh only renders once Spark finishes decoding/building LOD. Wait for
       // that promise so the indicator covers the processing gap, not just fetch.
       await splatMesh.initialized;
@@ -305,6 +328,7 @@ AFRAME.registerComponent('splat', {
 
   remove: function () {
     if (this.splatMesh) {
+      this.system.unregisterPagedSplats(this.splatMesh);
       this.el.removeObject3D('mesh');
       this.splatMesh = null;
     }
@@ -436,11 +460,39 @@ AFRAME.registerComponent('splat', {
 /**
  * Splat system that initializes the SparkRenderer for Gaussian Splat visualization.
  * The SparkRenderer is lazily initialized only when the first splat is loaded.
+ *
+ * It also owns the streaming policy for paged (.rad) splats (#2047; policy in
+ * src/tested/splat-streaming.js):
+ *  - fetching pauses while the document is hidden (in-flight chunks finish,
+ *    then the pager's queue waits; nothing renders anyway),
+ *  - the Low Power Mode toggle (store `lowPowerMode`) applies the data-saver
+ *    profile: half the LOD budget, one fetcher, a pause between chunks,
+ *  - a huge scan (RAD header count above HUGE_SCAN_SPLATS) caps the budget.
+ * All of these are live SparkRenderer / SplatPager properties — no reload.
  */
 AFRAME.registerSystem('splat', {
   init: function () {
     this.sparkRenderer = null;
     this.rendererReady = false;
+    // SplatMesh -> total splat count from its RAD header (RadMeta.count).
+    // The largest one drives the huge-scan budget cap.
+    this.pagedSplatCounts = new Map();
+    // The SplatPager the streaming settings were last applied to. Spark
+    // creates the pager lazily on the first LOD traversal (and reads
+    // numLodFetchers only then), so tick() re-applies when it appears.
+    this.configuredPager = null;
+
+    this.dataSaver = !!useStore.getState().lowPowerMode;
+    this.unsubscribeStore = useStore.subscribe((state) => {
+      const enabled = !!state.lowPowerMode;
+      if (enabled !== this.dataSaver) {
+        this.dataSaver = enabled;
+        this.applyStreamingSettings();
+      }
+    });
+
+    this.onVisibilityChange = () => this.applyFetchGate();
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
 
     // Track when renderer is available
     if (this.el.renderer) {
@@ -475,8 +527,95 @@ AFRAME.registerSystem('splat', {
         enableLod: true
       });
       this.el.object3D.add(this.sparkRenderer);
+      this.applyStreamingSettings();
+      this.applyFetchGate();
     } catch (error) {
       console.error('[splat] Failed to initialize SparkRenderer:', error);
+    }
+  },
+
+  tick: function () {
+    const sr = this.sparkRenderer;
+    if (!sr || !sr.pager || sr.pager === this.configuredPager) return;
+    // The pager was just created (first LOD traversal): fetchPause and
+    // numFetchers live on it, not on the renderer, so apply them now.
+    this.configuredPager = sr.pager;
+    this.applyStreamingSettings();
+    this.applyFetchGate();
+  },
+
+  /**
+   * Record a paged splat's total splat count (from its RAD header) so the
+   * huge-scan budget cap can consider it. Re-applies the settings.
+   */
+  registerPagedSplats: function (splatMesh, splatCount) {
+    if (!splatMesh || !Number.isFinite(splatCount)) return;
+    this.pagedSplatCounts.set(splatMesh, splatCount);
+    this.applyStreamingSettings();
+  },
+
+  unregisterPagedSplats: function (splatMesh) {
+    if (!this.pagedSplatCounts.delete(splatMesh)) return;
+    this.applyStreamingSettings();
+  },
+
+  /**
+   * The settings the policy resolves for the current toggle + scene contents.
+   * Exposed for STREET.splatDebug.snapshot().
+   */
+  getStreamingSettings: function () {
+    let largestRadSplats = 0;
+    this.pagedSplatCounts.forEach((count) => {
+      if (count > largestRadSplats) largestRadSplats = count;
+    });
+    return resolveStreamingSettings({
+      dataSaver: this.dataSaver,
+      largestRadSplats
+    });
+  },
+
+  /**
+   * Push the resolved budget / fetcher count / fetch pause onto the live
+   * SparkRenderer and SplatPager. driveLod re-traverses on its own when the
+   * budget (maxSplats) changes, so no dirty flag is needed. Lowering
+   * numFetchers mid-stream lets in-flight chunks finish and then admits
+   * fewer; nothing is cancelled.
+   */
+  applyStreamingSettings: function () {
+    const sr = this.sparkRenderer;
+    if (!sr) return;
+    const settings = this.getStreamingSettings();
+    sr.lodSplatScale = settings.lodSplatScale;
+    // Read by Spark only when it constructs the pager; the pager's own copy
+    // is what driveFetchers checks afterwards.
+    sr.numLodFetchers = settings.numFetchers;
+    if (sr.pager) {
+      sr.pager.numFetchers = settings.numFetchers;
+      sr.pager.fetchPause = settings.fetchPauseMs;
+    }
+  },
+
+  /**
+   * Pause chunk fetching while the document is hidden, resume when visible.
+   * Both flags are needed: driveLod copies enableLodFetching onto the pager
+   * only on a traversal, and there are no traversals (no frames) while
+   * hidden, whereas the pager re-drives its own queue after every landed
+   * chunk via autoDrive. On resume, kick the pager so the queued chunks
+   * continue without waiting for the camera to move — only when it holds a
+   * queue: driveFetchers() on an empty priority list would mark every
+   * resident page freeable.
+   */
+  applyFetchGate: function () {
+    const sr = this.sparkRenderer;
+    if (!sr) return;
+    const fetch = shouldFetchForVisibility(document.visibilityState);
+    sr.enableLodFetching = fetch;
+    const pager = sr.pager;
+    if (pager) {
+      pager.autoDrive = fetch;
+      if (fetch && pager.fetchPriority && pager.fetchPriority.length) {
+        pager.driveFetchers();
+      }
     }
   }
 });

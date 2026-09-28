@@ -76,6 +76,7 @@ So this work is **almost entirely backend**: produce the `.rad`, store it, write
 | Tokens | **Non-charged** (`tokenCost: 0`) | RAD is a silent backend optimization (GLB-optimization analog), not a user-initiated generation. `refundSplatToken` becomes a no-op. |
 | `.rad` storage | **Firebase Storage / GCS** (NOT Hetzner) as `assetRole: 'optimized'` | Durable, token-gated for private splats, consistent asset model. Hetzner is decommissioned for serving. |
 | LOD setting | **`build-lod --quality`**, single `.rad` | Matches the Hetzner-validated files (bhatt-lod, single file, not `--rad-chunked`). |
+| SH degree | **`--max-sh=0`** (env `RAD_MAX_SH`, `rad-converter/deploy.sh`) | Degree-3 SH was over half of every streamed chunk; street scans get little from it. Halves bytes + decode for every future asset (#2047). Recorded as `optimizationMetadata.maxSh`. |
 | Serving | GCS with **byte-range CORS** | `cors.json` must expose `Accept-Ranges` + `Content-Range`. |
 
 ### Cost reference (approx, verify against current pricing)
@@ -99,7 +100,7 @@ Both are cents/conversion; Cloud Run wins on large files purely via egress:
   `{ uid, assetId, plyPath, jobId }`:
   1. Download `.ply` from GCS (`plyPath`) to `/tmp` (or mount a **GCS FUSE volume**
      for multi-GB files so `/tmp`/memory isn't the ceiling).
-  2. Run `build-lod --quality <ply>` → `*-lod.rad`.
+  2. Run `build-lod --quality --max-sh=<RAD_MAX_SH> <ply>` → `*-lod.rad`.
   3. Upload to `users/{uid}/assets/splats/{assetId}-lod.rad`, contentType
      `application/octet-stream`, with `firebaseStorageDownloadTokens` +
      `assetRole: 'optimized'` metadata (mirror `saveSplatToGallery` URL scheme
@@ -164,6 +165,43 @@ Both are cents/conversion; Cloud Run wins on large files purely via egress:
 5. ⬜ **Prod rollout** — see Status (lift hardcoded config, provision prod infra).
 
 ---
+
+## Steady-state streaming cost (#2047)
+
+Time to first frame was never the problem; what a streamed `.rad` does *after*
+that is. Spark's `SparkRenderer` LOD is a **fixed splat budget per platform**
+(2.5M desktop, 1–1.5M mobile), not a bandwidth or frame-rate governor. Each
+traversal picks the budget's worth of splats for the view and queues every
+~3 MB chunk holding any of them; 3 parallel fetchers pull them with no pacing
+and the pager re-drives its own queue after every landed chunk — even with no
+frames rendering (tab hidden during a call). Measured on the 417 MB / 9.06M
+splat scene from #1754 (static camera, desktop budget): 117 of 139 chunks,
+352 MB. Capping the budget helps sub-linearly (0.5× budget → 256 MB, 0.25× →
+176 MB) because the chunk is the unit of fetch.
+
+Levers, in order of impact — policy in `src/tested/splat-streaming.js`
+(unit-tested), applied by the `splat` **system** in
+`src/aframe-components/splat.js`; all are live SparkRenderer / SplatPager
+properties, no reload:
+
+1. **Generation:** `--max-sh=0` (table above). The only lever that shrinks
+   every chunk for every future asset.
+2. **Hidden document:** `enableLodFetching = false` **and**
+   `pager.autoDrive = false` on `visibilitychange` (both are needed: the
+   renderer copies the flag onto the pager only on a traversal, and there are
+   no traversals while hidden). In-flight chunks finish, the queue waits, and
+   the pager is kicked on resume. Also in `public/splat-viewer.html`.
+3. **Low Power Mode** (View menu, store `lowPowerMode`, the "I'm on a call"
+   switch) applies the data-saver profile: `lodSplatScale` 0.5, one fetcher,
+   250 ms between chunk fetches so peak rate is bounded.
+4. **Huge scans:** a `.rad` whose header `count` exceeds 5M splats halves the
+   LOD budget on its own (`HUGE_SCAN_*`). Reported by the component from
+   `PagedSplats.getRadMeta()` before any chunk is queued.
+
+Not levers: `lodRenderScale` (no bandwidth effect while the budget binds;
+above ~1.5 distant splats vanish) and `maxPagedSplats` (a pool size, not a cap;
+below the working set it evicts and re-fetches). `STREET.splatDebug.snapshot()`
+shows the resolved settings and the live pager queue under `streaming`.
 
 ## Open decisions / inputs needed
 

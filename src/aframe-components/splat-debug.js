@@ -69,6 +69,37 @@ function readLodInstances(sr) {
   return out;
 }
 
+// Pager / fetch pacing state (#2047). `resolved` is the policy the splat
+// system computed; the rest is what the live SparkRenderer + SplatPager
+// currently hold, so a mismatch localizes a wiring bug.
+function readStreaming(sr) {
+  const scene = getScene();
+  const system = scene && scene.systems && scene.systems.splat;
+  const pager = sr.pager;
+  return {
+    resolved:
+      system && typeof system.getStreamingSettings === 'function'
+        ? system.getStreamingSettings()
+        : undefined,
+    documentVisibility:
+      typeof document !== 'undefined' ? document.visibilityState : undefined,
+    enableLodFetching: sr.enableLodFetching,
+    numLodFetchers: sr.numLodFetchers,
+    pager: pager
+      ? {
+          autoDrive: pager.autoDrive,
+          numFetchers: pager.numFetchers,
+          fetchPause: pager.fetchPause,
+          inFlight: pager.fetchers ? pager.fetchers.length : undefined,
+          queued: pager.fetchPriority ? pager.fetchPriority.length : undefined,
+          residentPages: pager.pageToSplatsChunk
+            ? pager.pageToSplatsChunk.filter(Boolean).length
+            : undefined
+        }
+      : null
+  };
+}
+
 function summarizeLod(lod) {
   if (!lod) return null;
   return {
@@ -154,7 +185,11 @@ const splatDebug = {
       sorting: sr.sorting,
       sortDirty: sr.sortDirty,
       lodSplatScale: sr.lodSplatScale,
-      maxPagedSplats: sr.maxPagedSplats
+      maxPagedSplats: sr.maxPagedSplats,
+      // Streaming pacing (#2047): what the splat system resolved from the
+      // Low Power toggle + the largest .rad in the scene, and the live pager
+      // state it drives (queue, in-flight fetchers, pause between chunks).
+      streaming: readStreaming(sr)
     };
     console.log('[splat-debug] snapshot', snap);
     return snap;

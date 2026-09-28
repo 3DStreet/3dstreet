@@ -113,6 +113,7 @@
   "appMenu.proBadge": "Pro",
   "appMenu.view": "Affichage",
   "appMenu.view.focusOnSelection": "Cibler la sélection",
+  "appMenu.view.lowPowerMode": "Mode économie d'énergie",
   "appMenu.view.navigationControls": "Commandes de navigation",
   "appMenu.view.navigationControls.experimental": "Expérimental",
   "appMenu.view.navigationControls.standard": "Standard",

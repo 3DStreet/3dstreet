@@ -200,6 +200,27 @@
         const spark = new SparkRenderer({ renderer, enableLod: true });
         scene.add(spark);
 
+        // Pause .rad chunk fetching while this document is hidden (#2047):
+        // a streamed scan otherwise keeps pulling chunks at full rate after
+        // the user switches to the call app. Both flags are needed — the
+        // renderer copies enableLodFetching onto the pager only on a
+        // traversal (no frames while hidden), and the pager re-drives its
+        // own queue after every landed chunk via autoDrive. Mirrors the
+        // in-editor splat system.
+        document.addEventListener('visibilitychange', () => {
+          const fetch = document.visibilityState !== 'hidden';
+          spark.enableLodFetching = fetch;
+          const pager = spark.pager;
+          if (pager) {
+            pager.autoDrive = fetch;
+            // Resume the queued chunks without waiting for the camera to
+            // move; only with a queue (an empty drive frees resident pages).
+            if (fetch && pager.fetchPriority && pager.fetchPriority.length) {
+              pager.driveFetchers();
+            }
+          }
+        });
+
         // Mirror the in-editor splat component: RAD files have pre-built LOD
         // and stream via byte-range requests (paged), so they draw progressively
         // and fast. Other formats render at full detail — we deliberately don't

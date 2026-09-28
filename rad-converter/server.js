@@ -43,6 +43,22 @@ const SPARK_VERSION = process.env.SPARK_VERSION || '2.1.0';
 // --quality = bhatt-lod base 1.75, single .rad — matches the Hetzner-validated
 // output. --rad (single file) is build-lod's default.
 const LOD_QUALITY = 'quality';
+// Spherical-harmonics degree kept in the .rad (`--max-sh`, build-lod default
+// 3). Degree-3 SH is 45 of the ~68 raw bytes per splat and compresses poorly,
+// so it is likely more than half of every streamed chunk — and video-derived
+// street scans get little from view-dependent shading. Dropping SH roughly
+// halves the file, the bandwidth and the decode work for every future asset
+// (#2047); Reoptimize rebuilds existing ones. RAD_MAX_SH=1 keeps first-order
+// view dependence at a fraction of the cost if it proves worth it.
+const MAX_SH = (() => {
+  const raw = process.env.RAD_MAX_SH;
+  if (raw === undefined || raw === '') return 0;
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isInteger(n) || n < 0 || n > 3) {
+    throw new Error(`[rad-converter] RAD_MAX_SH must be 0..3, got '${raw}'`);
+  }
+  return n;
+})();
 
 // A snapshot of *what executed this conversion* — captured per request so the
 // timing numbers are interpretable later (a slow convert on a 2-vCPU revision
@@ -57,7 +73,8 @@ function runtimeInfo() {
     revision: process.env.K_REVISION || null,
     sparkVersion: SPARK_VERSION,
     patches: process.env.PATCHES_APPLIED || null,
-    lod: LOD_QUALITY
+    lod: LOD_QUALITY,
+    maxSh: MAX_SH
   };
 }
 
@@ -93,7 +110,7 @@ class ConversionError extends Error {
 // failure (binary missing / OS error) is infrastructural → plain Error (retry).
 function runBuildLod(srcFile) {
   return new Promise((resolve, reject) => {
-    const args = [srcFile, `--${LOD_QUALITY}`];
+    const args = [srcFile, `--${LOD_QUALITY}`, `--max-sh=${MAX_SH}`];
     console.log(`[rad-converter] build-lod ${args.join(' ')}`);
     const proc = spawn('build-lod', args, {
       stdio: ['ignore', 'inherit', 'inherit']
@@ -223,6 +240,9 @@ async function convert({ uid, assetId, plyPath }, perf = {}) {
             tool: 'build-lod',
             sparkVersion: SPARK_VERSION,
             lod: LOD_QUALITY,
+            // SH degree baked into this .rad (see MAX_SH). Older docs lack the
+            // field: those files carry the build-lod default, degree 3.
+            maxSh: MAX_SH,
             // Perf subset mirrored onto the asset doc so it survives the
             // generationJobs TTL (the job doc is the transient record; the asset
             // is permanent). Mirrors the fields the handler writes on the job.

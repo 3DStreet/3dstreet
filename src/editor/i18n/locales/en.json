@@ -341,6 +341,9 @@
   "appMenu.view.focusOnSelection": {
     "defaultMessage": "Focus on Selection"
   },
+  "appMenu.view.lowPowerMode": {
+    "defaultMessage": "Low Power Mode"
+  },
   "appMenu.view.navigationControls": {
     "defaultMessage": "Navigation Controls"
   },

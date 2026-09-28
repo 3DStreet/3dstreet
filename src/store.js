@@ -149,6 +149,17 @@ const useStore = create(
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
         },
+        // Low Power Mode: the "I'm on a call" switch. Trades fidelity and
+        // bandwidth for a machine that stays responsive while also
+        // screensharing / recording. Persisted so it survives reload. Today
+        // the `splat` system consumes it (data-saver streaming profile,
+        // #2047); the render-side levers (pixel ratio, tiles errorTarget)
+        // land with #1723 on the same toggle.
+        lowPowerMode: localStorage.getItem('lowPowerMode') === 'true',
+        setLowPowerMode: (newLowPowerMode) => {
+          localStorage.setItem('lowPowerMode', newLowPowerMode.toString());
+          set({ lowPowerMode: newLowPowerMode });
+        },
         // Whether the shape draw tool is currently active — drives the
         // right-panel instructions block.
         shapeDrawActive: false,
