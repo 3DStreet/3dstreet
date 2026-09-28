@@ -208,6 +208,16 @@ to shared components, editor entry points and Firebase functions.
 **Visibility:** use `setAttribute('visible', ...)`, never raw `object3D.visible`
 (mesh batching).
 
+**Transparent pass & splats (#1732, #1754):** Spark draws every splat as one
+transparent, non-depth-writing mesh at the scene origin, so its place among
+other transparent surfaces is pinned by `renderOrder`, not left to three.js's
+origin-distance sort. Ordinary content at 0 draws first (depth-writing
+surfaces occlude splats per pixel), splats next, then translucent reference
+map layers and the overlay band from 1 up (placeholders, shape fills, gizmos).
+Blended glTF materials that are cutouts or mostly opaque get a depth write at
+load. Constants and helpers live in `src/tested/transparent-layering.js`;
+read its header before adding a transparent surface or a `renderOrder`.
+
 **URL Schemes:** Cloud scenes use path URLs (`/scenes/UUID`, server-visible for unfurls/SEO, #1970; legacy `#/scenes/` hash links load forever and self-upgrade via `history.replaceState`; helpers in `src/tested/scene-url-utils.js`). App-state deep links stay hash-based: Streetmix URL, StreetPlan URL, Managed Street JSON, `#asset:`, `#mcp`
 Because the app now runs at a nested path, every static asset reference must be root-absolute (`/ui_assets/...`, `/assets/...`); a relative path resolves to `/scenes/ui_assets/...` and 404s.
 

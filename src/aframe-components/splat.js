@@ -3,6 +3,7 @@
 // Import direct from the constants module (not the @shared/assets barrel, which
 // would pull React/Firebase into this early-loaded A-Frame bundle).
 import { SPLAT_EXTENSIONS } from '@shared/assets/constants.js';
+import { SPLAT_RENDER_ORDER } from '../tested/transparent-layering.js';
 
 // Spark library is loaded dynamically to reduce initial bundle size (~500KB)
 let SplatMesh = null;
@@ -474,6 +475,11 @@ AFRAME.registerSystem('splat', {
         renderer: this.el.renderer,
         enableLod: true
       });
+      // One transparent, non-depth-writing mesh at the scene origin draws
+      // every splat. Pin where it lands in the transparent pass: after every
+      // ordinary surface (so depth-writing ones occlude it per pixel) and
+      // before the overlays (#1732, #1754). See transparent-layering.js.
+      this.sparkRenderer.renderOrder = SPLAT_RENDER_ORDER;
       this.el.object3D.add(this.sparkRenderer);
     } catch (error) {
       console.error('[splat] Failed to initialize SparkRenderer:', error);
