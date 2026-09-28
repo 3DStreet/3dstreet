@@ -209,6 +209,63 @@ describe('the easy gizmo as the default transform control', () => {
   });
 });
 
+describe('the advanced rotate gizmo', () => {
+  function mountWithStock() {
+    const mounted = mountViewport();
+    mounted.inspector.cursor = { isPlaying: true };
+    mounted.stock = mounted.inspector.sceneHelpers.children.find(
+      (child) => child.isTransformControlsRoot
+    ).controls;
+    return mounted;
+  }
+  const axes = (stock) => [stock.showX, stock.showY, stock.showZ];
+  const select = (inspector, el) => {
+    inspector.selectedEntity = el;
+    Events.emit('objectselect', el.object3D);
+  };
+
+  // Yaw-only rotation is the easy gizmo's; the stock rotate gizmo is where
+  // pitch and roll live, so it offers every ring.
+  it('shows all three rings on an ordinary entity', () => {
+    const { inspector, sceneEl, stock, dispose } = mountWithStock();
+    try {
+      const el = entity(sceneEl);
+      select(inspector, el);
+      Events.emit('transformmodechange', 'rotate');
+      expect(stock.object).toBe(el.object3D);
+      expect(stock.mode).toBe('rotate');
+      expect(axes(stock)).toEqual([true, true, true]);
+    } finally {
+      dispose();
+    }
+  });
+
+  it('keeps the Y ring alone for a yaw-only entity, per selection', () => {
+    const { inspector, sceneEl, stock, dispose } = mountWithStock();
+    try {
+      const shape = entity(sceneEl);
+      shape.setAttribute('data-transform-yaw-only', '');
+      const plain = entity(sceneEl);
+      select(inspector, shape);
+      Events.emit('transformmodechange', 'rotate');
+      expect(axes(stock)).toEqual([false, true, false]);
+      // The restriction is about rotation, not the entity.
+      Events.emit('transformmodechange', 'translate');
+      expect(axes(stock)).toEqual([true, true, true]);
+      // And about the entity under the gizmo, not the mode alone.
+      Events.emit('transformmodechange', 'rotate');
+      expect(axes(stock)).toEqual([false, true, false]);
+      select(inspector, plain);
+      expect(stock.object).toBe(plain.object3D);
+      expect(axes(stock)).toEqual([true, true, true]);
+      select(inspector, shape);
+      expect(axes(stock)).toEqual([false, true, false]);
+    } finally {
+      dispose();
+    }
+  });
+});
+
 describe('the properties panel during an easy gizmo drag', () => {
   function startDrag() {
     const { inspector, sceneEl, dispose } = mountViewport();

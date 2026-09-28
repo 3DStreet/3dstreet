@@ -22,7 +22,11 @@ the far more common `data-no-transform`, which is a UI gate only (it hides the
 properties-panel transform rows and the gizmo) and is enforced nowhere at the
 command layer. Coverage is every command route — properties panel, AI chat,
 gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
-or component code.
+or component code. The stock rotate gizmo ("Advanced rotate") shows all three
+rings, since yaw-only rotation is the easy gizmo's job; on a
+`data-transform-yaw-only` entity it offers its Y ring alone
+(`applyStockGizmoAxes` in `src/editor/lib/viewport.js`), so it never starts a
+drag the guard would refuse.
 
 **Per-object detach (#2011):** a generated clone (clones/stencil/pedestrians)
 carries no `data-no-transform`; it is an editable object whose first edit

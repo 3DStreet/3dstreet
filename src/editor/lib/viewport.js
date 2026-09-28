@@ -1033,15 +1033,28 @@ export function Viewport(inspector) {
     easyGizmoControls.detach();
   }
 
+  // Which handles the stock gizmo offers for the current mode and selection.
+  // Advanced rotate shows all three rings: yaw-only rotation is the easy
+  // gizmo's job now, so the stock gizmo is where pitch and roll live. The one
+  // exception is an entity carrying `data-transform-yaw-only` (shapes, whose
+  // vertex editing assumes a horizontal plane): it keeps its Y ring alone, so
+  // the gizmo never offers a drag the transform guard would refuse on commit.
+  function applyStockGizmoAxes(el) {
+    const yawOnly =
+      transformControls.mode === 'rotate' &&
+      !!el?.hasAttribute?.('data-transform-yaw-only');
+    transformControls.showX = !yawOnly;
+    transformControls.showY = true;
+    transformControls.showZ = !yawOnly;
+  }
+
   function attachStockGizmo(el, forceMode) {
     transformControls.attach(el.object3D);
     if (forceMode) {
       if (transformControls.mode !== forceMode) {
         transformControls.setMode(forceMode);
       }
-      transformControls.showX = true;
-      transformControls.showY = true;
-      transformControls.showZ = true;
+      applyStockGizmoAxes(el);
       return;
     }
     // Selecting a no-scale entity while in scale mode: fall back to
@@ -1051,10 +1064,8 @@ export function Viewport(inspector) {
       el.hasAttribute('data-transform-no-scale')
     ) {
       transformControls.setMode('translate');
-      transformControls.showX = true;
-      transformControls.showY = true;
-      transformControls.showZ = true;
     }
+    applyStockGizmoAxes(el);
   }
 
   function attachStreetHandles(el) {
@@ -1126,16 +1137,7 @@ export function Viewport(inspector) {
       mode = 'translate';
     }
     transformControls.setMode(mode);
-    // Restrict rotation to the Y axis only.
-    if (mode === 'rotate') {
-      transformControls.showX = false;
-      transformControls.showY = true;
-      transformControls.showZ = false;
-    } else {
-      transformControls.showX = true;
-      transformControls.showY = true;
-      transformControls.showZ = true;
-    }
+    applyStockGizmoAxes(inspector.selectedEntity);
 
     // If there's a selected entity, reattach the appropriate controls
     if (inspector.selectedEntity) {
