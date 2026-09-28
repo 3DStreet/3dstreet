@@ -1604,6 +1604,9 @@
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
   },
+  "loadingSceneModal.errorTitle": {
+    "defaultMessage": "Could not load scene"
+  },
   "managedIntersectionSidebar.awaitingStreets": {
     "defaultMessage": "No streets connected yet — move managed street ends within the snap radius."
   },

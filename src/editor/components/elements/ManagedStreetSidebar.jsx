@@ -818,12 +818,12 @@ const ManagedStreetSidebar = ({ entity }) => {
           <div className="source-card">
             <div className={`source-logo source-logo-${source.kind}`}>
               {source.kind === 'streetmix' && (
-                <img src="ui_assets/streetmix-logo.svg" alt="" />
+                <img src="/ui_assets/streetmix-logo.svg" alt="" />
               )}
               {source.kind === 'streetplan' && <span>SP</span>}
               {source.kind === 'osm' && <span>OSM</span>}
               {source.kind === '3dstreet' && (
-                <img src="ui_assets/3D-St-stacked-128.png" alt="" />
+                <img src="/ui_assets/3D-St-stacked-128.png" alt="" />
               )}
             </div>
             <div className="source-text">

@@ -195,7 +195,11 @@ Two classes of entity:
   `texture:<asset id>`. A pending entry older than 30 s (matching
   batch-models' `LOAD_TIMEOUT_MS`) is reported as `timed-out` by the 1 s
   tick: it counts as neither pending nor settled, holds `done` back, and a
-  late settle still overrides it. Batched duplicates never emit
+  late settle still overrides it. `STREET.utils.newScene()` (every
+  scene-load route and File › New) calls `tracker.reset()` before the next
+  scene's entities exist: element-keyed entries would die on the next tick
+  anyway, but texture keys are strings and would otherwise carry a stale
+  error or pending state into every later scene. Batched duplicates never emit
   `model-loading`, and a `model-loaded` without a matching begin is ignored,
   so they are not counted. A model component that changes to point at
   nothing (`gltf-model` src cleared, `gltf-part` without src or part) or is
