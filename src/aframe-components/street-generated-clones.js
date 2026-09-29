@@ -1,7 +1,6 @@
 /* global AFRAME, STREET */
 import { createRNG } from '../lib/rng';
 import { getCurvedPlacement } from './street-path.js';
-import { getLongitudinalSpan } from '../tested/street-nodes-utils.js';
 import {
   CLONE_INDEX_ATTR,
   CLONE_KEY_ATTR,
@@ -153,10 +152,10 @@ AFRAME.registerComponent('street-generated-clones', {
     const data = this.data;
     const correctedSpacing = Math.max(1, data.spacing);
     const numClones = Math.floor(this.length / correctedSpacing);
-    const span = getLongitudinalSpan(this.length);
 
     for (let i = 0; i < numClones; i++) {
-      const positionZ = span.zEnd - (i + data.cycleOffset) * correctedSpacing;
+      const positionZ =
+        this.length / 2 - (i + data.cycleOffset) * correctedSpacing;
       this.createClone(positionZ);
     }
   },
@@ -176,13 +175,12 @@ AFRAME.registerComponent('street-generated-clones', {
 
   generateSingle: function () {
     const data = this.data;
-    const span = getLongitudinalSpan(this.length);
     let positionZ = 0;
 
     if (data.justify === 'start') {
-      positionZ = span.zEnd - data.padding;
+      positionZ = this.length / 2 - data.padding;
     } else if (data.justify === 'end') {
-      positionZ = span.zStart + data.padding;
+      positionZ = -this.length / 2 + data.padding;
     }
 
     this.createClone(positionZ);
@@ -191,8 +189,7 @@ AFRAME.registerComponent('street-generated-clones', {
   generateFit: function () {
     const data = this.data;
     const models = data.modelsArray;
-    const span = getLongitudinalSpan(this.length);
-    let cumulativeZ = span.zEnd;
+    let cumulativeZ = this.length / 2;
     let modelIndex = 0;
 
     // measure of the building model along the street's z axis
@@ -268,12 +265,12 @@ AFRAME.registerComponent('street-generated-clones', {
     // Use stored segment width to calculate justified X position
     const segmentWidth = this.width;
 
-    while (cumulativeZ > span.zStart) {
+    while (cumulativeZ > -this.length / 2) {
       const mixinId = models[modelIndex % models.length];
       const buildingWidth = buildingWidths[mixinId] || 10;
       const buildingDepth = buildingDepths[mixinId] || 0;
 
-      if (cumulativeZ - buildingWidth < span.zStart) {
+      if (cumulativeZ - buildingWidth < -this.length / 2) {
         break;
       }
 
@@ -369,10 +366,9 @@ AFRAME.registerComponent('street-generated-clones', {
   },
 
   randPlacedElements: function (streetLength, spacing, count) {
-    const span = getLongitudinalSpan(streetLength);
     const correctedSpacing = Math.max(1, spacing);
-    const start = span.zStart + correctedSpacing / 2;
-    const end = span.zEnd - correctedSpacing / 2;
+    const start = -streetLength / 2 + correctedSpacing / 2;
+    const end = streetLength / 2 - correctedSpacing / 2;
 
     // Calculate positions with offset
     const len = Math.floor((end - start) / correctedSpacing) + 1;

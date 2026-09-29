@@ -65,7 +65,6 @@ public/
 - `managed-street` - **Preferred**: Manages `street-segment` children, loads from `streetmix-url`, `streetplan-url`, or `json-blob`
 - `street` + `streetmix-loader` - **Legacy**: Being phased out
 - `street-segment` - Individual lane/segment (drive-lane, bike-lane, sidewalk, etc.)
-- **Owned centerlines (#1930):** a managed street owns its centerline — `managed-street.points` (street-local control points; empty = straight) with `curveType`/`filletRadius`/`closed`; a drawn shape is only copied in. End-node math lives ONLY in `src/tested/street-nodes-utils.js` + the reader `src/aframe-components/street-nodes.js`; generators fill `getLongitudinalSpan(length)` (never a hardcoded ±L/2); the `street-graph` system derives shared nodes. Read [docs/curved-street-path.md](docs/curved-street-path.md) before touching centerlines, nodes, spans or the graph.
 - `intersection` - 4-way intersections (no managed equivalent yet)
 
 **Procedural:** `street-generated-*` (striping, stencil, pedestrians, rail, clones).
