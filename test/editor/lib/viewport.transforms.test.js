@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { OrientedBoxHelper, Viewport } from '@/editor/lib/viewport.js';
+import { OrientedBoxHelper } from '@/editor/lib/viewport.js';
 import Events from '@/editor/lib/Events.js';
+import { entity, mountViewport } from './viewportHarness.js';
 
 vi.mock('@/store', () => ({ default: { subscribe: vi.fn() } }));
 vi.mock('@/editor/lib/cameras', () => ({ copyCameraPosition: vi.fn() }));
@@ -113,68 +114,6 @@ describe('selection bounds transform preservation', () => {
     mesh.material.dispose();
   });
 });
-
-function mountViewport() {
-  const canvas = document.createElement('canvas');
-  document.body.append(canvas);
-  const sceneEl = document.createElement('a-scene');
-  document.body.append(sceneEl);
-  sceneEl.object3D = new THREE.Scene();
-  sceneEl.renderer = { render: vi.fn() };
-  sceneEl.canvas = canvas;
-  sceneEl.systems = {};
-  const inspector = {
-    sceneEl,
-    container: canvas,
-    sceneHelpers: new THREE.Scene(),
-    camera: new THREE.PerspectiveCamera(),
-    helpers: {},
-    opened: true,
-    execute: vi.fn()
-  };
-  vi.stubGlobal('AFRAME', { INSPECTOR: inspector });
-  Viewport(inspector);
-  function dispose() {
-    inspector.easyGizmoControls.dispose();
-    inspector.shapeVertexControls.dispose();
-    inspector.streetNodeControls.dispose();
-    inspector.segmentWidthControls.dispose();
-  }
-  return { inspector, sceneEl, dispose };
-}
-
-function entity(parentEl) {
-  const el = document.createElement('a-entity');
-  parentEl.append(el);
-  el.object3D = new THREE.Group();
-  el.object3D.el = el;
-  el.components = {};
-  el.getObject3D = () => undefined;
-  const nativeSet = el.setAttribute.bind(el);
-  el.setAttribute = (name, value) => {
-    if (name === 'position') {
-      el.object3D.position.set(value.x, value.y, value.z);
-    } else if (name === 'rotation') {
-      el.object3D.rotation.set(
-        THREE.MathUtils.degToRad(value.x),
-        THREE.MathUtils.degToRad(value.y),
-        THREE.MathUtils.degToRad(value.z)
-      );
-    } else nativeSet(name, value);
-  };
-  const nativeGet = el.getAttribute.bind(el);
-  el.getAttribute = (name) => {
-    if (name === 'position') return el.object3D.position.clone();
-    if (name === 'rotation') {
-      const d = THREE.MathUtils.radToDeg;
-      const { x, y, z } = el.object3D.rotation;
-      return { x: d(x), y: d(y), z: d(z) };
-    }
-    return nativeGet(name);
-  };
-  parentEl.object3D.add(el.object3D);
-  return el;
-}
 
 describe('the easy gizmo as the default transform control', () => {
   it('is constructed with the viewport and is the starting mode', () => {

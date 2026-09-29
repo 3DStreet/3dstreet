@@ -126,6 +126,20 @@ The doors below are the ones that do not go through a plain command:
     an `entityupdate` per drag frame, and re-attaching the gizmo to a new
     object mid-drag would break the drag, so it skips the per-frame command
     on a clone and commits the dragged pose once on `mouseUp`.
+  - **The viewport's helpers across the detach** (`viewport.js`, #2054).
+    The commit removes the clone the selection and hover boxes were tracking
+    and selects the entity created in its place, so both helpers have to
+    cope with an object that has left the scene graph: `OrientedBoxHelper`
+    draws nothing for a parentless object (its previous geometry would
+    otherwise land at the object's local position read as world), the
+    hover path ignores an entity that has left the DOM, and the selection
+    box measurement restores the entity's pose under `try/finally`, since a
+    throw mid-measurement used to strand the entity at its parent's origin.
+    The hover box is also held from an easy-gizmo commit until the pointer
+    next moves: the re-attached gizmo only learns on that move that the
+    cursor is still on the control the user released, and a raycaster poll
+    or the gizmo's own detach in the gap would otherwise draw the segment
+    under the handle.
 - **Toast.** `DetachCloneCommand.execute` posts a `STREET.notify` success
   toast saying the object left its generator and that Undo puts it back, so an
   accidental nudge is explained. Fires on redo and on the AI tool too.

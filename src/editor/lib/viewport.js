@@ -321,21 +321,18 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
     // how Spark's SplatMesh handles matrix updates
     const isSplatEntity = this.object?.el?.hasAttribute('splat');
 
-    // this.object.parent is null when the tracked object has been detached from
-    // the scene graph (deleted/undo'd) while still hovered or selected; the
-    // parent-relative rezeroing below would then throw on matrixWorld. There
-    // is nothing to draw for it either: the previous geometry would be kept
-    // and placed at the object's LOCAL position read as world, a ghost box
-    // somewhere else in the scene (#2054). Hide until it is parented again.
-    const hasParent = this.object?.parent != null;
-    if (this.object !== undefined && !hasParent) {
-      if (this.visible) this._hiddenParentless = true;
-      this.visible = false;
+    // this.object.parent is null when the tracked object has left the scene
+    // graph (deleted, undone, or a generated clone removed by the detach its
+    // own drag committed) while still hovered or selected. The parent-relative
+    // rezeroing below would throw on matrixWorld, and there is nothing to draw
+    // for it: the previous geometry would be kept and placed at the object's
+    // LOCAL position read as world, a ghost box somewhere else in the scene
+    // (#2054). Draw nothing until it is parented again. `this.visible` stays
+    // the caller's (objectselect and the hover path own it); only the parts
+    // this helper draws are hidden, and the next measured update shows them.
+    if (this.object !== undefined && this.object.parent == null) {
+      this.setPartsVisible(false);
       return;
-    }
-    if (this._hiddenParentless) {
-      this._hiddenParentless = false;
-      this.visible = true;
     }
 
     // The bounds are measured at a temporary pose: the entity is parked at
@@ -348,7 +345,7 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
     // the click hit-test both wrong until a reload rebuilt the scene (#2054).
     let zeroed = false;
     try {
-      if (this.object !== undefined && hasParent && !isSplatEntity) {
+      if (this.object !== undefined && !isSplatEntity) {
         auxEuler.copy(this.object.rotation);
         auxLocalPosition.copy(this.object.position);
         this.object.rotation.set(0, 0, 0);
@@ -478,6 +475,19 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
     this.updateConformingHighlight();
   }
 
+  // Everything this helper draws: the box, its fill, and the curved-street
+  // overlays. updateConformingHighlight() re-derives which of them show on
+  // every measured update; this only turns them all off, for an object with
+  // nothing to draw.
+  setPartsVisible(visible) {
+    // BoxHelper's constructor runs update() before our fields exist
+    if (!this.fatBox) return;
+    this.fatBox.visible = visible;
+    if (this.boxFill) this.boxFill.visible = visible;
+    if (this.outlineLines) this.outlineLines.visible = visible;
+    if (this.conformGroup) this.conformGroup.visible = visible;
+  }
+
   dispose() {
     super.dispose();
     if (this.boxFill) {
@@ -587,7 +597,19 @@ export function Viewport(inspector) {
   // out on open ground, and lighting up the street segment beneath it while the
   // user aims at it is exactly wrong.
   let lastHoveredEl = null;
-  let gizmoHoverSuppressed = false;
+  // The cursor is on one of the easy gizmo's controls (its axisHoverChange).
+  let gizmoControlHovered = false;
+  // An easy-gizmo gesture has just committed and the pointer has not moved
+  // since. A drag-to-detach commit (#2011) removes the dragged clone and
+  // selects the entity created in its place, which re-attaches the gizmo to
+  // it; until the next pointer move the new gizmo does not know the cursor is
+  // still on the control the user released, so a raycaster poll in that gap
+  // would draw the hover box for whatever sits under the handle, usually the
+  // segment (#2054). The move that ends the hold is what resolves hover for
+  // real: the gizmo picks its control first (window capture), then the
+  // canvas listener below re-applies the last raycaster target if it did not.
+  let hoverHeldForPointerMove = false;
+  const hoverSuppressed = () => gizmoControlHovered || hoverHeldForPointerMove;
 
   function applyHoverHighlight(el) {
     // update hoverBox to match el.object3D bounding box
@@ -627,9 +649,22 @@ export function Viewport(inspector) {
 
   Events.on('raycastermouseenter', (el) => {
     lastHoveredEl = el;
-    if (gizmoHoverSuppressed) return;
+    if (hoverSuppressed()) return;
     applyHoverHighlight(el);
   });
+
+  function holdHoverUntilPointerMove() {
+    hoverHeldForPointerMove = true;
+    // Registered once per hold: a second add of the same listener is a no-op.
+    inspector.container.addEventListener('pointermove', endHoverHold, {
+      once: true
+    });
+  }
+  function endHoverHold() {
+    if (!hoverHeldForPointerMove) return;
+    hoverHeldForPointerMove = false;
+    if (!hoverSuppressed() && lastHoveredEl) applyHoverHighlight(lastHoveredEl);
+  }
 
   // Deliberately not gated: entry is blocked while a gizmo control is hovered,
   // exit never is. A stale highlight can always be cleared; what must not
@@ -904,12 +939,19 @@ export function Viewport(inspector) {
     // without pressing is the commonest interaction with it, and the selection
     // raycaster re-arms the box on its next poll.
     easyGizmoControls.addEventListener('axisHoverChange', (evt) => {
-      gizmoHoverSuppressed = !!evt.axis;
-      if (gizmoHoverSuppressed) {
+      gizmoControlHovered = !!evt.axis;
+      if (gizmoControlHovered) {
         hoverBox.visible = false;
-      } else if (lastHoveredEl) {
-        applyHoverHighlight(lastHoveredEl);
+        return;
       }
+      if (hoverHeldForPointerMove) return;
+      // detach() dispatches this lift with no object: the gizmo is leaving
+      // its entity because the selection is changing, not because the cursor
+      // left a control. Re-applying here drew the last raycaster target (the
+      // segment under the handle) at the moment a detach selected the entity
+      // it created (#2054); the next pointer move or raycaster poll re-arms.
+      if (!easyGizmoControls.el) return;
+      if (lastHoveredEl) applyHoverHighlight(lastHoveredEl);
     });
     // Dispatched as 'multi' even for a single change, and always with a name.
     // History coalesces updatable commands on entity + component within half a
@@ -918,6 +960,7 @@ export function Viewport(inspector) {
     // command opts out of that. It also defaults its own label to "Multiple
     // changes", so every gesture supplies its own.
     easyGizmoControls.addEventListener('commitDrag', (evt) => {
+      holdHoverUntilPointerMove();
       const changed = evt.changes.filter((c) => c.value !== c.oldValue);
       if (changed.length === 0) return;
       const commands = changed.map((c) => [
