@@ -58,6 +58,7 @@ import {
 import { ProbeTargets } from '../../../lib/nav-experimental/probeTargets.js';
 import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants.js';
 import { getShapeStyle } from '../../../lib/shapeStyle.js';
+import { nextMoveGizmo } from '../../../lib/transformModes.js';
 
 // m — reject a click ~on the PREVIOUS vertex. Distinct from the editor's
 // MIN_EDIT_VERTEX_SEPARATION (shapeEditRules.js), which holds the same number
@@ -617,8 +618,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // preview and commit cannot disagree. See docs/shapes.md#sticky-style.
       //
       // It cannot go stale for a SECOND shape either: every commit path is a
-      // deactivation or is immediately followed by one (finish() returns to the
-      // translate tool; the cleanup path IS the deactivation), and this effect
+      // deactivation or is immediately followed by one (finish() returns to
+      // Move; the cleanup path IS the deactivation), and this effect
       // is keyed on isActive — so it re-runs and re-reads before another shape
       // can be drawn. A future "stay active after commit" change breaks that and
       // would have to move the read.
@@ -700,10 +701,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       const commitClosed = commitsClosed();
       if (verts.length >= 2) commitShape(commitClosed);
       teardown();
-      // Returns to the translate tool; this emits transformmodechange which
-      // flips newToolMode to 'off' and re-runs this effect's cleanup — the
-      // committing guard makes that re-entry a no-op.
-      changeTransformMode('translate');
+      // Returns to Move, as `m` would from here; this emits
+      // transformmodechange which flips newToolMode to 'off' and re-runs this
+      // effect's cleanup — the committing guard makes that re-entry a no-op.
+      changeTransformMode(nextMoveGizmo('off'));
       // EntityCreateCommand selects the created parent, so the on-select
       // readouts (ShapeSidebar) light up with no extra wiring.
     }

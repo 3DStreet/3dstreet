@@ -2,6 +2,10 @@ import { TransformControls } from './TransformControls.js';
 import { ShapeVertexControls } from './ShapeVertexControls.js';
 import { StreetNodeControls } from './gizmos/StreetNodeControls.js';
 import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
+import { EasyGizmoControls } from './gizmos/EasyGizmoControls.js';
+import { installEasyGizmoOutline } from './gizmos/easyGizmoOutline.js';
+import { easyGizmoCommandName } from './gizmos/easyGizmoMessages.js';
+import { DEFAULT_TRANSFORM_MODE } from './transformModes.js';
 import { computeRibbonOutline } from '@/tested/street-path-utils.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
@@ -102,7 +106,7 @@ const RIBBON_OUTLINE_THRESHOLD_DEG = 30;
 // update() write the 8 corner positions we then copy into the fat-line
 // twin (`fatBox`) that actually renders. Its own material is invisible for
 // the helper's whole life; that is intentional, not a bug.
-class OrientedBoxHelper extends THREE.BoxHelper {
+export class OrientedBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
     super(object, color);
     this.helperColor = color;
@@ -363,7 +367,7 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       }
     } else if (this.object !== undefined && isSplatEntity) {
       const splatComponent = this.object.el.components['splat'];
-      const splatBox = splatComponent?.getBoundingBox?.();
+      const splatBox = splatComponent?.getBoundingBox?.(true, tempBox3);
       if (splatBox) {
         tempBox3.copy(splatBox);
         // Transform the box to world space
@@ -425,6 +429,9 @@ class OrientedBoxHelper extends THREE.BoxHelper {
       );
       this.object.rotation.copy(auxEuler);
       this.object.position.copy(auxLocalPosition);
+      // Bounds were measured at a temporary pose. Restore descendant render
+      // matrices too: this helper can run after the scene's matrix traversal.
+      this.object.updateWorldMatrix(true, true);
     }
 
     // Update helper position for all objects
@@ -543,7 +550,14 @@ export function Viewport(inspector) {
     if (selectionBox.visible && selectionBox.object) selectionBox.update();
   });
 
-  Events.on('raycastermouseenter', (el) => {
+  // The scene's own hover highlight, extracted so the easy gizmo can suppress
+  // it while the cursor is on one of its controls — a landing square often sits
+  // out on open ground, and lighting up the street segment beneath it while the
+  // user aims at it is exactly wrong.
+  let lastHoveredEl = null;
+  let gizmoHoverSuppressed = false;
+
+  function applyHoverHighlight(el) {
     // update hoverBox to match el.object3D bounding box
     //
     // Hover-highlight parity (KD-27). Street-level OFF: the hover box is
@@ -570,9 +584,19 @@ export function Viewport(inspector) {
     if (!target || target === inspector.selectedEntity) return;
     hoverBox.visible = true;
     hoverBox.setFromObject(target.object3D);
+  }
+
+  Events.on('raycastermouseenter', (el) => {
+    lastHoveredEl = el;
+    if (gizmoHoverSuppressed) return;
+    applyHoverHighlight(el);
   });
 
+  // Deliberately not gated: entry is blocked while a gizmo control is hovered,
+  // exit never is. A stale highlight can always be cleared; what must not
+  // happen is one being re-armed under the gizmo.
   Events.on('raycastermouseleave', (el) => {
+    lastHoveredEl = null;
     hoverBox.visible = false;
   });
 
@@ -623,6 +647,18 @@ export function Viewport(inspector) {
     camera,
     inspector.container
   );
+  // Published for the same reason shapeVertexControls is: the easy gizmo has to
+  // ask, positively, whether one of these handles is under a press before it
+  // claims one, and a rule naming a control it cannot reach is not a rule. Read
+  // only — nothing outside this closure writes them.
+  inspector.streetNodeControls = streetNodeControls;
+  inspector.segmentWidthControls = segmentWidthControls;
+
+  // The app's transform mode, tracked here because `'easy'` deliberately never
+  // reaches TransformControls.setMode() — see the transformmodechange handler.
+  // Published read-only so a toolbar mounted later starts from the live mode.
+  let transformMode = DEFAULT_TRANSFORM_MODE;
+  inspector.transformMode = transformMode;
 
   // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls
   // mutates the object. The undo command can't capture this itself:
@@ -791,12 +827,89 @@ export function Viewport(inspector) {
     });
   });
 
+  function wireEasyGizmo(commandName) {
+    easyGizmoControls.addEventListener('mouseDown', () => {
+      controls.enabled = false;
+      hoverBox.visible = false;
+    });
+    easyGizmoControls.addEventListener('mouseUp', () => {
+      controls.enabled = true;
+    });
+    easyGizmoControls.addEventListener('objectChange', () => {
+      const object = easyGizmoControls.object;
+      if (!object) return;
+      // Batched models and descendants render outside the entity hierarchy.
+      syncBatchedSubtree(object.el);
+      selectionBox.setFromObject(object);
+      updateHelpers(object);
+      // Keeps the properties panel in step with the drag. An event rather than
+      // a command: the whole gesture is committed once, as one undo step, on
+      // release. Only for the selected entity, because a detach caused by a
+      // new selection restores the old one after the selection has moved on,
+      // and its panel is being replaced.
+      if (easyGizmoControls.el !== inspector.selectedEntity) return;
+      const rotating = easyGizmoControls.axis === 'rotate';
+      const d = THREE.MathUtils.radToDeg;
+      Events.emit('entityupdate', {
+        entity: object.el,
+        component: rotating ? 'rotation' : 'position',
+        value: rotating
+          ? `${d(object.rotation.x)} ${d(object.rotation.y)} ${d(
+              object.rotation.z
+            )}`
+          : `${object.position.x} ${object.position.y} ${object.position.z}`
+      });
+    });
+    // The scene's hover box tracks the gizmo's own hover state rather than
+    // being cleared once on mouseDown: hovering a control and moving away
+    // without pressing is the commonest interaction with it, and the selection
+    // raycaster re-arms the box on its next poll.
+    easyGizmoControls.addEventListener('axisHoverChange', (evt) => {
+      gizmoHoverSuppressed = !!evt.axis;
+      if (gizmoHoverSuppressed) {
+        hoverBox.visible = false;
+      } else if (lastHoveredEl) {
+        applyHoverHighlight(lastHoveredEl);
+      }
+    });
+    // Dispatched as 'multi' even for a single change, and always with a name.
+    // History coalesces updatable commands on entity + component within half a
+    // second with no notion of a gesture, so a bare entityupdate would merge
+    // two separate drags of the same object into one undo entry; a multi
+    // command opts out of that. It also defaults its own label to "Multiple
+    // changes", so every gesture supplies its own.
+    easyGizmoControls.addEventListener('commitDrag', (evt) => {
+      const changed = evt.changes.filter((c) => c.value !== c.oldValue);
+      if (changed.length === 0) return;
+      const commands = changed.map((c) => [
+        'entityupdate',
+        { entity: evt.entity, ...c }
+      ]);
+      inspector.execute('multi', commands, commandName(evt.name));
+    });
+  }
+
   sceneHelpers.add(transformControls.getHelper());
   // Added once, here — attach()/detach() only arm and disarm it, they do not
   // re-add it.
   sceneHelpers.add(shapeVertexControls);
   sceneHelpers.add(streetNodeControls);
   sceneHelpers.add(segmentWidthControls);
+  // The easy gizmo is the default transform control, so it is constructed with
+  // the viewport. It is one combined move/rotate handle that follows the
+  // ground: the stock gizmo's alternative for a transform mode, not an
+  // additive handle.
+  const easyGizmoControls = new EasyGizmoControls(
+    inspector.camera,
+    inspector.container,
+    sceneEl
+  );
+  easyGizmoControls.registry.add(
+    installEasyGizmoOutline(sceneEl, easyGizmoControls)
+  );
+  wireEasyGizmo(easyGizmoCommandName);
+  sceneHelpers.add(easyGizmoControls);
+  inspector.easyGizmoControls = easyGizmoControls;
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
@@ -882,6 +995,7 @@ export function Viewport(inspector) {
         transformControls.camera = perspective;
         streetNodeControls.camera = perspective;
         segmentWidthControls.camera = perspective;
+        easyGizmoControls.camera = perspective;
         controls.setCamera(perspective);
         updateAspectRatio();
         controls.handlePlanViewRequest();
@@ -892,6 +1006,7 @@ export function Viewport(inspector) {
     transformControls.camera = data.camera;
     streetNodeControls.camera = data.camera;
     segmentWidthControls.camera = data.camera;
+    easyGizmoControls.camera = data.camera;
     updateAspectRatio();
   });
 
@@ -900,6 +1015,7 @@ export function Viewport(inspector) {
     transformControls.enabled = true;
     streetNodeControls.enabled = true;
     segmentWidthControls.enabled = true;
+    easyGizmoControls.enabled = true;
     controls.enabled = true;
   }
   enableControls();
@@ -912,10 +1028,35 @@ export function Viewport(inspector) {
     transformControls.detach();
     streetNodeControls.detach();
     segmentWidthControls.detach();
+    // Called on EVERY selection, including ones the easy gizmo never attached
+    // to, so its detach is idempotent.
+    easyGizmoControls.detach();
   }
 
-  function attachStockGizmo(el) {
+  // Which handles the stock gizmo offers for the current mode and selection.
+  // Advanced rotate shows all three rings: yaw-only rotation is the easy
+  // gizmo's job now, so the stock gizmo is where pitch and roll live. The one
+  // exception is an entity carrying `data-transform-yaw-only` (shapes, whose
+  // vertex editing assumes a horizontal plane): it keeps its Y ring alone, so
+  // the gizmo never offers a drag the transform guard would refuse on commit.
+  function applyStockGizmoAxes(el) {
+    const yawOnly =
+      transformControls.mode === 'rotate' &&
+      !!el?.hasAttribute?.('data-transform-yaw-only');
+    transformControls.showX = !yawOnly;
+    transformControls.showY = true;
+    transformControls.showZ = !yawOnly;
+  }
+
+  function attachStockGizmo(el, forceMode) {
     transformControls.attach(el.object3D);
+    if (forceMode) {
+      if (transformControls.mode !== forceMode) {
+        transformControls.setMode(forceMode);
+      }
+      applyStockGizmoAxes(el);
+      return;
+    }
     // Selecting a no-scale entity while in scale mode: fall back to
     // translate so the gizmo never scales it.
     if (
@@ -923,9 +1064,18 @@ export function Viewport(inspector) {
       el.hasAttribute('data-transform-no-scale')
     ) {
       transformControls.setMode('translate');
-      transformControls.showX = true;
-      transformControls.showY = true;
-      transformControls.showZ = true;
+    }
+    applyStockGizmoAxes(el);
+  }
+
+  function attachStreetHandles(el) {
+    if (el.components['managed-street']) {
+      streetNodeControls.attach(el);
+    } else if (
+      el.components['street-segment'] &&
+      el.parentElement?.components?.['managed-street']
+    ) {
+      segmentWidthControls.attach(el);
     }
   }
 
@@ -947,22 +1097,36 @@ export function Viewport(inspector) {
     ) {
       return;
     }
-    // Segments of a managed street are the one selection that gets NO stock
-    // gizmo (#1806): street-align owns segment transforms, so any move/rotate
-    // applied here would be silently reset by the next street re-layout.
-    // Their handles are the width bars (plus sidebar width/elevation and the
-    // reorder buttons); the selection highlight box still shows.
+    // street-align owns managed-segment transforms; only width bars apply.
     if (isManagedStreetSegment(el)) {
       segmentWidthControls.attach(el);
       return;
     }
-    attachStockGizmo(el);
-    if (el.components['managed-street']) {
-      streetNodeControls.attach(el);
+    if (transformMode === 'easy') {
+      if (easyGizmoControls.accepts(el)) {
+        easyGizmoControls.attach(el);
+      } else {
+        // Other unsupported entities retain the stock translate control.
+        attachStockGizmo(el, 'translate');
+      }
+    } else {
+      attachStockGizmo(el);
     }
+    attachStreetHandles(el);
   }
 
   Events.on('transformmodechange', (mode) => {
+    transformMode = mode;
+    inspector.transformMode = mode;
+    // `'easy'` MUST NOT REACH setMode. TransformControls stores the mode
+    // verbatim and its gizmo then indexes a picker table by it on every matrix
+    // update, with no guard and regardless of visibility — so an unknown mode
+    // is a TypeError on every frame from then on, which detaching does not
+    // avoid.
+    if (mode === 'easy') {
+      if (inspector.selectedEntity) attachControlsForSelection();
+      return;
+    }
     // Some entities opt out of scale (`data-transform-no-scale`) — shapes and
     // managed streets, whose size is owned by their own editing affordances
     // (vertex handles; segment widths). Fall back to translate for those.
@@ -973,16 +1137,7 @@ export function Viewport(inspector) {
       mode = 'translate';
     }
     transformControls.setMode(mode);
-    // Restrict rotation to the Y axis only.
-    if (mode === 'rotate') {
-      transformControls.showX = false;
-      transformControls.showY = true;
-      transformControls.showZ = false;
-    } else {
-      transformControls.showX = true;
-      transformControls.showY = true;
-      transformControls.showZ = true;
-    }
+    applyStockGizmoAxes(inspector.selectedEntity);
 
     // If there's a selected entity, reattach the appropriate controls
     if (inspector.selectedEntity) {

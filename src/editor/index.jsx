@@ -249,8 +249,13 @@ Inspector.prototype = {
     // built, so every door behaves the same.
     const routed = routeCloneEdit(cmdName, payload);
     if (routed) {
+      // A caller's label names the command it asked for ("Move"); once the
+      // edit has become a detach, the detach's own name is the true one.
+      if (routed.cmdName !== cmdName) optionalName = undefined;
       cmdName = routed.cmdName;
       payload = routed.payload;
+      // A batch that folded to one member carries that member's callback.
+      if (routed.callback && !callback) callback = routed.callback;
     }
     const Cmd = commandsByType.get(cmdName);
     if (!Cmd) {

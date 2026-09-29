@@ -106,12 +106,26 @@ would not persist); the plain entity renames like any other.
 
 The doors below are the ones that do not go through a plain command:
 
-- **Drag-to-detach (primary).** The viewport gizmo (`src/editor/lib/viewport.js`)
-  attaches to a clone like any object. The clone moves live during the drag,
-  but no per-frame `entityupdate` is recorded against it (re-attaching the
-  gizmo to a new object mid-drag would break the drag); on the gizmo's
-  `mouseUp` the drag is committed as a single `detachclone` with the dragged
-  pose, so one Cmd-Z restores the clone to its slot.
+- **Drag-to-detach (primary).** Both viewport gizmos attach to a clone like
+  any object and move it live during the drag; neither records a per-frame
+  command against it, so one Cmd-Z restores the clone to its slot.
+  - The **easy gizmo** (`src/editor/lib/gizmos/EasyGizmoControls.js`) writes
+    the drag with `setAttribute` and commits once on release as a `multi`
+    command (a position and a rotation `entityupdate`). It goes through the
+    router like every other door: `routeCloneEdit` unwraps a `multi`, folds
+    every member aimed at the same clone into one `detachclone` at the
+    merged pose, and returns that command on its own when the batch folds to
+    one, so the entry is named "Detach Model" and the toast fires. This
+    matters because `MultiCommand` builds its members directly rather than
+    through `Inspector.execute`: a batch the router did not unwrap would
+    bypass the rule entirely and move the clone in place, which the
+    generator then discards. `Inspector.execute` drops a caller's label
+    ("Move") when the router changes the command type.
+  - The **stock TransformControls gizmo** (`src/editor/lib/viewport.js`) is
+    the one door that calls `detachclone` itself: it would otherwise record
+    an `entityupdate` per drag frame, and re-attaching the gizmo to a new
+    object mid-drag would break the drag, so it skips the per-frame command
+    on a clone and commits the dragged pose once on `mouseUp`.
 - **Toast.** `DetachCloneCommand.execute` posts a `STREET.notify` success
   toast saying the object left its generator and that Undo puts it back, so an
   accidental nudge is explained. Fires on redo and on the AI tool too.
