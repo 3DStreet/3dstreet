@@ -196,6 +196,28 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
   vector tiles carry no OSM node ids); the intersection entity IS the
   occupant of a junction node. Not yet: insert/delete of control points
   on the handles.
+- **Node model decisions (Sep 2026, before phase 4).** Streets
+  TERMINATE at nodes; an intersection is the occupant of a node, never a
+  place two continuous ways cross (OSM's through-node topology is
+  approximated, not copied — osm2streets and strassenraumkarte split into
+  road segments between intersections for the same reason: the
+  cross-section changes exactly there). Consequences:
+  - **Every junction node is a street end.** T junctions split the
+    through street too (reversing today's "terminating side road leaves
+    the stretch continuous" policy at phase 5), so insets stay a per-end
+    `{start, end}` pair and no generator ever fills a multi-interval span.
+  - **Continuity is provenance, not geometry.** The pieces of one OSM way
+    keep their identity as a *corridor*: `data-osm-way-id` plus a piece
+    ordinal (layer name "OSM Way 123 · B of D"; serialized as phase 6's
+    `{source: 'osm', wayId, piece}`), and the `street-graph` exposes the
+    ordered pieces of a way so select/rename/re-split act on the corridor.
+  - **Grade separation is not a node.** `brunnel: bridge`/`tunnel` ways
+    keep crossing without a shared node (phase 2 treatment).
+  - After phase 5, `splitStretchAtJunctions` keeps SPLITTING (the
+    intersection needs distinct arms) but its generation-time inset
+    (half carriageway + 2 m) shrinks to ~0: the intersection writes the
+    real per-end inset from `mouth.t`, and counting both would double the
+    gap.
 - **Phase 4 — pillar 2: render-time insets.** Derived, non-serialized
   `insets {start, end}` + `setInset` API consumed via
   `getLongitudinalSpan`; curves get `sStart`/`sEnd` in
@@ -209,7 +231,9 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
   curved-street exclusion (a curved end already reports its node and
   `along` direction through `street-nodes.js`). Key test: deleting an intersection restores
   insets to 0 — streets pop back intact. Then upgraded-street junctions
-  get real intersections automatically.
+  get real intersections automatically. Same phase: split the through
+  street at T junctions and drop the generation-time inset (see the node
+  model decisions above).
 - **Phase 6 — full hydration + pinning.** The on-generate slice above
   ships; remaining: the rest of #2004's tag coverage (`shoulder`,
   `placement`/`dual_carriageway`, crossing/signal nodes — #826 is
