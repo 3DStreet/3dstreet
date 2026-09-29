@@ -4,13 +4,14 @@ import {
   localToLatLon,
   stretchForWindow
 } from '../../src/tested/osm-street-import.js';
+import { parseCenterlinePoints } from '../../src/tested/street-centerline.js';
 
 // The click-to-upgrade integration the pure-math tests can't reach: the
 // osm-streets component turning an injected way record into real scene
-// entities — a path shape + a managed street following it for a curved
-// stretch, a plain straight street for the degenerate 2-point stretch —
-// through the viewer (no-inspector) creation path, with the street's
-// curve actually resolving against the minted shape.
+// entities — a managed street that OWNS the stretch's centerline as its
+// `points` for a curved stretch (#1930 pillar 1), a plain straight street
+// for the degenerate 2-point stretch — through the viewer (no-inspector)
+// creation path, with the street's curve actually built from its points.
 //
 // shape.js statically imports the app store (Firebase/PostHog chain);
 // same two-method stub as shape-fill-export.test.js.
@@ -73,7 +74,7 @@ async function osmStreetsComponent() {
 }
 
 describe('osm-streets upgrade (viewer creation path)', () => {
-  it('mints one path-following street for a curved stretch', async () => {
+  it('mints one point-owning curved street for a curved stretch', async () => {
     const comp = await osmStreetsComponent();
     const scene = comp.el.sceneEl;
     comp.addTileWays('t-curved', [
@@ -89,12 +90,8 @@ describe('osm-streets upgrade (viewer creation path)', () => {
     const created = comp.upgradeWay(way, corner);
     expect(created).toBe(1);
 
-    const shapeEl = scene.querySelector('[shape]');
-    expect(shapeEl).toBeTruthy();
-    expect(shapeEl.id).toMatch(/^osm-path-/);
-    expect(shapeEl.getAttribute('data-osm-way-id')).toBe('way-curved');
-    const vertices = shapeEl.querySelectorAll('[shape-vertex]');
-    expect(vertices).toHaveLength(3);
+    // No scaffolding shape: the street carries the centerline itself.
+    expect(scene.querySelector('[shape]')).toBeNull();
 
     const streetEl = scene.querySelector('[managed-street]');
     expect(streetEl).toBeTruthy();
@@ -105,8 +102,10 @@ describe('osm-streets upgrade (viewer creation path)', () => {
       () => {
         const ms = streetEl.components['managed-street'];
         expect(ms).toBeTruthy();
-        expect(ms.data.path).toBe(`#${shapeEl.id}`);
-        // The street resolved the minted shape and built a real curve.
+        expect(ms.data.path).toBe('');
+        expect(parseCenterlinePoints(ms.data.points)).toHaveLength(3);
+        expect(ms.data.curveType).toBe('smooth');
+        // The street built a real curve from its own points.
         expect(ms.streetCurve).toBeTruthy();
         // Smooth curve through the 300 m L-bend: arc length lands near
         // the control polygon's, and drives the street length.
@@ -146,14 +145,15 @@ describe('osm-streets upgrade (viewer creation path)', () => {
     await vi.waitFor(() => {
       const ms = streetEl.components['managed-street'];
       expect(ms).toBeTruthy();
-      expect(ms.data.path).toBe('');
+      expect(ms.data.points).toBe('');
+      expect(ms.streetCurve).toBeNull();
     });
     // Street local +Z points along the +x (north) chord → yaw 90.
     const rotation = streetEl.getAttribute('rotation');
     expect(rotation.y).toBeCloseTo(90, 0);
   });
 
-  it('splits at a crossing, mints one shared intersection, connects path arms', async () => {
+  it('splits at a crossing, mints one shared intersection, connects curved arms', async () => {
     const comp = await osmStreetsComponent();
     const scene = comp.el.sceneEl;
     // Way A runs +z with a bend past the crossing; way B crosses it at
@@ -182,9 +182,13 @@ describe('osm-streets upgrade (viewer creation path)', () => {
       expect(iPos.x).toBeCloseTo(0, 0);
       expect(iPos.z).toBeCloseTo(100, 0);
     });
-    // Piece past the bend keeps its corner → one path shape; the piece
-    // before the crossing is straight.
-    expect(scene.querySelectorAll('[shape]')).toHaveLength(1);
+    // Piece past the bend keeps its corner → one curved (point-owning)
+    // street; the piece before the crossing is straight.
+    const curvedStreets = Array.from(
+      scene.querySelectorAll('[managed-street]')
+    ).filter((el) => el.getAttribute('managed-street').points !== '');
+    expect(curvedStreets).toHaveLength(1);
+    expect(scene.querySelectorAll('[shape]')).toHaveLength(0);
 
     // Generate B: two more pieces, NO second intersection (proximity
     // reuse), and its street ends land inside the existing snap radius.
@@ -194,7 +198,7 @@ describe('osm-streets upgrade (viewer creation path)', () => {
     expect(scene.querySelectorAll('[managed-street]')).toHaveLength(4);
 
     // The intersection's signature watch picks the streets up as arms —
-    // including the path-following piece (curve end frames) — and
+    // including the curved piece (curve end frames) — and
     // produces real geometry.
     await vi.waitFor(
       () => {

@@ -32,6 +32,7 @@ require('./aframe-components/intersection.js');
 require('./aframe-components/managed-intersection.js');
 require('./aframe-components/obb-clipping.js');
 require('./aframe-components/street-path.js');
+require('./aframe-components/street-graph.js');
 require('./aframe-components/street-segment.js');
 require('./aframe-components/managed-street.js');
 require('./aframe-components/street-generated-stencil.js');
