@@ -16,6 +16,8 @@ The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens al
 
 **All other metadata** (`size`, `originalFilename`, etc.) lives in Firestore and is fetched on demand — never saved in the scene JSON. That includes `bounds` (`{ min, max }`, model-space meters), written by the optimizer at upload and refreshed by Reoptimize, which the scene loader registers per entity so `model-placeholder` can draw a ghost box before the GLB downloads; the owner's client backfills it for older assets on first load (see [asset loading](../asset-loading.md)).
 
+**Progressive-streaming GLBs (#1990, in progress):** large uploads get a Needle Cloud progressive variant as their `optimizedSourceUrl`, served from `cloud.needle.tools`. Because scene JSON persists only the URL, `isProgressiveModelUrl` (`src/tested/progressive-models.js`) is the one runtime predicate for "this model streams": `gltf-model` hooks needle's extension onto its loader for those srcs and skips the clone-template cache, `batch-models` excludes them from batching, and `asset-fallback` retries `storageUrl` when the CDN copy fails. Plan and status: `docs/plans/1990-progressive-glb-streaming.md`.
+
 **Cloud Functions:**
 
 - `onAssetWritten` — Firestore trigger, maintains `users/{uid}/meta/usage.bytesUsed` via transaction. Only `size` (original) counts toward quota; `optimizedSourceSize` is excluded (platform cost).

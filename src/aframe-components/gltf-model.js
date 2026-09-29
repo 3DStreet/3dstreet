@@ -9,6 +9,10 @@ import {
   BATCHING_ENABLED
 } from '../batch-models';
 import { applyBlendedSurfaceDepth } from '../tested/transparent-layering.js';
+import {
+  isProgressiveModelUrl,
+  hookProgressiveLoader
+} from '../tested/progressive-models';
 
 // Share one decoded THREE.Source across textures (within and across GLBs) that embed the
 // byte-identical image. The server bakes images[].extras.imageHash; GLTFLoader.loadImageSource
@@ -310,7 +314,17 @@ export const gltfModelPlus = {
     // fast 403) doesn't hang Promise.all.
     this._loadSettled = false;
 
-    this.ready.then(function () {
+    // Progressive-streaming models (#1990) need needle's extension on this loader before the
+    // load starts; every other src leaves the loader untouched. Chained into the ready promise
+    // so the load below cannot race the hook.
+    const progressive = isProgressiveModelUrl(src);
+    const ready = progressive
+      ? this.ready.then(() =>
+          hookProgressiveLoader(self.loader, el.sceneEl.renderer)
+        )
+      : this.ready;
+
+    ready.then(function () {
       self.el.emit('model-loading', { src });
       function gltfLoaded(gltfModel) {
         if (src !== self.data) {
@@ -375,8 +389,10 @@ export const gltfModelPlus = {
       }
       // The 2nd+ loader of a src clones a pristine template parsed once by loadParsedGltf
       // instead of re-parsing (skips re-download, draco/image decode and accessor→geometry
-      // build). The first loader parses the GLB directly.
-      const cacheOn = !globalThis.__gltfCacheDisabled;
+      // build). The first loader parses the GLB directly. Progressive models never clone: the
+      // needle extension refines each parsed instance's meshes/textures in place with its own
+      // per-instance LOD state, which a clone of a template would bypass (and stay low-LOD).
+      const cacheOn = !globalThis.__gltfCacheDisabled && !progressive;
       if (cacheOn && srcLoadCount(src) >= 2) {
         loadParsedGltf(self.loader, el.sceneEl, src, onProgress)
           .then((entry) => {
