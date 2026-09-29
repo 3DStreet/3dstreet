@@ -74,6 +74,7 @@ AFRAME.registerComponent('geo-flatten', {
 
   init: function () {
     this.proxyMesh = null;
+    this.suspensionOwners = new Set();
     this.proxyDirty = true;
     this.proxyRebuildTimeout = null;
     this.cachedSourceMesh = null;
@@ -114,14 +115,24 @@ AFRAME.registerComponent('geo-flatten', {
     this.system.unregister(this);
   },
 
-  // Future interactions that must temporarily mute a volume (e.g. clamp-to-
-  // ground suspending the dragged entity's own contribution so it never
-  // samples terrain it flattened itself) should add a runtime-only flag here
-  // (`this.suspended`, set via a method that calls system.notifyChanged()) —
-  // NOT toggle data.enabled, which is user-facing serialized state: transient
-  // writes to it pollute undo history and can be captured by a mid-drag save.
+  // Placement must not sample terrain flattened by its own selection. Keep
+  // suspension out of serialized data and let independent owners release it safely.
+  setSuspended: function (owner, suspended) {
+    const wasSuspended = this.suspensionOwners.size > 0;
+    if (suspended) this.suspensionOwners.add(owner);
+    else this.suspensionOwners.delete(owner);
+    const isSuspended = this.suspensionOwners.size > 0;
+    if (wasSuspended !== isSuspended) {
+      this.system.notifyChanged();
+    }
+  },
+
   isActive: function () {
-    return this.data.enabled && this.el.isConnected;
+    return (
+      this.data.enabled &&
+      this.el.isConnected &&
+      this.suspensionOwners.size === 0
+    );
   },
 
   markSubtreeDirty: function () {

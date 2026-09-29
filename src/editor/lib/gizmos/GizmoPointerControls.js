@@ -77,9 +77,14 @@ class GizmoPointerControls extends THREE.Object3D {
     this.domElement.removeEventListener('touchcancel', this.onPointerUp);
   }
 
+  /** The canvas rectangle pointer coordinates map through. Subclasses may cache it. */
+  _canvasRect() {
+    return this.domElement ? this.domElement.getBoundingClientRect() : null;
+  }
+
   updateMouse(event) {
     const pointer = event.changedTouches ? event.changedTouches[0] : event;
-    const rect = this.domElement.getBoundingClientRect();
+    const rect = this._canvasRect();
     this.mouse.x = ((pointer.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((pointer.clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.mouse, this.camera);

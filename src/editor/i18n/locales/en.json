@@ -1,15 +1,30 @@
 {
+  "actionBar.easyTool.move": {
+    "defaultMessage": "Move"
+  },
+  "actionBar.easyTool.place": {
+    "defaultMessage": "Place"
+  },
+  "actionBar.easyTool.rotate": {
+    "defaultMessage": "Rotate"
+  },
   "actionBar.handTool": {
     "defaultMessage": "Hand Tool (h) - pan and rotate the view without selecting objects"
-  },
-  "actionBar.rotateTool": {
-    "defaultMessage": "Rotate Tool (e) - Select and rotate objects"
   },
   "actionBar.shapeTool": {
     "defaultMessage": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point"
   },
-  "actionBar.translateTool": {
-    "defaultMessage": "Translate Tool (w) - Select and move objects"
+  "actionBar.transformMenu.easy": {
+    "defaultMessage": "Move"
+  },
+  "actionBar.transformMenu.rotate": {
+    "defaultMessage": "Advanced rotate"
+  },
+  "actionBar.transformMenu.translate": {
+    "defaultMessage": "Advanced move"
+  },
+  "actionBar.transformTool": {
+    "defaultMessage": "Move tools (m) - Choose how to move and rotate the selected object"
   },
   "actionBar.zoomIn": {
     "defaultMessage": "Zoom In"
@@ -1571,6 +1586,9 @@
   "help.shortcut.cut": {
     "defaultMessage": "Cut selected entity"
   },
+  "help.shortcut.cycleMoveTools": {
+    "defaultMessage": "Cycle move tools"
+  },
   "help.shortcut.delete": {
     "defaultMessage": "Delete selected entity"
   },
@@ -1589,9 +1607,6 @@
   "help.shortcut.redo": {
     "defaultMessage": "Redo action"
   },
-  "help.shortcut.rotate": {
-    "defaultMessage": "Rotate"
-  },
   "help.shortcut.scale": {
     "defaultMessage": "Scale"
   },
@@ -1609,9 +1624,6 @@
   },
   "help.shortcut.toggleTransform": {
     "defaultMessage": "Toggle local between global transform"
-  },
-  "help.shortcut.translate": {
-    "defaultMessage": "Translate"
   },
   "help.shortcut.undo": {
     "defaultMessage": "Undo action"

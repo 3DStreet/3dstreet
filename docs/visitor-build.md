@@ -52,9 +52,13 @@ Visitor Build is a play-mode capability and follows every rule there.
   nearest free spot inside the area, spaced by each model's precomputed
   footprint (`src/model-bounds.json`), instead of stacking invisibly on one
   point. The counter shows placed objects against the areas' total cap.
-- Click an object you placed to select it: the standard gizmo appears,
-  translate is XZ-only (objects sit on the shape), rotate is yaw-only. An
-  object dragged outside its area snaps back. Only visitor-placed objects
+- Click an object you placed to select it: the easy gizmo
+  ([docs/easy-gizmo.md](easy-gizmo.md)) appears, always, whatever the
+  editor's transform mode. Its square moves the object across the shape
+  at a held height (objects sit on the shape: no vertical handle, no
+  landing targets, no ground following); its arc yaws it, and is withdrawn
+  when the area's **Allow rotate** is off. An object dragged outside its
+  area snaps back. Only visitor-placed objects
   are selectable: the shape, the street and the author's layers are off
   limits.
 - Dock toolbar: **Rotate** (90°), **Delete**, **Undo**, **Redo**.
@@ -115,9 +119,13 @@ viewer is the static scene it always was. On it:
 
 - `viewport.js` re-arms what `Inspector.close()` turned off: the cursor
   entity plays, the selection raycaster is enabled, `sceneHelpers` is
-  visible (grid and origin hidden), the stock gizmo is enabled in
-  translate with Y hidden. The editor's gizmo mode is restored when the
-  session ends, so a Stop into the editor finds its tools as it left them.
+  visible (grid and origin hidden), and the easy gizmo runs in its
+  `viewerSession` mode (active with the editor closed, height held, no
+  vertical or landing handles; `rotateEnabled` follows Allow rotate). The
+  stock gizmo never attaches during a session and the editor's transform
+  mode is never changed, so a Stop into the editor finds its tools as it
+  left them. The out-of-area snap-back runs on the easy gizmo's
+  `commitDrag`.
 - `raycaster.js` resolves a viewer click to the nearest `data-viewer-added`
   ancestor of the hit, or nothing. No cascading selection.
 - `BuildPalette.jsx` (`src/editor/components/elements/BuildPalette/`) is

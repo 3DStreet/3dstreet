@@ -7,6 +7,7 @@ import posthog from 'posthog-js';
 import { faBullseye, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { captureFocusPose } from './focusPose.js';
 import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
+import { reseededGeneratorAttributes } from '../../tested/generator-seeds.js';
 import {
   GeospatialIcon,
   ManagedStreetIcon,
@@ -216,6 +217,26 @@ function recursivelyRegenerateId(element) {
 }
 
 /**
+ * Drop the persisted `seed` from every seeded generator on the element and
+ * its descendants so each generator rolls its own seed when the copy loads:
+ * a duplicated lane should not carry literally identical traffic (#1975).
+ */
+function recursivelyReseedGenerators(element) {
+  if (element.nodeType !== Node.ELEMENT_NODE) return;
+  // The copy is a detached, uninitialized entity: write the raw attribute
+  // (as optimizeComponents does) rather than going through A-Frame's
+  // component-aware setAttribute.
+  for (const { name, value } of reseededGeneratorAttributes(
+    element.attributes
+  )) {
+    HTMLElement.prototype.setAttribute.call(element, name, value);
+  }
+  for (const child of element.childNodes) {
+    recursivelyReseedGenerators(child);
+  }
+}
+
+/**
  * Clone an entity. This is used by the the entityclone command.
  * @param {Element} entity Entity to clone
  * @returns {Element} The clone
@@ -225,6 +246,7 @@ export function cloneEntityImpl(entity) {
   const clone = prepareForSerialization(entity);
   if (clone !== null) {
     recursivelyRegenerateId(clone);
+    recursivelyReseedGenerators(clone);
     const nextName = getUniqueLayerName(clone.getAttribute('data-layer-name'));
     if (nextName) clone.setAttribute('data-layer-name', nextName);
   }
