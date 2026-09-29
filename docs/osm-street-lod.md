@@ -164,7 +164,17 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
 - **Phase 2 — pipeline hardening.** Move transportation decode into the
   existing worker protocol (`src/osm/building-tiles.worker.js` pattern —
   the decode modules are already THREE-free by design); suppress/mask a
-  way's ground tint after upgrade; `brunnel: bridge` treatment.
+  way's ground tint after upgrade; **structure treatment per way**:
+  `brunnel` from the tiles (`bridge` / `tunnel`), and `bridge` / `tunnel` /
+  `embankment` / `cutting` / `layer` from Overpass tags, drive a street-level
+  structure (deck slab + parapets + piers for bridges and viaducts, grassed
+  embankment slopes, retaining walls in cuttings, tunnel lining + portals)
+  with rule-based height offsets per structure until terrain lands. This is
+  a street/segment concern that applies to roads and railways alike; the
+  rail-specific track detail (profile, sleepers, ballast, catenary) is #2004
+  Phase A and lives in `street-generated-rail`. Reference geometry:
+  alzin/japan-rail-sim (MIT) `src/render/world/trackwork.ts`
+  (`classifyRuns` / `buildStructures`).
 - **Phase 3 — pillar 1: street-owned centerlines + shared end nodes.**
   `managed-street.points` inline ordered list (straight = 2-point
   degenerate case) + node ids; `streetCurve` built from `points` (the
