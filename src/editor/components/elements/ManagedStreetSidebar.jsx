@@ -10,13 +10,7 @@ import EntityLabel from '../scenegraph/EntityLabel';
 import EntityActionButtons, { IconButton } from './EntityActionButtons';
 import Events from '../../lib/Events';
 import { saveString } from '@/editor/lib/utils';
-import { canRenameEntity } from '@/editor/lib/entity.js';
-import { shapeToStreetPoints } from '@/aframe-components/street-path.js';
-import {
-  formatCenterlinePoints,
-  parseCenterlinePoints,
-  recenterPointsXZ
-} from '@/tested/street-centerline.js';
+import { canRenameEntity, createUniqueId } from '@/editor/lib/entity.js';
 import useStore from '@/store.js';
 import { StreetToShapesGraphic } from '@/editor/components/modals/ConfirmModal/StreetToShapesGraphic';
 
@@ -284,86 +278,50 @@ const ManagedStreetSidebar = ({ entity }) => {
       value
     });
 
-  // The street OWNS its centerline (#1930 pillar 1): `points` holds the
-  // control points in street-local space. A drawn shape is only an
-  // authoring tool — picking one copies its vertices in, once.
-  const pointCount = parseCenterlinePoints(component?.data?.points).length;
-  const isCurved = pointCount >= 2;
-  const followPath = isCurved || pathPickerOpen;
+  const pathValue = component?.data?.path || '';
+  const followPath = pathValue !== '' || pathPickerOpen;
   const pathableShapes = getPathableShapes();
+  // With a path assigned and the picker closed, list only the assigned
+  // shape; the picker opens the full list (see "Change path").
+  const listedShapes =
+    pathValue && !pathPickerOpen
+      ? pathableShapes.filter((el) => el.id && `#${el.id}` === pathValue)
+      : pathableShapes;
 
   const chooseStraight = () => {
     setPathPickerOpen(false);
-    if (isCurved) execute(componentName, 'points', '');
+    if (pathValue) execute(componentName, 'path', '');
   };
   const chooseFollowPath = () => {
-    if (!isCurved) setPathPickerOpen(true);
+    if (!pathValue) setPathPickerOpen(true);
   };
   const pickShape = (shapeEl) => {
-    const copied = shapeToStreetPoints(shapeEl, entity);
-    if (!copied) return;
-    // Move the street's origin to the copied curve's centroid (the OSM
-    // generate convention), so a shape drawn far from the street doesn't
-    // leave the street's origin, its rotation pivot and the intersection
-    // candidate search, which measures from the origin, far off the curve.
-    // `offset` is street-local; the street's local matrix takes it into the
-    // parent space its position lives in (any rotation or scale).
-    const recentered = recenterPointsXZ(copied.points);
-    entity.object3D.updateMatrix();
-    const origin = new THREE.Vector3(
-      recentered.offset.x,
-      0,
-      recentered.offset.z
-    ).applyMatrix4(entity.object3D.matrix);
-    const position = `${origin.x.toFixed(3)} ${origin.y.toFixed(3)} ${origin.z.toFixed(3)}`;
+    // The DOM is the source of truth; assigning a missing id mutates the
+    // scene, not React state.
+    if (!shapeEl.id) {
+      shapeEl.id = createUniqueId();
+    }
+    execute(componentName, 'path', `#${shapeEl.id}`);
     // Shapes draw with hard corners (shape.curveType defaults to linear), but
-    // a street centerline nearly always wants a curve — copy a linear shape
-    // in as smooth. Only HERE, at the user gesture: the load migration
-    // copies a saved shape's own setting verbatim. One undo step for the
-    // whole copy-in; the shape itself is untouched.
-    AFRAME.INSPECTOR.execute('multi', [
-      ['entityupdate', { entity, component: 'position', value: position }],
-      [
-        'entityupdate',
-        {
-          entity,
-          component: componentName,
-          property: 'points',
-          value: formatCenterlinePoints(recentered.points)
-        }
-      ],
-      [
-        'entityupdate',
-        {
-          entity,
-          component: componentName,
-          property: 'curveType',
-          value: copied.curveType === 'linear' ? 'smooth' : copied.curveType
-        }
-      ],
-      [
-        'entityupdate',
-        {
-          entity,
-          component: componentName,
-          property: 'filletRadius',
-          value: copied.filletRadius
-        }
-      ],
-      [
-        'entityupdate',
-        {
-          entity,
-          component: componentName,
-          property: 'closed',
-          value: copied.closed
-        }
-      ]
-    ]);
+    // a street centerline nearly always wants a curve — bump the shape to
+    // smooth on assignment. Only HERE, at the user gesture: scene load
+    // re-resolves paths too, and must never override a deliberate linear
+    // choice. Undoable, and flipping it back in the shape panel sticks.
+    // noSelectEntity keeps the street selected — without it the command
+    // would jump selection to the shape and close this panel mid-pick.
+    if (shapeEl.components?.shape?.data?.curveType === 'linear') {
+      AFRAME.INSPECTOR.execute('entityupdate', {
+        entity: shapeEl,
+        component: 'shape',
+        property: 'curveType',
+        value: 'smooth',
+        noSelectEntity: true
+      });
+    }
     setPathPickerOpen(false);
   };
   const drawNewPath = () => {
-    // Enters the existing shape-draw tool; copy the new shape in here after.
+    // Enters the existing shape-draw tool; assign the new shape here after.
     Events.emit('toolchange', 'shape');
   };
 
@@ -412,7 +370,7 @@ const ManagedStreetSidebar = ({ entity }) => {
         intl.formatMessage({
           id: 'managedStreetSidebar.convertToShapesCurvedUnsupported',
           defaultMessage:
-            'Convert to Shapes is not available for a curved street yet. Set the street to straight first, or keep it as a managed street.'
+            'Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street.'
         })
       );
       return;
@@ -605,7 +563,7 @@ const ManagedStreetSidebar = ({ entity }) => {
     }
   };
 
-  const lengthDrivenByPath = isCurved;
+  const lengthDrivenByPath = pathValue !== '';
 
   return (
     <div className="segment-panel street-panel">
@@ -630,9 +588,9 @@ const ManagedStreetSidebar = ({ entity }) => {
             <div
               className="inputBlock has-unit length-readonly"
               title={intl.formatMessage({
-                id: 'managedStreetSidebar.centerlineHint',
+                id: 'managedStreetSidebar.pathHintFollows',
                 defaultMessage:
-                  'Length follows the centerline. Drag the node handles in the viewport to reshape it.'
+                  'Length follows the path. Curve style is set on the shape.'
               })}
             >
               <span className="readonly-value">
@@ -686,8 +644,8 @@ const ManagedStreetSidebar = ({ entity }) => {
             >
               {StreetPanelIcons.curve}
               {intl.formatMessage({
-                id: 'managedStreetSidebar.shapeCurved',
-                defaultMessage: 'curved'
+                id: 'managedStreetSidebar.shapeFollowPath',
+                defaultMessage: 'follow path'
               })}
             </button>
           </div>
@@ -701,96 +659,13 @@ const ManagedStreetSidebar = ({ entity }) => {
               })}
             </label>
             <div className="path-picker">
-              {/* Curved: the street's own centerline + its curve style.
-                  Picking (or not yet curved): the list of drawn shapes to
-                  copy in, capped to a scrolling height. */}
-              {isCurved && !pathPickerOpen && (
-                <>
-                  <div className="path-picker-list">
-                    <div className="path-picker-shape is-selected">
-                      {StreetPanelIcons.shapeRow}
-                      <span className="path-picker-name">
-                        {intl.formatMessage({
-                          id: 'managedStreetSidebar.ownedCenterline',
-                          defaultMessage: 'Street centerline'
-                        })}
-                      </span>
-                      <span className="path-picker-meta">
-                        {intl.formatMessage(
-                          {
-                            id: 'managedStreetSidebar.pathPoints',
-                            defaultMessage:
-                              '{count, plural, one {# point} other {# points}}'
-                          },
-                          { count: pointCount }
-                        )}
-                        {data.closed
-                          ? ` · ${intl.formatMessage({
-                              id: 'managedStreetSidebar.loop',
-                              defaultMessage: 'loop'
-                            })}`
-                          : ''}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="path-curve-controls">
-                    <select
-                      value={data.curveType}
-                      onChange={(e) =>
-                        execute(componentName, 'curveType', e.target.value)
-                      }
-                      aria-label={intl.formatMessage({
-                        id: 'managedStreetSidebar.curveStyle',
-                        defaultMessage: 'Curve style'
-                      })}
-                    >
-                      <option value="smooth">
-                        {intl.formatMessage({
-                          id: 'managedStreetSidebar.curveSmooth',
-                          defaultMessage: 'Smooth (spline)'
-                        })}
-                      </option>
-                      <option value="arc">
-                        {intl.formatMessage({
-                          id: 'managedStreetSidebar.curveArc',
-                          defaultMessage: 'Arcs (corner radius)'
-                        })}
-                      </option>
-                      <option value="linear">
-                        {intl.formatMessage({
-                          id: 'managedStreetSidebar.curveLinear',
-                          defaultMessage: 'Hard corners'
-                        })}
-                      </option>
-                    </select>
-                    {data.curveType === 'arc' && (
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={data.filletRadius}
-                        title={intl.formatMessage({
-                          id: 'managedStreetSidebar.cornerRadius',
-                          defaultMessage: 'Corner radius (m)'
-                        })}
-                        onChange={(e) => {
-                          const v = parseFloat(e.target.value);
-                          if (Number.isFinite(v)) {
-                            execute(
-                              componentName,
-                              'filletRadius',
-                              Math.max(0, v)
-                            );
-                          }
-                        }}
-                      />
-                    )}
-                  </div>
-                </>
-              )}
-              {(pathPickerOpen || !isCurved) && pathableShapes.length > 0 && (
+              {/* Assigned: one row for the current path + "Change" (the
+                  full list is comically long in a scene with many shapes).
+                  Picking: the whole list, capped to a scrolling height. */}
+              {listedShapes.length > 0 && (
                 <div className="path-picker-list">
-                  {pathableShapes.map((el, i) => {
+                  {listedShapes.map((el, i) => {
+                    const selected = el.id && `#${el.id}` === pathValue;
                     const vertexCount = (
                       el.components?.shape?.getVertexEls?.() || []
                     ).length;
@@ -800,7 +675,9 @@ const ManagedStreetSidebar = ({ entity }) => {
                       <button
                         type="button"
                         key={el.id || i}
-                        className="path-picker-shape"
+                        className={
+                          'path-picker-shape' + (selected ? ' is-selected' : '')
+                        }
                         onClick={() => pickShape(el)}
                       >
                         {StreetPanelIcons.shapeRow}
@@ -826,30 +703,20 @@ const ManagedStreetSidebar = ({ entity }) => {
                 </div>
               )}
               <div className="path-picker-actions">
-                {isCurved && !pathPickerOpen && pathableShapes.length > 0 && (
-                  <button
-                    type="button"
-                    className="path-picker-draw"
-                    onClick={() => setPathPickerOpen(true)}
-                  >
-                    {intl.formatMessage({
-                      id: 'managedStreetSidebar.setFromShape',
-                      defaultMessage: 'Copy from shape…'
-                    })}
-                  </button>
-                )}
-                {isCurved && pathPickerOpen && (
-                  <button
-                    type="button"
-                    className="path-picker-draw"
-                    onClick={() => setPathPickerOpen(false)}
-                  >
-                    {intl.formatMessage({
-                      id: 'managedStreetSidebar.cancelPick',
-                      defaultMessage: 'Cancel'
-                    })}
-                  </button>
-                )}
+                {pathValue &&
+                  !pathPickerOpen &&
+                  pathableShapes.length > listedShapes.length && (
+                    <button
+                      type="button"
+                      className="path-picker-draw"
+                      onClick={() => setPathPickerOpen(true)}
+                    >
+                      {intl.formatMessage({
+                        id: 'managedStreetSidebar.changePath',
+                        defaultMessage: 'Change path…'
+                      })}
+                    </button>
+                  )}
                 <button
                   type="button"
                   className="path-picker-draw"
@@ -862,12 +729,12 @@ const ManagedStreetSidebar = ({ entity }) => {
                   })}
                 </button>
               </div>
-              {(pathPickerOpen || !isCurved) && (
+              {!pathValue && (
                 <div className="path-picker-hint">
                   {intl.formatMessage({
-                    id: 'managedStreetSidebar.pathHintCopy',
+                    id: 'managedStreetSidebar.pathHintPick',
                     defaultMessage:
-                      'Pick a drawn shape with 2+ points to copy its centerline into the street, or draw one. The street keeps its own copy.'
+                      'Pick a drawn shape with 2+ points, or draw one.'
                   })}
                 </div>
               )}

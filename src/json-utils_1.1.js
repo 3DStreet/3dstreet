@@ -18,7 +18,6 @@ import {
 } from './tested/street-segment-utils';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
-import { migrateStreetPathToPoints } from './tested/migrate-street-path';
 import {
   getSceneIdFromPathname,
   getSceneIdFromHash,
@@ -587,17 +586,6 @@ function createEntities(entitiesData, parentEl) {
   migrateLegacyFlatteningShape(entitiesData);
   migrateMeasureLinesToShapes(entitiesData);
   migrateImplicitStreetAlign(entitiesData);
-  // Path-following streets saved with a shape reference (#1930 pillar 1):
-  // copy the shape's vertices into the street's own `points` before any
-  // entity exists, so the street loads curved without depending on the
-  // shape resolving. Cases this can't handle keep `path`, which the
-  // managed-street runtime adopts (with full transforms) and clears.
-  const migratedPaths = migrateStreetPathToPoints(entitiesData);
-  if (migratedPaths > 0) {
-    console.log(
-      `[migration] ${migratedPaths} path-following street(s) → owned centerline points`
-    );
-  }
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
   if (BATCHING_ENABLED) {
