@@ -95,6 +95,32 @@ Release queues the final coordinate for the next frame token, so finishing a dra
 does not spend a second path-query budget within one frame. Cancellation restores
 the press snapshot instead of committing that queued movement.
 
+## Path evaluation and its ray budget
+
+A frame of horizontal travel is judged by `evaluatePath` in
+`easyGizmoGround.js`. It probes the destination column first, under a ceiling
+of everything a step-by-step chain across the frame could have climbed to. A
+destination level with the remembered support (within one step) settles the
+frame as continuous on that one ray, at any pointer speed; one lower than the
+chain could have stepped down to settles it as discontinuous on the same ray,
+and an empty column holds the reference as a miss does anywhere. Only a rise
+or drop of more than a step within that reach samples the interior at the
+sub-step spacing, pairwise with an advancing reference, so a followable ramp
+is told from a riser. A frame within a single sub-span is one endpoint probe
+either way.
+
+This is what keeps a drag over Google 3D Tiles usable (#2059). Tiles carry no
+BVH by design, so each probe ray is a full triangle scan of the tiles under
+the cursor; sampling the interior of every fast frame cast up to thirteen of
+them, and the frame rate fell with pointer speed. Level ground is now one ray
+per frame however fast the pointer moves, and the peak of thirteen rays per
+frame (look-ahead, `PATH_PROBE_BUDGET` interiors, closing endpoint) is spent
+only on a steep climb, where it is the price of following the ramp.
+
+The look-ahead can settle a frame the strict chain would have held: the step
+it takes is bounded by the same allowance, and the chain would have taken it
+from that column on the next frame anyway. It cannot invent a leap.
+
 ## Work per frame and per event
 
 The canvas rectangle is read at most once per scene frame (`_canvasRect`):
