@@ -8,21 +8,15 @@ import {
 import { getOS } from './utils';
 import useStore from '@/store';
 import { isWasdNav } from './nav-experimental/flag.js';
+import { shouldCaptureKeyEvent } from './keyCapture.js';
 
 const os = getOS();
 
 // While the first-person kit (?wasd=on) is off, the nav controls do not
-// claim w/a/s/d, so the legacy w/s/d shortcuts (translate/scale/clone)
-// stay live ALONGSIDE their t/l/c replacements — launch keeps the exact
-// legacy keymap, and the eventual flag flip removes only the legacy keys.
+// claim w/a/s/d, so the legacy s/d shortcuts (scale/clone) stay live
+// ALONGSIDE their l/c replacements — launch keeps the legacy keymap, and the
+// eventual flag flip removes only the legacy keys.
 const wasdNav = isWasdNav();
-
-function shouldCaptureKeyEvent(event) {
-  return (
-    event.target.closest('#cameraToolbar') ||
-    (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA')
-  );
-}
 
 export const Shortcuts = {
   enabled: false,
@@ -44,18 +38,6 @@ export const Shortcuts = {
       }
     }
 
-    // t: translate (was 'w' until 2026-05-09; remapped because the
-    // experimental nav controls bind w/a/s/d for camera movement).
-    // 'w' still translates while the WASD kit is gated off.
-    if (keyCode === 84 || (!wasdNav && keyCode === 87)) {
-      Events.emit('transformmodechange', 'translate');
-    }
-
-    // e: rotate
-    if (keyCode === 69) {
-      Events.emit('transformmodechange', 'rotate');
-    }
-
     // r: shape draw tool (was the ruler until 2026-08; shapes measure now)
     if (keyCode === 82) {
       Events.emit('toolchange', 'shape');
@@ -70,6 +52,12 @@ export const Shortcuts = {
     // 's' still scales while the WASD kit is gated off.
     if (keyCode === 76 || (!wasdNav && keyCode === 83)) {
       Events.emit('transformmodechange', 'scale');
+    }
+
+    // m: step through the move gizmos in menu order. The toolbar resolves
+    // the next one, because only it knows when the hand or shape tool is on.
+    if (keyCode === 77) {
+      Events.emit('transformmodecycle');
     }
 
     // o: transform space
