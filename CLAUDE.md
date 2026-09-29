@@ -144,6 +144,8 @@ bounds (`npm run assets:bounds` → `src/model-bounds.json`; user assets carry
 graph. **Read [asset loading](docs/asset-loading.md) before changing scene
 init, `<street-assets>`, texture references or load indicators.**
 
+**Progressive streaming (#1990):** owner-triggered _Make streamable_ sends a GLB through Needle Cloud (`needle-uploader/` Cloud Run worker, `requestProgressiveGlb` callable); the served URL on `cloud.needle.tools` is the only runtime signal (`isProgressiveModelUrl`). Read the asset upload guidance before touching it.
+
 **Asset utilities:** https://github.com/3dstreet/3dstreet-assets-dist
 
 ## Firebase
@@ -152,7 +154,7 @@ init, `<street-assets>`, texture references or load indicators.**
 
 **Auth:** Google, Email/Password, user claims for plan levels
 
-**Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
+**Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated, requestProgressiveGlb
 
 **Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Localized (en/es/pt-BR/fr, hand-written copy per locale in `templates.js`): recipient locale resolved from `socialProfile/{uid}` (`locale` explicit pick > `detectedLocale` captured at sign-in > en) via `email/locale.js`. Docs: [docs/email-lifecycle.md](docs/email-lifecycle.md).
 

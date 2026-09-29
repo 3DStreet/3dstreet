@@ -8,6 +8,57 @@ lands (or fold what's durable into `docs/agent-context/`).
 
 ## State of work
 
+- **Phase 2 pipeline: BUILT (2026-09-29, on this branch; not yet deployed).
+  Manual, owner-triggered — NOT automatic.** Decision: the first release is
+  opt-in per asset ("Make streamable" in the asset details modal); no
+  `onCreate` trigger and no client-side size split. Reasons: Needle
+  processing is metered, the output lives on a third-party public CDN, and
+  the auto threshold is still open. `createProgressiveJob()` in
+  `public/functions/progressive-dispatch.js` is the seam an automatic
+  trigger would call later. As built:
+  - `requestProgressiveGlb` callable (`progressive-dispatch.js`, rules in
+    dependency-free `progressive-rules.js`): owner-only; refuses non-mesh,
+    deleted, source-less and **private** assets (`{ reason }` in the
+    HttpsError details); one live job per asset; writes the
+    `generationJobs` doc `{ kind: 'glb-progressive', provider: 'cloudrun',
+tokenCost: 0, assetId, storagePath, inputBytes, requestedBy: 'user' }`
+    before enqueueing a Cloud Task (queue `glb-progressive`, same
+    `rad-task-invoker` SA, 1800 s deadline).
+  - `needle-uploader/` Cloud Run worker (Node 22, pinned `needle-cloud@2.7.0`,
+    token from Secret Manager `needle-cloud-token`, team via `NEEDLE_TEAM`):
+    download original → `optimize --progressive true --usecase world --name
+<assetId>` → `list --type 3d-asset --search <assetId> --output json` →
+    served URL (host must be `cloud.needle.tools`) → HEAD for the initial
+    file size → ledger `needleContent/{assetId}` → patch
+    `optimizedSourceUrl` / `optimizedSourceSize` / `optimizationMetadata
+{ format: 'needle-progressive', needleAssetId, profile, ... }` and
+    **remove `optimizedSourcePath`** → job `succeeded` / `failed` (500,
+    Cloud Tasks retries ≤3) / `skipped` (Needle rejected the file; terminal).
+    Contract, deploy and one-shot test: `needle-uploader/README.md`.
+  - Reconciler `case 'cloudrun'` is kind-aware (`glb-progressive` →
+    `enqueueProgressiveTask` with `storagePath`; `splat-rad` unchanged).
+  - **Deletion: RESOLVED.** Needle shipped `needle-cloud delete <identifier>
+--team <team>` in 2.6 (2026-09-23, after our email; verified on 2.7.0:
+    moves the item to the trash, restorable 31 days, frees total storage,
+    no monthly-usage refund). The weekly asset GC (`asset-gc.js`) reads the
+    `needleContent` ledger and enqueues `{ action: 'delete' }` to the
+    worker; ledger statuses `live → delete-requested → deleted |
+delete-failed`, or `orphaned` when the enqueue itself fails. Anything not
+    `deleted` is the manual purge list. The ledger is written by Admin SDK
+    only (`firestore.rules`: no client access) so a client can't point the
+    GC at someone else's Needle content.
+  - Client: `assetsService.requestProgressiveVariant` + `watchAssetJob`;
+    `MeshDetailsModal` "Make streamable" button (owner + GLB, hidden once
+    streaming or while a job runs), live job status via a job-doc
+    subscription, re-reads the asset on success and emits `assetUpdated`;
+    Size row "(streaming, first load)"; Optimization row "Streaming
+    (progressive LOD), served from Needle Cloud"; Reoptimize withheld on a
+    streaming variant (Remove optimized restores the original); gallery
+    "Optimizing…" badge covers the kind. Strings in `sharedMessages.js`
+    (en/es/pt-BR/fr).
+  - Tests: `test/core/progressive-rules.test.js`, `test/core/needle-cli.test.js`,
+    streaming cases in `test/shared/assets/utils.test.js`.
+  - **Not done / needs Kieran:** see "Deploy to staging" below.
 - **Phase 0 spike: PASSED (2026-09-11, local, Meshy AI building GLB).** Results:
   - Source `1001SCapitolSt` Meshy export: 76.2 MB, 1.67M tris, 3x 2048 JPEG,
     no compression. Needle output: optimized (Draco+KTX2) 12.4 MB; progressive
@@ -24,16 +75,10 @@ lands (or fold what's durable into `docs/agent-context/`).
   - Duplicates (x2) loaded fine with their own LOD state; batching was not
     active in that editor session, so the BatchedMesh interaction is still
     unverified (Phase 1 excludes progressive URLs from batching regardless).
-- **Needle deletion: NONE available (checked 2026-09-12, needle-cloud 2.5.0,
-  the latest release; there is no 3.x).** The CLI has no delete/remove command
-  (`settings, mcp, send-logs, login, logout, me, list, download, deploy,
-optimize, generate-material, generate-3d, ask`), its bundle makes no
-  `DELETE` request, its MCP server exposes no content-management tool, and
-  the cloud docs (`engine.needle.tools/docs/cloud/`) document no REST API
-  beyond outgoing webhooks. Deletion is web-UI only. Phase 2 GC therefore
-  writes an orphan ledger (`needleOrphans` or a field on the purged asset's
-  tombstone) and we ask Needle support for an API; the ledger is the manual
-  purge list until then.
+- **Needle deletion (history):** none existed on 2.5.0 (checked 2026-09-12:
+  no CLI command, no DELETE in the bundle, no MCP tool, no REST docs). We
+  asked Needle; `delete` shipped in 2.6 (see Phase 2 above). The
+  `needleContent` ledger stays as the audit/orphan list.
 - **`--usecase world` works** on a fresh `--name`: `list --output json`
   returns `url: https://cloud.needle.tools/-/assets/<viewId>-world/file`
   (the spike's earlier "-product only" result was a name reuse). The worker
@@ -96,8 +141,53 @@ storageUrl]`, tried per assetId per session, so an unreachable Needle CDN
   (5-15 MB) upload and comparing against the client-side Draco+WebP result.
   Note #1978 / PR #1985 (merged) added a client-side meshopt `simplify` step
   and a 30 s timeout, which changes the small-file baseline.
-- **Next:** Phase 2 processing pipeline (first: the Needle deletion-API
-  question, and the `needle-uploader/` worker contract).
+- **Next:** deploy Phase 2 to staging (dev-3dstreet) and run the checklist
+  below; then Phase 3 polish and the auto-threshold decision.
+
+## Deploy to staging (dev-3dstreet) — what is needed
+
+1. **Needle side (Kieran):** a team with a **PRO/Enterprise** license (the
+   CLI refuses `optimize` otherwise — verified in the 2.7.0 source) and a
+   read/write access token; the team name or id for `NEEDLE_TEAM`. Rotate the
+   token used during the spike.
+2. **Secret:** `printf '%s' "$TOKEN" | gcloud secrets create needle-cloud-token
+--project dev-3dstreet --data-file=-`.
+3. **Worker:** `cd needle-uploader && ./deploy.sh dev-3dstreet us-central1
+<team>` (creates the `glb-progressive` queue too). One-time IAM listed at
+   the top of `deploy.sh`: runtime SA needs `datastore.user`,
+   `storage.objectViewer` on `dev-3dstreet.appspot.com`,
+   `secretmanager.secretAccessor`; `rad-task-invoker@dev-3dstreet` needs
+   `run.invoker` on the service.
+4. **Service URL** → `PROGRESSIVE_SERVICE_URLS['dev-3dstreet']` in
+   `progressive-dispatch.js` (or `NEEDLE_UPLOADER_URL` on the functions).
+5. **Functions + rules:** `cd public && firebase use dev-3dstreet && firebase
+deploy --only functions:requestProgressiveGlb,functions:reconcileGenerationJobs,functions:purgeSoftDeletedAssets,firestore:rules`.
+6. **Hosting:** `npm run deploy:staging` (the client half).
+
+### Staging test checklist
+
+- Worker one-shot (README curl) on an existing mesh → asset doc gains a
+  `cloud.needle.tools` `optimizedSourceUrl`, `optimizedSourcePath` gone,
+  `needleContent/{assetId}` = `live`.
+- Editor: open a GLB you own in the asset details modal → _Make streamable_
+  → status "requested", Optimization row "Making streamable… (queued →
+  running)", job doc `queued → running → succeeded`, row flips to "Streaming
+  (progressive LOD)" without closing the modal; gallery badge shows/clears.
+- Drag the asset in: `gltf-model` src is the Needle URL, first render in
+  <1 s, `&debugprogressive` logs LOD swaps on zoom, duplicates stay
+  unbatched (`[batch-models] not batched ... progressive-streaming model`).
+- Save, reload: `resolveCloudAssetUrls` repoints an older scene at the
+  Needle URL; block `cloud.needle.tools` in DevTools → `[asset-fallback]
+retrying ... with original URL`.
+- Second click while a job runs → callable returns `existing: true`, no
+  duplicate job. Private asset → refused with the private message.
+- _Remove optimized_ → original served; ledger untouched (copy stays for
+  scenes that baked the URL).
+- Soft-delete the asset, `triggerPurgeSoftDeletedAssets` (dryRun false after
+  the grace period, or shorten it locally) → ledger `delete-requested` →
+  worker → `deleted`; the item shows in Needle's trash.
+- Reconciler: kill the worker mid-job → after 35 min the sweep re-enqueues
+  (`re-enqueued-cloudrun`), job still ends `succeeded`.
 
 ## Decisions already made
 
@@ -218,6 +308,10 @@ Both need exclusions for progressive URLs (Phase 1).
 
 ## Phase 2 — Processing via the existing job queue
 
+> **As built (2026-09-29):** manual trigger, not the `onCreate` design below;
+> see "State of work". The bullets below are the original plan, kept for the
+> reasoning; the trigger, threshold and client-side split are deferred.
+
 - **Client-side split at the 10MB rule** —
   `src/editor/lib/asset-upload/uploadAndPlaceAsset.js`: skip `optimizeGlb(file)`
   when `kind === 'glb' && file.size > 10 * MB` (decimal, matching quota
@@ -282,8 +376,8 @@ profile: 'world' } }` → write terminal job status. Failures →
 
 ## Risks / open questions
 
-1. **Needle Cloud has no deletion API** (verified, see State of work) — GC
-   writes an orphan ledger; ask Needle support; manual purge until then.
+1. ~~Needle Cloud has no deletion API~~ — resolved: `needle-cloud delete`
+   (2.6+), wired into the GC via the `needleContent` ledger.
 2. **Public CDN privacy** — mitigated by skipping `private` assets + UI copy;
    existing `visibility` toggle is the opt-out.
 3. **Shared-texture-extension invariant** ("never swap a Source post-GPU-upload")
@@ -310,9 +404,13 @@ profile: 'world' } }` → write terminal job status. Failures →
   `test/core/progressive-models.test.js`)
 - `src/aframe-components/asset-fallback-system.js` · `src/shared/assets/utils.js`
   (`deriveOptimizationInfo` only)
-- `src/editor/lib/asset-upload/uploadAndPlaceAsset.js` (10MB split)
-- `public/functions/progressive-dispatch.js` (new, mirrors `rad-dispatch.js`) ·
-  `needle-uploader/` (new, mirrors `rad-converter/` handler contract) ·
+- `src/editor/lib/asset-upload/uploadAndPlaceAsset.js` (10MB split — deferred)
+- `public/functions/progressive-dispatch.js` + `progressive-rules.js` ·
+  `needle-uploader/` (`server.js`, `needle-cli.js`, `deploy.sh`) ·
   `public/functions/scheduled/generation-job-reconcile.js` (kind-aware
-  re-enqueue) · `public/functions/scheduled/asset-gc.js`
+  re-enqueue) · `public/functions/scheduled/asset-gc.js` (Needle delete) ·
+  `public/firestore.rules` (`needleContent`)
+- Client: `src/shared/assets/components/MeshDetailsModal.jsx`,
+  `src/shared/assets/services/assetsService.js`, `hooks/useAssets.js`,
+  `src/shared/i18n/sharedMessages.js`
 - Docs: `docs/agent-context/asset-uploads.md`, `docs/agent-context/generation.md`
