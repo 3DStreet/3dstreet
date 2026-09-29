@@ -92,8 +92,9 @@ export function centerlineX(totalWidth, widthAlign) {
 
 /**
  * The two end nodes of a straight managed street in street-local space,
- * with the unit direction each node faces OUT of the street (start faces
- * -Z, end faces +Z) and the lateral axis (+X) at each node. A straight
+ * with `along` — the unit direction from the node INTO the street body
+ * (start +Z, end -Z; the intersection-arm `dir` convention, used by every
+ * node consumer) — and the lateral axis (+X) at each node. A straight
  * street is the 2-point degenerate case of the owned centerline: a curved
  * street's nodes come from its curve's end frames instead (see
  * getStreetEndNodesWorld in aframe-components/street-nodes.js).
@@ -104,7 +105,7 @@ export function centerlineX(totalWidth, widthAlign) {
  * @param {string} [street.widthAlign]
  * @param {number} [street.totalWidth=0] travelled-way width
  * @returns {{ centerX: number, start: Node, end: Node }} where Node is
- *   `{ key, x, z, dir: {x, z}, right: {x, z} }`
+ *   `{ key, x, z, along: {x, z}, right: {x, z} }`
  */
 export function getStreetNodes({
   length,
@@ -120,10 +121,16 @@ export function getStreetNodes({
       key: 'start',
       x,
       z: z.start,
-      dir: { x: 0, z: -1 },
+      along: { x: 0, z: 1 },
       right: { x: 1, z: 0 }
     },
-    end: { key: 'end', x, z: z.end, dir: { x: 0, z: 1 }, right: { x: 1, z: 0 } }
+    end: {
+      key: 'end',
+      x,
+      z: z.end,
+      along: { x: 0, z: -1 },
+      right: { x: 1, z: 0 }
+    }
   };
 }
 

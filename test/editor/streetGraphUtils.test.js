@@ -63,14 +63,64 @@ describe('buildStreetGraph', () => {
     expect(graph.byEnd.get('a:start').intersectionId).toBeNull();
   });
 
-  it('a node keeps the nearest of two competing intersections', () => {
-    const graph = buildStreetGraph([end('a', 'end', 0, 0)], {
-      intersections: [
-        { id: 'near', x: 0.5, z: 0, reach: 20 },
-        { id: 'far', x: 3, z: 0, reach: 20 }
-      ]
+  it('an intersection absorbs the ends at its mouths into one node', () => {
+    // A 4-way OSM junction: each generated end is inset ~8 m from the
+    // center, so the four ends are 11+ m apart — far beyond mergeRadius.
+    const ends = [
+      end('n', 'start', 0, 8),
+      end('s', 'end', 0, -8),
+      end('e', 'start', 8, 0),
+      end('w', 'end', -8, 0),
+      end('n', 'end', 0, 200),
+      end('s', 'start', 0, -200)
+    ];
+    const graph = buildStreetGraph(ends, {
+      mergeRadius: 1.5,
+      intersections: [{ id: 'ix', x: 0, z: 0, reach: 20 }]
     });
-    expect(graph.nodes[0].intersectionId).toBe('near');
+    const node = graph.byIntersection.get('ix');
+    expect(nodeDegree(node)).toBe(4);
+    expect(node.x).toBe(0);
+    expect(node.z).toBe(0);
+    for (const k of ['n:start', 's:end', 'e:start', 'w:end']) {
+      expect(graph.byEnd.get(k)).toBe(node);
+    }
+    expect(graph.byEnd.get('n:end').intersectionId).toBeNull();
+  });
+
+  it('a street joins an intersection with only its nearer end', () => {
+    // a 12 m stub with both ends inside the 20 m snap radius
+    const graph = buildStreetGraph(
+      [end('stub', 'start', 3, 0), end('stub', 'end', 15, 0)],
+      { intersections: [{ id: 'ix', x: 0, z: 0, reach: 20 }] }
+    );
+    const node = graph.byIntersection.get('ix');
+    expect(node.ends.map(endKey)).toEqual(['stub:start']);
+    expect(graph.byEnd.get('stub:end')).not.toBe(node);
+    expect(graph.byEnd.get('stub:end').intersectionId).toBeNull();
+  });
+
+  it('an end belongs to its nearest intersection; ties keep document order', () => {
+    const graph = buildStreetGraph(
+      [end('a', 'end', 4, 0), end('b', 'start', 10, 0)],
+      {
+        intersections: [
+          { id: 'first', x: 0, z: 0, reach: 20 },
+          { id: 'second', x: 20, z: 0, reach: 20 }
+        ]
+      }
+    );
+    expect(graph.byEnd.get('a:end').intersectionId).toBe('first');
+    // 10 m from both: the earlier intersection keeps it
+    expect(graph.byEnd.get('b:start').intersectionId).toBe('first');
+  });
+
+  it('every intersection is a node, even with no street connected', () => {
+    const graph = buildStreetGraph([], {
+      intersections: [{ id: 'lonely', x: 5, z: 5 }]
+    });
+    expect(graph.nodes).toHaveLength(1);
+    expect(nodeDegree(graph.byIntersection.get('lonely'))).toBe(0);
   });
 
   it('nodesNear returns nodes within a radius, nearest first', () => {
@@ -91,5 +141,6 @@ describe('buildStreetGraph', () => {
     const graph = buildStreetGraph([]);
     expect(graph.nodes).toEqual([]);
     expect(graph.byEnd.size).toBe(0);
+    expect(graph.byIntersection.size).toBe(0);
   });
 });

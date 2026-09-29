@@ -292,8 +292,10 @@ describe('managed-street owned centerline', () => {
     const shared = system.nodeForStreetEnd(a, 'end');
     expect(shared).toBe(system.nodeForStreetEnd(b, 'start'));
     expect(shared.ends).toHaveLength(2);
-    expect(shared.x).toBeCloseTo(0);
+    // an intersection node sits at the intersection, not the ends' centroid
+    expect(shared.x).toBeCloseTo(0.5);
     expect(shared.z).toBeCloseTo(30);
+    expect(system.nodeForIntersection(ix)).toBe(shared);
     expect(shared.intersectionId).toBe('gix');
     expect(system.nodeForStreetEnd(a, 'start').intersectionId).toBeNull();
     expect(system.nodesNear({ x: 0, z: 31 }, 5)[0]).toBe(shared);

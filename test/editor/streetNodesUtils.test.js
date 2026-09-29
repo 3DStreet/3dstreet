@@ -50,8 +50,9 @@ describe('getStreetNodes', () => {
     expect(nodes.centerX).toBe(5);
     expect(nodes.start).toMatchObject({ key: 'start', x: 5, z: -20 });
     expect(nodes.end).toMatchObject({ key: 'end', x: 5, z: 20 });
-    expect(nodes.start.dir).toEqual({ x: 0, z: -1 });
-    expect(nodes.end.dir).toEqual({ x: 0, z: 1 });
+    // `along` points from the node INTO the street body
+    expect(nodes.start.along).toEqual({ x: 0, z: 1 });
+    expect(nodes.end.along).toEqual({ x: 0, z: -1 });
     expect(nodes.end.right).toEqual({ x: 1, z: 0 });
   });
 

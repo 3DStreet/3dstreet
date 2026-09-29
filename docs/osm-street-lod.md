@@ -190,8 +190,10 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
   gizmo generalized to one handle per control point (drag rewrites
   `points`, undoable). Derived `street-graph` scene system
   (`src/aframe-components/street-graph.js` over
-  `src/tested/street-graph-utils.js`): street ends clustered into shared
-  nodes by proximity, intersections recorded as node occupants, rebuilt on
+  `src/tested/street-graph-utils.js`): each managed intersection is a
+  node that absorbs the street ends it owns within its snap radius (junction
+  ends sit at the mouths, meters apart, so proximity alone would split
+  them), remaining ends cluster by proximity; rebuilt on
   demand and never serialized. Node identity is proximity-derived (the
   vector tiles carry no OSM node ids); the intersection entity IS the
   occupant of a junction node. Not yet: insert/delete of control points
@@ -207,7 +209,7 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
     the stretch continuous" policy at phase 5), so insets stay a per-end
     `{start, end}` pair and no generator ever fills a multi-interval span.
   - **Continuity is provenance, not geometry.** The pieces of one OSM way
-    keep their identity as a *corridor*: `data-osm-way-id` plus a piece
+    keep their identity as a _corridor_: `data-osm-way-id` plus a piece
     ordinal (layer name "OSM Way 123 · B of D"; serialized as phase 6's
     `{source: 'osm', wayId, piece}`), and the `street-graph` exposes the
     ordered pieces of a way so select/rename/re-split act on the corridor.
@@ -225,7 +227,7 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
 - **Phase 5 — pillar 3: migrate PR #1927 intersections to node
   occupants.** Keep `src/tested/managed-intersection-utils.js` verbatim
   (`mouth.t` IS the inset); `managed-intersection` reads incident
-  streets from the `street-graph` system (`nodeForStreetEnd`, killing
+  streets from the `street-graph` system (`nodeForIntersection`, killing
   its 400 ms signature polling) and
   writes per-end insets instead of `applyStreetSnaps`; drop the
   curved-street exclusion (a curved end already reports its node and

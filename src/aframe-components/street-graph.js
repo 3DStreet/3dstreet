@@ -3,16 +3,18 @@
  * street-graph — the derived node graph of a scene's managed streets
  * (#1930 pillar 1, phase 3).
  *
- * Rebuilt from entity data on demand, never stored: every managed street's
- * end nodes (see street-nodes.js) are clustered into shared graph nodes by
- * proximity (street-graph-utils.js), and a managed intersection standing on
- * a node is recorded as its occupant. Nothing here mutates the scene, and a
+ * Rebuilt from entity data on demand, never stored: every managed
+ * intersection is a node that absorbs the street ends it owns within its
+ * snap radius (nearest intersection wins, one end per street), and the
+ * remaining street ends (see street-nodes.js) are clustered into shared
+ * nodes by proximity (street-graph-utils.js). Nothing here mutates the scene, and a
  * saved scene carries no trace of it — the managed-street JSON round-trip
  * contract holds. Consumers ask the system for the current graph:
  *
  *   const graph = sceneEl.systems['street-graph'].getGraph();
  *   graph.nodes                  // [{ id, x, z, ends, intersectionId }]
  *   system.nodeForStreetEnd(streetEl, 'end')
+ *   system.nodeForIntersection(intersectionEl) // its incident street ends
  *   system.nodesNear(worldPoint, radius)
  *
  * The graph is cached and re-derived when it is older than `maxAgeMs`
@@ -84,7 +86,7 @@ AFRAME.registerSystem('street-graph', {
           x: n.position.x,
           z: n.position.z,
           y: n.position.y,
-          dir: { x: n.along.x, z: n.along.z },
+          along: { x: n.along.x, z: n.along.z },
           right: { x: n.right.x, z: n.right.z },
           curved: nodes.curved,
           totalWidth: nodes.totalWidth
@@ -123,6 +125,12 @@ AFRAME.registerSystem('street-graph', {
   nodeForStreetEnd: function (streetEl, key) {
     const graph = this.getGraph();
     return graph.byEnd.get(`${this.keyFor(streetEl)}:${key}`) || null;
+  },
+
+  /** The node an intersection occupies (degree 0 while no street connects). */
+  nodeForIntersection: function (intersectionEl) {
+    const graph = this.getGraph();
+    return graph.byIntersection.get(this.keyFor(intersectionEl)) || null;
   },
 
   nodesNear: function (worldPoint, radius) {

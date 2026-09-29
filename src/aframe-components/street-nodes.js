@@ -85,8 +85,7 @@ export function getStreetEndNodesLocal(streetEl) {
   const node = (n) => ({
     key: n.key,
     position: new THREE.Vector3(n.x, 0, n.z),
-    // street-local +Z runs start → end
-    along: new THREE.Vector3(0, 0, n.key === 'start' ? 1 : -1),
+    along: new THREE.Vector3(n.along.x, 0, n.along.z),
     right: new THREE.Vector3(1, 0, 0)
   });
   return {
