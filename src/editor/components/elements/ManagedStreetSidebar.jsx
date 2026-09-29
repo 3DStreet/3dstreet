@@ -14,7 +14,8 @@ import { canRenameEntity } from '@/editor/lib/entity.js';
 import { shapeToStreetPoints } from '@/aframe-components/street-path.js';
 import {
   formatCenterlinePoints,
-  parseCenterlinePoints
+  parseCenterlinePoints,
+  recenterPointsXZ
 } from '@/tested/street-centerline.js';
 import useStore from '@/store.js';
 import { StreetToShapesGraphic } from '@/editor/components/modals/ConfirmModal/StreetToShapesGraphic';
@@ -301,19 +302,34 @@ const ManagedStreetSidebar = ({ entity }) => {
   const pickShape = (shapeEl) => {
     const copied = shapeToStreetPoints(shapeEl, entity);
     if (!copied) return;
+    // Move the street's origin to the copied curve's centroid (the OSM
+    // generate convention), so a shape drawn far from the street doesn't
+    // leave the street's origin, its rotation pivot and the intersection
+    // candidate search, which measures from the origin, far off the curve.
+    // `offset` is street-local; the street's local matrix takes it into the
+    // parent space its position lives in (any rotation or scale).
+    const recentered = recenterPointsXZ(copied.points);
+    entity.object3D.updateMatrix();
+    const origin = new THREE.Vector3(
+      recentered.offset.x,
+      0,
+      recentered.offset.z
+    ).applyMatrix4(entity.object3D.matrix);
+    const position = `${origin.x.toFixed(3)} ${origin.y.toFixed(3)} ${origin.z.toFixed(3)}`;
     // Shapes draw with hard corners (shape.curveType defaults to linear), but
     // a street centerline nearly always wants a curve — copy a linear shape
     // in as smooth. Only HERE, at the user gesture: the load migration
     // copies a saved shape's own setting verbatim. One undo step for the
     // whole copy-in; the shape itself is untouched.
     AFRAME.INSPECTOR.execute('multi', [
+      ['entityupdate', { entity, component: 'position', value: position }],
       [
         'entityupdate',
         {
           entity,
           component: componentName,
           property: 'points',
-          value: formatCenterlinePoints(copied.points)
+          value: formatCenterlinePoints(recentered.points)
         }
       ],
       [

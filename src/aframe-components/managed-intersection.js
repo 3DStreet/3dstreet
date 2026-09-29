@@ -230,13 +230,11 @@ AFRAME.registerComponent('managed-intersection', {
       if (Math.hypot(this._vec.x - cx, this._vec.z - cz) > length + reach) {
         return false;
       }
-      if (ms.hasOwnedCurve && ms.hasOwnedCurve()) {
-        // Curved streets contribute arms from their owned centerline's end
-        // frames (see collectArms / street-nodes.js); a closed loop has no
-        // endpoints at all.
-        const curve = ms.streetCurve;
-        if (!curve || curve.closed) return false;
-      }
+      // Curved streets contribute arms from their owned centerline's end
+      // frames (see collectArms / street-nodes.js); a closed loop has no
+      // endpoints at all. Points that resolved to no curve (degenerate)
+      // leave the street straight, and it connects like one.
+      if (ms.streetCurve?.closed) return false;
       return explicit.length === 0 || explicit.includes(street.id);
     });
     return all;

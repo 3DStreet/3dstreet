@@ -226,6 +226,48 @@ describe('managed-street owned centerline', () => {
     expect(w.end.along.z).toBeCloseTo(1, 3);
   });
 
+  it('a curved end node follows a manual length trim or extension', async () => {
+    const host = await elFactory();
+    const el = await loadedStreet(host.sceneEl, {
+      points: formatCenterlinePoints(L_POINTS),
+      curveType: 'linear'
+    });
+    const ms = el.components['managed-street'];
+    await vi.waitFor(() => expect(ms.streetCurve).toBeTruthy());
+    // trimmed: content spans s in [0, 150], half way along the second leg
+    el.setAttribute('managed-street', 'length', 150);
+    let n = getStreetEndNodesLocal(el);
+    expect(n.start.position.z).toBeCloseTo(-100);
+    expect(n.end.position.x).toBeCloseTo(50);
+    expect(n.end.position.z).toBeCloseTo(0);
+    // extended: straight past the curve's end along its exit tangent
+    el.setAttribute('managed-street', 'length', 250);
+    n = getStreetEndNodesLocal(el);
+    expect(n.end.position.x).toBeCloseTo(150);
+    expect(n.end.along.x).toBeCloseTo(-1);
+  });
+
+  it('points that collapse to no curve leave a straight street with straight nodes', async () => {
+    const host = await elFactory();
+    const el = await loadedStreet(host.sceneEl, {
+      points: formatCenterlinePoints([
+        { x: 0, y: 0, z: 0 },
+        { x: 0, y: 0, z: 0.5 }
+      ])
+    });
+    const ms = el.components['managed-street'];
+    await vi.waitFor(() => {
+      expect(el.getAttribute('street-align')?.length).toBe('middle');
+    });
+    expect(ms.hasOwnedCurve()).toBe(true);
+    expect(ms.streetCurve).toBeNull();
+    const n = getStreetEndNodesLocal(el);
+    expect(n).not.toBeNull();
+    expect(n.curved).toBe(false);
+    expect(n.start.position.z).toBeCloseTo(-ms.data.length / 2);
+    expect(n.end.position.z).toBeCloseTo(ms.data.length / 2);
+  });
+
   it('street-graph merges ends that meet and records an intersection occupant', async () => {
     const host = await elFactory();
     const sceneEl = host.sceneEl;

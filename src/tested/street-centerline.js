@@ -135,6 +135,20 @@ export function pointsRelativeTo(points, origin) {
   }));
 }
 
+/**
+ * Recenter street-local control points on their XZ centroid, the OSM
+ * generate convention (the street origin lands mid-way along its own
+ * centerline, which origin-centered scene systems such as the
+ * intersection's candidate search expect). Elevation stays on the points.
+ * @returns {{ offset: {x,y,z}, points: Array<{x,y,z}> }} `offset` is the
+ *   street-local point the street origin should move to (y is always 0)
+ */
+export function recenterPointsXZ(points) {
+  const c = centroidOf(points);
+  const offset = { x: c.x, y: 0, z: c.z };
+  return { offset, points: pointsRelativeTo(points, offset) };
+}
+
 /** Straight-line length of the control polygon (a cheap curve-length proxy). */
 export function polylineLength(points, closed = false) {
   let L = 0;

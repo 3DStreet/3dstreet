@@ -8,7 +8,8 @@ import {
   parentPointsToStreetLocal,
   centroidOf,
   pointsRelativeTo,
-  polylineLength
+  polylineLength,
+  recenterPointsXZ
 } from '@/tested/street-centerline.js';
 
 describe('formatCenterlinePoints / parseCenterlinePoints', () => {
@@ -101,5 +102,19 @@ describe('centroid / relative / length helpers', () => {
   it('polylineLength open and closed', () => {
     expect(polylineLength(pts)).toBeCloseTo(60);
     expect(polylineLength(pts, true)).toBeCloseTo(60 + Math.hypot(30, 30));
+  });
+});
+
+describe('recenterPointsXZ', () => {
+  it('moves the XZ centroid to the origin and keeps elevation on the points', () => {
+    const { offset, points } = recenterPointsXZ([
+      { x: 400, y: 1, z: 0 },
+      { x: 500, y: 3, z: 100 }
+    ]);
+    expect(offset).toEqual({ x: 450, y: 0, z: 50 });
+    expect(points).toEqual([
+      { x: -50, y: 1, z: -50 },
+      { x: 50, y: 3, z: 50 }
+    ]);
   });
 });

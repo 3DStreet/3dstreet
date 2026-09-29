@@ -5,7 +5,11 @@ import {
   formatCenterlinePoints,
   parseCenterlinePoints
 } from '../../../tested/street-centerline.js';
-import { buildCenterlinePoints } from '../../../tested/street-path-utils.js';
+import {
+  buildCenterlinePoints,
+  controlPointRights,
+  PathSampler
+} from '../../../tested/street-path-utils.js';
 
 /**
  * StreetNodeControls — street node handles (#1096, generalized by #1930
@@ -35,6 +39,9 @@ import { buildCenterlinePoints } from '../../../tested/street-path-utils.js';
  *   length 'middle' -> [-L/2, +L/2]
  *   length 'end'    -> [0, +L]
  *   width 'center'|'left'|'right' -> centerline x offset 0 | +W/2 | -W/2
+ * On a curved street that width offset applies along the curve's lateral
+ * axis at each control point (controlPointRights), the same way the
+ * renderer and the street's end nodes apply it, never along local +X.
  *
  * Nothing is written to the entity while the pointer is down (#1942): the
  * dragged circle follows the cursor and a preview (footprint outline for a
@@ -75,8 +82,11 @@ class StreetNodeControls extends GizmoPointerControls {
     // list (street-local {x,y,z}) the street will take on release.
     this.pendingPoints = null;
     this.dragStartSnapshot = null;
-    // Curved mode: parsed control points of the attached street.
+    // Curved mode: parsed control points of the attached street, and the
+    // street-local offset from each point to its handle (the width-alignment
+    // centerline x along the curve's lateral axis there).
     this.curvePoints = null;
+    this.curveOffsets = [];
 
     this.discGeom = new THREE.CylinderGeometry(1.6, 1.6, 0.12, 40);
     this.rimGeom = new THREE.TorusGeometry(1.6, 0.08, 8, 40);
@@ -226,16 +236,59 @@ class StreetNodeControls extends GizmoPointerControls {
     this.dispatchEvent(this.changeEvent);
   }
 
+  // Curved handles only while the points resolved to a curve: points that
+  // collapse to under a metre of arc leave the street rendering straight,
+  // so it gets the straight end handles like any straight street.
   refreshCurvePoints() {
     const ms = this.el?.components['managed-street'];
     const points = parseCenterlinePoints(ms?.data?.points);
-    if (points.length >= 2) {
+    if (points.length >= 2 && ms?.streetCurve) {
       this.curvePoints = points;
       this.ensureHandles(points.map((_, i) => 'p' + i));
     } else {
       this.curvePoints = null;
       this.ensureHandles(['start', 'end']);
     }
+    this.refreshCurveOffsets();
+  }
+
+  /** Handle offsets for the live points, from the street's own sampler. */
+  refreshCurveOffsets() {
+    const sampler = this.el?.components['managed-street']?.streetCurve?.sampler;
+    this.curveOffsets = this.curvePoints
+      ? this.handleOffsetsFor(this.curvePoints, sampler)
+      : [];
+  }
+
+  /**
+   * Street-local offset from each control point to its handle: the
+   * width-alignment centerline x along the curve's right vector there.
+   */
+  handleOffsetsFor(points, sampler) {
+    if (!this.centerlineX || !sampler) {
+      return points.map(() => new THREE.Vector3());
+    }
+    return controlPointRights(points, sampler).map((r) =>
+      r.multiplyScalar(this.centerlineX)
+    );
+  }
+
+  /**
+   * Sampler through `points` with the street's own curve settings (the
+   * call managed-street runs), or null when they collapse to no curve.
+   */
+  samplerFor(points, sampleDistance) {
+    const d = this.el.components['managed-street'].data;
+    const pts = points.map((p) => new THREE.Vector3(p.x, p.y, p.z));
+    const closed = d.closed && pts.length >= 3;
+    const centerline = buildCenterlinePoints(pts, {
+      curveType: d.curveType,
+      filletRadius: d.filletRadius,
+      closed,
+      sampleDistance
+    });
+    if (centerline.length < 2) return null;
+    return new PathSampler(centerline, closed);
   }
 
   /**
@@ -257,6 +310,8 @@ class StreetNodeControls extends GizmoPointerControls {
         widthAlign === 'left' ? totalWidth / 2 : -totalWidth / 2;
     }
     this.refreshXExtent();
+    // not mid-drag: the pending offsets are what the user is looking at
+    if (!this.pendingPoints) this.refreshCurveOffsets();
   }
 
   refreshXExtent() {
@@ -299,9 +354,11 @@ class StreetNodeControls extends GizmoPointerControls {
     const p = pts?.[index];
     if (!p) return this.tmpLocal.set(0, 0, 0);
     // Handles sit on the travelled-way centerline: the control points ARE
-    // the centerline (lateral offsets bend around it), offset by the
-    // width-alignment centerline x the same way the straight handles are.
-    return this.tmpLocal.set(p.x + this.centerlineX, p.y, p.z);
+    // the street's reference line (lateral offsets bend around it), and the
+    // width-alignment centerline x applies along the curve's right vector
+    // at the point, exactly as the renderer and the end nodes apply it.
+    const off = this.curveOffsets[index];
+    return this.tmpLocal.set(p.x + (off?.x || 0), p.y, p.z + (off?.z || 0));
   }
 
   updateMatrixWorld(force) {
@@ -409,24 +466,29 @@ class StreetNodeControls extends GizmoPointerControls {
   // The centerline the street will take, sampled through the pending
   // points with the street's own curve settings (the same call
   // managed-street runs), drawn in world space.
-  updateCurvePreview() {
-    const ms = this.el.components['managed-street'];
-    const d = ms.data;
-    const pts = this.pendingPoints.map((p) => new THREE.Vector3(p.x, p.y, p.z));
-    const closed = d.closed && pts.length >= 3;
-    let sampled = buildCenterlinePoints(pts, {
-      curveType: d.curveType,
-      filletRadius: d.filletRadius,
-      closed,
-      sampleDistance: 2
-    });
-    if (closed && sampled.length > 1) sampled = sampled.concat([sampled[0]]);
-    const count = Math.min(sampled.length, MAX_PREVIEW_POINTS);
+  // `sampler` is the pending curve (samplerFor the pending points).
+  updateCurvePreview(sampler) {
+    if (!sampler) {
+      this.curvePreview.visible = false;
+      return;
+    }
+    const n = sampler.points.length;
+    // a closed loop repeats its first vertex to close the line
+    const total = sampler.closed && n > 1 ? n + 1 : n;
+    const count = Math.min(total, MAX_PREVIEW_POINTS);
     const attr = this.curvePreview.geometry.getAttribute('position');
     this.object.updateWorldMatrix(true, false);
     for (let i = 0; i < count; i++) {
-      this.tmpCorner.copy(sampled[i]);
-      this.tmpCorner.x += this.centerlineX;
+      const frame = sampler.vertexFrame(i % n);
+      this.tmpCorner.copy(frame.position);
+      if (this.centerlineX) {
+        // the travelled-way centerline, offset along the curve's lateral
+        // axis (mitered at corners, like the ribbon's edges)
+        this.tmpCorner.addScaledVector(
+          frame.right,
+          this.centerlineX * frame.miterScale
+        );
+      }
       this.object.localToWorld(this.tmpCorner);
       attr.setXYZ(
         i,
@@ -498,28 +560,47 @@ class StreetNodeControls extends GizmoPointerControls {
   moveCurveDrag() {
     const snap = this.dragStartSnapshot;
     // Cursor on the drag plane → street-local; the point keeps its own y
-    // (path elevation is authored, not dragged) and the width-alignment
-    // offset is removed again (handles sit at +centerlineX).
+    // (path elevation is authored, not dragged) and the handle offset is
+    // removed again so the handle lands under the cursor. The offset
+    // follows the curve's right vector at the point, which moves with the
+    // point, so solve point = cursor - offset(point) by fixed-point
+    // iteration (the right vector turns slowly: a few rounds converge).
     this.tmpLocal.copy(this.tempVec);
     this.object.worldToLocal(this.tmpLocal);
-    const moved = {
-      x: parseFloat((this.tmpLocal.x - this.centerlineX).toFixed(3)),
-      y: this.curvePoints[snap.index].y,
-      z: parseFloat(this.tmpLocal.z.toFixed(3))
-    };
-    this.pendingPoints = this.curvePoints.map((p, i) =>
-      i === snap.index ? moved : p
-    );
-    this.updateCurvePreview();
+    const cursor = { x: this.tmpLocal.x, z: this.tmpLocal.z };
+    const y = this.curvePoints[snap.index].y;
+    let off = this.curveOffsets[snap.index] || new THREE.Vector3();
+    let sampler = null;
+    let offsets = null;
+    const rounds = this.centerlineX ? 3 : 1;
+    for (let round = 0; round < rounds; round++) {
+      const moved = {
+        x: parseFloat((cursor.x - off.x).toFixed(3)),
+        y,
+        z: parseFloat((cursor.z - off.z).toFixed(3))
+      };
+      this.pendingPoints = this.curvePoints.map((p, i) =>
+        i === snap.index ? moved : p
+      );
+      sampler = this.samplerFor(this.pendingPoints, 2);
+      offsets = this.handleOffsetsFor(this.pendingPoints, sampler);
+      off = offsets[snap.index];
+    }
+    this.curveOffsets = offsets;
+    this.updateCurvePreview(sampler);
     this.dispatchEvent(this.changeEvent);
   }
 
   clearDragState() {
+    const hadPendingPoints = !!this.pendingPoints;
     this.pendingPose = null;
     this.pendingPoints = null;
     this.dragStartSnapshot = null;
     this.preview.visible = false;
     this.curvePreview.visible = false;
+    // back to the live points' offsets (a committed edit re-reads them
+    // again on street-curve-changed)
+    if (hadPendingPoints) this.refreshCurveOffsets();
   }
 
   endDrag(event) {

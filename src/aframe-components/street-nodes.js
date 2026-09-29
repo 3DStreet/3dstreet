@@ -52,9 +52,12 @@ export function getStreetEndNodesLocal(streetEl) {
   });
   const centerX = straight.centerX;
 
+  // A street is curved exactly when its owned centerline resolved to a
+  // curve. `points` that collapse to under a metre of arc leave no curve,
+  // and the street renders (and so reports its nodes) straight.
   const curve = ms.streetCurve;
-  if (ms.hasOwnedCurve && ms.hasOwnedCurve()) {
-    if (!curve || curve.closed) return null;
+  if (curve) {
+    if (curve.closed) return null;
     const sampler = curve.sampler;
     const node = (key, s, sign) => {
       const frame = sampler.frameAtS(s);
@@ -69,12 +72,15 @@ export function getStreetEndNodesLocal(streetEl) {
       curved: true,
       centerX,
       totalWidth,
-      // the body extends along the tangent from s = 0 and against it at s = L
+      // The body extends along the tangent from s = 0 and against it at the
+      // far end. The far end is the street's `length`, not the curve's arc
+      // length: content spans s in [0, length], and a manual length edit
+      // trims the street short of the curve's end or extends it straight
+      // past it (frameAtS extrapolates along the end tangent).
       start: node('start', 0, 1),
-      end: node('end', sampler.totalLength, -1)
+      end: node('end', Number(ms.data.length) || 0, -1)
     };
   }
-  if (curve?.closed) return null;
 
   const node = (n) => ({
     key: n.key,

@@ -409,6 +409,46 @@ export class PathSampler {
   }
 }
 
+/**
+ * Horizontal right vector (the lateral axis that street-align width offsets
+ * follow) at each CONTROL point of a curve sampled by `sampler`. Anything
+ * that sits a fixed lateral offset from a control point, such as the node
+ * gizmo's handles on a street whose travelled way is not centered, offsets
+ * along this vector, never along street-local +X.
+ *
+ * An open curve's first and last points use the sampler's end frames, the
+ * same frames the street's end nodes come from. Any other point takes the
+ * miter frame of the nearest sample vertex: the point itself on a smooth or
+ * linear curve, the fillet apex on an arc corner (whose right vector lies
+ * along the corner's bisector).
+ *
+ * @param {Array<{x:number,z:number}>} controlPoints
+ * @param {PathSampler} sampler
+ * @returns {THREE.Vector3[]} one unit vector per control point
+ */
+export function controlPointRights(controlPoints, sampler) {
+  const pts = sampler.points;
+  const last = controlPoints.length - 1;
+  return controlPoints.map((p, i) => {
+    if (!sampler.closed && i === 0) return sampler.frameAtS(0).right;
+    if (!sampler.closed && i === last) {
+      return sampler.frameAtS(sampler.totalLength).right;
+    }
+    let nearest = 0;
+    let bestD2 = Infinity;
+    for (let k = 0; k < pts.length; k++) {
+      const dx = pts[k].x - p.x;
+      const dz = pts[k].z - p.z;
+      const d2 = dx * dx + dz * dz;
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        nearest = k;
+      }
+    }
+    return sampler.vertexFrame(nearest).right;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // straight → curved mapping
 // ---------------------------------------------------------------------------

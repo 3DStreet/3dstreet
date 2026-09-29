@@ -19,7 +19,10 @@ Three ways to get a curved street:
    corridor, select the street → street panel → **Shape** row → **curved** →
    pick the shape (or **Draw a new path** to sketch one first). The copy is
    one undo step; the shape's curve style is copied too (a linear shape comes
-   in as smooth — a centerline nearly always wants a curve).
+   in as smooth — a centerline nearly always wants a curve). The street's
+   origin moves to the copied curve's XZ centroid (the OSM generate
+   convention), so its rotation pivot and the intersection candidate search
+   sit on the curve even when the shape was drawn far from the street.
 2. **Generate from OpenStreetMap** (`docs/osm-street-lod.md`): each generated
    piece is a point-owning street along the way's centerline, no scaffolding
    shape.
@@ -32,7 +35,9 @@ Choosing **straight** clears the points (undoable).
 ## Properties (on `managed-street`)
 
 - **points** — `"x y z, x y z, …"`, street-local meters, ≥2 points for a
-  curve. Empty = straight.
+  curve. Empty = straight. Points whose curve comes to under 1 m of arc
+  resolve to no curve: the street renders, reports its nodes and shows its
+  handles as straight until the points change.
 - **curveType** — `smooth` (centripetal Catmull-Rom through every point, the
   default), `arc` (straight legs joined by circular fillets — the
   road-engineering centerline style), `linear` (hard corners). Same vocabulary
@@ -52,14 +57,19 @@ viewport (`src/editor/lib/gizmos/StreetNodeControls.js`, the same circles a
 straight street shows at its two ends). Drag any circle: the re-sampled
 centerline previews the result and `points` is rewritten once on release —
 one undo step. The end circles are the street's end nodes (what intersections
-connect to). Curve style and corner radius are in the street panel's Path
+connect to). When street-align's width alignment is not `center`, each
+circle sits the centerline offset away from its control point along the
+curve's right vector there (`controlPointRights`), the same lateral axis the
+renderer and the end nodes use. Curve style and corner radius are in the street panel's Path
 row. Adding or removing a control point is not on the handles yet: draw a
 shape with the vertices you want and copy it in.
 
 Dragging or rotating the street entity moves the whole curve with it (the
 points are local). Manual `length` edits on a curved street extend/trim
 along the curve (extrapolating straight past an open end) until the next
-points change snaps length back to arc length.
+points change snaps length back to arc length. The end node follows: it
+sits at `s = length`, where the content stops, not at the curve's arc
+length.
 
 ## Architecture
 
