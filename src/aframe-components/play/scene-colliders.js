@@ -1,6 +1,5 @@
 /* global THREE */
 const { mapStraightPoint } = require('../../tested/street-path-utils');
-const { getLongitudinalSpan } = require('../../tested/street-nodes-utils');
 
 /**
  * scene-colliders
@@ -167,8 +166,7 @@ function seedSegmentColliders(sceneEl) {
         new THREE.Quaternion()
       );
       const segPos = segEl.object3D.position;
-      const span = getLongitudinalSpan(length);
-      const sStart = segPos.z + span.zStart - curve.zStart;
+      const sStart = segPos.z - length / 2 - curve.zStart;
       const stations = curve.sampler.getRingStations(sStart, sStart + length, {
         maxSpacing: 4
       });
