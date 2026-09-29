@@ -1610,8 +1610,11 @@
   "managedIntersectionSidebar.connectedStreets": {
     "defaultMessage": "{count,plural,one{# connected street} other{# connected streets}}"
   },
-  "managedStreetSidebar.changePath": {
-    "defaultMessage": "Change path…"
+  "managedStreetSidebar.cancelPick": {
+    "defaultMessage": "Cancel"
+  },
+  "managedStreetSidebar.centerlineHint": {
+    "defaultMessage": "Length follows the centerline. Drag the node handles in the viewport to reshape it."
   },
   "managedStreetSidebar.chipBoundaries": {
     "defaultMessage": "Boundaries"
@@ -1635,13 +1638,28 @@
     "defaultMessage": "This turns the street into plain 3D shapes you can move, duplicate, and delete individually. After you save and reload this scene you cannot undo this action. Tip: duplicate the street first if you want to keep a copy of this managed street."
   },
   "managedStreetSidebar.convertToShapesCurvedUnsupported": {
-    "defaultMessage": "Convert to Shapes is not available for a street that follows a path yet. Clear the street’s path first, or keep it as a managed street."
+    "defaultMessage": "Convert to Shapes is not available for a curved street yet. Set the street to straight first, or keep it as a managed street."
   },
   "managedStreetSidebar.convertToShapesTitle": {
     "defaultMessage": "Convert Street to Shapes?"
   },
+  "managedStreetSidebar.cornerRadius": {
+    "defaultMessage": "Corner radius (m)"
+  },
   "managedStreetSidebar.createdIn": {
     "defaultMessage": "Created in"
+  },
+  "managedStreetSidebar.curveArc": {
+    "defaultMessage": "Arcs (corner radius)"
+  },
+  "managedStreetSidebar.curveLinear": {
+    "defaultMessage": "Hard corners"
+  },
+  "managedStreetSidebar.curveSmooth": {
+    "defaultMessage": "Smooth (spline)"
+  },
+  "managedStreetSidebar.curveStyle": {
+    "defaultMessage": "Curve style"
   },
   "managedStreetSidebar.drawNewPath": {
     "defaultMessage": "Draw a new path"
@@ -1661,6 +1679,9 @@
   "managedStreetSidebar.length": {
     "defaultMessage": "Length"
   },
+  "managedStreetSidebar.loop": {
+    "defaultMessage": "loop"
+  },
   "managedStreetSidebar.openInSource": {
     "defaultMessage": "Open in {source}"
   },
@@ -1670,14 +1691,14 @@
   "managedStreetSidebar.osmHydratedRef": {
     "defaultMessage": "{name}, cross-section from OSM tags"
   },
+  "managedStreetSidebar.ownedCenterline": {
+    "defaultMessage": "Street centerline"
+  },
   "managedStreetSidebar.path": {
     "defaultMessage": "Path"
   },
-  "managedStreetSidebar.pathHintFollows": {
-    "defaultMessage": "Length follows the path. Curve style is set on the shape."
-  },
-  "managedStreetSidebar.pathHintPick": {
-    "defaultMessage": "Pick a drawn shape with 2+ points, or draw one."
+  "managedStreetSidebar.pathHintCopy": {
+    "defaultMessage": "Pick a drawn shape with 2+ points to copy its centerline into the street, or draw one. The street keeps its own copy."
   },
   "managedStreetSidebar.pathPoints": {
     "defaultMessage": "{count,plural,one{# point} other{# points}}"
@@ -1697,11 +1718,14 @@
   "managedStreetSidebar.savedWithScene": {
     "defaultMessage": "Saved with this scene"
   },
+  "managedStreetSidebar.setFromShape": {
+    "defaultMessage": "Copy from shape…"
+  },
   "managedStreetSidebar.shape": {
     "defaultMessage": "Shape"
   },
-  "managedStreetSidebar.shapeFollowPath": {
-    "defaultMessage": "follow path"
+  "managedStreetSidebar.shapeCurved": {
+    "defaultMessage": "curved"
   },
   "managedStreetSidebar.shapeStraight": {
     "defaultMessage": "straight"
