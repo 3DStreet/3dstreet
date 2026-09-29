@@ -1,0 +1,19 @@
+{
+  "name": "needle-uploader",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Cloud Run service: sends a user GLB through Needle Cloud progressive optimization — the streaming optimized variant (#1990).",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "firebase-admin": "^14.0.0",
+    "needle-cloud": "2.7.0"
+  }
+}
