@@ -1,6 +1,7 @@
 /* global AFRAME */
 import { createRNG } from '../lib/rng';
 import { getCurvedPlacement } from './street-path.js';
+import { getLongitudinalSpan } from '../tested/street-nodes-utils.js';
 import {
   CLONE_INDEX_ATTR,
   CLONE_KEY_ATTR,
@@ -108,11 +109,8 @@ AFRAME.registerComponent('street-generated-pedestrians', {
     );
 
     // Get Z positions using seeded randomization
-    const zPositions = this.getZPositions(
-      -this.length / 2,
-      this.length / 2,
-      1.5
-    );
+    const span = getLongitudinalSpan(this.length);
+    const zPositions = this.getZPositions(span.zStart, span.zEnd, 1.5);
 
     // One slot per pedestrian; a pedestrian whose placement is a detached
     // hole (skip) is counted but not created (#2011).

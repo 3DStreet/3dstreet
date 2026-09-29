@@ -3,6 +3,7 @@
 import { BATCHING_ENABLED } from '../batch-models';
 import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
 import { getCurvedPlacement } from './street-path.js';
+import { getLongitudinalSpan } from '../tested/street-nodes-utils.js';
 import {
   CLONE_INDEX_ATTR,
   CLONE_KEY_ATTR,
@@ -141,11 +142,11 @@ AFRAME.registerComponent('street-generated-stencil', {
     // placement is a detached hole (skip) is counted but not created.
     const slots = createSlotCounter(data.skip);
 
-    // Create stencil groups along the street
+    // Create stencil groups along the street, from the end node back
+    const span = getLongitudinalSpan(this.length);
     for (let groupIndex = 0; groupIndex < numGroups; groupIndex++) {
       const groupPosition =
-        this.length / 2 -
-        (groupIndex + data.cycleOffset) * this.correctedSpacing;
+        span.zEnd - (groupIndex + data.cycleOffset) * this.correctedSpacing;
 
       // Create each stencil within the group
       stencilsToUse.forEach((stencilName, stencilIndex) => {
