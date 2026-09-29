@@ -969,7 +969,6 @@ class EasyGizmoControls extends GizmoPointerControls {
       passive: false
     });
     window.addEventListener('click', this._onSuppressLatched, true);
-    window.addEventListener('dblclick', this._onSuppressLatched, true);
     window.addEventListener('keydown', this._onKeyDown, true);
     window.addEventListener('keyup', this._onKeyUp, true);
     window.addEventListener('blur', this._onBlur);
@@ -996,7 +995,6 @@ class EasyGizmoControls extends GizmoPointerControls {
     if (canvas) canvas.removeEventListener('mouseleave', this._onCanvasLeave);
     // Suppression is scoped to the attachment, like the press listeners.
     window.removeEventListener('click', this._onSuppressLatched, true);
-    window.removeEventListener('dblclick', this._onSuppressLatched, true);
   }
 
   _suppress(event) {
@@ -1019,15 +1017,20 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   /**
-   * The synthetic click and double-click that trail the gesture that set the
-   * latch, and no others.
+   * The synthetic click that trails the gesture that set the latch, and no
+   * other: reaching the canvas it would hand the selection to whatever sits
+   * under the handle.
    *
-   * The latch is cleared by the NEXT pointerdown, which is what keeps
-   * double-click-to-navigate working everywhere the gizmo was not just
-   * operated: a double click is down, up, click, down, up, click, dblclick, and
-   * the second press clears the latch before the dblclick is dispatched. The
-   * canvas gate covers a click with no press behind it — Enter or Space on a
-   * focused button.
+   * The latch is cleared by the NEXT pointerdown, so a click with no claimed
+   * press behind it passes; the canvas gate covers a click with no press at
+   * all — Enter or Space on a focused button.
+   *
+   * The double-click is deliberately NOT suppressed. Both presses of a double
+   * click on a handle are claimed, so suppressing it here would swallow every
+   * double-click on the gizmo — and zoomed out, the gizmo covers the object it
+   * belongs to. The editor's double-click focuses the selected entity, which
+   * is this gizmo's, so letting it through frames the object the user aimed
+   * at (#2054).
    */
   _onSuppressLatched(event) {
     if (!this._pressWasClaimed) return;

@@ -73,7 +73,10 @@ Touch listeners that call `preventDefault()` must be non-passive.
 
 Other editor handles are tested before claiming a press. Capture does not confer
 priority over another listener on the same node and phase. Once claimed, the
-gesture follows its initiating pointer until release or cancellation.
+gesture follows its initiating pointer until release or cancellation. The click
+that trails a claimed press is swallowed (it would hand the selection to what
+sits under the handle); the double-click is not, so the editor's double-click
+focus frames the selected object even when the gizmo covers it at distance.
 
 Native pointer capture is a convenience, not the ownership mechanism. Chrome
 drops capture mid-drag as soon as a pointermove reports no buttons held, which a

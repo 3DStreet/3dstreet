@@ -209,6 +209,53 @@ describe('the easy gizmo as the default transform control', () => {
   });
 });
 
+describe('the selection box measurement', () => {
+  // The box is measured with the entity parked at its parent's origin. A
+  // throw while measuring used to leave it there for good: object3D at 0 0 0
+  // while a batched instance still drew where the user dropped it (#2054).
+  it('restores the entity pose when measuring throws', () => {
+    const { inspector, sceneEl, dispose } = mountViewport();
+    inspector.cursor = { isPlaying: true };
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const el = entity(sceneEl);
+      el.object3D.position.set(4, 0.15, -20);
+      el.object3D.rotation.set(0, Math.PI / 2, 0);
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+      // Throws for the selection box, which measures first; the easy gizmo's
+      // own box derivation runs after it in the same handler and must not
+      // be what this test exercises.
+      const compute = mesh.geometry.computeBoundingBox.bind(mesh.geometry);
+      let thrown = false;
+      mesh.geometry.computeBoundingBox = () => {
+        if (!thrown) {
+          thrown = true;
+          throw new Error('skeleton not ready');
+        }
+        compute();
+      };
+      mesh.geometry.boundingBox = null;
+      el.object3D.add(mesh);
+      inspector.selectedEntity = el;
+      Events.emit('objectselect', el.object3D);
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(el.object3D.position.toArray()).toEqual([4, 0.15, -20]);
+      expect(el.object3D.rotation.y).toBeCloseTo(Math.PI / 2, 6);
+      // The parent's world matrix is put back too.
+      const parentPos = new THREE.Vector3();
+      sceneEl.object3D.matrixWorld.decompose(
+        parentPos,
+        new THREE.Quaternion(),
+        new THREE.Vector3()
+      );
+      expect(parentPos.toArray()).toEqual([0, 0, 0]);
+    } finally {
+      error.mockRestore();
+      dispose();
+    }
+  });
+});
+
 describe('the advanced rotate gizmo', () => {
   function mountWithStock() {
     const mounted = mountViewport();

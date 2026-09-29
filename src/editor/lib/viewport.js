@@ -326,112 +326,131 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
     // parent-relative rezeroing below would then throw on matrixWorld.
     const hasParent = this.object?.parent != null;
 
-    if (this.object !== undefined && hasParent && !isSplatEntity) {
-      auxEuler.copy(this.object.rotation);
-      auxLocalPosition.copy(this.object.position);
-      this.object.rotation.set(0, 0, 0);
-      this.object.position.set(0, 0, 0);
+    // The bounds are measured at a temporary pose: the entity is parked at
+    // its parent's origin with no rotation, and the parent's world matrix is
+    // replaced by its scale alone. Everything from here to the restore runs
+    // under try/finally, because a throw while measuring (a skinned vehicle
+    // rig mid-load, a geometry stripped by batching between two frames) used
+    // to leave the ENTITY parked there for good: its object3D at 0 0 0 while
+    // its batched instance still drew where the user dropped it, the box and
+    // the click hit-test both wrong until a reload rebuilt the scene (#2054).
+    let zeroed = false;
+    try {
+      if (this.object !== undefined && hasParent && !isSplatEntity) {
+        auxEuler.copy(this.object.rotation);
+        auxLocalPosition.copy(this.object.position);
+        this.object.rotation.set(0, 0, 0);
+        this.object.position.set(0, 0, 0);
+        zeroed = true;
 
-      this.object.parent.matrixWorld.decompose(
-        auxPosition,
-        auxQuaternion,
-        auxScale
-      );
-      auxMatrix.compose(origin, identityQuaternion, auxScale);
-      this.object.parent.matrixWorld.copy(auxMatrix);
-      tempBox3.setFromObject(this.object);
-
-      // Batched entities have their original mesh tree stripped at batch time, so
-      // setFromObject finds no geometry under them. batch-models stashes a per-entity-local
-      // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in. A model
-      // still downloading has no mesh either; model-placeholder mirrors its ghost box's
-      // local bounds the same way (#2009).
-      const cachedBbox =
-        this.object._batchLocalBbox || this.object._placeholderBbox;
-      if (cachedBbox) {
-        this.object.updateWorldMatrix(false, false);
-        auxLocalBbox.copy(cachedBbox).applyMatrix4(this.object.matrixWorld);
-        tempBox3.union(auxLocalBbox);
-      }
-
-      if (!this.object.el?.getObject3D('mesh') && !cachedBbox) {
-        // For a group of several models to include the group origin.
-        tempBox3.expandByPoint(this.object.position);
-      }
-
-      if (this.boxFill) {
-        tempBox3.getSize(tempVector3Size);
-        tempBox3.getCenter(tempVector3Center);
-        this.boxFill.position.copy(tempVector3Center);
-        this.boxFill.scale.copy(tempVector3Size);
-      }
-    } else if (this.object !== undefined && isSplatEntity) {
-      const splatComponent = this.object.el.components['splat'];
-      const splatBox = splatComponent?.getBoundingBox?.(true, tempBox3);
-      if (splatBox) {
-        tempBox3.copy(splatBox);
-        // Transform the box to world space
-        tempBox3.applyMatrix4(this.object.matrixWorld);
-      } else {
-        tempBox3.setFromObject(this.object);
-      }
-    }
-
-    if (!tempBox3.isEmpty()) {
-      const min = tempBox3.min;
-      const max = tempBox3.max;
-
-      const position = this.geometry.attributes.position;
-      const array = position.array;
-
-      array[0] = max.x;
-      array[1] = max.y;
-      array[2] = max.z;
-      array[3] = min.x;
-      array[4] = max.y;
-      array[5] = max.z;
-      array[6] = min.x;
-      array[7] = min.y;
-      array[8] = max.z;
-      array[9] = max.x;
-      array[10] = min.y;
-      array[11] = max.z;
-      array[12] = max.x;
-      array[13] = max.y;
-      array[14] = min.z;
-      array[15] = min.x;
-      array[16] = max.y;
-      array[17] = min.z;
-      array[18] = min.x;
-      array[19] = min.y;
-      array[20] = min.z;
-      array[21] = max.x;
-      array[22] = min.y;
-      array[23] = min.z;
-
-      position.needsUpdate = true;
-
-      this.geometry.computeBoundingSphere();
-      if (this.fatBox) {
-        setFatLinePositions(
-          this.fatBox,
-          indexedLinePairs(this.geometry, boxPairsScratch)
+        this.object.parent.matrixWorld.decompose(
+          auxPosition,
+          auxQuaternion,
+          auxScale
         );
-      }
-    }
+        auxMatrix.compose(origin, identityQuaternion, auxScale);
+        this.object.parent.matrixWorld.copy(auxMatrix);
+        tempBox3.setFromObject(this.object);
 
-    // Restore rotations (skip for splat entities since we didn't modify them).
-    if (this.object !== undefined && hasParent && !isSplatEntity) {
-      this.object.parent.matrixWorld.compose(
-        auxPosition,
-        auxQuaternion,
-        auxScale
+        // Batched entities have their original mesh tree stripped at batch time, so
+        // setFromObject finds no geometry under them. batch-models stashes a per-entity-local
+        // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in. A model
+        // still downloading has no mesh either; model-placeholder mirrors its ghost box's
+        // local bounds the same way (#2009).
+        const cachedBbox =
+          this.object._batchLocalBbox || this.object._placeholderBbox;
+        if (cachedBbox) {
+          this.object.updateWorldMatrix(false, false);
+          auxLocalBbox.copy(cachedBbox).applyMatrix4(this.object.matrixWorld);
+          tempBox3.union(auxLocalBbox);
+        }
+
+        if (!this.object.el?.getObject3D('mesh') && !cachedBbox) {
+          // For a group of several models to include the group origin.
+          tempBox3.expandByPoint(this.object.position);
+        }
+
+        if (this.boxFill) {
+          tempBox3.getSize(tempVector3Size);
+          tempBox3.getCenter(tempVector3Center);
+          this.boxFill.position.copy(tempVector3Center);
+          this.boxFill.scale.copy(tempVector3Size);
+        }
+      } else if (this.object !== undefined && isSplatEntity) {
+        const splatComponent = this.object.el.components['splat'];
+        const splatBox = splatComponent?.getBoundingBox?.(true, tempBox3);
+        if (splatBox) {
+          tempBox3.copy(splatBox);
+          // Transform the box to world space
+          tempBox3.applyMatrix4(this.object.matrixWorld);
+        } else {
+          tempBox3.setFromObject(this.object);
+        }
+      }
+
+      if (!tempBox3.isEmpty()) {
+        const min = tempBox3.min;
+        const max = tempBox3.max;
+
+        const position = this.geometry.attributes.position;
+        const array = position.array;
+
+        array[0] = max.x;
+        array[1] = max.y;
+        array[2] = max.z;
+        array[3] = min.x;
+        array[4] = max.y;
+        array[5] = max.z;
+        array[6] = min.x;
+        array[7] = min.y;
+        array[8] = max.z;
+        array[9] = max.x;
+        array[10] = min.y;
+        array[11] = max.z;
+        array[12] = max.x;
+        array[13] = max.y;
+        array[14] = min.z;
+        array[15] = min.x;
+        array[16] = max.y;
+        array[17] = min.z;
+        array[18] = min.x;
+        array[19] = min.y;
+        array[20] = min.z;
+        array[21] = max.x;
+        array[22] = min.y;
+        array[23] = min.z;
+
+        position.needsUpdate = true;
+
+        this.geometry.computeBoundingSphere();
+        if (this.fatBox) {
+          setFatLinePositions(
+            this.fatBox,
+            indexedLinePairs(this.geometry, boxPairsScratch)
+          );
+        }
+      }
+    } catch (error) {
+      console.error(
+        '[viewport] selection box measurement failed for',
+        this.object?.el?.id ||
+          this.object?.el?.getAttribute?.('data-layer-name') ||
+          this.object,
+        error
       );
-      this.object.rotation.copy(auxEuler);
-      this.object.position.copy(auxLocalPosition);
-      // Bounds were measured at a temporary pose. Restore descendant render
-      // matrices too: this helper can run after the scene's matrix traversal.
-      this.object.updateWorldMatrix(true, true);
+    } finally {
+      if (zeroed) {
+        this.object.parent.matrixWorld.compose(
+          auxPosition,
+          auxQuaternion,
+          auxScale
+        );
+        this.object.rotation.copy(auxEuler);
+        this.object.position.copy(auxLocalPosition);
+        // Bounds were measured at a temporary pose. Restore descendant render
+        // matrices too: this helper can run after the scene's matrix traversal.
+        this.object.updateWorldMatrix(true, true);
+      }
     }
 
     // Update helper position for all objects

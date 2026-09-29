@@ -1536,6 +1536,35 @@ describe('terrain flattening of the selection', () => {
   });
 });
 
+describe('the trailing click and double-click of a claimed press', () => {
+  it('swallows the click but lets the double-click reach the canvas', () => {
+    const f = fixture();
+    f.surface(0);
+    f.attach();
+    const onCanvasClick = vi.fn();
+    const onCanvasDblClick = vi.fn();
+    f.canvas.addEventListener('click', onCanvasClick);
+    f.canvas.addEventListener('dblclick', onCanvasDblClick);
+    // A press on the handle sets the latch; how the gesture ends does not
+    // clear it (only the next pointerdown does).
+    f.start();
+    f.controls.endGesture('escape');
+    expect(f.controls._pressWasClaimed).toBe(true);
+    // The click would hand the selection to whatever sits under the handle.
+    f.pointer('click', f.controls.moveGroup.position);
+    expect(onCanvasClick).not.toHaveBeenCalled();
+    // Second press of a double click: claimed again, latch still set.
+    f.start();
+    f.controls.endGesture('escape');
+    f.pointer('click', f.controls.moveGroup.position);
+    expect(onCanvasClick).not.toHaveBeenCalled();
+    // The editor's double-click focuses the selected entity, which is this
+    // gizmo's: it must arrive even though both presses were on the handle.
+    f.pointer('dblclick', f.controls.moveGroup.position);
+    expect(onCanvasDblClick).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('work per frame and per event', () => {
   it('re-probes on an entityupdate only for its own lineage', () => {
     const f = fixture();
