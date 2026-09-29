@@ -14,12 +14,17 @@ Issues it addresses: [#438](https://github.com/3DStreet/3dstreet/issues/438)
 
 ## How it works
 
-A managed street's endpoint "nodes" are derived state — `position` +
-`rotation.y` + `managed-street.length` + `street-align` (the same math the
-street endpoint gizmo uses, `src/editor/lib/gizmos/StreetNodeControls.js`).
-The intersection scans the scene's managed streets; every endpoint node within
+A managed street's endpoint "nodes" are derived state — for a straight
+street `position` + `rotation.y` + `managed-street.length` + `street-align`,
+for a curved street the end frames of its owned centerline
+(`managed-street.points`). The intersection reads them through the ONE shared
+reader, `getStreetEndNodesLocal` in `src/aframe-components/street-nodes.js`
+(pure math in `src/tested/street-nodes-utils.js`; the endpoint gizmo and the
+`street-graph` system use the same, #1930 phase 0). It scans the scene's
+managed streets; every endpoint node within
 `snapRadius` of the intersection origin becomes an **arm**: node point,
-outward direction, and lateral cross-section extents. Two extents per arm are
+outward direction (the node's `along` vector — from the node into the street
+body), and lateral cross-section extents. Two extents per arm are
 read from the street's segment list:
 
 - **roadway** (curb-to-curb): the travelled way minus the contiguous band of
@@ -167,18 +172,18 @@ point objects, out of scope like street furniture.
   [#1930](https://github.com/3DStreet/3dstreet/issues/1930).
 - Treatments are global (one crosswalk/traffic-control choice for all arms);
   per-arm overrides need stable arm identity (street ids) plus UI.
-- Curved (path-following) streets connect as **geometry-only arms**: their
+- Curved streets connect as **geometry-only arms**: their
   nodes come from the curve's end frames (`PathSampler.frameAtS` at
   0 / totalLength — the frame's `right` vector plays street-local +X, so
-  `street-align` width offsets apply on curves too; closed-path loop
+  `street-align` width offsets apply on curves too; closed loop
   streets have no endpoints and are skipped). The **snap pass skips
-  pathed arms** — a pathed street's extent is owned by its shape, and the
+  curved arms** — a curved street's extent is its own centerline's, and the
   slide-along-centerline rewrite is straight-street math — so overlap/gap
-  at a pathed mouth is accepted; the OSM generate closes it with
-  generation-time insets (`splitStretchAtJunctions`), and hand-drawn
-  paths close it by editing the shape. Sliding a pathed node along its
-  own curve is the eventual persistent-node-graph work
-  ([#1930](https://github.com/3DStreet/3dstreet/issues/1930)).
+  at a curved mouth is accepted; the OSM generate closes it with
+  generation-time insets (`splitStretchAtJunctions`), and hand-made
+  curves close it by dragging the street's node handles. Render-time
+  insets keyed on the street graph's nodes are the next step
+  ([#1930](https://github.com/3DStreet/3dstreet/issues/1930) pillar 2).
 - No traffic-circle interior ([#1322](https://github.com/3DStreet/3dstreet/issues/1322));
   the polygon walk could grow an island later.
 - Signal/stop-sign placement is right-hand-traffic and heuristic; the raised

@@ -69,15 +69,17 @@ via `trimStretchEndsAtWays` — so side streets butt against the through
 road instead of poking to its centerline, #2004 fix 2). Cut ends inset
 by half the crossing road's CARRIAGEWAY width (sidewalks excluded,
 `importedCarriagewayMeters`) plus 2 m curb-return room. Each piece
-becomes ONE **path-following street** whose editable path shape carries
-the piece's Douglas–Peucker-simplified control points
-(`stretchForWindow`; the same curved-street mechanism as hand-drawn
-paths, `docs/curved-street-path.md`, `curveType: smooth`), degenerating
+becomes ONE **curved street that owns its centerline**: the piece's
+Douglas–Peucker-simplified control points (`stretchForWindow`) go into
+`managed-street.points` (street-local, `curveType: smooth`; the same
+mechanism as a copied-in drawn shape, `docs/curved-street-path.md`;
+no scaffolding shape entity is minted — the street's node handles edit
+the curve), degenerating
 to a plain straight street when a piece simplifies to a single chord,
 and a **`managed-intersection` is minted per cut** bordered by ≥1
 generated street end (proximity-deduped, so generating the
 crossing way later reuses it — its snap radius picks the new street
-ends up automatically; pathed streets connect as geometry-only arms;
+ends up automatically; curved streets connect as geometry-only arms;
 with only one arm connected the pad renders as a PARTIAL intersection,
 see `docs/managed-intersection.md`). Every generated street carries a
 **`data-osm-stretch` coverage stamp** (compact centerline encoding,
@@ -98,7 +100,7 @@ them in play mode. `upgradeNearFocus(radius, cap)` is the console
 convenience for demos. Upgraded streets are ordinary scene entities:
 they serialize, edit, and persist — the explicit click IS the
 "temporary → mine" promotion story for now, and refining the generated
-geometry IS editing the path shape's vertices.
+geometry IS dragging the street's own centerline node handles.
 
 Data notes: OpenMapTiles `transportation` has `class`/`subclass`/
 `brunnel`/`oneway` but **no lane counts or widths** — the cross-section
@@ -139,15 +141,22 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
 
 ## Roadmap to full #1930 (nothing above is throwaway)
 
-- **Phase 0 — shared node/span foundations.** New
-  `src/tested/street-nodes-utils.js`: `getStreetNodes()` unifying the
-  endpoint math triplicated today (`StreetNodeControls.js`,
-  `managed-street.computeZStart`, PR #1927's `collectArms` — whose
-  `lengthAlign` default is `'start'` vs the gizmo's `'middle'`, a real
-  bug) and `getLongitudinalSpan(length, {insetStart, insetEnd})`;
-  refactor every hardcoded ±L/2 in `street-generated-*`,
-  `street-segment.js`, `street-ground.js` to consume it with zero insets.
-  Zero behavior change, fully unit-tested.
+- **Phase 0 — shared node/span foundations. SHIPPED.**
+  `src/tested/street-nodes-utils.js` is the one home of the endpoint math
+  (`getStreetNodes` / `endpointLocalZ` / `zStartForAlign` /
+  `centerlineX`) that `StreetNodeControls.js`,
+  `managed-street.computeZStart` and `managed-intersection`'s
+  `collectArms` + `applyStreetSnaps` used to re-derive (with drifting
+  defaults), and of `getLongitudinalSpan(length, {insetStart, insetEnd})`,
+  which `street-generated-clones/stencil/pedestrians`, the play colliders
+  and the segment width gizmo now consume with zero insets instead of a
+  hardcoded ±L/2 — the hook pillar 2 writes into. The DOM-facing reader
+  `src/aframe-components/street-nodes.js` (`getStreetEndNodesLocal/World`)
+  gives every managed street's two end nodes — straight from the utils,
+  curved from the curve's end frames — with `along` (into the street
+  body) and `right` vectors; intersections and the graph read nodes only
+  through it. (Fixed on the way: a curved arm's direction was reversed —
+  the end-frame tangent was negated at the start node.)
 - **Phase 1 — play-mode street LOD for ALL scenes** (independent of OSM;
   the cheapest ongoing win for the design target, retroactively covers
   hand-authored scenes). `src/tested/street-lod-utils.js` +
@@ -165,17 +174,52 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
   existing worker protocol (`src/osm/building-tiles.worker.js` pattern —
   the decode modules are already THREE-free by design); suppress/mask a
   way's ground tint after upgrade; `brunnel: bridge` treatment.
-- **Phase 3 — pillar 1: street-owned centerlines + shared end nodes.**
-  `managed-street.points` inline ordered list (straight = 2-point
-  degenerate case) + node ids; `streetCurve` built from `points` (the
-  existing `streetId`+`rev` indirection keeps every ribbon consumer
-  working); the `path` shape demotes to an authoring tool that copies
-  sampled points in; load migration in `json-utils_1.1.js`; a derived
-  `street-graph` scene system rebuilt from entity data (honoring the
-  managed-street JSON round-trip contract). One way = one curved street
-  is already the demo-path behavior (via the path shape, see above);
-  this phase internalizes the points and makes OSM node ids graph node
-  ids shared across ways.
+- **Phase 3 — pillar 1: street-owned centerlines + shared end nodes.
+  SHIPPED** (`docs/curved-street-path.md` is the entry point).
+  `managed-street.points` carries the control points inline (street-local
+  `"x y z, …"`, `src/tested/street-centerline.js`) with `curveType` /
+  `filletRadius` / `closed` beside it; straight = the derived 2-point
+  case, nothing stored. `streetCurve` is built from `points` (the
+  `streetId`+`rev` indirection kept every ribbon consumer working
+  untouched). The `path` shape demoted to an authoring tool: the sidebar
+  copies a picked shape's vertices in as one undo step
+  (`shapeToStreetPoints`), OSM generate writes `points` directly (no
+  scaffolding shape), and `path` itself is a deprecated copy-in input.
+  Load migration: `src/tested/migrate-street-path.js` in the JSON pass
+  plus `managed-street.adoptPath` as the runtime fallback. The endpoint
+  gizmo generalized to one handle per control point (drag rewrites
+  `points`, undoable). Derived `street-graph` scene system
+  (`src/aframe-components/street-graph.js` over
+  `src/tested/street-graph-utils.js`): each managed intersection is a
+  node that absorbs the street ends it owns within its snap radius (junction
+  ends sit at the mouths, meters apart, so proximity alone would split
+  them), remaining ends cluster by proximity; rebuilt on
+  demand and never serialized. Node identity is proximity-derived (the
+  vector tiles carry no OSM node ids); the intersection entity IS the
+  occupant of a junction node. Not yet: insert/delete of control points
+  on the handles.
+- **Node model decisions (Sep 2026, before phase 4).** Streets
+  TERMINATE at nodes; an intersection is the occupant of a node, never a
+  place two continuous ways cross (OSM's through-node topology is
+  approximated, not copied — osm2streets and strassenraumkarte split into
+  road segments between intersections for the same reason: the
+  cross-section changes exactly there). Consequences:
+  - **Every junction node is a street end.** T junctions split the
+    through street too (reversing today's "terminating side road leaves
+    the stretch continuous" policy at phase 5), so insets stay a per-end
+    `{start, end}` pair and no generator ever fills a multi-interval span.
+  - **Continuity is provenance, not geometry.** The pieces of one OSM way
+    keep their identity as a _corridor_: `data-osm-way-id` plus a piece
+    ordinal (layer name "OSM Way 123 · B of D"; serialized as phase 6's
+    `{source: 'osm', wayId, piece}`), and the `street-graph` exposes the
+    ordered pieces of a way so select/rename/re-split act on the corridor.
+  - **Grade separation is not a node.** `brunnel: bridge`/`tunnel` ways
+    keep crossing without a shared node (phase 2 treatment).
+  - After phase 5, `splitStretchAtJunctions` keeps SPLITTING (the
+    intersection needs distinct arms) but its generation-time inset
+    (half carriageway + 2 m) shrinks to ~0: the intersection writes the
+    real per-end inset from `mouth.t`, and counting both would double the
+    gap.
 - **Phase 4 — pillar 2: render-time insets.** Derived, non-serialized
   `insets {start, end}` + `setInset` API consumed via
   `getLongitudinalSpan`; curves get `sStart`/`sEnd` in
@@ -183,11 +227,15 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
 - **Phase 5 — pillar 3: migrate PR #1927 intersections to node
   occupants.** Keep `src/tested/managed-intersection-utils.js` verbatim
   (`mouth.t` IS the inset); `managed-intersection` reads incident
-  streets from the graph (killing its 400 ms signature polling) and
+  streets from the `street-graph` system (`nodeForIntersection`, killing
+  its 400 ms signature polling) and
   writes per-end insets instead of `applyStreetSnaps`; drop the
-  curved-street exclusion. Key test: deleting an intersection restores
+  curved-street exclusion (a curved end already reports its node and
+  `along` direction through `street-nodes.js`). Key test: deleting an intersection restores
   insets to 0 — streets pop back intact. Then upgraded-street junctions
-  get real intersections automatically.
+  get real intersections automatically. Same phase: split the through
+  street at T junctions and drop the generation-time inset (see the node
+  model decisions above).
 - **Phase 6 — full hydration + pinning.** The on-generate slice above
   ships; remaining: the rest of #2004's tag coverage (`shoulder`,
   `placement`/`dual_carriageway`, crossing/signal nodes — #826 is
