@@ -323,8 +323,20 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
 
     // this.object.parent is null when the tracked object has been detached from
     // the scene graph (deleted/undo'd) while still hovered or selected; the
-    // parent-relative rezeroing below would then throw on matrixWorld.
+    // parent-relative rezeroing below would then throw on matrixWorld. There
+    // is nothing to draw for it either: the previous geometry would be kept
+    // and placed at the object's LOCAL position read as world, a ghost box
+    // somewhere else in the scene (#2054). Hide until it is parented again.
     const hasParent = this.object?.parent != null;
+    if (this.object !== undefined && !hasParent) {
+      if (this.visible) this._hiddenParentless = true;
+      this.visible = false;
+      return;
+    }
+    if (this._hiddenParentless) {
+      this._hiddenParentless = false;
+      this.visible = true;
+    }
 
     // The bounds are measured at a temporary pose: the entity is parked at
     // its parent's origin with no rotation, and the parent's world matrix is
@@ -601,6 +613,15 @@ export function Viewport(inspector) {
       if (raw) target = raw;
     }
     if (!target || target === inspector.selectedEntity) return;
+    // The hovered entity can leave the DOM under the cursor: a generated clone
+    // is removed by the detach its own drag committed, and the easy gizmo's
+    // re-attach to the new selection lifts hover suppression with that clone
+    // still remembered here. Nothing sensible can be drawn for it (#2054).
+    if (!target.isConnected || !target.object3D?.parent) {
+      if (lastHoveredEl === target) lastHoveredEl = null;
+      hoverBox.visible = false;
+      return;
+    }
     hoverBox.visible = true;
     hoverBox.setFromObject(target.object3D);
   }
