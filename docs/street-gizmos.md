@@ -14,7 +14,7 @@ sidebar (width/type/elevation) and the reorder buttons.
 
 | Gizmo                             | What it adds                                                                                                                                                                                                                                                                                                                                                                  |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Street Endpoint Nodes** (#1096) | Selecting a **managed street** shows a draggable circle at each end of the street. Dragging a circle keeps the other end fixed; an outline previews the new footprint during the drag, and on release the street's position, Y rotation, and `managed-street.length` are rewritten so the two circles always define the street's ends. One undo step per drag (MultiCommand). |
+| **Street Nodes** (#1096, #1930)   | Selecting a **managed street** shows a draggable circle at each node of its centerline. Straight street: one per end — dragging a circle keeps the other end fixed, an outline previews the new footprint during the drag, and on release the street's position, Y rotation, and `managed-street.length` are rewritten so the two circles always define the street's ends. Curved street (`managed-street.points`): one circle per control point — dragging one previews the re-sampled centerline and on release rewrites `points` (the street re-lays itself along the new curve; its length follows). One undo step per drag. |
 | **Segment Width Handles** (#1218) | Selecting a **street segment** shows a bar along each long edge at the near end (the end focus frames from, next to the width label; on a curved street the bars follow the curve); dragging a bar changes `street-segment.width` live, with the normal managed-street re-layout cascade running during the drag. Shift snaps to 0.5 m.                                       |
 
 Managed streets only: neither gizmo attaches to legacy
@@ -50,11 +50,16 @@ src/editor/lib/gizmos/
   `isManagedStreetSegment()` in `editor/lib/entity.js` is the shared
   predicate).
 - Segment width bars mutate `street-segment.width` live during the drag (so
-  the street's re-layout cascade runs). Endpoint nodes do not touch the
+  the street's re-layout cascade runs). Street nodes do not touch the
   entity until mouse-up (#1942): the dragged circle follows the cursor and a
-  yellow footprint outline previews the resulting street, then position,
-  rotation and length are applied once on release. Both commit one undo step
-  on mouse-up via `commitDrag` → `entityupdate`/`multi`.
+  yellow preview (footprint outline for a straight street, re-sampled
+  centerline for a curved one) shows the resulting street, then position,
+  rotation and length — or `points` — are applied once on release. Both
+  commit one undo step on mouse-up via `commitDrag` → `entityupdate`/`multi`.
+- Endpoint math (which local z each end sits at per `street-align`) comes
+  from `src/tested/street-nodes-utils.js`, shared with managed-intersection
+  and the street graph (#1930 phase 0); the node handles re-read a curved
+  street's points on `street-curve-changed` (undo, sidebar, copy-in).
 - Gizmo objects are named with the `gizmoPrototype` prefix, which is on
   the nav-experimental cursor-anchor exclusion list.
 
@@ -63,8 +68,11 @@ src/editor/lib/gizmos/
 - Segment width drag with `street-align` width `center` grows the segment
   symmetrically, so the dragged edge moves at ~half cursor speed; anchoring
   the opposite edge would need a coordinated street-position change.
-- Endpoint node drags show only an outline preview until release, so
+- Node drags show only a preview until release, so
   clones, striping and terrain flattening do not follow the cursor live.
+- Curved streets' handles move existing control points only; inserting or
+  deleting one means copying a reshaped drawn shape in
+  (`docs/curved-street-path.md`).
 - The simplified move/rotate and ground-clamp prototypes (#1674/#1446) from
   the original lab were not ported. (#1806's segment-gizmo suppression has
   since landed — see above.)
