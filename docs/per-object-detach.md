@@ -152,8 +152,11 @@ bake). Same instinct as rasterize in Photoshop or detach instance in Figma.
   `batch-member` come along), followed by a `componentremove` of the
   generator itself, so nothing regenerates and its `skip` bookkeeping goes
   with it. Builder: `buildDetachAllCommands` in `detachClone.js`;
-  `listGeneratorClones` is the clone census it and the UI share (detachable
-  clones only, slot order).
+  `listGeneratorClones` is the clone census (detachable clones only, slot
+  order) and `getDetachAllBlocker` the one rule set the builder, the AI
+  resolver and the UI gate share (missing generator, surface generator, no
+  live clones). UI doors call `requestDetachAll`, which re-checks at click
+  time and toasts a warning instead of letting the command throw.
 - **Undo** is one entry: the generator comes back with its previous data
   (earlier per-object holes included) and regenerates the clones exactly
   where they were, and the plain entities are removed. The creates run with

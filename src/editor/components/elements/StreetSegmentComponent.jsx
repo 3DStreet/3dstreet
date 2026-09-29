@@ -3,8 +3,10 @@ import PropTypes from 'prop-types';
 import PropertyRow from './PropertyRow';
 import React from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
-import { isDetachableGenerator } from '@/tested/clone-slots.js';
-import { listGeneratorClones } from '../../lib/detachClone.js';
+import {
+  getDetachAllBlocker,
+  requestDetachAll
+} from '../../lib/detachClone.js';
 import {
   ClonedTreesIcon,
   StencilsIcon,
@@ -67,10 +69,7 @@ const DetachAllButton = ({ entity, componentName }) => {
       })}
       onClick={(event) => {
         event.stopPropagation();
-        AFRAME.INSPECTOR.execute('detachallclones', {
-          entity,
-          component: componentName
-        });
+        requestDetachAll(entity, componentName);
       }}
     >
       <FormattedMessage
@@ -486,13 +485,9 @@ export default class Component extends React.Component {
 
   // Whether "Detach all" has anything to detach: a slot-aware generator
   // (clones, stencil, pedestrians) with at least one live clone in the DOM.
-  canDetachAll = () => {
-    const componentName = this.props.name;
-    return (
-      isDetachableGenerator(componentName) &&
-      listGeneratorClones(this.props.entity, componentName).length > 0
-    );
-  };
+  // Render-time census; the click re-checks (requestDetachAll).
+  canDetachAll = () =>
+    getDetachAllBlocker(this.props.entity, this.props.name) === null;
 
   render() {
     const componentName = this.props.name;

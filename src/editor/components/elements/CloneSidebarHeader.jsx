@@ -2,6 +2,7 @@ import PropTypes from 'prop-types';
 import { FormattedMessage, useIntl } from 'react-intl';
 import StreetCrossSectionStrip from './StreetCrossSectionStrip';
 import { getEntityDisplayName } from '../../lib/entity';
+import { requestDetachAll } from '../../lib/detachClone.js';
 
 /**
  * Header for a generated street clone (#2011): the same visual language as
@@ -63,10 +64,10 @@ const CloneSidebarHeader = ({ entity }) => {
                 'Make every object this generator places editable on its own: each becomes a plain model you can move, rotate, duplicate or delete, and the generator is removed. Undo puts them back.'
             })}
             onClick={() =>
-              AFRAME.INSPECTOR.execute('detachallclones', {
-                entity: segmentEl,
-                component: entity.getAttribute('data-parent-component')
-              })
+              requestDetachAll(
+                segmentEl,
+                entity.getAttribute('data-parent-component')
+              )
             }
           >
             <FormattedMessage

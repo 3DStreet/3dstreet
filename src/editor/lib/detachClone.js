@@ -115,8 +115,7 @@ export function listGeneratorClones(segmentEl, componentName) {
     if (child.getAttribute?.('data-parent-component') !== componentName) {
       continue;
     }
-    const slot = getCloneSlot(child);
-    if (slot && slot.componentName === componentName) clones.push(child);
+    if (getCloneSlot(child)) clones.push(child);
   }
   return clones.sort(
     (a, b) =>
@@ -125,11 +124,76 @@ export function listGeneratorClones(segmentEl, componentName) {
   );
 }
 
+/** Whether a generator has at least one live detachable clone (early exit). */
+export function hasGeneratorClones(segmentEl, componentName) {
+  if (!segmentEl) return false;
+  for (const child of segmentEl.children) {
+    if (
+      child.getAttribute?.('data-parent-component') === componentName &&
+      getCloneSlot(child)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Why "Detach all" cannot run on this generator, or null when it can: the
+ * one rule set the command builder, the AI tool resolver and the UI gate
+ * share. `code` is 'missing' (no such component on the segment), 'surface'
+ * (a generator whose output is not per-object detachable: striping, rail)
+ * or 'empty' (no live clones left); `message` is readable as is.
+ */
+export function getDetachAllBlocker(segmentEl, componentName) {
+  if (!segmentEl?.components?.[componentName]) {
+    return {
+      code: 'missing',
+      message: `Segment has no '${componentName}' generator`
+    };
+  }
+  if (!isDetachableGenerator(componentName)) {
+    return {
+      code: 'surface',
+      message: `'${componentName}' is a surface generator and cannot be detached per object (only clones, stencil and pedestrians can)`
+    };
+  }
+  if (!hasGeneratorClones(segmentEl, componentName)) {
+    return {
+      code: 'empty',
+      message: `'${componentName}' has no live clones to detach (all detached already, or it places nothing)`
+    };
+  }
+  return null;
+}
+
+/**
+ * The UI door for "Detach all": re-check the live DOM at click time (the
+ * pill is gated by a render-time census, and the clones can be gone before
+ * React re-renders) and say so in a toast instead of letting the command
+ * constructor throw out of the click handler.
+ */
+export function requestDetachAll(segmentEl, componentName) {
+  const blocker = getDetachAllBlocker(segmentEl, componentName);
+  if (blocker) {
+    globalThis.STREET?.notify?.warningMessage?.(
+      'Nothing to detach: this generator has no objects right now.'
+    );
+    return false;
+  }
+  AFRAME.INSPECTOR.execute('detachallclones', {
+    entity: segmentEl,
+    component: componentName
+  });
+  return true;
+}
+
 /**
  * Resolve the `detachAllClones` AI tool's arguments to the
  * `{ entity, component }` payload DetachAllClonesCommand takes, or throw a
- * readable error: the segment's detachable generators when `component` is
- * wrong or missing, or that the generator has no live clones left.
+ * readable error the model can correct from: the segment's detachable
+ * generators when `component` is missing, unknown or a surface generator,
+ * or that the generator has no live clones left.
  */
 export function resolveDetachAllToolArgs(args = {}) {
   const { segmentId, component } = args;
@@ -137,19 +201,17 @@ export function resolveDetachAllToolArgs(args = {}) {
   const generators = Object.keys(segmentEl.components || {}).filter(
     isDetachableGenerator
   );
-  if (!component || !segmentEl.components?.[component]) {
-    throw new Error(
-      `Entity ${segmentId} has no '${component}' component. Detachable generators on it: ${generators.join(', ') || '(none)'}`
-    );
+  const available = `Detachable generators on ${segmentId}: ${generators.join(', ') || '(none)'}`;
+  // Function-calling models emit null for fields they mean to omit.
+  if (component == null || component === '') {
+    throw new Error(`component is required. ${available}`);
   }
-  if (!isDetachableGenerator(component)) {
+  const blocker = getDetachAllBlocker(segmentEl, component);
+  if (blocker) {
     throw new Error(
-      `'${component}' is a surface generator and cannot be detached per object. Detachable generators on ${segmentId}: ${generators.join(', ') || '(none)'}`
-    );
-  }
-  if (listGeneratorClones(segmentEl, component).length === 0) {
-    throw new Error(
-      `'${component}' on ${segmentId} has no live clones to detach (all detached already, or it places nothing). Use componentRemove to remove the generator itself.`
+      blocker.code === 'empty'
+        ? `${blocker.message} on ${segmentId}. Use componentRemove to remove the generator itself.`
+        : `${blocker.message}. ${available}`
     );
   }
   return { entity: segmentEl, component };
@@ -439,23 +501,14 @@ export function buildDetachCommands(cloneEl, pose = {}, extra = {}) {
  * nothing regenerates and its `skip` bookkeeping goes with it. Undo runs
  * them in reverse: the generator comes back with its previous data (holes
  * included) and regenerates the clones exactly where they were, and the
- * plain entities are removed. Throws when the generator is not a detachable
- * one or has no live clones (then there is nothing to detach; removing the
- * generator is a plain componentremove).
+ * plain entities are removed. Throws (getDetachAllBlocker's message) when
+ * the generator is missing, not per-object detachable or has no live clones;
+ * UI doors go through requestDetachAll, which checks first.
  */
 export function buildDetachAllCommands(segmentEl, componentName) {
-  if (!segmentEl?.components?.[componentName]) {
-    throw new Error(`Segment has no '${componentName}' generator`);
-  }
-  if (!isDetachableGenerator(componentName)) {
-    throw new Error(
-      `'${componentName}' is not a detachable generator (clones, stencil, pedestrians)`
-    );
-  }
+  const blocker = getDetachAllBlocker(segmentEl, componentName);
+  if (blocker) throw new Error(blocker.message);
   const clones = listGeneratorClones(segmentEl, componentName);
-  if (clones.length === 0) {
-    throw new Error(`'${componentName}' has no live clones to detach`);
-  }
   const commands = clones.map((cloneEl) => [
     'entitycreate',
     // The batch lands the selection on the segment once, at the end.

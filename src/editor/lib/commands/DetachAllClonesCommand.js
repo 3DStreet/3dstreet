@@ -80,7 +80,9 @@ export class DetachAllClonesCommand extends MultiCommand {
     // notify is an A-Frame component and unit tests have no scene.
     const n = this.count;
     globalThis.STREET?.notify?.successMessage?.(
-      `${n} ${n === 1 ? 'object' : 'objects'} detached from the street generator: ${n === 1 ? 'it is' : 'they are'} now plain ${n === 1 ? 'model' : 'models'} you can move, rotate, duplicate or delete. Undo puts ${n === 1 ? 'it' : 'them'} back.`
+      n === 1
+        ? '1 object detached from the street generator: it is now a plain model you can move, rotate, duplicate or delete. Undo puts it back.'
+        : `${n} objects detached from the street generator: they are now plain models you can move, rotate, duplicate or delete. Undo puts them back.`
     );
     return result;
   }

@@ -6,6 +6,8 @@ import {
   buildDetachedDefinition,
   findCloneAtSlot,
   getCloneSlot,
+  getDetachAllBlocker,
+  hasGeneratorClones,
   isDetachableClone,
   listCloneSlots,
   listGeneratorClones,
@@ -574,6 +576,37 @@ describe('detachClone (#2011)', () => {
         expect(listGeneratorClones(null, 'street-generated-clones__1')).toEqual(
           []
         );
+        expect(hasGeneratorClones(segment, 'street-generated-clones__1')).toBe(
+          true
+        );
+        expect(hasGeneratorClones(segment, 'street-generated-clones__9')).toBe(
+          false
+        );
+      });
+    });
+
+    describe('getDetachAllBlocker', () => {
+      it('is null for a detachable generator with live clones, else a reason', () => {
+        const segment = makeSegment();
+        segment.components['street-generated-striping__1'] = { data: {} };
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-clones__2')
+        ).toMatchObject({ code: 'missing' });
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-striping__1')
+        ).toMatchObject({ code: 'surface' });
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-clones__1')
+        ).toMatchObject({ code: 'empty' });
+        makeClone(segment);
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-clones__1')
+        ).toBeNull();
+        expect(
+          getDetachAllBlocker(null, 'street-generated-clones__1')
+        ).toMatchObject({
+          code: 'missing'
+        });
       });
     });
 
@@ -618,7 +651,7 @@ describe('detachClone (#2011)', () => {
         ).toThrow(/no 'street-generated-clones__2' generator/);
         expect(() =>
           buildDetachAllCommands(segment, 'street-generated-striping__1')
-        ).toThrow(/not a detachable generator/);
+        ).toThrow(/surface generator/);
         expect(() =>
           buildDetachAllCommands(segment, 'street-generated-clones__1')
         ).toThrow(/no live clones/);
@@ -646,11 +679,17 @@ describe('detachClone (#2011)', () => {
             component: 'street-generated-clones__3'
           })
         ).toThrow(
-          /no 'street-generated-clones__3' component.*street-generated-clones__1/
+          /no 'street-generated-clones__3' generator.*street-generated-clones__1/
         );
-        expect(() =>
-          resolveDetachAllToolArgs({ segmentId: 'seg-1', component: null })
-        ).toThrow(/Detachable generators on it: street-generated-clones__1/);
+        // omitted or null (function-calling models emit null): a plain
+        // "required" message, never "no 'undefined' component"
+        for (const component of [undefined, null, '']) {
+          expect(() =>
+            resolveDetachAllToolArgs({ segmentId: 'seg-1', component })
+          ).toThrow(
+            /^component is required\. Detachable generators on seg-1: street-generated-clones__1$/
+          );
+        }
         expect(() =>
           resolveDetachAllToolArgs({
             segmentId: 'seg-1',
