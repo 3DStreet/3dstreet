@@ -5,6 +5,8 @@ import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
 import { EasyGizmoControls } from './gizmos/EasyGizmoControls.js';
 import { installEasyGizmoOutline } from './gizmos/easyGizmoOutline.js';
 import { easyGizmoCommandName } from './gizmos/easyGizmoMessages.js';
+import { installEditorFrame } from './editorFrame.js';
+import { trackLiveGroupBounds } from './groups/groupBounds.js';
 import { DEFAULT_TRANSFORM_MODE } from './transformModes.js';
 import { computeRibbonOutline } from '@/tested/street-path-utils.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
@@ -992,6 +994,10 @@ export function Viewport(inspector) {
   wireEasyGizmo(easyGizmoCommandName);
   sceneHelpers.add(easyGizmoControls);
   inspector.easyGizmoControls = easyGizmoControls;
+
+  // Work that must see each frame's final transforms before it is drawn runs
+  // in this window; the selected group's bounds are kept current there.
+  trackLiveGroupBounds(installEditorFrame(sceneEl), sceneEl);
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
