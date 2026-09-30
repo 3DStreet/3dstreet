@@ -588,11 +588,16 @@ function send(type, at) {
     });
   }
   canvas.dispatchEvent(event);
+  return event;
 }
 
+// A mouse press as the browser delivers it: a cancelled pointerdown (a gizmo
+// claiming the press) suppresses the compatibility mousedown and mouseup,
+// and the click still follows (Pointer Events, "PREVENT MOUSE EVENT flag").
+let mouseSuppressed = false;
 function press(at) {
-  send('pointerdown', at);
-  send('mousedown', at);
+  mouseSuppressed = send('pointerdown', at).defaultPrevented;
+  if (!mouseSuppressed) send('mousedown', at);
 }
 
 function move(at) {
@@ -601,7 +606,9 @@ function move(at) {
 
 function release(at) {
   send('pointerup', at);
-  send('mouseup', at);
+  if (!mouseSuppressed) send('mouseup', at);
+  send('click', at);
+  mouseSuppressed = false;
 }
 
 const offset = (at, dx, dy = 0) => ({ x: at.x + dx, y: at.y + dy });

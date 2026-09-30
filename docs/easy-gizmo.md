@@ -113,7 +113,10 @@ active at once, but nothing moves until the pointer has been 2 CSS pixels or
 more from the press point, including coalesced samples (`pressClassifier.js`).
 Then the drag starts from the press point. Released sooner, with no time
 limit, it is a click: the gizmo dispatches `handleClick` with the press point
-and the click count, and nothing else. `handlePress` and `handlePressEnd`
+and the click count, and nothing else. A mouse's count is known only from the
+`click` event that follows the release (a cancelled `pointerdown` means no
+`mousedown` is sent to carry it), so a mouse click is reported from that event;
+a touch press is reported on release. `handlePress` and `handlePressEnd`
 bracket the held press; blur, `pointercancel`, Escape, detach and closing the
 editor end it with nothing done, and an Escape that ends one does nothing
 else. For a group, such a click over its box opens the group, and the

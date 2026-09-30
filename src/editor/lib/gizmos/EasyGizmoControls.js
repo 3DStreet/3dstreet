@@ -358,6 +358,10 @@ class EasyGizmoControls extends GizmoPointerControls {
     this._policy = null;
     // A press held back until it is known to be a drag (policy.deferPress).
     this._deferred = null;
+    // A held press released as a mouse click, waiting for the click event
+    // that carries its count (see _reportClick), and its fallback timer.
+    this._pendingClick = null;
+    this._pendingClickTimer = null;
     // A policy's pivot, captured at the start of a gesture and held until it
     // ends: in the entity's own frame, its parent's frame and the world.
     this._pivotLocal = new THREE.Vector3();
@@ -893,6 +897,7 @@ class EasyGizmoControls extends GizmoPointerControls {
   detach() {
     if (!this.el) return this;
     this._clearDeferredPress();
+    this._dropPendingClick();
     // Restore a live gesture while its entity is still attached.
     if (this.isDragging) this.endGesture('detach');
     this.el.removeEventListener('model-loaded', this._onModelLoaded);
@@ -1065,10 +1070,6 @@ class EasyGizmoControls extends GizmoPointerControls {
   _onSuppressClaimed(event) {
     if (!this._pressWasClaimed) return;
     this._suppress(event);
-    // The browser's click count arrives on the mouse family only.
-    if (this._deferred && event.type === 'mousedown') {
-      this._deferred.detail = event.detail || 1;
-    }
   }
 
   /**
@@ -1088,6 +1089,7 @@ class EasyGizmoControls extends GizmoPointerControls {
    * at (#2054).
    */
   _onSuppressLatched(event) {
+    this._flushPendingClick(event.detail || 1);
     if (!this._pressWasClaimed) return;
     if (event.target !== this._canvas()) return;
     this._suppress(event);
@@ -1197,8 +1199,6 @@ class EasyGizmoControls extends GizmoPointerControls {
       clientX: event.clientX,
       clientY: event.clientY,
       pointerId: event.pointerId,
-      // The click count; see _onSuppressClaimed. A touch press has none.
-      detail: 1,
       classifier: new PressClassifier(event.clientX, event.clientY)
     };
     this._pointerId = event.pointerId ?? null;
@@ -1234,6 +1234,47 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.updateMouse(event);
     this._trackDrag(event);
     return true;
+  }
+
+  /**
+   * Report a held press released at `event` as a click: 'handleClick' with
+   * the press point and the browser's click count as `detail`. A mouse's
+   * count arrives only on the click event that trails the release: the
+   * compatibility mousedown that would carry it is never sent, because the
+   * press's pointerdown was cancelled, and pointer events carry none. So a
+   * mouse click is reported from that click event (_onSuppressLatched), or
+   * as a single click once the release's task is over if none follows. A
+   * touch press has no count, and no click follows it: it is reported at
+   * once.
+   */
+  _reportClick(press, event) {
+    const click = {
+      type: 'handleClick',
+      clientX: press.clientX,
+      clientY: press.clientY,
+      detail: 1
+    };
+    if ((event.pointerType || 'mouse') === 'touch') {
+      this.dispatchEvent(click);
+      return;
+    }
+    this._flushPendingClick(1);
+    this._pendingClick = click;
+    this._pendingClickTimer = setTimeout(() => this._flushPendingClick(1), 0);
+  }
+
+  _flushPendingClick(detail) {
+    const click = this._pendingClick;
+    if (!click) return;
+    this._dropPendingClick();
+    click.detail = detail;
+    this.dispatchEvent(click);
+  }
+
+  _dropPendingClick() {
+    this._pendingClick = null;
+    clearTimeout(this._pendingClickTimer);
+    this._pendingClickTimer = null;
   }
 
   /** End a held press with nothing done. True when there was one. */
@@ -1338,12 +1379,7 @@ class EasyGizmoControls extends GizmoPointerControls {
         // Still within the click distance: a click, and nothing else happens.
         this._suppress(event);
         this._clearDeferredPress();
-        this.dispatchEvent({
-          type: 'handleClick',
-          clientX: press.clientX,
-          clientY: press.clientY,
-          detail: press.detail
-        });
+        this._reportClick(press, event);
         return;
       }
       // Released after moving away with no pointermove between: a drag that

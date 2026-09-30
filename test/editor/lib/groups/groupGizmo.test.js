@@ -191,10 +191,14 @@ function send(type, at, options = {}) {
 const isMouse = (options) => (options.pointerType || 'mouse') === 'mouse';
 
 // A press as the browser delivers it: the pointer event, then (for a mouse)
-// the compatibility mousedown carrying the click count.
+// the compatibility mousedown carrying the click count, unless something
+// cancelled the pointerdown, as a gizmo claiming the press does: that
+// suppresses the compatibility mousedown and mouseup of the press, and the
+// click still follows (Pointer Events, "PREVENT MOUSE EVENT flag").
+let mouseSuppressed = false;
 function press(at, options = {}) {
-  send('pointerdown', at, options);
-  if (isMouse(options)) send('mousedown', at, options);
+  mouseSuppressed = send('pointerdown', at, options).defaultPrevented;
+  if (isMouse(options) && !mouseSuppressed) send('mousedown', at, options);
 }
 
 function move(at, options = {}) {
@@ -204,9 +208,10 @@ function move(at, options = {}) {
 function release(at, options = {}) {
   send('pointerup', at, options);
   if (isMouse(options)) {
-    send('mouseup', at, options);
+    if (!mouseSuppressed) send('mouseup', at, options);
     send('click', at, options);
   }
+  mouseSuppressed = false;
 }
 
 function clickAt(at, options = {}) {
@@ -831,6 +836,20 @@ describe('a press on a group handle', () => {
     clickAt(again, { detail: 2 });
     send('dblclick', again, { detail: 2 });
     expect(teleported).toEqual([]);
+  });
+
+  it('opens once on a still mouse release that no click event follows, when the release is over, and not before', async () => {
+    const { g } = farGroup();
+    select(g);
+    const at = handlePoint('move', { overBoxOf: g });
+    press(at);
+    send('pointerup', at);
+    // The count comes with the click event; without one, the release's task
+    // ends first.
+    expect(h.openIds()).toEqual([]);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(h.openIds()).toEqual([g.id]);
+    expect(h.inspector.selectedEntity).toBe(g);
   });
 
   it('frames as usual on a double-click on a handle that entered nothing', () => {
