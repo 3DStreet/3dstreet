@@ -359,6 +359,24 @@ describe('the drop strip after the last row', () => {
     ]);
     expect(root.lastElementChild).toBe(document.getElementById('m'));
   });
+
+  it('offers nothing for the last row, even with an unlisted child after it, and still takes a row from higher up (fails if a no-op drop rebuilds the item)', async () => {
+    makeEntity(root, { id: 'first', name: 'First' });
+    makeEntity(root, { id: 'last', name: 'Last' });
+    // Batching's own root, which the list leaves out.
+    makeEntity(root, { id: 'batch-models-root' });
+    await renderPanel();
+    const strip = document.querySelector('.layers-drop-end');
+
+    startDrag('Last');
+    expect(dragOver(strip, 0.5)).toBe(false);
+    drop(strip);
+    expect(reparents()).toEqual([]);
+    expect(editor.history.undos).toHaveLength(0);
+
+    startDrag('First');
+    expect(dragOver(strip, 0.5)).toBe(true);
+  });
 });
 
 describe('a move in progress', () => {

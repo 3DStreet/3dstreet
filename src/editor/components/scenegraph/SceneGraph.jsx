@@ -271,9 +271,22 @@ class SceneGraph extends React.Component {
       return false;
     }
     if (draggedEntity.parentNode === root) {
-      return root.lastElementChild !== draggedEntity;
+      // Already the last row: a drop would move nothing the list shows.
+      return this.rowFollows(draggedEntity);
     }
     return canReparent(draggedEntity, root);
+  };
+
+  // Is a row listed below `entity` among its siblings? Children the list
+  // leaves out (such as the batch root) and the Starting View, which is
+  // listed first wherever it is, are not.
+  rowFollows = (entity) => {
+    for (let el = entity.nextElementSibling; el; el = el.nextElementSibling) {
+      if (this.includeInSceneGraph(el) && !el.hasAttribute('viewer-start')) {
+        return true;
+      }
+    }
+    return false;
   };
 
   onDragOverEnd = (e) => {
