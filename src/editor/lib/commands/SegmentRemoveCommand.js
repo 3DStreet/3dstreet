@@ -1,7 +1,7 @@
 /* global STREET */
 import Events from '../Events.js';
 import { Command } from '../command.js';
-import { createUniqueId } from '../entity.js';
+import { createUniqueId } from '../entity.jsx';
 
 /**
  * Removes a street-segment from a managed-street and serializes it for undo.

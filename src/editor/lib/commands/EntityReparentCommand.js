@@ -1,7 +1,7 @@
 /* global THREE, STREET */
 import Events from '../Events.js';
 import { Command } from '../command.js';
-import { createUniqueId } from '../entity.js';
+import { createUniqueId } from '../entity.jsx';
 import { groupMessage } from '../groups/groupMessages.js';
 import { localPoseFromWorld } from '../groups/groupTransformMath.js';
 

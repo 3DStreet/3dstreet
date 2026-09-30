@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createEntity } from '@/editor/lib/entity.js';
+import { createEntity } from '@/editor/lib/entity.jsx';
 
-// The jsdom suite loads editor modules that keep JSX in `.js` files and panels
-// that reach the cloud-scene API at module evaluation. These pin that both load,
-// so a test of a panel or of entity.js can use the real module rather than a mock.
+// The jsdom suite loads the entity module (entity.jsx) and panels that reach
+// the cloud-scene API at module evaluation. These pin that both load, so a test
+// of a panel or of entity.jsx can use the real module rather than a mock.
 
 describe('editor modules load under jsdom', () => {
-  it('createEntity builds and appends a plain entity under the given parent (fails if entity.js cannot be transformed)', () => {
+  it('createEntity builds and appends a plain entity under the given parent (fails if entity.jsx cannot be transformed)', () => {
     const parent = document.createElement('a-entity');
     parent.id = 'smoke-parent';
     document.body.append(parent);

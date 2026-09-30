@@ -4,7 +4,7 @@ import {
   createUniqueId,
   findClosestEntity,
   prepareForSerialization
-} from '../entity.js';
+} from '../entity.jsx';
 
 export class EntityRemoveCommand extends Command {
   static llmTool = {

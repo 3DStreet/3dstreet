@@ -14,7 +14,7 @@ import { refuseGuardedTransform } from '@/editor/lib/transformGuard.js';
 import SceneGraph from '@/editor/components/scenegraph/SceneGraph.jsx';
 import { boxMesh } from '../lib/groups/_groupFixtures.js';
 
-// The layer panel as the editor renders it (real entity.js, real commands and
+// The layer panel as the editor renders it (real entity.jsx, real commands and
 // guard), over entities built without A-Frame. Drags are driven with the DOM
 // drag events the rows listen to; a row is 40 px tall.
 

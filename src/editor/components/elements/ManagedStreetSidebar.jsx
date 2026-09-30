@@ -10,7 +10,7 @@ import EntityLabel from '../scenegraph/EntityLabel';
 import EntityActionButtons, { IconButton } from './EntityActionButtons';
 import Events from '../../lib/Events';
 import { saveString } from '@/editor/lib/utils';
-import { canRenameEntity, createUniqueId } from '@/editor/lib/entity.js';
+import { canRenameEntity, createUniqueId } from '@/editor/lib/entity.jsx';
 import useStore from '@/store.js';
 import { StreetToShapesGraphic } from '@/editor/components/modals/ConfirmModal/StreetToShapesGraphic';
 

@@ -1,6 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
-import { createEntity, createUniqueId } from '../entity.js';
+import { createEntity, createUniqueId } from '../entity.jsx';
 import { isGroupableItem } from '../groups/groupModel.js';
 import {
   beginPlacement,

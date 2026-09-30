@@ -25,7 +25,7 @@ import {
   cloneSelectedEntity,
   removeSelectedEntity,
   ensureViewerStartAtCurrentView
-} from '../../lib/entity.js';
+} from '../../lib/entity.jsx';
 import { editShortcuts } from '../../lib/editShortcuts.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { SUPPORTED_LOCALES } from '@/editor/i18n/config';

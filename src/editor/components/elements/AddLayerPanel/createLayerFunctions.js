@@ -1,4 +1,4 @@
-import { createUniqueId } from '../../../lib/entity.js';
+import { createUniqueId } from '../../../lib/entity.jsx';
 import * as defaultStreetObjects from './defaultStreets.js';
 import { VEHICLE_PRESETS } from '../../../../aframe-components/play/vehicle-presets.js';
 import { encodeManifest } from '../../../../aframe-components/play/manifest-codec.js';

@@ -1,6 +1,6 @@
 import { Parser } from 'expr-eval';
 import { Command } from '../command.js';
-import { createUniqueId, updateEntity } from '../entity.js';
+import { createUniqueId, updateEntity } from '../entity.jsx';
 
 /**
  * @param editor Editor

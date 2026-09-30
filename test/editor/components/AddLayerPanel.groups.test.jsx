@@ -15,7 +15,7 @@ import {
 } from '../lib/groups/_placementHarness.js';
 import { worldOf, worldOfDefinition } from '../lib/groups/_entityElement.js';
 
-// The Add Layer panel as the editor renders it (real entity.js, commands,
+// The Add Layer panel as the editor renders it (real entity.jsx, commands,
 // guard and upload pipeline; see _placementHarness). The ground point comes
 // from the real picker.
 

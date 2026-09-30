@@ -24,7 +24,7 @@
  * Copy itself never touches undo history; Cut is a Copy plus the existing
  * undoable `entityremove` command.
  */
-import { createUniqueId } from './entity.js';
+import { createUniqueId } from './entity.jsx';
 import { isGroupableItem } from './groups/groupModel.js';
 import {
   beginPlacement,
