@@ -102,6 +102,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // The entity a heading-preserving first-step focus is gliding to, so a
     // repeat double-click on it mid-glide runs the full framing (#2054).
     this._softFocusTarget = null;
+    this._focusStepCueShown = false;
     this.panSpeed = 0.002;
     // Legacy field used only by the ActionBar +/- buttons (_zoomActionBar),
     // which is out of the wheel-dolly path and must keep its current feel.
@@ -448,7 +449,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // the first call keeps the camera's heading and only slides it so the
   // entity is centered at framing distance; repeating it on the same entity
   // once there (or while still gliding there) runs the full framing, with
-  // the orientation of the entity's focus view.
+  // the orientation of the entity's focus view. Managed streets and their
+  // segments skip the first step: their framing orients the camera to the
+  // street's direction, which the street editing handles are laid out on.
   focus(target, options = {}) {
     if (this._disabledByOrtho || !this._focusAnimation) return;
     // A committed-motion tween (teleport / preset / recovery / scene-load
@@ -459,6 +462,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       this._focusAnimation.transitioning && this._softFocusTarget === target;
     this._cancelCameraTween();
     this._softFocusTarget = null;
+    this._emitFocusStepCue(false);
 
     // The Starting View has no geometry to frame: focusing it means going
     // to the pose it stores, the same glide as Preview Start / Play.
@@ -473,7 +477,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const camera = this._camera;
     const frame = this._focusFrame(target);
 
-    if (options.twoStep && !softFocusInFlight) {
+    if (options.twoStep && !softFocusInFlight && !frame.directional) {
       const softPosition = headingPreservingFocusPosition(
         camera.quaternion,
         frame.center,
@@ -545,6 +549,11 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     }
 
     const targetEl = target.el;
+    // Streets and segments frame along the street's direction (#2054).
+    const isDirectional = Boolean(
+      targetEl?.hasAttribute?.('managed-street') ||
+      targetEl?.hasAttribute?.('street-segment')
+    );
     const storedPose = targetEl?.getAttribute?.('focus-camera-pose');
     if (storedPose && storedPose.lookAt === false) {
       const cameraState = resolveFocusPose(target, storedPose);
@@ -553,6 +562,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         center: targetCenter,
         distance: targetCenter.distanceTo(new THREE.Vector3(p.x, p.y, p.z)),
         minY,
+        directional: isDirectional,
         cameraState
       };
     }
@@ -617,8 +627,17 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       center: targetCenter,
       distance: cameraPosition.distanceTo(targetCenter),
       minY,
+      directional: isDirectional,
       position: cameraPosition
     };
+  }
+
+  // Show/hide the "double-click again to frame" hint after a
+  // heading-preserving first step (#2054), rendered by FocusStepCue.jsx.
+  _emitFocusStepCue(show) {
+    if (!show && !this._focusStepCueShown) return;
+    this._focusStepCueShown = show;
+    this._sceneEl?.emit?.('focus-step-cue', { show }, false);
   }
 
   // Run the focus-animation tween as a look-at glide (#2054) to
@@ -658,6 +677,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
   // committed tween.
   focusCameraState(cameraState) {
     if (this._disabledByOrtho || !cameraState) return;
+    this._emitFocusStepCue(false);
     const camera = this._camera;
     const pos = cameraState.position || {};
     const rot = cameraState.rotation || {};
@@ -1010,6 +1030,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         // `transitioning = false` on its final frame.
         if (this._focusAnimation && !this._focusAnimation.transitioning) {
           this._sensor.reseedLegitPose();
+          // A heading-preserving first step just landed: hint that a
+          // second double-click frames the entity fully.
+          if (this._softFocusTarget) this._emitFocusStepCue(true);
         }
         this._funnel.dispatch();
       };

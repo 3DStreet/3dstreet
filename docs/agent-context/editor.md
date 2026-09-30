@@ -58,8 +58,12 @@ derive rotation each frame (`createLookAtGlide` in
 `src/editor/lib/cameraGlide.js`); don't slerp orientations for a new glide.
 Double-click routes emit `objectfocus` with `{ twoStep: true }`: the first
 keeps the camera's heading and slides the entity to the view center at framing
-distance, a repeat (or one mid-glide) runs the full framing. F-key, Focus
-buttons, hotspots and the AI tool keep the one-step full framing.
+distance, a repeat (or one mid-glide) runs the full framing. Managed streets
+and segments skip the first step (their framing orients the camera to the
+street, which the street editing handles depend on). When the first step lands,
+the controls emit `focus-step-cue` and `FocusStepCue.jsx` flashes a small
+"Double-click again to frame" pill under the view center. F-key, Focus buttons,
+hotspots and the AI tool keep the one-step full framing.
 
 **Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
 spans `src/aframe-components/`, `src/editor/components/elements/`, `src/editor/lib/` and
