@@ -174,6 +174,29 @@ describe('pasting an item copied from inside a group', () => {
   });
 });
 
+describe('pasting with no group open', () => {
+  it('pastes an item from under a moved, turned parent at the top level with its saved local pose, 5 along X (fails if world-pose pasting reaches an item outside any group)', async () => {
+    const street = entityIn(scene.root, {
+      id: 'street',
+      position: '20 0 0',
+      rotation: '0 30 0'
+    });
+    const prop = entityIn(street, {
+      id: 'prop',
+      position: '1 0 2',
+      rotation: '0 90 0'
+    });
+    await copy(prop);
+    await pasteFromClipboard();
+    expect(pastes()).toHaveLength(1);
+    expect(pastes()[0][1].requireParent).toBeUndefined();
+    const pasted = pastedElement();
+    expect(pasted.parentNode).toBe(scene.root);
+    expect(pasted.getAttribute('position')).toEqual({ x: 6, y: 0, z: 2 });
+    expect(pasted.getAttribute('rotation')).toEqual({ x: 0, y: 90, z: 0 });
+  });
+});
+
 describe('copying', () => {
   it('records the item and adds nothing: no command, no history entry, no change to the scene (fails if copy creates anything)', async () => {
     const { member } = groupWithMember();

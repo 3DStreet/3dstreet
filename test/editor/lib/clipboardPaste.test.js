@@ -3,11 +3,26 @@ import {
   copySelectedEntity,
   pasteFromClipboard
 } from '@/editor/lib/clipboard.js';
+import { defineEntityElement } from './groups/_entityElement.js';
 
 // A paste with no group involved: the payload the paste command receives is
-// fixed, whatever else the clipboard learns to do. The scene is plain DOM; the
-// serializer returns the copied item's data as saved, where a street prop's
-// position is local to its segment.
+// fixed, whatever else the clipboard learns to do. Entities have object3Ds
+// posed by their attributes (see _entityElement.js), so the copy records a
+// real world pose that a paste must not use. The serializer returns the copied
+// item's data as saved, where a street prop's position is local to its
+// segment.
+
+defineEntityElement();
+
+function entityIn(parent, { id, className, position, rotation } = {}) {
+  const el = document.createElement('a-entity');
+  if (id) el.id = id;
+  if (className) el.className = className;
+  parent.append(el);
+  if (position) el.setAttribute('position', position);
+  if (rotation) el.setAttribute('rotation', rotation);
+  return el;
+}
 
 let executed;
 let clipboardText;
@@ -19,14 +34,18 @@ beforeEach(() => {
   root.id = 'street-container';
   document.body.append(root);
   // A street at x = 20, turned, with a prop in its segment's prop holder.
-  root.innerHTML = `
-    <a-entity id="street" position="20 0 0" rotation="0 30 0">
-      <a-entity id="segment" class="segment-parent-0" position="4 0 0">
-        <a-entity class="custom-group">
-          <a-entity id="prop"></a-entity>
-        </a-entity>
-      </a-entity>
-    </a-entity>`;
+  const street = entityIn(root, {
+    id: 'street',
+    position: '20 0 0',
+    rotation: '0 30 0'
+  });
+  const segment = entityIn(street, {
+    id: 'segment',
+    className: 'segment-parent-0',
+    position: '4 0 0'
+  });
+  const holder = entityIn(segment, { className: 'custom-group' });
+  entityIn(holder, { id: 'prop', position: '1 0 2', rotation: '0 90 0' });
   vi.stubGlobal('AFRAME', {
     INSPECTOR: {
       config: { defaultParent: '#street-container' },

@@ -16,10 +16,13 @@ const onChanged = (groupEl) => emitted.push(groupEl);
 const renderer = {};
 const camera = new THREE.PerspectiveCamera();
 
-// One editor frame in the renderer's order. `between` runs after the before
-// hook returns and before the after hook: what that frame draws.
-function frame(between) {
+// One editor frame in the renderer's order. `early` runs once the frame's
+// clock has advanced and before the render starts (where a tick handler or an
+// input event reads); `between` runs after the before hook returns and before
+// the after hook: what that frame draws.
+function frame(between, { early } = {}) {
   sceneEl.time += 16;
+  early?.();
   const scene3D = sceneEl.object3D;
   scene3D.updateMatrixWorld();
   scene3D.onBeforeRender(renderer, scene3D, camera, null);
@@ -55,7 +58,7 @@ afterEach(() => {
 });
 
 describe('live group bounds in the editor frame', () => {
-  it('picks up a member moved with no event, in the frame it moved, despite an earlier on-demand read (fails with event-driven invalidation or a recompute satisfied by the read)', () => {
+  it('picks up a member moved with no event, in the frame it moved, despite an on-demand read earlier in that frame (fails with event-driven invalidation or a recompute satisfied by the read)', () => {
     const g = group(sceneEl);
     const member = entity(g);
     boxMesh(member, [0, 0, 0], [1, 1, 1]);
@@ -66,12 +69,17 @@ describe('live group bounds in the editor frame', () => {
     expect(emitted).toEqual([g]);
 
     member.object3D.position.set(5, 0, 0);
-    // An on-demand read before this frame's window returns the stored box.
-    expectBox(getGroupBounds(g), [0, 0, 0], [1, 1, 1]);
-    frame(() => {
-      expectBox(getGroupBounds(g), [5, 0, 0], [6, 1, 1]);
-      expect(emitted).toEqual([g, g]);
-    });
+    frame(
+      () => {
+        expectBox(getGroupBounds(g), [5, 0, 0], [6, 1, 1]);
+        expect(emitted).toEqual([g, g]);
+      },
+      {
+        // An on-demand read in this frame, before its window, returns the
+        // stored box.
+        early: () => expectBox(getGroupBounds(g), [0, 0, 0], [1, 1, 1])
+      }
+    );
   });
 
   it('includes a mesh added since the last frame, still at its default matrixWorld when added', () => {

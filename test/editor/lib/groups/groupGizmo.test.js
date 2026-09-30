@@ -375,17 +375,19 @@ describe('the easy gizmo on a group', () => {
     expect(at.z).toBeCloseTo(22, 6);
   });
 
-  it('moves its pad in the same frame the members move, with no event', () => {
+  it('moves its pad in the same frame the members move, with no event, onto their new bottom (fails with a box read once at attach)', () => {
     const { g, member } = farGroup();
     select(g);
-    member.object3D.position.x = 3;
-    let padX;
+    // Across and up: the center gives the pad's X, the box's bottom its Y.
+    member.object3D.position.set(3, 2, 0);
+    let pad;
     h.frame(() => {
-      padX = new THREE.Vector3().setFromMatrixPosition(
+      pad = new THREE.Vector3().setFromMatrixPosition(
         controls.moveGroup.matrixWorld
-      ).x;
+      );
     });
-    expect(padX).toBeCloseTo(15, 6);
+    expect(pad.x).toBeCloseTo(15, 6);
+    expect(pad.y).toBeCloseTo(2.5, 6);
   });
 
   it('offers it in every transform mode, and the stock gizmo only to items', () => {
@@ -505,6 +507,40 @@ describe('the easy gizmo on a group', () => {
     expect(walks.mock.contexts.filter((c) => c === g.object3D)).toHaveLength(1);
     expect(worldOf(controls.moveGroup).z).toBeCloseTo(24, 6);
   });
+
+  it.each(['segments-changed', 'alignment-changed', 'shape-geometry-changed'])(
+    'keeps moving the group when a member sends %s, which ends a drag of an item (fails if geometry changing inside a group ends its gesture)',
+    (type) => {
+      const { g, member } = farGroup();
+      select(g);
+      const start = pad();
+      press(start);
+      move(offset(start, 3));
+      expect(controls.isDragging).toBe(true);
+      member.dispatchEvent(new Event(type, { bubbles: true }));
+      expect(controls.isDragging).toBe(true);
+      move(offset(start, 40));
+      h.frame();
+      release(offset(start, 40));
+      h.frame();
+      expect(g.object3D.position.x).not.toBe(0);
+      expect(history()).toBe(1);
+
+      // The same event ends the drag of an ordinary item.
+      const box = posable(solid(h.streetContainer, [0, 0, 0], [1, 1, 1]), {
+        position: [20, 0, 22]
+      });
+      select(box);
+      lookAtGizmo();
+      const itemStart = pad();
+      press(itemStart);
+      move(offset(itemStart, 3));
+      expect(controls.isDragging).toBe(true);
+      box.dispatchEvent(new Event(type, { bubbles: true }));
+      expect(controls.isDragging).toBe(false);
+      release(offset(itemStart, 3));
+    }
+  );
 
   it('turns about the center held from the press, even when a member moves meanwhile', () => {
     const { g, member } = farGroup();

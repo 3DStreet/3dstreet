@@ -117,6 +117,22 @@ describe('uniform group scale', () => {
     ).toBe(null);
   });
 
+  it('judges a one-axis edit against the scale the group has now, not against 1 (fails if the other axes are read as 1)', () => {
+    const g = withId(group(root));
+    g.setAttribute('scale', '2 2 2');
+    const scaleX = (value) =>
+      execute(editor, 'entityupdate', {
+        entity: g,
+        component: 'scale',
+        property: 'x',
+        value
+      });
+    // x = 1 would leave 1 2 2.
+    expect(scaleX(1)).toBe(groupMessage('nonUniformScale'));
+    expect(editor.history.undos).toHaveLength(0);
+    expect(scaleX(2)).toBe(null);
+  });
+
   it('leaves other entities free to scale unevenly', () => {
     const plain = withId(entity(root));
     expect(

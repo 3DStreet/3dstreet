@@ -54,6 +54,43 @@ describe('rotation about a center', () => {
     expect(out.y).toBeCloseTo(0, 9);
   });
 
+  it('turns a pitched group about the vertical through the pivot (fails if the turn is taken in the group frame)', () => {
+    // Pitched 10 degrees, yawed from 30 to 60: a 30 degree turn about +Y.
+    const qStart = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(deg(10), deg(30), 0, 'YXZ')
+    );
+    const qNow = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(deg(10), deg(60), 0, 'YXZ')
+    );
+    const posStart = new THREE.Vector3(1, 2, 3);
+    const pivot = new THREE.Vector3(4, 5, -2);
+    const out = positionForRotationAboutCenter(
+      posStart,
+      qStart,
+      qNow,
+      pivot,
+      new THREE.Vector3()
+    );
+
+    // posStart turned 30 degrees about the vertical through the pivot,
+    // written out: x' = x cos + z sin, z' = -x sin + z cos.
+    const dx = posStart.x - pivot.x;
+    const dz = posStart.z - pivot.z;
+    const c = Math.cos(deg(30));
+    const s = Math.sin(deg(30));
+    expect(out.x).toBeCloseTo(pivot.x + dx * c + dz * s, 9);
+    expect(out.y).toBeCloseTo(posStart.y, 9);
+    expect(out.z).toBeCloseTo(pivot.z - dx * s + dz * c, 9);
+
+    // The pivot, a point of the group, stays where it was.
+    const pivotInGroup = pivot
+      .clone()
+      .sub(posStart)
+      .applyQuaternion(qStart.clone().invert());
+    const pivotAfter = pivotInGroup.applyQuaternion(qNow).add(out);
+    expect(pivotAfter.distanceTo(pivot)).toBeLessThan(1e-9);
+  });
+
   it('takes the total turn from the gesture start, not a per-call increment', () => {
     const qStart = new THREE.Quaternion().setFromAxisAngle(
       new THREE.Vector3(0, 1, 0),
