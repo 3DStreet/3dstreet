@@ -121,11 +121,11 @@ export function initRaycaster(inspector) {
     // segment, then child — see cascadingSelection.js. Hover previews the
     // same resolution, so the hover box always shows what a click selects.
     // A click never reaches into a closed user group: it selects the group.
-    const open = inspector.groupScope.openElements();
+    const openGroups = inspector.groupScope.openElements();
     return resolveClickSelection(
       intersectedEl,
       inspector.selectedEntity,
-      open.length ? new Set(open) : undefined
+      openGroups.length ? new Set(openGroups) : undefined
     );
   }
 
@@ -203,13 +203,13 @@ export function initRaycaster(inspector) {
     let resolved;
     // A click outside a nested open group only leaves it, so hovering there
     // previews nothing, not even an OSM street.
-    let leavesScope = false;
+    let exitsOneLevel = false;
     if (groupRulesResolveClicks()) {
       const hits = groupHits();
       const result = inspector.groupScope.decide(hits);
       inspector.groupScope.noteHover(result, hits);
       resolved = hoverTargetOf(result);
-      leavesScope = result.action === 'exit';
+      exitsOneLevel = result.action === 'exit';
     } else {
       inspector.groupScope.clearHover();
       resolved = getIntersectedEl();
@@ -222,7 +222,7 @@ export function initRaycaster(inspector) {
       lastHoverOpens = opens;
     }
     updateOsmHover(
-      resolved || leavesScope ? null : probeOsmWayAtCursor(mouseCursor)
+      resolved || exitsOneLevel ? null : probeOsmWayAtCursor(mouseCursor)
     );
   };
 
@@ -317,9 +317,9 @@ export function initRaycaster(inspector) {
   mouseCursor.addEventListener('mousedown', () => {
     pressResolved = false;
   });
-  // The container's mouseup acts only on a press the container saw begin. A
-  // press a gizmo claimed never reaches the container's mousedown, so its
-  // mouseup, if the browser sends one, resolves nothing.
+  // The container's mouseup acts only on a press the container saw begin: a
+  // press begun elsewhere (on a panel) and released over the canvas resolves
+  // nothing.
   let pressSeen = false;
 
   // Decide and apply a click with the group rules (see groups/groupScope.js),
@@ -356,7 +356,10 @@ export function initRaycaster(inspector) {
     // the user asking to focus what that first click selected, not to drill
     // further (see onDoubleClick). Entering groups is the exception: select a
     // group, open it, select inside it is a quick run of clicks, and each one
-    // counts (a touch tap carries no count and is always a first click).
+    // counts. A touch tap's click has no mouse event of its own: A-Frame's
+    // cursor reuses one detail object, so after any mouse input it still
+    // carries the last mouseup, whose count and position the tap is then
+    // judged by (as before groups existed).
     const count = upEvt ? upEvt.detail : 1;
     if (count > 1 && !inspector.groupScope.groupSelectedOrOpen()) {
       return;

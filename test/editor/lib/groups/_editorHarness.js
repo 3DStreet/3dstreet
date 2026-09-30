@@ -279,13 +279,29 @@ export function mountEditor({ gizmo = false, cursorFirst = false } = {}) {
     /**
      * A stationary left click with click count `detail`: one mousedown and
      * one mouseup on the canvas, each seen by the raycaster and the cursor in
-     * the order they listen (see mountEditor).
+     * the order they listen (see mountEditor). This is the canvas's route: no
+     * pointer events and no DOM click are sent, so no gizmo handle can claim
+     * the press (the gizmo route is driven with pointer events, as in
+     * groupGizmo.test.js). The cursor ray is the one the last aim set, not the
+     * pointer's position.
      */
     click({ detail = 1 } = {}) {
       raycaster.checkIntersections();
       mouse('mousedown', detail);
       lastPress.x = pointer.x;
       lastPress.y = pointer.y;
+      mouse('mouseup', detail);
+    },
+    /**
+     * A left press on the canvas released `dx` pixels away, with click count
+     * `detail`: a drag, even at 1 pixel.
+     */
+    drag(dx, { detail = 1 } = {}) {
+      raycaster.checkIntersections();
+      mouse('mousedown', detail);
+      lastPress.x = pointer.x;
+      lastPress.y = pointer.y;
+      pointer.x += dx;
       mouse('mouseup', detail);
     },
     /**
@@ -304,20 +320,22 @@ export function mountEditor({ gizmo = false, cursorFirst = false } = {}) {
       mouse('dblclick', 2);
     },
     /**
-     * A left-button release at the spot of the last press, with no press of
-     * its own reaching the canvas: what a press claimed by a gizmo handle
-     * (stopped before the canvas saw its mousedown) delivers.
+     * A press begun off the canvas (on a panel) and released over it, at the
+     * spot of the last canvas press: the canvas sees only the mouseup. (A
+     * press a gizmo handle claims sends the canvas neither: its cancelled
+     * pointerdown suppresses both compatibility events.)
      */
-    releaseWithoutPress() {
-      canvas.dispatchEvent(
-        new MouseEvent('mouseup', {
-          clientX: lastPress.x,
-          clientY: lastPress.y,
-          button: 0,
-          detail: 1,
-          bubbles: true
-        })
+    releaseFromOffCanvasPress() {
+      const panel = document.createElement('div');
+      document.body.append(panel);
+      const at = { clientX: lastPress.x, clientY: lastPress.y, button: 0 };
+      panel.dispatchEvent(
+        new MouseEvent('mousedown', { ...at, detail: 1, bubbles: true })
       );
+      canvas.dispatchEvent(
+        new MouseEvent('mouseup', { ...at, detail: 1, bubbles: true })
+      );
+      panel.remove();
     },
     escape() {
       const event = new KeyboardEvent('keyup', {

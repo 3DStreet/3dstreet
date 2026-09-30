@@ -369,6 +369,38 @@ describe('the double-click that enters a group', () => {
     expect(focused).toEqual([member.object3D]);
   });
 
+  // A double-click whose second click moves a pixel resolves nothing on that
+  // second click, so what the dblclick does rests on the first. The next two
+  // tests record how that differs today by whether group rules resolved the
+  // first click; which of the two is wanted is an open question.
+  it('does not frame when the second click jitters, after a first click that selected the closed group while another group was selected (fails if selecting a closed group does not start the entering gesture)', () => {
+    const { G } = scene();
+    const H = group(h.streetContainer, { id: 'H' });
+    solid(H, [20, 0, 0], [21, 1, 1], { id: 'hm' });
+    h.frame();
+    h.inspector.selectEntity(H);
+    h.aimDown(0.5, 0.5);
+    h.click({ detail: 1 });
+    expect(selected()).toBe(G);
+    expect(h.openIds()).toEqual([]);
+    h.drag(1, { detail: 2 });
+    expect(selected()).toBe(G);
+    expect(h.openIds()).toEqual([]);
+    h.dblclick();
+    expect(focused).toEqual([]);
+  });
+
+  it('frames the group when the second click jitters, after a first click that selected it with nothing selected before (the ordinary route starts no entering gesture)', () => {
+    const { G } = scene();
+    h.click({ detail: 1 });
+    expect(selected()).toBe(G);
+    h.drag(1, { detail: 2 });
+    expect(selected()).toBe(G);
+    expect(h.openIds()).toEqual([]);
+    h.dblclick();
+    expect(focused).toEqual([G.object3D]);
+  });
+
   it('frames as usual once something else selected the entity', () => {
     const { G, other } = scene();
     h.inspector.selectEntity(G);
@@ -520,14 +552,19 @@ describe('ordinary items, with no group in the scene', () => {
     expect(selects).toHaveLength(2);
   });
 
-  it('deselects on empty space, but not on a release whose press the canvas never saw', () => {
+  it('deselects on empty space, but not on a release whose press began off the canvas (fails if the canvas resolves a release it never saw pressed)', () => {
     const { street } = streetScene();
     h.click();
     expect(selected()).toBe(street);
-    // A press claimed by a gizmo handle never reaches the canvas's mousedown;
-    // only its release arrives.
+    // Empty ground under the cursor, and a drag there, which resolves nothing
+    // and leaves the last canvas press at its start.
     h.aim([40, 50, 40], [0, -1, 0]);
-    h.releaseWithoutPress();
+    h.poll();
+    h.drag(5);
+    expect(selected()).toBe(street);
+    // A press on a panel released over the canvas, exactly where the drag
+    // began: only the unseen press tells it apart from a click there.
+    h.releaseFromOffCanvasPress();
     expect(selected()).toBe(street);
     h.click();
     expect(selected()).toBe(null);

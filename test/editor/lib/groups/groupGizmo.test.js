@@ -152,6 +152,11 @@ function worldOf(object) {
 
 const offset = (at, dx, dy = 0) => ({ x: at.x + dx, y: at.y + dy });
 
+// `detail` is the click count, which the browser puts on mousedown, mouseup
+// and click. Chrome's pointer events carry 0 (the pad double-click trace:
+// pointerdown 0 > pointerup 0 > click 1 > pointerdown 0 > pointerup 0 >
+// click 2 > dblclick 2), so a gizmo that read the count off a pointer event
+// would see 0 here too.
 function send(type, at, options = {}) {
   const {
     pointerType = 'mouse',
@@ -160,17 +165,18 @@ function send(type, at, options = {}) {
     coalesced,
     target = canvas
   } = options;
+  const pointer = type.startsWith('pointer');
   const released = type === 'pointerup' || type === 'mouseup';
   const event = new MouseEvent(type, {
     clientX: at.x,
     clientY: at.y,
     button: 0,
     buttons: released || type === 'click' ? 0 : 1,
-    detail,
+    detail: pointer ? 0 : detail,
     bubbles: true,
     cancelable: true
   });
-  if (type.startsWith('pointer')) {
+  if (pointer) {
     Object.defineProperties(event, {
       pointerType: { value: pointerType },
       pointerId: { value: 1 },
@@ -586,18 +592,18 @@ describe('the easy gizmo on a group', () => {
     select(g);
     const calls = spyExecute();
     const before = history();
-    const centre = new THREE.Vector3(12, 0.5, 22);
+    const center = new THREE.Vector3(12, 0.5, 22);
 
     const turnTo = (degrees) => {
       const at = handlePoint('rotate');
-      const grab = planePoint(at, 0.5).sub(centre);
+      const grab = planePoint(at, 0.5).sub(center);
       const angle = Math.atan2(grab.x, grab.z) + degrees * DEG;
       const radius = Math.hypot(grab.x, grab.z);
       const target = screenOf(
         new THREE.Vector3(
-          centre.x + radius * Math.sin(angle),
+          center.x + radius * Math.sin(angle),
           0.5,
-          centre.z + radius * Math.cos(angle)
+          center.z + radius * Math.cos(angle)
         )
       );
       press(at);
@@ -812,9 +818,9 @@ describe('a press on a group handle', () => {
     h.groupScope.close(g);
     h.frame();
     expect(h.inspector.selectedEntity).toBe(g);
-    // The same spot through the pad: opened once, and the release that the
-    // canvas also receives does not resolve the press again (which would now
-    // select the member inside).
+    // The same spot through the pad: opened once. The pad claims its press by
+    // cancelling the pointerdown, so the canvas gets no mousedown or mouseup
+    // to resolve it again with (which would now select the member inside).
     clickAt(at);
     expect(h.openIds()).toEqual([g.id]);
     expect(h.inspector.selectedEntity).toBe(g);

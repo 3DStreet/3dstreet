@@ -574,18 +574,21 @@ describe('entering a group', () => {
 
 // ------------------------------------------------------------------ pointer
 
+// A single click: count 1 on mousedown, mouseup and click. Chrome's pointer
+// events carry 0 (see groupGizmo.test.js).
 function send(type, at) {
+  const pointer = type.startsWith('pointer');
   const released = type === 'pointerup' || type === 'mouseup';
   const event = new MouseEvent(type, {
     clientX: at.x,
     clientY: at.y,
     button: 0,
     buttons: released || type === 'click' ? 0 : 1,
-    detail: 1,
+    detail: pointer ? 0 : 1,
     bubbles: true,
     cancelable: true
   });
-  if (type.startsWith('pointer')) {
+  if (pointer) {
     Object.defineProperties(event, {
       pointerType: { value: 'mouse' },
       pointerId: { value: 1 },

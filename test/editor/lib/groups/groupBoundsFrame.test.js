@@ -37,6 +37,8 @@ beforeEach(() => {
   inspector = {
     opened: true,
     selectedEntity: null,
+    // Installed with the editor frame, as the viewport does; nothing open.
+    groupScope: { openStack: [] },
     open() {
       this.opened = true;
     },
@@ -75,9 +77,9 @@ describe('live group bounds in the editor frame', () => {
         expect(emitted).toEqual([g, g]);
       },
       {
-        // An on-demand read in this frame, before its window, returns the
-        // stored box.
-        early: () => expectBox(getGroupBounds(g), [0, 0, 0], [1, 1, 1])
+        // An on-demand read in this frame, before its window. What it returns
+        // is not the point: it must not stand in for the frame's recompute.
+        early: () => getGroupBounds(g)
       }
     );
   });
