@@ -194,6 +194,25 @@ properties, no reload:
 3. **Huge scans:** a `.rad` whose header `count` exceeds 5M splats halves the
    LOD budget on its own (`HUGE_SCAN_*`). Reported by the component from
    `PagedSplats.getRadMeta()` before any chunk is queued.
+4. **On-demand rendering** (Spark maintainers' recommendation; needs Spark
+   ≥ 2.3.0, which fixed `onDirty` for streamed chunks). Spark's sort, LoD
+   traversal and chunk uploads all run from `SparkRenderer.onBeforeRender`,
+   so an A-Frame scene that redraws every frame re-sorts and re-draws
+   millions of splats 60 times a second while nothing changes. The
+   `render-on-demand` system (`src/aframe-components/render-on-demand.js`,
+   policy in `src/tested/render-on-demand.js`) is activated by the first
+   splat and skips the **editor** viewport's draw when idle; A-Frame's loop
+   and every tick keep running. A frame draws when the camera, projection or
+   canvas size changed; for `SETTLE_MS` after input or a scene event; when
+   Spark's `onDirty` asks for one; and on a `HEARTBEAT_MS` safety net for
+   changes that raised no signal. Viewer mode, Play and WebXR draw every
+   frame (the live scene animates). `public/splat-viewer.html` renders fully
+   on demand (OrbitControls `change` + `onDirty`, no heartbeat).
+   Measured in headless Chromium on a software GPU (177k-splat `.spz`): the
+   loop went from under 1 fps with every frame drawn to about 37 fps with
+   draws skipped, and an idle editor settles to heartbeat draws only (no
+   `onDirty` loop). Real-GPU numbers on the #2047 scene are still to be
+   taken.
 
 A user-facing data-saver profile (`lodSplatScale` 0.5, `numLodFetchers` 1,
 `pager.fetchPause` between chunks) is the natural "I'm on a call" switch and
@@ -202,7 +221,9 @@ belongs with Low Power Mode (#1723) when that lands; it is not wired today.
 Not levers: `lodRenderScale` (no bandwidth effect while the budget binds;
 above ~1.5 distant splats vanish) and `maxPagedSplats` (a pool size, not a cap;
 below the working set it evicts and re-fetches). `STREET.splatDebug.snapshot()`
-shows the resolved settings and the live pager queue under `streaming`.
+shows the resolved settings and the live pager queue under `streaming`, and
+frames drawn (by reason) vs skipped under `renderOnDemand`;
+`STREET.splatDebug.setRenderOnDemand(false)` turns skipping off for an A/B.
 
 ## Open decisions / inputs needed
 

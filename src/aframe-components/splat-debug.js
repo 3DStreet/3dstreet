@@ -11,7 +11,8 @@
  * or three levels even with a stationary camera — the splat visibly pulses and
  * page range-requests never stop.
  *
- * This module does NOT touch the render path. It only READS live SparkRenderer
+ * This module does NOT touch the render path (apart from the explicit
+ * setRenderOnDemand A/B switch). It only READS live SparkRenderer
  * state on an interval and reports when LOD level keeps changing while the
  * camera is still. It is inert until you call STREET.splatDebug.start().
  *
@@ -20,6 +21,7 @@
  *   STREET.splatDebug.start({ intervalMs: 200, verbose: true })
  *   STREET.splatDebug.snapshot()  // one-shot dump of current LOD state
  *   STREET.splatDebug.stop()
+ *   STREET.splatDebug.setRenderOnDemand(false)  // A/B idle-draw skipping
  */
 
 // Number of distinct numSplats values seen for one mesh (within the rolling
@@ -98,6 +100,12 @@ function readStreaming(sr) {
         }
       : null
   };
+}
+
+function readRenderOnDemand() {
+  const scene = getScene();
+  const system = scene && scene.systems && scene.systems['render-on-demand'];
+  return system ? system.getState() : null;
 }
 
 function summarizeLod(lod) {
@@ -189,10 +197,28 @@ const splatDebug = {
       // Streaming pacing (#2047): the budget the splat system resolved from
       // the largest .rad in the scene, the visibility fetch gate, and the
       // live pager state (queue, in-flight fetchers, resident pages).
-      streaming: readStreaming(sr)
+      streaming: readStreaming(sr),
+      // On-demand rendering (#2047): frames drawn vs skipped by the editor
+      // viewport, and whether skipping is currently allowed.
+      renderOnDemand: readRenderOnDemand()
     };
     console.log('[splat-debug] snapshot', snap);
     return snap;
+  },
+
+  /**
+   * Turn on-demand rendering off (false) or back on (true) for an A/B
+   * comparison of GPU / CPU load with a splat in the scene.
+   */
+  setRenderOnDemand(enabled) {
+    const scene = getScene();
+    const system = scene && scene.systems && scene.systems['render-on-demand'];
+    if (!system) {
+      console.warn('[splat-debug] render-on-demand system not registered.');
+      return;
+    }
+    system.setEnabled(enabled);
+    console.log('[splat-debug] render-on-demand', system.getState());
   },
 
   _cameraMoved() {

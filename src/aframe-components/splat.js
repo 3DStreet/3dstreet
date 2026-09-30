@@ -7,6 +7,7 @@ import {
   resolveStreamingSettings,
   shouldFetchForVisibility
 } from '../tested/splat-streaming.js';
+import './render-on-demand.js';
 
 // Spark library is loaded dynamically to reduce initial bundle size (~500KB)
 let SplatMesh = null;
@@ -113,6 +114,10 @@ AFRAME.registerComponent('splat', {
     // Monotonic id so a stale load (src changed mid-load) can't hide or
     // error the indicator belonging to a newer load.
     this.loadId = 0;
+    // Idle editor draws are skipped only while a splat is in the scene
+    // (#2047; the splat system activates render-on-demand).
+    this.renderOnDemand = this.el.sceneEl.systems['render-on-demand'] || null;
+    if (this.renderOnDemand) this.renderOnDemand.retain();
   },
 
   update: function (oldData) {
@@ -332,6 +337,16 @@ AFRAME.registerComponent('splat', {
       this.splatMesh = null;
     }
     this.hideIndicator();
+    if (this.renderOnDemand) this.renderOnDemand.release();
+  },
+
+  /**
+   * Ask for one viewport frame after a change no scene event announces
+   * (the indicator's canvas texture, its removal). Harmless when on-demand
+   * rendering is inactive.
+   */
+  requestViewportFrame: function () {
+    if (this.renderOnDemand) this.renderOnDemand.requestFrame();
   },
 
   /**
@@ -362,6 +377,7 @@ AFRAME.registerComponent('splat', {
     ctx.textBaseline = 'middle';
     ctx.fillText(label, w / 2, h / 2 + 2);
     this.indicator.texture.needsUpdate = true;
+    this.requestViewportFrame();
   },
 
   /**
@@ -436,6 +452,7 @@ AFRAME.registerComponent('splat', {
     this.indicator.material.dispose();
     this.indicator.texture.dispose();
     this.indicator = null;
+    this.requestViewportFrame();
   },
 
   /**
@@ -466,6 +483,8 @@ AFRAME.registerComponent('splat', {
  *    then the pager's queue waits; nothing renders anyway),
  *  - a huge scan (RAD header count above HUGE_SCAN_SPLATS) caps the budget.
  * Both are live SparkRenderer / SplatPager properties — no reload.
+ * The first splat also turns on on-demand rendering for the editor viewport
+ * (render-on-demand system), driven by SparkRenderer's onDirty.
  */
 AFRAME.registerSystem('splat', {
   init: function () {
@@ -513,9 +532,23 @@ AFRAME.registerSystem('splat', {
       this.el.object3D.add(this.sparkRenderer);
       this.applyStreamingSettings();
       this.applyFetchGate();
+      this.enableRenderOnDemand();
     } catch (error) {
       console.error('[splat] Failed to initialize SparkRenderer:', error);
     }
+  },
+
+  /**
+   * On-demand rendering (#2047, Spark's recommendation): with a splat in the
+   * scene an idle editor viewport stops redrawing, and Spark's onDirty (a
+   * sort, LoD update or streamed chunk is ready) asks for exactly the frames
+   * it needs. See src/aframe-components/render-on-demand.js.
+   */
+  enableRenderOnDemand: function () {
+    const renderOnDemand = this.el.systems['render-on-demand'];
+    if (!renderOnDemand || !this.sparkRenderer) return;
+    this.sparkRenderer.onDirty = renderOnDemand.requestFrame;
+    renderOnDemand.activate();
   },
 
   /**
