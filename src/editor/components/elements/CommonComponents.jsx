@@ -8,6 +8,7 @@ import PositionRow from './PositionRow';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { expandBatchedMeshesForExport } from '../../../batch-models';
+import { isUserGroup } from '../../lib/groups/groupModel.js';
 import { withOriginalAppearance } from '../../lib/groups/scopeAttenuation.js';
 
 export default class CommonComponents extends React.Component {
@@ -133,6 +134,14 @@ export default class CommonComponents extends React.Component {
           </span>
         </div>
         <div className="collapsible-content sidepanelContent">
+          {isUserGroup(entity) && (
+            <p className="group-origin-hint">
+              <FormattedMessage
+                id="sidebar.groupOriginHint"
+                defaultMessage="Position describes the group origin. On-canvas movement and rotation controls use the group center, which is distinct from the origin."
+              />
+            </p>
+          )}
           {this.renderCommonAttributes()}
         </div>
       </Collapsible>
