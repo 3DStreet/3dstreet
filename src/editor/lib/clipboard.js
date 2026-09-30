@@ -1,4 +1,4 @@
-/* global AFRAME, STREET */
+/* global AFRAME, STREET, THREE */
 /**
  * Clipboard support for streets, segments and entities (issue #1491).
  *
@@ -15,11 +15,26 @@
  *   - a segment pastes after the selected segment, or into the selected /
  *     containing street, or into the scene's first street as a last resort
  *   - anything else pastes into #street-container
+ *   - with a group open for editing, an item that may go into a group pastes
+ *     into the innermost open group instead, keeping its world pose
+ *
+ * An item copied from inside a user group pastes by its world pose wherever it
+ * lands; every other paste keeps the copied local pose, as it always has.
  *
  * Copy itself never touches undo history; Cut is a Copy plus the existing
  * undoable `entityremove` command.
  */
 import { createUniqueId } from './entity.js';
+import {
+  beginPlacement,
+  copiedPlacement,
+  entityDataUnder,
+  isGroupableItem,
+  pastedWorldMatrix,
+  resolvePlacement
+} from './groups/groupPlacement.js';
+import { groupMessage } from './groups/groupMessages.js';
+import { notifyRefusal } from './transformGuard.js';
 
 const CLIPBOARD_FORMAT = '3dstreet/entity';
 const CLIPBOARD_VERSION = 1;
@@ -169,7 +184,9 @@ export async function copySelectedEntity() {
     kind: classifyEntity(entity),
     documentToken: DOCUMENT_TOKEN,
     sourceEntityId: entity.id || null,
-    data
+    data,
+    // Where the item stood, for a paste that keeps its world pose.
+    ...copiedPlacement(entity)
   };
 
   memoryClipboard = envelope;
@@ -268,6 +285,17 @@ function pasteSegment(envelope) {
   return true;
 }
 
+// The copy source is still in this document: a paste beside it is nudged so
+// the two are visibly separate. A paste from another scene lands where the item
+// was built.
+function sourceStillHere(envelope) {
+  return (
+    envelope.documentToken === DOCUMENT_TOKEN &&
+    envelope.sourceEntityId &&
+    document.getElementById(envelope.sourceEntityId)
+  );
+}
+
 function pasteStreetOrEntity(envelope) {
   const parentEl = document.querySelector(
     AFRAME.INSPECTOR.config.defaultParent
@@ -285,11 +313,7 @@ function pasteStreetOrEntity(envelope) {
   // Same-document paste while the source still exists: nudge the copy so it
   // doesn't sit exactly on top of the original. Cross-scene pastes keep the
   // source position so known-good designs land where they were built.
-  if (
-    envelope.documentToken === DOCUMENT_TOKEN &&
-    envelope.sourceEntityId &&
-    document.getElementById(envelope.sourceEntityId)
-  ) {
+  if (sourceStillHere(envelope)) {
     const positionStr = entityData.components?.position || '0 0 0';
     const position = AFRAME.utils.coordinates.parse(positionStr);
     position.x += SAME_SCENE_PASTE_OFFSET;
@@ -307,12 +331,59 @@ function pasteStreetOrEntity(envelope) {
 }
 
 /**
+ * Paste an item at its world pose (plus the same-scene offset, along world X)
+ * into `ticket`'s group, or with no ticket into the default parent: the
+ * paste of an item copied from inside a group, or of any item into an open
+ * group.
+ */
+function pasteAtWorldPose(envelope, ticket) {
+  const parentEl = ticket
+    ? resolvePlacement(ticket)
+    : document.querySelector(AFRAME.INSPECTOR.config.defaultParent);
+  if (!parentEl) {
+    if (ticket) notifyRefusal(null, groupMessage('destinationGone'));
+    else console.error('[clipboard] default parent not found, cannot paste');
+    return false;
+  }
+  if (!parentEl.id) {
+    parentEl.id = createUniqueId();
+  }
+
+  const world = pastedWorldMatrix(
+    envelope.worldMatrix,
+    envelope.data,
+    sourceStillHere(envelope) ? SAME_SCENE_PASTE_OFFSET : 0,
+    new THREE.Matrix4()
+  );
+  const entityData = entityDataUnder(
+    parentEl,
+    JSON.parse(JSON.stringify(envelope.data)),
+    world
+  );
+  if (!entityData) {
+    notifyRefusal(null, groupMessage('placementDistorts'));
+    return false;
+  }
+
+  AFRAME.INSPECTOR.execute('entitypaste', {
+    entityData,
+    parentId: parentEl.id,
+    name: envelope.kind === 'street' ? 'Paste Street' : 'Paste',
+    ...(ticket ? { requireParent: true } : {})
+  });
+  return true;
+}
+
+/**
  * Paste from the system clipboard (falling back to the in-memory copy when
  * clipboard read is unavailable). Pasting is undoable; reading is not a
  * scene mutation and never enters history.
  * @returns {Promise<boolean>} true if something was pasted
  */
 export async function pasteFromClipboard() {
+  // The group open when the paste began is its destination, whatever happens
+  // while the clipboard is read.
+  const ticket = beginPlacement();
   const result = await readFromSystemClipboard();
   const envelope = result.ok ? result.envelope : memoryClipboard;
 
@@ -323,6 +394,10 @@ export async function pasteFromClipboard() {
 
   if (envelope.kind === 'segment') {
     return pasteSegment(envelope);
+  }
+  const intoGroup = ticket && isGroupableItem(envelope.data) ? ticket : null;
+  if (intoGroup || envelope.inUserGroup) {
+    return pasteAtWorldPose(envelope, intoGroup);
   }
   return pasteStreetOrEntity(envelope);
 }

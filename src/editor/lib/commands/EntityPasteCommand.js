@@ -2,6 +2,7 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.js';
+import { notePlacedOutsideOpenGroup } from '../groups/groupPlacement.js';
 import { migrateImplicitStreetAlign } from '@/tested/migrate-street-align.js';
 
 /**
@@ -10,12 +11,14 @@ import { migrateImplicitStreetAlign } from '@/tested/migrate-street-align.js';
  * streets, segments and plain entities alike — the target parent and index
  * are resolved by the caller.
  *
- * payload: { entityData, parentId, index?, name? }
+ * payload: { entityData, parentId, index?, name?, requireParent? }
  *   - entityData: object from STREET.utils.getElementData
  *   - parentId: id of the element to paste into
  *   - index: optional index among the parent's children to insert before;
  *     appends if omitted or out of range
  *   - name: optional history label (e.g. "Paste Segment")
+ *   - requireParent: the paste must land in this parent (an open group); the
+ *     command guard refuses it if the parent can no longer take it
  */
 export class EntityPasteCommand extends Command {
   constructor(editor, payload) {
@@ -36,6 +39,8 @@ export class EntityPasteCommand extends Command {
     this.entityId = this.entityData.id;
     this.parentId = payload.parentId;
     this.index = payload.index;
+    this.requireParent = !!payload.requireParent;
+    this.executed = false;
   }
 
   execute(nextCommandCallback) {
@@ -77,6 +82,10 @@ export class EntityPasteCommand extends Command {
       { once: true }
     );
 
+    if (!this.executed) {
+      this.executed = true;
+      notePlacedOutsideOpenGroup(entity, { requireParent: this.requireParent });
+    }
     return entity;
   }
 

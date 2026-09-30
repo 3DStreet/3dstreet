@@ -12,6 +12,7 @@ import { History } from '@/editor/lib/history.js';
 import { commandsByType } from '@/editor/lib/commands/index.js';
 import { refuseGuardedTransform } from '@/editor/lib/transformGuard.js';
 import SceneGraph from '@/editor/components/scenegraph/SceneGraph.jsx';
+import { boxMesh } from '../lib/groups/_groupFixtures.js';
 
 // The layer panel as the editor renders it (real entity.js, real commands and
 // guard), over entities built without A-Frame. Drags are driven with the DOM
@@ -448,5 +449,33 @@ describe('the new-group button', () => {
     expect([...created.classList]).toEqual(['user-group']);
     expect(created.getAttribute('data-layer-name')).toBe('Group');
     expect(created.getAttribute('position')).toBe('0 0 0');
+  });
+
+  it('with a group open, creates the new group inside it with its origin at the open group center, not at its origin or at the top level', async () => {
+    const open = makeEntity(root, { id: 'open-group', cls: 'user-group' });
+    open.object3D.position.set(40, 0, -10);
+    open.object3D.rotation.set(0, THREE.MathUtils.degToRad(50), 0);
+    const member = makeEntity(open, { id: 'open-member', name: 'Member' });
+    // The member's geometry is well away from the group origin.
+    boxMesh(member, [6, 0, 8], [10, 2, 12]);
+    editor.groupScope = { openStack: Object.freeze(['open-group']) };
+    await renderPanel({ 'sceneGraph.newGroup': 'New group' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'New group' }));
+
+    const [[, definition]] = executed.filter(
+      ([type]) => type === 'entitycreate'
+    );
+    expect(definition.class).toBe('user-group');
+    expect(definition.parentEl).toBe(open);
+    expect(definition.requireParent).toBe(true);
+    expect(definition.components.position).toEqual({
+      x: expect.closeTo(8, 9),
+      y: expect.closeTo(1, 9),
+      z: expect.closeTo(10, 9)
+    });
+    const created = open.querySelector(':scope > .user-group');
+    expect(created).not.toBe(null);
+    expect(root.querySelectorAll(':scope > .user-group')).toHaveLength(1);
   });
 });

@@ -9,6 +9,10 @@ import {
   SPLAT_EXTS
 } from '@shared/asset-upload/uploadAsset.js';
 import Events from '../../../lib/Events.js';
+import {
+  beginPlacement,
+  executePlacedCreate
+} from '../../../lib/groups/groupPlacement.js';
 
 // Per-kind file picker filters for the upload-backed custom layers, derived from
 // the shared extension allowlists in src/shared/asset-upload/uploadAsset.js so
@@ -23,7 +27,10 @@ const ASSET_PICKER_ACCEPT = {
 // drag-and-drop), then hands the chosen file to the asset upload pipeline. The
 // pipeline renders a local placeholder immediately and uploads to the user's
 // asset library in the background (auth + quota are enforced there).
+//
+// With a group open, the upload goes into the group open at the click.
 function openAssetUploadPicker(position, kind) {
+  const placement = beginPlacement();
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = ASSET_PICKER_ACCEPT[kind];
@@ -33,7 +40,7 @@ function openAssetUploadPicker(position, kind) {
       // Reveal the Assets panel so the user sees the upload begin and its
       // progress, even if the left panel was showing Layers or Geospatial.
       Events.emit('openassetspanel');
-      await uploadAndPlaceAsset(file, position);
+      await uploadAndPlaceAsset(file, position, undefined, placement);
     }
   };
   input.click();
@@ -71,7 +78,7 @@ export function createSvgExtrudedEntity(position) {
         'data-layer-name': 'SVG Path • My Custom Path'
       }
     };
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
+    executePlacedCreate(definition);
   }
 }
 
@@ -103,7 +110,7 @@ export function createShapeEntity(position) {
       position: `${dx - cx} 0 ${dz - cz}`
     }
   });
-  AFRAME.INSPECTOR.execute('entitycreate', {
+  executePlacedCreate({
     element: 'a-entity',
     components: {
       shape: '',
@@ -144,7 +151,7 @@ export function createManagedStreetFromStreetmixURLPrompt(
       }
     };
 
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
+    executePlacedCreate(definition);
   }
 }
 
@@ -170,7 +177,7 @@ export function createManagedStreetFromStreetplanURLPrompt(position) {
       }
     };
 
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
+    executePlacedCreate(definition);
   }
 }
 
@@ -191,7 +198,7 @@ export function createManagedStreetFromStreetObject(position, streetObject) {
       }
     };
 
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
+    executePlacedCreate(definition);
   }
 }
 
@@ -218,7 +225,7 @@ export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
       }
     };
 
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
+    executePlacedCreate(definition);
   }
 }
 
@@ -345,7 +352,7 @@ export function createBuildingBox(position) {
       shadow: 'receive: true; cast: true;'
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 export function createGrassBox(position) {
@@ -371,7 +378,7 @@ export function createGrassBox(position) {
       shadow: 'receive: true;'
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 export function createConcreteCylinder(position) {
@@ -388,7 +395,7 @@ export function createConcreteCylinder(position) {
       shadow: 'receive: true; cast: true;'
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 export function createTorusKnot(position) {
@@ -405,7 +412,7 @@ export function createTorusKnot(position) {
       shadow: 'receive: true; cast: true;'
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 export function createHighlightRing(position) {
@@ -421,7 +428,7 @@ export function createHighlightRing(position) {
       'data-layer-name': 'Highlight Ring • Red'
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 export function createFocusHotspot(position) {
@@ -443,7 +450,7 @@ export function createFocusHotspot(position) {
       'data-layer-name': 'Point of Interest'
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 /**
@@ -466,7 +473,7 @@ export function createFlyableHelicopter(position) {
       shadow: 'cast: false; receive: false'
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 export function createRaceTarget(position) {
@@ -477,7 +484,7 @@ export function createRaceTarget(position) {
       'race-target': 'width: 6; height: 4; color: #2196f3'
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 export function createPrimitiveGeometry(position) {
@@ -491,7 +498,7 @@ export function createPrimitiveGeometry(position) {
       shadow: ''
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 /**
@@ -556,7 +563,7 @@ function createDriveableFromPreset(presetName, layerName, position) {
       }
     ]
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 export function createDriveableTukTuk(position) {
@@ -596,7 +603,7 @@ export function createIntersection(position) {
       rotation: '-90 -90 0'
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 export function createManagedIntersection(position) {
@@ -609,7 +616,7 @@ export function createManagedIntersection(position) {
       'managed-intersection': ''
     }
   };
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition);
 }
 
 export function createSplatObject(position) {
@@ -719,6 +726,6 @@ export function createPanoramaSphere() {
         'data-layer-name': 'Sphere Geometry • 360° Panorama'
       }
     };
-    AFRAME.INSPECTOR.execute('entitycreate', definition);
+    executePlacedCreate(definition);
   }
 }

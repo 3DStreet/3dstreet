@@ -33,6 +33,21 @@ export const groupMessages = defineMessages({
     defaultMessage:
       'The group this was being added to is no longer available, so nothing was added.'
   },
+  placementDistorts: {
+    id: 'groups.refusal.placementDistorts',
+    defaultMessage:
+      "This item cannot be added to the open group without distorting it, because the group's scale is not the same along every axis. Nothing was added."
+  },
+  placedAtTopLevel: {
+    id: 'groups.placement.topLevel',
+    defaultMessage:
+      'This kind of item cannot go inside a group, so it was added at the top level of the scene.'
+  },
+  placedOutsideGroup: {
+    id: 'groups.placement.outsideGroup',
+    defaultMessage:
+      'This kind of item cannot go inside a group, so it was added outside the open group.'
+  },
   reparentFailed: {
     id: 'groups.reparent.failed',
     defaultMessage:

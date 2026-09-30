@@ -20,6 +20,11 @@
  * Once the placeholder exists the flow keeps only its id and looks the entity
  * up whenever it needs it: moving an item in the layer panel replaces its
  * element (same id), and a delete or undo can remove it while the upload runs.
+ *
+ * With a group open for editing, the item is placed in the group that was open
+ * when the upload began (see groups/groupPlacement.js), checked again just
+ * before the placeholder is created; if that group has gone, nothing is placed
+ * and nothing is uploaded.
  */
 
 import posthog from 'posthog-js';
@@ -42,6 +47,15 @@ import {
 } from '@shared/asset-upload';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
+import {
+  beginPlacement,
+  executePlacedCreate,
+  placeDefinition
+} from '@/editor/lib/groups/groupPlacement.js';
+import {
+  TRANSFORM_REFUSED,
+  notifyRefusal
+} from '@/editor/lib/transformGuard.js';
 
 export { FILE_PICKER_ACCEPT, isAcceptedAssetFile };
 
@@ -137,7 +151,8 @@ function readImageDimensions(blob) {
   });
 }
 
-async function createPlaceholderEntity(file, position, kind) {
+// Resolves to { entity: null } when the placement is refused.
+async function createPlaceholderEntity(file, position, kind, placement) {
   const blobUrl = URL.createObjectURL(file);
   const kindLabel =
     kind === 'glb' ? 'glTF Model' : kind === 'splat' ? 'Splat' : 'Image';
@@ -185,10 +200,25 @@ async function createPlaceholderEntity(file, position, kind) {
     };
   }
 
+  // Checked here, after the reads above, just before the item is created.
+  const placed = placeDefinition(definition, placement);
+  if (placed.refusal) {
+    notifyRefusal(null, placed.refusal);
+    URL.revokeObjectURL(blobUrl);
+    return { entity: null, blobUrl: null };
+  }
+
   return new Promise((resolve) => {
-    AFRAME.INSPECTOR.execute('entitycreate', definition, undefined, (entity) =>
-      resolve({ entity, blobUrl })
+    const result = AFRAME.INSPECTOR.execute(
+      'entitycreate',
+      placed.definition,
+      undefined,
+      (entity) => resolve({ entity, blobUrl })
     );
+    if (result === TRANSFORM_REFUSED) {
+      URL.revokeObjectURL(blobUrl);
+      resolve({ entity: null, blobUrl: null });
+    }
   });
 }
 
@@ -205,8 +235,10 @@ async function createPlaceholderEntity(file, position, kind) {
  * @param {string} asset.name
  * @param {string} asset.type     - 'mesh' | 'image' | 'splat'
  * @param {THREE.Vector3 | string} position
+ * @param {object|null} [placement] - Where it goes with a group open, from
+ *   groups/groupPlacement.js `beginPlacement`; taken now when not given.
  */
-export function placeCloudAsset(asset, position) {
+export function placeCloudAsset(asset, position, placement = beginPlacement()) {
   if (!asset?.assetId || !getServedUrl(asset)) return;
   const isMesh = asset.type === 'mesh';
   const isSplat = asset.type === 'splat';
@@ -247,7 +279,7 @@ export function placeCloudAsset(asset, position) {
       }
     };
   }
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  executePlacedCreate(definition, { ticket: placement });
 }
 
 async function preflightQuota(proposedBytes) {
@@ -272,9 +304,18 @@ async function preflightQuota(proposedBytes) {
  * @param {THREE.Vector3 | string} [position] - Drop position in world space.
  * @param {Element} [existingEntity] - When retrying a failed upload, the
  *   existing placeholder entity. Skips creating a new placeholder.
+ * @param {object|null} [placement] - Where the item goes with a group open,
+ *   from groups/groupPlacement.js `beginPlacement`, taken when the operation
+ *   began (a file picker takes it on the click that opened it). Taken now,
+ *   before anything is awaited, when not given.
  * @returns {Promise<{ entity: Element, assetId: string | null, kind: string }>}
  */
-export async function uploadAndPlaceAsset(file, position, existingEntity) {
+export async function uploadAndPlaceAsset(
+  file,
+  position,
+  existingEntity,
+  placement = existingEntity ? null : beginPlacement()
+) {
   const kind = getAssetKind(file);
   if (!kind) {
     captureUploadBlockedEvent(null, 'unsupported_file_type', {
@@ -345,7 +386,18 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     blobUrl =
       useAssetUploadStore.getState().uploads[entity.id]?.blobUrl || null;
   } else {
-    ({ entity, blobUrl } = await createPlaceholderEntity(file, position, kind));
+    ({ entity, blobUrl } = await createPlaceholderEntity(
+      file,
+      position,
+      kind,
+      placement
+    ));
+    if (!entity) {
+      // The group it was going into has gone: nothing was placed, and
+      // nothing is uploaded.
+      currentUploadStore.clear();
+      return { entity: null, assetId: null, kind };
+    }
   }
   const entityId = entity.id;
   // Start watching the local preview's load outcome immediately — before any

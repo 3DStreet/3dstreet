@@ -14,16 +14,12 @@ import {
   openInGenerator,
   focusSnapshotScene
 } from '@/editor/lib/asset-modal-handlers.js';
-import pickPointOnGroundPlane from '@/editor/lib/pick-point-on-ground-plane';
+import { viewCentrePoint } from '@/editor/lib/groups/groupPlacement.js';
 import { signIn } from '../../api';
 import useStore from '@/store';
 
 const handlePlaceAsset = (asset) => {
-  const position = pickPointOnGroundPlane({
-    normalizedX: 0,
-    normalizedY: -0.1,
-    camera: AFRAME.INSPECTOR.camera
-  });
+  const position = viewCentrePoint(AFRAME.INSPECTOR.camera);
   placeCloudAsset(asset, position);
 };
 

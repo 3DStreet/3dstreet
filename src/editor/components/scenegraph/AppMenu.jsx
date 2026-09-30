@@ -40,6 +40,7 @@ import {
   COMPASS_NORTH_TOLERANCE_DEGREES
 } from '@/editor/lib/nav-experimental/index.js';
 import { captureNavDiscovery } from '@/editor/lib/navAnalytics.js';
+import { beginPlacement } from '@/editor/lib/groups/groupPlacement.js';
 
 // Menu twin of the compass body: "Plan View" when the camera is not
 // top-down, "Point North" once it is, disabled when both top-down and
@@ -126,12 +127,16 @@ const AppMenu = ({ currentUser }) => {
   };
 
   const importAssetFromPicker = () => {
+    // With a group open, the import goes into the group open at the click.
+    const placement = beginPlacement();
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = FILE_PICKER_ACCEPT;
     input.onchange = async (event) => {
       const file = event.target.files?.[0];
-      if (file) await uploadAndPlaceAsset(file);
+      if (file) {
+        await uploadAndPlaceAsset(file, undefined, undefined, placement);
+      }
     };
     input.click();
   };

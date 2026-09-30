@@ -1,0 +1,243 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as THREE from 'three';
+import { httpsCallable } from 'firebase/functions';
+import { auth } from '@shared/services/firebase.js';
+import * as assetUpload from '@shared/asset-upload';
+import {
+  beginPlacement,
+  isGroupableItem,
+  placeDefinition
+} from '@/editor/lib/groups/groupPlacement.js';
+import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
+import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
+import { dispatchToolCall } from '@/editor/lib/commands/registry.js';
+import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
+import { entityIn, mountPlacementScene } from './_placementHarness.js';
+import { expectMatrixClose, worldOf } from './_entityElement.js';
+
+vi.mock('@shared/asset-upload', async (importOriginal) => ({
+  ...(await importOriginal()),
+  analyzeGltfFile: vi.fn()
+}));
+
+let scene;
+
+beforeEach(() => {
+  scene = mountPlacementScene();
+});
+
+afterEach(() => {
+  delete auth.currentUser;
+  document.body.innerHTML = '';
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+describe('where a new item is placed', () => {
+  it('keeps each route to its own rule with no group open, and places in the innermost open group when one is', () => {
+    const { outer, inner } = scene.scopeGroups();
+    const definition = { mixin: 'tree3', components: { position: '1 0 2' } };
+
+    expect(beginPlacement()).toBe(null);
+    expect(placeDefinition(definition, beginPlacement())).toEqual({
+      definition
+    });
+
+    scene.openGroups('outer', 'inner');
+    const placed = placeDefinition(definition, beginPlacement()).definition;
+    expect(placed.parentEl).toBe(inner);
+    expect(placed.parentEl).not.toBe(outer);
+    expect(placed.requireParent).toBe(true);
+    // Same world position as at the top level.
+    const probe = entityIn(inner, { position: placed.components.position });
+    expect(
+      new THREE.Vector3().setFromMatrixPosition(worldOf(probe))
+    ).toMatchObject({ x: expect.closeTo(1, 9), z: expect.closeTo(2, 9) });
+  });
+
+  it('keeps an item that may not go into a group out of it: shapes, segments, the Starting View and generated items', () => {
+    scene.scopeGroups();
+    scene.openGroups('outer', 'inner');
+    for (const definition of [
+      { components: { shape: '' } },
+      { components: { 'street-segment': 'type: drive-lane' } },
+      { components: { 'viewer-start': '' } },
+      { class: ['autocreated'], components: {} },
+      { class: 'autocreated clone', components: {} }
+    ]) {
+      expect(isGroupableItem(definition)).toBe(false);
+      expect(beginPlacement({ groupable: isGroupableItem(definition) })).toBe(
+        null
+      );
+    }
+    expect(isGroupableItem({ mixin: 'tree3', components: {} })).toBe(true);
+    expect(isGroupableItem({ class: ['user-group'], components: {} })).toBe(
+      true
+    );
+  });
+
+  it('refuses an item the open group would distort (scaled unevenly, the item turned against it), and allows one it would not', () => {
+    entityIn(scene.root, {
+      id: 'imported',
+      cls: 'user-group',
+      scale: '2 1 1'
+    });
+    scene.openGroups('imported');
+    expect(
+      placeDefinition(
+        { components: { position: '0 0 0', rotation: '0 30 0' } },
+        beginPlacement()
+      )
+    ).toEqual({ refusal: groupMessage('placementDistorts') });
+    expect(
+      placeDefinition({ components: { position: '0 0 0' } }, beginPlacement())
+        .definition.components.scale
+    ).toEqual({ x: 0.5, y: 1, z: 1 });
+  });
+
+  it('refuses a placement whose group has gone, rather than placing it at the top level', () => {
+    const { inner } = scene.scopeGroups();
+    scene.openGroups('outer', 'inner');
+    const ticket = beginPlacement();
+    inner.remove();
+    expect(placeDefinition({ components: {} }, ticket)).toEqual({
+      refusal: groupMessage('destinationGone')
+    });
+  });
+});
+
+describe('an entity created by the AI assistant', () => {
+  it('is created inside the open group at the world position the assistant gave (fails if the position is read as local to the group)', async () => {
+    const group = entityIn(scene.root, {
+      id: 'scope',
+      cls: 'user-group',
+      position: '10 0 5',
+      rotation: '0 90 0'
+    });
+    scene.openGroups('scope');
+    await dispatchToolCall('entityCreate', { position: '12 0 5' });
+    const created = group.lastElementChild;
+    expect(created).not.toBe(null);
+    const world = new THREE.Vector3().setFromMatrixPosition(worldOf(created));
+    expect(world.x).toBeCloseTo(12, 9);
+    expect(world.y).toBeCloseTo(0, 9);
+    expect(world.z).toBeCloseTo(5, 9);
+  });
+
+  it('is refused, and reported as refused, where the group would distort it', async () => {
+    entityIn(scene.root, { id: 'imported', cls: 'user-group', scale: '2 1 1' });
+    scene.openGroups('imported');
+    await expect(
+      dispatchToolCall('entityCreate', { rotation: '0 30 0' })
+    ).rejects.toThrow(groupMessage('placementDistorts'));
+    expect(scene.creates()).toHaveLength(0);
+  });
+
+  it('with no group open, is created at the top level with the values given', async () => {
+    await dispatchToolCall('entityCreate', { position: '12 0 5' });
+    const [[, payload]] = scene.creates();
+    expect(payload).toEqual({
+      components: { position: '12 0 5', rotation: '0 0 0', scale: '1 1 1' }
+    });
+  });
+});
+
+describe('an upload that is still being read when the scope changes', () => {
+  let finishAnalysis;
+
+  beforeEach(() => {
+    auth.currentUser = { uid: 'user-1' };
+    useCurrentUploadStore.getState().clear();
+    assetUpload.analyzeGltfFile.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishAnalysis = () => resolve({ status: 'ok', externalRefs: [] });
+        })
+    );
+  });
+
+  const gltf = () =>
+    new File(['{"asset":{"version":"2.0"}}'], 'model.gltf', {
+      type: 'model/gltf+json'
+    });
+
+  it('is placed in the group open when it began, not the one open when the placeholder is made', async () => {
+    // Signed out, so the flow ends once the placeholder is placed.
+    delete auth.currentUser;
+    const outer = entityIn(scene.root, { id: 'a', cls: 'user-group' });
+    entityIn(scene.root, { id: 'b', cls: 'user-group' });
+    scene.openGroups('a');
+    // Held at the model check, before any placeholder exists.
+    const uploading = uploadAndPlaceAsset(gltf(), '1 0 1');
+    await vi.waitFor(() => expect(finishAnalysis).toBeTypeOf('function'));
+    scene.openGroups('b');
+    finishAnalysis();
+    await vi.waitFor(() => expect(scene.creates()).toHaveLength(1));
+    expect(scene.creates()[0][1].parentEl).toBe(outer);
+    useCurrentUploadStore.getState().clear();
+    uploading.catch(() => {});
+  });
+
+  it('is refused with an explanation when that group is removed meanwhile: nothing is created and nothing is uploaded (fails if the destination is read late or falls back to the top level)', async () => {
+    const group = entityIn(scene.root, { id: 'a', cls: 'user-group' });
+    scene.openGroups('a');
+    const uploading = uploadAndPlaceAsset(gltf(), '1 0 1');
+    await vi.waitFor(() => expect(finishAnalysis).toBeTypeOf('function'));
+    group.remove();
+    finishAnalysis();
+    const result = await uploading;
+
+    expect(result.entity).toBe(null);
+    expect(scene.creates()).toHaveLength(0);
+    expect(scene.root.children).toHaveLength(0);
+    expect(httpsCallable).not.toHaveBeenCalled();
+    expect(useCurrentUploadStore.getState().isBusy()).toBe(false);
+    expect(scene.notify.warningMessage).toHaveBeenCalledWith(
+      groupMessage('destinationGone')
+    );
+  });
+});
+
+describe('an item a route may not put in the open group', () => {
+  it('lands where the route puts it and the user is told it is outside the group', () => {
+    scene.scopeGroups();
+    scene.openGroups('outer', 'inner');
+    scene.inspector.execute('entitycreate', {
+      components: { shape: '', position: '1 0 1' }
+    });
+    const [[, payload]] = scene.creates();
+    expect(payload.parentEl).toBeUndefined();
+    expect(scene.root.lastElementChild.hasAttribute('shape')).toBe(true);
+    expect(scene.notify.infoMessage).toHaveBeenCalledWith(
+      groupMessage('placedAtTopLevel')
+    );
+  });
+
+  it('says nothing when no group is open, or when the item went into the group', () => {
+    const { inner } = scene.scopeGroups();
+    scene.inspector.execute('entitycreate', {
+      components: { shape: '' }
+    });
+    scene.openGroups('outer', 'inner');
+    scene.inspector.execute('entitycreate', {
+      parentEl: inner,
+      requireParent: true,
+      components: {}
+    });
+    expect(scene.notify.infoMessage).not.toHaveBeenCalled();
+  });
+});
+
+it('keeps the world matrix of a placed item exactly, rotation and scale included', () => {
+  const { inner } = scene.scopeGroups();
+  scene.openGroups('outer', 'inner');
+  const components = {
+    position: '4 1 -3',
+    rotation: '0 -90 0',
+    scale: '-1 1 1'
+  };
+  const placed = placeDefinition({ components }, beginPlacement()).definition;
+  const inGroup = entityIn(inner, placed.components);
+  const atTop = entityIn(scene.root, components);
+  expectMatrixClose(expect, worldOf(inGroup), worldOf(atTop));
+});

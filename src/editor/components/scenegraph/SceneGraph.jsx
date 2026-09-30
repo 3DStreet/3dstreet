@@ -21,6 +21,7 @@ import {
   isUserGroup
 } from '../../lib/groups/groupModel.js';
 import { isReparentInFlight } from '../../lib/commands/EntityReparentCommand.js';
+import { nestedGroupPlacement } from '../../lib/groups/groupPlacement.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
@@ -534,11 +535,19 @@ class SceneGraph extends React.Component {
   createGroup = () => {
     // Not 'custom-group': the Add Layer panel finds its own street-prop
     // holders by that class.
-    AFRAME.INSPECTOR.execute('entitycreate', {
+    const definition = {
       class: USER_GROUP_CLASS,
       'data-layer-name': 'Group',
       components: { position: '0 0 0' }
-    });
+    };
+    // With a group open, the new group goes inside it, at its center.
+    const nested = nestedGroupPlacement();
+    if (nested) {
+      definition.parentEl = nested.parentEl;
+      definition.requireParent = nested.requireParent;
+      definition.components.position = nested.position;
+    }
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
   };
 
   getEntityById = (id) => document.getElementById(id);
