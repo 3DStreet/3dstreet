@@ -25,13 +25,16 @@ import { isHiddenInHierarchy, isUserGroup } from './groupModel.js';
  * @typedef {{el: Element, distance: number, kind: 'entity'|'marker'|'proxy'|'scope'}} GroupHit
  */
 
-/** A user group that is selected, visible and not open. */
-export function isSelectedClosedGroup(el, selected, openStack) {
+/**
+ * A user group that is selected, visible and not open. `openGroups` are the
+ * open groups as elements.
+ */
+export function isSelectedClosedGroup(el, selected, openGroups) {
   return (
     !!el &&
     el === selected &&
     isUserGroup(el) &&
-    !openStack.includes(el) &&
+    !openGroups.includes(el) &&
     !isHiddenInHierarchy(el)
   );
 }
@@ -40,8 +43,8 @@ export function isSelectedClosedGroup(el, selected, openStack) {
  * Decide a canvas click.
  *
  * @param {GroupHit[]} hits every pick target along the ray, nearest first
- * @param {{selected: Element|null, openStack: Element[]}} state the selection
- *   and the open groups, outermost first
+ * @param {{selected: Element|null, openGroups: Element[]}} state the
+ *   selection, and the open groups as elements, outermost first
  * @returns one of
  *   `{action: 'open', group}` — open the selected closed group;
  *   `{action: 'select', el}` — select `el` (null deselects), scope unchanged;
@@ -50,26 +53,26 @@ export function isSelectedClosedGroup(el, selected, openStack) {
  *   `{action: 'close', el}` — close every open group, then select `el` or
  *   nothing.
  */
-export function resolveCanvasClick(hits, { selected, openStack }) {
+export function resolveCanvasClick(hits, { selected, openGroups }) {
   const targets = hits.filter((hit) => hit.kind !== 'scope');
   const nearest = targets[0];
   // At any depth, the selected closed group's box or marker opens it.
   if (
     nearest &&
     nearest.kind !== 'entity' &&
-    isSelectedClosedGroup(nearest.el, selected, openStack)
+    isSelectedClosedGroup(nearest.el, selected, openGroups)
   ) {
     return { action: 'open', group: nearest.el };
   }
   // A proxy is only ever an entry target, never a thing to select through.
   const pickable = targets.filter((hit) => hit.kind !== 'proxy');
-  const openGroups = new Set(openStack);
-  const innermost = openStack[openStack.length - 1];
+  const openSet = new Set(openGroups);
+  const innermost = openGroups[openGroups.length - 1];
 
   if (!innermost) {
     return {
       action: 'select',
-      el: resolveClickSelection(pickable[0]?.el, selected, openGroups)
+      el: resolveClickSelection(pickable[0]?.el, selected, openSet)
     };
   }
 
@@ -85,13 +88,13 @@ export function resolveCanvasClick(hits, { selected, openStack }) {
     if (!member) return { action: 'select', el: innermost };
     return {
       action: 'select',
-      el: resolveClickSelection(member.el, selected, openGroups)
+      el: resolveClickSelection(member.el, selected, openSet)
     };
   }
 
   // Outside a nested open group, a click leaves one level and does nothing
   // else.
-  if (openStack.length > 1) return { action: 'exit' };
+  if (openGroups.length > 1) return { action: 'exit' };
   return {
     action: 'close',
     el: resolveClickSelection(pickable[0]?.el, selected, new Set())
@@ -102,12 +105,12 @@ export function resolveCanvasClick(hits, { selected, openStack }) {
  * Does applying `result` enter a group — select a closed group, or open one?
  * Such a click is the first half of a double-click the camera must ignore.
  */
-export function isDrill(result, openStack) {
+export function isDrill(result, openGroups) {
   if (!result) return false;
   if (result.action === 'open') return true;
   if (result.action !== 'select' && result.action !== 'close') return false;
   const el = result.el;
-  const stillOpen = result.action === 'select' ? openStack : [];
+  const stillOpen = result.action === 'select' ? openGroups : [];
   return isUserGroup(el) && !stillOpen.includes(el);
 }
 

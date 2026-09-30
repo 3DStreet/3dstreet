@@ -57,8 +57,9 @@ after the render, fading is undone (-10) before the entry schedule's step (0).
 
 ## Opening a group
 
-The open groups ("the scope") are a stack of ids in `inspector.groupScope`,
-outermost first. The stack is session state only and is never saved.
+The open groups (the scope) are a stack of ids, outermost first, kept by the
+scope controller `inspector.groupScope` (`openStack`; `openElements()` gives
+the elements). The stack is session state only and is never saved.
 
 - **Clicks.** A click on a member of a closed group selects the group. A click
   on the selected group's box or center marker opens it. Inside an open group,

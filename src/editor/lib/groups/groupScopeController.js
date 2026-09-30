@@ -309,7 +309,7 @@ export class GroupScopeController {
   decide(hits) {
     return resolveCanvasClick(hits, {
       selected: this.selected(),
-      openStack: this.openElements()
+      openGroups: this.openElements()
     });
   }
 
