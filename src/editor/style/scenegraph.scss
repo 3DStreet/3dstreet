@@ -652,6 +652,12 @@
       }
     }
 
+    // The new-group button's label.
+    .left-panel-new-group {
+      font-size: 11px;
+      font-weight: 600;
+    }
+
     .left-panel-tab-hint {
       padding: 12px 16px;
       color: variables.$lightgray-300;

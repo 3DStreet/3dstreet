@@ -434,11 +434,13 @@ describe('a move in progress', () => {
 });
 
 describe('the new-group button', () => {
-  it('creates one user group (not a street-prop holder) at the top level, labelled from its message id', async () => {
+  it('creates one user group (not a street-prop holder) at the top level, shows "G+" (not an icon) and is named from its message id', async () => {
     await renderPanel({ 'sceneGraph.newGroup': 'Nieuwe groep' });
 
     const button = screen.getByRole('button', { name: 'Nieuwe groep' });
     expect(button.getAttribute('title')).toBe('Nieuwe groep');
+    expect(button.textContent).toBe('G+');
+    expect(button.querySelector('svg')).toBe(null);
     fireEvent.click(button);
 
     const creates = executed.filter(([type]) => type === 'entitycreate');

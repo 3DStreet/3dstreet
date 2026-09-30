@@ -4,12 +4,10 @@ import debounce from 'lodash-es/debounce';
 import PropTypes from 'prop-types';
 import React from 'react';
 import { FormattedMessage, defineMessages, injectIntl } from 'react-intl';
-import { faObjectGroup } from '@fortawesome/free-solid-svg-icons';
 import Events from '../../lib/Events';
 import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { Plus20Circle } from '@shared/icons';
-import { AwesomeIcon } from '../elements/AwesomeIcon';
 import {
   createUniqueId,
   getEntityDisplayName,
@@ -713,7 +711,7 @@ class SceneGraph extends React.Component {
                     aria-label={intl.formatMessage(messages.newGroup)}
                     title={intl.formatMessage(messages.newGroup)}
                   >
-                    <AwesomeIcon icon={faObjectGroup} size={16} />
+                    <span className="left-panel-new-group">G+</span>
                   </button>
                 )}
               </div>
