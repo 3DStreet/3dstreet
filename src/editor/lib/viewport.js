@@ -1406,16 +1406,13 @@ export function Viewport(inspector) {
 
   // Hiding or showing the selected group, or a group around it, takes its
   // handles away or gives them back. The layer panel's eye is a command, so
-  // an entityupdate announces it and a history change announces its undo.
+  // the history change after it (or its undo or redo) announces it.
   function followSelectedGroupVisibility() {
     const el = inspector.selectedEntity;
     if (!isUserGroup(el)) return;
     const attached = easyGizmoControls.el === el;
     if (attached === isHiddenInHierarchy(el)) attachControlsForSelection();
   }
-  Events.on('entityupdate', (detail) => {
-    if (detail?.component === 'visible') followSelectedGroupVisibility();
-  });
   Events.on('historychanged', followSelectedGroupVisibility);
 
   Events.on('transformmodechange', (mode) => {

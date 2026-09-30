@@ -653,6 +653,29 @@ describe('a press on a group handle', () => {
     expect(g.getAttribute('position')).toEqual({ x: 0, y: 0, z: 0 });
   });
 
+  it('resolves a still click on the pad once, even right after a canvas click at the same spot', () => {
+    const { g, member } = farGroup();
+    select(g);
+    const at = handlePoint('move', { overBoxOf: g });
+    const ray = rayThrough(at);
+    h.aim(ray.origin.toArray(), ray.direction.toArray());
+    h.poll();
+    // A plain canvas click at the spot (no gizmo press): it opens the group.
+    send('mousedown', at);
+    send('mouseup', at);
+    expect(h.openIds()).toEqual([g.id]);
+    h.scope.close(g);
+    h.frame();
+    expect(h.inspector.selectedEntity).toBe(g);
+    // The same spot through the pad: opened once, and the release that the
+    // canvas also receives does not resolve the press again (which would now
+    // select the member inside).
+    clickAt(at);
+    expect(h.openIds()).toEqual([g.id]);
+    expect(h.inspector.selectedEntity).toBe(g);
+    expect(h.inspector.selectedEntity).not.toBe(member);
+  });
+
   it('drags rather than opens when a coalesced sample went 2 px out, though every event reported 0 px', () => {
     const { g } = farGroup();
     select(g);
