@@ -65,24 +65,23 @@ So this work is **almost entirely backend**: produce the `.rad`, store it, write
 
 ## Architecture (decisions locked)
 
-| Decision          | Choice                                                                                                       | Why                                                                                                                                                                                 |
-| ----------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Compute           | **Cloud Run service** (container bundling the `build-lod` Rust binary)                                       | Scale-to-zero, runs a custom binary, at-cost GCP, no cross-cloud egress, no idle box. Cheaper than Replicate on large files (egress dominates).                                     |
-| Build             | **Cloud Build** → Artifact Registry, multi-stage Dockerfile                                                  | Reproducible binary build replaces the manual `cargo build` on Hetzner.                                                                                                             |
-| Trigger           | **Firestore `onCreate`** on `users/{uid}/assets/{assetId}` where `type==='splat'` && no `optimizedSourceUrl` | One hook covers BOTH generated (server-saved) and drag-uploaded (client-saved) splats.                                                                                              |
-| Dispatch          | **Cloud Tasks** → Cloud Run (OIDC)                                                                           | Durable delivery + retries; matches the queue's "survives anything" ethos. Needs new `@google-cloud/tasks` dep.                                                                     |
-| Queue integration | New **`provider: 'cloudrun'`**, **`kind: 'splat-rad'`** job in `generationJobs`                              | Reuses the queue schema + reconciler; first real exercise of the registry seam (proves the generalization for a non-Replicate provider).                                            |
-| Completion        | **Worker writeback** (Cloud Run writes terminal status to the job doc via Admin SDK)                         | No webhook needed, unlike Replicate.                                                                                                                                                |
-| Tokens            | **Non-charged** (`tokenCost: 0`)                                                                             | RAD is a silent backend optimization (GLB-optimization analog), not a user-initiated generation. `refundSplatToken` becomes a no-op.                                                |
-| `.rad` storage    | **Firebase Storage / GCS** (NOT Hetzner) as `assetRole: 'optimized'`                                         | Durable, token-gated for private splats, consistent asset model. Hetzner is decommissioned for serving.                                                                             |
-| LOD setting       | **`build-lod --quality`**, single `.rad`                                                                     | Matches the Hetzner-validated files (bhatt-lod, single file, not `--rad-chunked`).                                                                                                  |
-| SH degree         | **`--max-sh=0`** (env `RAD_MAX_SH`, `rad-converter/deploy.sh`)                                               | Degree-3 SH was over half of every streamed chunk; street scans get little from it. Halves bytes + decode for every future asset (#2047). Recorded as `optimizationMetadata.maxSh`. |
-| Serving           | GCS with **byte-range CORS**                                                                                 | `cors.json` must expose `Accept-Ranges` + `Content-Range`.                                                                                                                          |
+| Decision | Choice | Why |
+| --- | --- | --- |
+| Compute | **Cloud Run service** (container bundling the `build-lod` Rust binary) | Scale-to-zero, runs a custom binary, at-cost GCP, no cross-cloud egress, no idle box. Cheaper than Replicate on large files (egress dominates). |
+| Build | **Cloud Build** → Artifact Registry, multi-stage Dockerfile | Reproducible binary build replaces the manual `cargo build` on Hetzner. |
+| Trigger | **Firestore `onCreate`** on `users/{uid}/assets/{assetId}` where `type==='splat'` && no `optimizedSourceUrl` | One hook covers BOTH generated (server-saved) and drag-uploaded (client-saved) splats. |
+| Dispatch | **Cloud Tasks** → Cloud Run (OIDC) | Durable delivery + retries; matches the queue's "survives anything" ethos. Needs new `@google-cloud/tasks` dep. |
+| Queue integration | New **`provider: 'cloudrun'`**, **`kind: 'splat-rad'`** job in `generationJobs` | Reuses the queue schema + reconciler; first real exercise of the registry seam (proves the generalization for a non-Replicate provider). |
+| Completion | **Worker writeback** (Cloud Run writes terminal status to the job doc via Admin SDK) | No webhook needed, unlike Replicate. |
+| Tokens | **Non-charged** (`tokenCost: 0`) | RAD is a silent backend optimization (GLB-optimization analog), not a user-initiated generation. `refundSplatToken` becomes a no-op. |
+| `.rad` storage | **Firebase Storage / GCS** (NOT Hetzner) as `assetRole: 'optimized'` | Durable, token-gated for private splats, consistent asset model. Hetzner is decommissioned for serving. |
+| LOD setting | **`build-lod --quality`**, single `.rad` | Matches the Hetzner-validated files (bhatt-lod, single file, not `--rad-chunked`). |
+| SH degree | **`--max-sh=0`** (env `RAD_MAX_SH`, `rad-converter/deploy.sh`) | Degree-3 SH was over half of every streamed chunk; street scans get little from it. Halves bytes + decode for every future asset (#2047). Recorded as `optimizationMetadata.maxSh`. |
+| Serving | GCS with **byte-range CORS** | `cors.json` must expose `Accept-Ranges` + `Content-Range`. |
 
 ### Cost reference (approx, verify against current pricing)
 
 Both are cents/conversion; Cloud Run wins on large files purely via egress:
-
 - Small (~50 MB ply, ~60s): Cloud Run ~$0.003 (likely free tier) vs Replicate ~$0.02–0.03.
 - Large (~1 GB ply, ~2 min): Cloud Run ~$0.03 vs Replicate ~$0.28 (~$0.24 of that is cross-cloud egress).
 
@@ -122,7 +121,7 @@ Both are cents/conversion; Cloud Run wins on large files purely via egress:
   `public/functions/asset-quota.js:95`): on create of
   `users/{uid}/assets/{assetId}` where `type==='splat'` && !`optimizedSourceUrl`:
   - write a `generationJobs` doc `{ kind:'splat-rad', provider:'cloudrun',
-status:'queued', tokenCost:0, assetId, plyPath: <storagePath> }`
+    status:'queued', tokenCost:0, assetId, plyPath: <storagePath> }`
   - enqueue a **Cloud Task** (OIDC token) targeting the Cloud Run service with
     `{ uid, assetId, plyPath, jobId }`.
 - **Add dep** `@google-cloud/tasks` to `public/functions/package.json`.
@@ -142,7 +141,7 @@ status:'queued', tokenCost:0, assetId, plyPath: <storagePath> }`
 ### 4. Deploy / IAM
 
 - Functions: `cd public && firebase use <project> && firebase deploy --only
-functions:onSplatAssetCreated,functions:reconcileGenerationJobs`
+  functions:onSplatAssetCreated,functions:reconcileGenerationJobs`
   (hosting scripts are hosting-only; functions deploy separately).
 - Cloud Run: `gcloud run deploy rad-converter --source rad-converter/ ...` (or via
   Cloud Build + Artifact Registry image).
@@ -169,7 +168,7 @@ functions:onSplatAssetCreated,functions:reconcileGenerationJobs`
 
 ## Steady-state streaming cost (#2047)
 
-Time to first frame was never the problem; what a streamed `.rad` does _after_
+Time to first frame was never the problem; what a streamed `.rad` does *after*
 that is. Spark's `SparkRenderer` LOD is a **fixed splat budget per platform**
 (2.5M desktop, 1–1.5M mobile), not a bandwidth or frame-rate governor. Each
 traversal picks the budget's worth of splats for the view and queues every
@@ -278,18 +277,18 @@ change.
 
 ## Key files
 
-| Concern                                            | File                                                                              |
-| -------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Renderer (.rad paged streaming)                    | `src/aframe-components/splat.js:142`                                              |
-| Client placement (prefers optimized)               | `src/editor/lib/asset-upload/uploadAndPlaceAsset.js:196,218`                      |
-| Served-url helper                                  | `src/shared/assets/utils.js:55`                                                   |
-| Generated-splat server save (URL scheme to mirror) | `public/functions/replicate.js:1157` (`saveSplatToGallery`)                       |
-| Queue processor / refund                           | `public/functions/replicate.js` (`processTerminalPrediction`, `refundSplatToken`) |
-| Reconciler (add `case 'cloudrun'`)                 | `public/functions/scheduled/generation-job-reconcile.js`                          |
-| Quota trigger to mirror for `onSplatAssetCreated`  | `public/functions/asset-quota.js:95` (`onAssetWritten`)                           |
-| Bucket CORS                                        | `public/cors.json`                                                                |
-| Standalone viewer (already 2.1.0)                  | `public/splat-viewer.html`                                                        |
-| Hetzner reference (concept proven, being replaced) | `~/dev/splat-ply-to-rad-hetzner-pipeline/README.md`                               |
+| Concern | File |
+| --- | --- |
+| Renderer (.rad paged streaming) | `src/aframe-components/splat.js:142` |
+| Client placement (prefers optimized) | `src/editor/lib/asset-upload/uploadAndPlaceAsset.js:196,218` |
+| Served-url helper | `src/shared/assets/utils.js:55` |
+| Generated-splat server save (URL scheme to mirror) | `public/functions/replicate.js:1157` (`saveSplatToGallery`) |
+| Queue processor / refund | `public/functions/replicate.js` (`processTerminalPrediction`, `refundSplatToken`) |
+| Reconciler (add `case 'cloudrun'`) | `public/functions/scheduled/generation-job-reconcile.js` |
+| Quota trigger to mirror for `onSplatAssetCreated` | `public/functions/asset-quota.js:95` (`onAssetWritten`) |
+| Bucket CORS | `public/cors.json` |
+| Standalone viewer (already 2.1.0) | `public/splat-viewer.html` |
+| Hetzner reference (concept proven, being replaced) | `~/dev/splat-ply-to-rad-hetzner-pipeline/README.md` |
 
 ## Notes
 
