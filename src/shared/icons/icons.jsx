@@ -392,8 +392,11 @@ export const Translate24Icon = () => (
 );
 
 // The easy move gizmo's own glyph, drawn as the gizmo looks: a square with a
-// marker on each side, inside a ring whose two arrowheads point into the gap
-// at the top.
+// marker on each side, inside a ring whose two arrowheads point up into the
+// gap at the top. Pixel-aligned, with a 1px gap between the square and its
+// markers and bold arrowheads, so it stays legible at 24px on a 1x display
+// (#2064): markers touching the square blur into a bumpy dot there, and small
+// arrowheads vanish into the ring.
 export const EasyTransform24Icon = () => (
   <svg
     width="24"
@@ -402,20 +405,19 @@ export const EasyTransform24Icon = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M8.5 8.5H15.5V15.5H8.5Z" fill="white" />
-    <path d="M10.8 8.5H13.2L12 6.9Z" fill="white" />
-    <path d="M10.8 15.5H13.2L12 17.1Z" fill="white" />
-    <path d="M8.5 10.8V13.2L6.9 12Z" fill="white" />
-    <path d="M15.5 10.8V13.2L17.1 12Z" fill="white" />
+    <path d="M10 10H14V14H10Z" fill="white" />
+    <path d="M10 9H14L12 6Z" fill="white" />
+    <path d="M10 15H14L12 18Z" fill="white" />
+    <path d="M9 10V14L6 12Z" fill="white" />
+    <path d="M15 10V14L18 12Z" fill="white" />
     <path
-      d="M17 3.34A10 10 0 1 1 7 3.34"
+      d="M20.87 8.6A9.5 9.5 0 1 1 3.13 8.6"
       stroke="white"
-      strokeWidth="1.6"
-      strokeLinecap="round"
+      strokeWidth="2"
       fill="none"
     />
-    <path d="M17.8 1.95L16.2 4.73L15.09 2.24Z" fill="white" />
-    <path d="M6.2 1.95L7.8 4.73L8.91 2.24Z" fill="white" />
+    <path d="M18.11 4.72L18.35 9.71L23.52 7.84Z" fill="white" />
+    <path d="M5.89 4.72L5.65 9.71L0.48 7.84Z" fill="white" />
   </svg>
 );
 
