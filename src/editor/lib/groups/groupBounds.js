@@ -184,6 +184,34 @@ export function getGroupPivot(groupEl, out) {
   return box ? box.getCenter(out) : out.set(0, 0, 0);
 }
 
+/**
+ * What camera focus frames for a group, in world space: its center, and the
+ * radius about that center that takes in every corner of its member box
+ * (null for a group with no member geometry, framed from a fixed standoff).
+ */
+export function groupFocusFrame(groupEl) {
+  const matrixWorld = groupEl.object3D.matrixWorld;
+  groupEl.object3D.updateWorldMatrix(true, false);
+  const center = getGroupPivot(groupEl, new THREE.Vector3()).applyMatrix4(
+    matrixWorld
+  );
+  const box = getGroupBounds(groupEl);
+  if (!box) return { center, radius: null };
+  const corner = new THREE.Vector3();
+  let radius = 0;
+  for (let i = 0; i < 8; i++) {
+    corner
+      .set(
+        i & 1 ? box.max.x : box.min.x,
+        i & 2 ? box.max.y : box.min.y,
+        i & 4 ? box.max.z : box.min.z
+      )
+      .applyMatrix4(matrixWorld);
+    radius = Math.max(radius, corner.distanceTo(center));
+  }
+  return { center, radius };
+}
+
 // ---------------------------------------------------------------- live recompute
 
 const live = [];

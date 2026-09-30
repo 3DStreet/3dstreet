@@ -95,6 +95,30 @@ Release queues the final coordinate for the next frame token, so finishing a dra
 does not spend a second path-query budget within one frame. Cancellation restores
 the press snapshot instead of committing that queued movement.
 
+## Attach policies
+
+`attach(el, policy)` takes an optional policy for an entity the item rules do
+not fit; without one nothing changes. User groups are the one caller: the
+viewport passes a policy for every group, in every transform mode. A policy
+supplies the pivot the handles stand at and a turn holds still, and the box
+whose bottom they stand on, read at every layout rather than measured from
+meshes. It can switch off ground behaviour (a move keeps its height, with no
+column probe and no landing targets), keep geometry edits inside the entity
+from cancelling a gesture, and defer presses.
+
+A deferred press is claimed and suppressed as usual, and its control shows as
+active at once, but nothing moves until the pointer has been 2 CSS pixels or
+more from the press point, including coalesced samples (`pressClassifier.js`).
+Then the drag starts from the press point. Released sooner, with no time
+limit, it is a click: the gizmo dispatches `handleClick` with the press point
+and the click count, and nothing else. `handlePress` and `handlePressEnd`
+bracket the held press; blur, `pointercancel`, Escape, detach and closing the
+editor end it with nothing done, and an Escape that ends one does nothing
+else.
+
+Commits and cancels leave pitch and roll exactly as read: the gizmo only ever
+edits yaw, so only yaw is rounded.
+
 ## Work per frame and per event
 
 The canvas rectangle is read at most once per scene frame (`_canvasRect`):

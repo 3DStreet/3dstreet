@@ -21,6 +21,11 @@ import { boxMesh, entity } from './_groupFixtures.js';
 // A test file using this must mock, as vi.mock is per file:
 // '@/editor/lib/cameras', '@/editor/lib/nav-experimental/index.js' (camera
 // controls) and '@/editor/lib/navAnalytics.js'.
+//
+// `mountEditor({ gizmo: true })` also sets up what the easy gizmo needs to be
+// driven with pointer events: a sized canvas, the helper scene inside the
+// main scene (as the editor mounts it), and A-Frame's system registry, so the
+// gizmo moves its entity from its own system tick as in the editor.
 
 function shownInScene(object) {
   for (let node = object; node; node = node.parent) {
@@ -39,7 +44,15 @@ function fakeCursorEntity(sceneEl) {
   const raycaster = {
     raycaster: three,
     intersections: [],
-    objects: [],
+    // What the cursor's raycaster casts against: entity geometry that is
+    // shown.
+    get objects() {
+      const objects = [];
+      sceneEl.object3D.traverse((node) => {
+        if (node.el && node.isMesh && shownInScene(node)) objects.push(node);
+      });
+      return objects;
+    },
     refreshObjects() {},
     checkIntersections() {
       this.intersections = three
@@ -55,9 +68,22 @@ function fakeCursorEntity(sceneEl) {
   return el;
 }
 
-export function mountEditor() {
+export function mountEditor({ gizmo = false } = {}) {
   const canvas = document.createElement('canvas');
   document.body.append(canvas);
+  if (gizmo) {
+    canvas.getBoundingClientRect = () => ({
+      width: 1200,
+      height: 800,
+      left: 0,
+      top: 0
+    });
+    Object.defineProperty(canvas, 'clientHeight', { value: 800 });
+    Object.defineProperty(canvas, 'clientWidth', { value: 1200 });
+    // jsdom has no pointer capture; the gizmos call it on a real canvas.
+    canvas.setPointerCapture = () => {};
+    canvas.releasePointerCapture = () => {};
+  }
   const sceneEl = document.createElement('a-scene');
   document.body.append(sceneEl);
   sceneEl.object3D = new THREE.Scene();
@@ -77,7 +103,7 @@ export function mountEditor() {
   sceneEl.append(streetContainer);
   sceneEl.object3D.add(streetContainer.object3D);
 
-  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 1000);
+  const camera = new THREE.PerspectiveCamera(60, gizmo ? 1.5 : 1, 0.1, 1000);
   const inspector = {
     sceneEl,
     container: canvas,
@@ -113,11 +139,24 @@ export function mountEditor() {
     const Cmd = commandsByType.get(type);
     return inspector.history.execute(new Cmd(inspector, payload));
   };
-  vi.stubGlobal('AFRAME', {
+  const aframe = {
     INSPECTOR: inspector,
     components: {},
     scenes: [{ systems: {}, camera }]
-  });
+  };
+  if (gizmo) {
+    sceneEl.object3D.add(inspector.sceneHelpers);
+    aframe.systems = {};
+    aframe.registerSystem = (name, definition) => {
+      aframe.systems[name] = definition;
+    };
+    sceneEl.initSystem = (name) => {
+      const system = { ...aframe.systems[name], el: sceneEl, sceneEl };
+      system.init();
+      sceneEl.systems[name] = system;
+    };
+  }
+  vi.stubGlobal('AFRAME', aframe);
 
   const cursorEl = fakeCursorEntity(sceneEl);
   // The raycaster creates its cursor entity first thing in the viewport.
@@ -237,6 +276,8 @@ export function mountEditor() {
     /** One editor frame in the renderer's order; `between` sees what it draws. */
     frame(between) {
       sceneEl.time += 16;
+      // System ticks run before the render (the easy gizmo moves here).
+      sceneEl.systems['easy-gizmo-frame']?.tick();
       const scene3D = sceneEl.object3D;
       scene3D.updateMatrixWorld();
       scene3D.onBeforeRender({}, scene3D, camera, null);

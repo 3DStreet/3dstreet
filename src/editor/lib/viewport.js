@@ -6,8 +6,20 @@ import { EasyGizmoControls } from './gizmos/EasyGizmoControls.js';
 import { installEasyGizmoOutline } from './gizmos/easyGizmoOutline.js';
 import { easyGizmoCommandName } from './gizmos/easyGizmoMessages.js';
 import { installEditorFrame } from './editorFrame.js';
-import { getGroupBounds, trackLiveGroupBounds } from './groups/groupBounds.js';
-import { isUserGroup, userGroupAncestors } from './groups/groupModel.js';
+import {
+  getGroupBounds,
+  getGroupPivot,
+  groupFocusFrame,
+  holdGroupBounds,
+  releaseGroupBounds,
+  trackLiveGroupBounds
+} from './groups/groupBounds.js';
+import {
+  isHiddenInHierarchy,
+  isUserGroup,
+  userGroupAncestors
+} from './groups/groupModel.js';
+import { positionForRotationAboutCenter } from './groups/groupTransformMath.js';
 import { isSelectedClosedGroup } from './groups/groupScope.js';
 import { installGroupScope } from './groups/groupScopeController.js';
 import { DEFAULT_TRANSFORM_MODE } from './transformModes.js';
@@ -718,6 +730,7 @@ export function Viewport(inspector) {
   // hover and of the gizmo's control hover: over a handle on the box, both
   // show.
   function applyGroupHover(el) {
+    if (pressedGroup) return;
     const show =
       el === inspector.groupScope.hoverOpens &&
       isSelectedClosedGroup(
@@ -731,6 +744,26 @@ export function Viewport(inspector) {
     }
     groupHoverBox.visible = true;
     groupHoverBox.setFromObject(el.object3D);
+  }
+
+  // A press held on the easy gizmo's handle over the selected closed group's
+  // box: releasing it without moving opens the group, so the grey box shows,
+  // a little stronger, until the press ends, for touch as much as for mouse.
+  const GROUP_HOVER_FILL = groupHoverBox.boxFill.material.opacity;
+  const GROUP_PRESSED_FILL = 0.4;
+  let pressedGroup = null;
+  function showPressedGroup(groupEl) {
+    pressedGroup = groupEl;
+    groupHoverBox.boxFill.material.opacity = GROUP_PRESSED_FILL;
+    groupHoverBox.visible = true;
+    groupHoverBox.setFromObject(groupEl.object3D);
+  }
+  function clearPressedGroup() {
+    if (!pressedGroup) return;
+    pressedGroup = null;
+    groupHoverBox.boxFill.material.opacity = GROUP_HOVER_FILL;
+    if (lastHoveredEl) applyGroupHover(lastHoveredEl);
+    else groupHoverBox.visible = false;
   }
 
   Events.on('raycastermouseenter', (el) => {
@@ -759,10 +792,11 @@ export function Viewport(inspector) {
   Events.on('raycastermouseleave', (el) => {
     lastHoveredEl = null;
     hoverBox.visible = false;
-    groupHoverBox.visible = false;
+    if (!pressedGroup) groupHoverBox.visible = false;
   });
   // What the grey box stood for is gone: the group opened or closed.
   Events.on('groupscopechanged', () => {
+    clearPressedGroup();
     groupHoverBox.visible = false;
   });
 
@@ -994,12 +1028,38 @@ export function Viewport(inspector) {
   });
 
   function wireEasyGizmo(commandName) {
+    // A group's box is held for the length of a gesture on it: the handles
+    // and the pivot stay where the gesture started, and nothing re-measures
+    // the members while they move together.
+    let heldGroup = null;
     easyGizmoControls.addEventListener('mouseDown', () => {
       controls.enabled = false;
       hoverBox.visible = false;
+      if (isUserGroup(easyGizmoControls.el)) {
+        heldGroup = easyGizmoControls.el;
+        holdGroupBounds(heldGroup);
+      }
     });
     easyGizmoControls.addEventListener('mouseUp', () => {
       controls.enabled = true;
+      if (heldGroup) {
+        releaseGroupBounds(heldGroup);
+        heldGroup = null;
+      }
+    });
+    // A press held on a group's handle (see groupGizmoPolicy): the grey box
+    // while it would open the group, and the click it turns out to be.
+    easyGizmoControls.addEventListener('handlePress', (evt) => {
+      const hits = mouseCursor.groupHitsAt(evt.clientX, evt.clientY);
+      const opens = inspector.groupScope.handleClickOpens(hits);
+      if (opens) showPressedGroup(opens);
+    });
+    easyGizmoControls.addEventListener('handlePressEnd', clearPressedGroup);
+    easyGizmoControls.addEventListener('handleClick', (evt) => {
+      inspector.groupScope.applyHandleClick(
+        mouseCursor.groupHitsAt(evt.clientX, evt.clientY),
+        evt.detail
+      );
     });
     easyGizmoControls.addEventListener('objectChange', () => {
       const object = easyGizmoControls.object;
@@ -1025,6 +1085,14 @@ export function Viewport(inspector) {
             )}`
           : `${object.position.x} ${object.position.y} ${object.position.z}`
       });
+      // A group turns about its center, so its origin moves as it turns.
+      if (rotating && isUserGroup(object.el)) {
+        Events.emit('entityupdate', {
+          entity: object.el,
+          component: 'position',
+          value: `${object.position.x} ${object.position.y} ${object.position.z}`
+        });
+      }
     });
     // The scene's hover box tracks the gizmo's own hover state rather than
     // being cleared once on mouseDown: hovering a control and moving away
@@ -1085,6 +1153,20 @@ export function Viewport(inspector) {
   sceneHelpers.add(easyGizmoControls);
   inspector.easyGizmoControls = easyGizmoControls;
 
+  // How the easy gizmo handles a user group (see EasyGizmoControls.attach).
+  // A group has no base of its own: its handles stand at its center on the
+  // bottom of its members' box, a move keeps its height, and it turns about
+  // the center. A click on a handle can mean "open the group", so presses are
+  // held until they are known to be drags.
+  const groupGizmoPolicy = {
+    pivotLocal: getGroupPivot,
+    localBox: getGroupBounds,
+    positionForRotation: positionForRotationAboutCenter,
+    groundBehaviour: false,
+    endsGestureOnDescendantGeometry: false,
+    deferPress: true
+  };
+
   // Work that must see each frame's final transforms before it is drawn runs
   // in this window; the selected group's bounds are kept current there.
   const editorFrame = installEditorFrame(sceneEl);
@@ -1102,6 +1184,11 @@ export function Viewport(inspector) {
       helper.update();
       helper.updateMatrixWorld(true);
     });
+    // The gizmo was laid out earlier in this frame from the old box; lay it
+    // out again so its handles are drawn under the members this frame.
+    if (easyGizmoControls.el === groupEl) {
+      easyGizmoControls.updateMatrixWorld(true);
+    }
   });
 
   Events.on('entityupdate', (detail) => {
@@ -1295,6 +1382,15 @@ export function Viewport(inspector) {
       segmentWidthControls.attach(el);
       return;
     }
+    // A user group gets the easy gizmo in every transform mode (the stock
+    // gizmo's per-axis moves and free rotation do not apply to a group, which
+    // only yaws and scales uniformly), and no handles while it is hidden.
+    if (isUserGroup(el)) {
+      if (!isHiddenInHierarchy(el)) {
+        easyGizmoControls.attach(el, groupGizmoPolicy);
+      }
+      return;
+    }
     if (transformMode === 'easy') {
       if (easyGizmoControls.accepts(el)) {
         easyGizmoControls.attach(el);
@@ -1307,6 +1403,20 @@ export function Viewport(inspector) {
     }
     attachStreetHandles(el);
   }
+
+  // Hiding or showing the selected group, or a group around it, takes its
+  // handles away or gives them back. The layer panel's eye is a command, so
+  // an entityupdate announces it and a history change announces its undo.
+  function followSelectedGroupVisibility() {
+    const el = inspector.selectedEntity;
+    if (!isUserGroup(el)) return;
+    const attached = easyGizmoControls.el === el;
+    if (attached === isHiddenInHierarchy(el)) attachControlsForSelection();
+  }
+  Events.on('entityupdate', (detail) => {
+    if (detail?.component === 'visible') followSelectedGroupVisibility();
+  });
+  Events.on('historychanged', followSelectedGroupVisibility);
 
   Events.on('transformmodechange', (mode) => {
     transformMode = mode;
@@ -1438,7 +1548,12 @@ export function Viewport(inspector) {
     // Feature-discovery: count the first focus-on-entity (double-click,
     // F-key, or sidebar focus button all route through this event).
     captureNavDiscovery('focus');
-    controls.focus(object);
+    // A group is framed by its members around its center, not by its origin.
+    if (isUserGroup(object?.el)) {
+      controls.focus(object, groupFocusFrame(object.el));
+    } else {
+      controls.focus(object);
+    }
   });
 
   // Cursor-aware double-click navigation (KD-23; street-level nav only —

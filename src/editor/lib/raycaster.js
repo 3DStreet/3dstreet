@@ -125,16 +125,17 @@ export function initRaycaster(inspector) {
   // cursor ray, not just the nearest: a click inside an open group must reach
   // its member behind a nearer outside object, and a selected group's box and
   // the groups' center markers are pick targets the scene raycast cannot see.
-  function groupHits() {
+  function groupHits(
+    intersections = raycaster.intersections || [],
+    ray = raycaster.raycaster?.ray
+  ) {
     const hits = [];
-    const intersections = raycaster.intersections || [];
     for (let i = 0; i < intersections.length; i++) {
       const el = entityOfIntersection(intersections[i]);
       if (el) {
         hits.push({ el, distance: intersections[i].distance, kind: 'entity' });
       }
     }
-    const ray = raycaster.raycaster?.ray;
     if (ray) {
       inspector.groupScope.affordances.collectHits(ray, inspector.camera, hits);
     }
@@ -148,6 +149,30 @@ export function initRaycaster(inspector) {
 
   function groupsActive() {
     return !!inspector.groupScope?.isActive();
+  }
+
+  // The group pick targets at a client point, cast afresh from the camera: a
+  // press a gizmo held back is resolved where it went down, which the
+  // cursor's polled intersections need not describe any more.
+  const pointRaycaster = new THREE.Raycaster();
+  const pointNdc = new THREE.Vector2();
+  function groupHitsAt(clientX, clientY) {
+    const rect = inspector.container.getBoundingClientRect();
+    if (!rect.width || !rect.height) return [];
+    pointNdc.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1
+    );
+    const cursorRaycaster = raycaster.raycaster;
+    pointRaycaster.near = cursorRaycaster.near;
+    pointRaycaster.far = cursorRaycaster.far;
+    pointRaycaster.setFromCamera(pointNdc, inspector.camera);
+    // As the cursor's own raycaster: its (visible) objects, and only hits on
+    // something that belongs to an entity.
+    const intersections = pointRaycaster
+      .intersectObjects(raycaster.objects, true)
+      .filter((intersection) => intersection.object.el);
+    return groupHits(intersections, pointRaycaster.ray);
   }
 
   // Poll the raycaster's closest intersection each check and fire hover events when the
@@ -444,6 +469,7 @@ export function initRaycaster(inspector) {
 
   return {
     el: mouseCursor,
+    groupHitsAt,
     enable: () => {
       mouseCursor.setAttribute('raycaster', 'enabled', true);
       inspector.container.addEventListener('mousedown', onMouseDown);

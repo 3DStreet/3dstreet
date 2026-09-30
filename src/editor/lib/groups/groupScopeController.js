@@ -24,7 +24,12 @@ import {
   isUserGroup,
   userGroupAncestors
 } from './groupModel.js';
-import { hoverTargetOf, isDrill, resolveCanvasClick } from './groupScope.js';
+import {
+  hoverTargetOf,
+  isDrill,
+  isSelectedClosedGroup,
+  resolveCanvasClick
+} from './groupScope.js';
 
 const NO_GROUPS = Object.freeze([]);
 
@@ -302,6 +307,46 @@ export class GroupScopeController {
         break;
     }
     if (drill) this.drillLatch = true;
+  }
+
+  /**
+   * The selected closed group a still click on its transform handle, at the
+   * spot whose pick targets are `hits`, would open: the handle overlaps the
+   * group's box or marker there. Null otherwise.
+   */
+  handleClickOpens(hits) {
+    const selected = this.selected();
+    if (!isSelectedClosedGroup(selected, selected, this.openElements())) {
+      return null;
+    }
+    const onGroup = hits.some(
+      (hit) =>
+        hit.el === selected && (hit.kind === 'proxy' || hit.kind === 'marker')
+    );
+    return onGroup ? selected : null;
+  }
+
+  /**
+   * A still click on the selected group's transform handle, resolved at the
+   * press point (`hits`, as for a canvas click). Over the group's box it opens
+   * the group. On the handles of an open, selected group it falls through to
+   * the click rules inside that group: the member beneath, or the group again
+   * on empty space. Anything else does nothing; in particular a handle is
+   * never a way out of a group, nor a way to select what lies under a closed
+   * one.
+   */
+  applyHandleClick(hits, count) {
+    if (count === 1) this.drillLatch = false;
+    const opens = this.handleClickOpens(hits);
+    if (opens) {
+      this.applyClick({ action: 'open', group: opens }, count);
+      return;
+    }
+    const open = this.openElements();
+    const selected = this.selected();
+    if (!selected || selected !== open[open.length - 1]) return;
+    const result = this.decide(hits);
+    if (result.action === 'select') this.applyClick(result, count);
   }
 
   /**

@@ -60,6 +60,7 @@ import {
   makeMaterial
 } from './easyGizmoBuild.js';
 import { shouldCaptureKeyEvent } from '../keyCapture.js';
+import { PressClassifier } from './pressClassifier.js';
 import {
   ARC_FLAT_RADIUS_FRAC,
   ARC_FLAT_SWEEP_DEG,
@@ -214,6 +215,8 @@ const _edgeWorld = [0, 1, 2, 3].map(() => new THREE.Vector3());
 const _edgeFlat = new Float64Array(8);
 const _edgeOffsets = new Float64Array(4);
 const _edgeOut = new Float64Array(8);
+const _pivot = new THREE.Vector3();
+const _qNow = new THREE.Quaternion();
 
 // Outlines in their meshes' own frames: the unit quad every plate and bar is
 // drawn from, and the unit arrowhead.
@@ -350,6 +353,20 @@ class EasyGizmoControls extends GizmoPointerControls {
     this._wasOpen = false;
     this._frameSystem = null;
 
+    // How the attached entity is handled where it differs from an item's; see
+    // attach(). Null for the default behaviour.
+    this._policy = null;
+    // A press held back until it is known to be a drag (policy.deferPress).
+    this._deferred = null;
+    // A policy's pivot, captured at the start of a gesture and held until it
+    // ends: in the entity's own frame, its parent's frame and the world.
+    this._pivotLocal = new THREE.Vector3();
+    this._pivotParent = new THREE.Vector3();
+    this._pivotWorld = new THREE.Vector3();
+    this._pivotHeld = false;
+    this._posStart = new THREE.Vector3();
+    this._quatStart = new THREE.Quaternion();
+
     this._bindHandlers();
     this._build();
     /**
@@ -383,8 +400,14 @@ class EasyGizmoControls extends GizmoPointerControls {
       this.probe.probeColumn(x, z, referenceY);
     this._onGeometryChanged = () => {
       if (!this.el) return;
-      // The old press clearance no longer describes the edited geometry.
-      if (this.isDragging) this.endGesture('geometrychanged');
+      // The old press clearance no longer describes the edited geometry
+      // (unless the attach policy opts out).
+      if (
+        this.isDragging &&
+        this._policy?.endsGestureOnDescendantGeometry !== false
+      ) {
+        this.endGesture('geometrychanged');
+      }
       this.deriveLocalBox();
       this._refreshSupport();
     };
@@ -807,10 +830,29 @@ class EasyGizmoControls extends GizmoPointerControls {
     return true;
   }
 
-  attach(el) {
+  /**
+   * Attach to `el`. `policy`, when given, replaces the item rules where they
+   * do not fit the entity:
+   * - `pivotLocal(el, out)`: the point, in el's own frame, the handles stand
+   *   at and a rotation turns about (an item's is its origin);
+   * - `localBox(el)`: el's box in its own frame, or null; read at every layout
+   *   instead of measuring el's meshes;
+   * - `positionForRotation(posStart, qStart, qNow, pivotParent, out)`: where
+   *   the origin goes when a turn holds the pivot still, in the parent frame;
+   * - `groundBehaviour: false`: a move keeps its height, with no ground
+   *   following, support probing or landing targets;
+   * - `endsGestureOnDescendantGeometry: false`: geometry edits inside el do
+   *   not cancel a gesture;
+   * - `deferPress: true`: a press on a control is held until it moves far
+   *   enough to be a drag; released before that, it is a click, reported as
+   *   'handleClick' and nothing else ('handlePress' and 'handlePressEnd'
+   *   bracket the held press).
+   */
+  attach(el, policy = null) {
     if (!el || !el.object3D) return this;
     if (!this.accepts(el)) return this;
     this.el = el;
+    this._policy = policy;
     // Both are required: nothing here resolves hover or accepts a press with
     // either unset.
     this.object = el.object3D;
@@ -850,6 +892,7 @@ class EasyGizmoControls extends GizmoPointerControls {
    */
   detach() {
     if (!this.el) return this;
+    this._clearDeferredPress();
     // Restore a live gesture while its entity is still attached.
     if (this.isDragging) this.endGesture('detach');
     this.el.removeEventListener('model-loaded', this._onModelLoaded);
@@ -873,6 +916,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this._frameSystem = null;
     this.el = undefined;
     this.object = undefined;
+    this._policy = null;
     this.probe.excludeEl = null;
     this.visible = false;
     this.axis = null;
@@ -911,7 +955,14 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   deriveLocalBox() {
+    // A policy supplies the box at every layout; see _updateBase.
+    if (this._policy) return;
     this.localBox = deriveLocalBoxOf(this.object);
+  }
+
+  /** Does this attachment follow the ground (the item rules)? */
+  _followsGround() {
+    return this._policy?.groundBehaviour !== false;
   }
 
   // --- the pointer layer ------------------------------------------------
@@ -1014,6 +1065,10 @@ class EasyGizmoControls extends GizmoPointerControls {
   _onSuppressClaimed(event) {
     if (!this._pressWasClaimed) return;
     this._suppress(event);
+    // The browser's click count arrives on the mouse family only.
+    if (this._deferred && event.type === 'mousedown') {
+      this._deferred.detail = event.detail || 1;
+    }
   }
 
   /**
@@ -1039,7 +1094,7 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   _onPointerDown(event) {
-    if (this.isDragging || this._releasePending) {
+    if (this.isDragging || this._releasePending || this._deferred) {
       this._suppress(event);
       return;
     }
@@ -1084,6 +1139,10 @@ class EasyGizmoControls extends GizmoPointerControls {
     // claim exists to prevent.
     this._suppress(event);
     this._pressWasClaimed = true;
+    if (this._policy?.deferPress) {
+      this._deferPress(event, axis);
+      return;
+    }
     if (decision === 'swallow') return;
 
     if (this.axis !== axis) {
@@ -1091,6 +1150,11 @@ class EasyGizmoControls extends GizmoPointerControls {
       this.highlight(axis);
       this.dispatchEvent({ type: 'axisHoverChange', axis });
     }
+    this._beginDrag(axis, event);
+  }
+
+  /** Start the drag of a claimed press; false when it cannot start. */
+  _beginDrag(axis, event) {
     // Before the reference support is measured: placement must not sample
     // terrain the dragged item flattened itself. A merely selected street
     // keeps its flattening; this is released on every gesture exit, and here
@@ -1102,11 +1166,12 @@ class EasyGizmoControls extends GizmoPointerControls {
     if (this.startDrag(axis, event) === false) {
       this.probe.setFlatteningSuspended(false);
       this._dragReferencePending = false;
-      return;
+      return false;
     }
     // Ownership is independent of whether native capture is available.
     this._pointerId = event.pointerId ?? null;
     this._captureLost = false;
+    const canvas = this._canvas();
     if (canvas && canvas.setPointerCapture && event.pointerId !== undefined) {
       try {
         canvas.setPointerCapture(event.pointerId);
@@ -1118,6 +1183,71 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.highlight(axis);
     this.dispatchEvent(this.mouseDownEvent);
     this.dispatchEvent(this.changeEvent);
+    return true;
+  }
+
+  /**
+   * Hold a claimed press until it is known to be a click or a drag (see
+   * pressClassifier.js). The pressed control shows as active at once, for
+   * every pointer type, so a touch user sees what a drag would move.
+   */
+  _deferPress(event, axis) {
+    this._deferred = {
+      axis,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      pointerId: event.pointerId,
+      // The click count; see _onSuppressClaimed. A touch press has none.
+      detail: 1,
+      classifier: new PressClassifier(event.clientX, event.clientY)
+    };
+    this._pointerId = event.pointerId ?? null;
+    if (this.axis !== axis) {
+      this.axis = axis;
+      this.dispatchEvent({ type: 'axisHoverChange', axis });
+    }
+    this.highlight(axis);
+    this.dispatchEvent({
+      type: 'handlePress',
+      clientX: event.clientX,
+      clientY: event.clientY,
+      pointerType: this._lastPointerType
+    });
+  }
+
+  /**
+   * The held press moved far enough: it is a drag, starting from the press
+   * point and then following the pointer to `event`.
+   */
+  _promoteDeferredPress(event) {
+    const press = this._deferred;
+    this._deferred = null;
+    this._pointerId = null;
+    this.dispatchEvent({ type: 'handlePressEnd' });
+    // A control that was mid-transition at the press does nothing with it.
+    if (!press.axis || this._isInert(press.axis)) {
+      this.highlight(this.axis);
+      return false;
+    }
+    this.updateMouse(press);
+    if (!this._beginDrag(press.axis, press)) return false;
+    this.updateMouse(event);
+    this._trackDrag(event);
+    return true;
+  }
+
+  /** End a held press with nothing done. True when there was one. */
+  _clearDeferredPress() {
+    if (!this._deferred) return false;
+    this._deferred = null;
+    this._pointerId = null;
+    if (this._lastPointerType !== 'mouse') {
+      this.axis = null;
+      this.dispatchEvent({ type: 'axisHoverChange', axis: null });
+    }
+    this.highlight(this.axis);
+    this.dispatchEvent({ type: 'handlePressEnd' });
+    return true;
   }
 
   /**
@@ -1156,6 +1286,14 @@ class EasyGizmoControls extends GizmoPointerControls {
   _onPointerMove(event) {
     if (!this.el || !this.object || !this.enabled) return;
     if (this._releasePending) return;
+    if (this._deferred) {
+      if (!this._ownsPointer(event)) return;
+      this._suppress(event);
+      if (this._deferred.classifier.track(event)) {
+        this._promoteDeferredPress(event);
+      }
+      return;
+    }
     if (this.isDragging) {
       if (!this._ownsPointer(event)) return;
       this._suppress(event);
@@ -1194,6 +1332,27 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   _onPointerUp(event) {
+    if (this._deferred && this._ownsPointer(event)) {
+      const press = this._deferred;
+      if (!press.classifier.track(event)) {
+        // Still within the click distance: a click, and nothing else happens.
+        this._suppress(event);
+        this._clearDeferredPress();
+        this.dispatchEvent({
+          type: 'handleClick',
+          clientX: press.clientX,
+          clientY: press.clientY,
+          detail: press.detail
+        });
+        return;
+      }
+      // Released after moving away with no pointermove between: a drag that
+      // ends here.
+      if (!this._promoteDeferredPress(event)) {
+        this._suppress(event);
+        return;
+      }
+    }
     if (!this.isDragging || !this._ownsPointer(event)) return;
     this._suppress(event);
     if (this._releasePending) return;
@@ -1213,6 +1372,10 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   _onPointerCancel(event) {
+    if (this._deferred && this._ownsPointer(event)) {
+      this._clearDeferredPress();
+      return;
+    }
     if (!this.isDragging || !this._ownsPointer(event)) return;
     this.endGesture('pointercancel');
   }
@@ -1250,6 +1413,7 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   _onBlur() {
+    if (this._clearDeferredPress()) return;
     if (!this.isDragging) return;
     this.endGesture('blur');
   }
@@ -1285,7 +1449,7 @@ class EasyGizmoControls extends GizmoPointerControls {
    * typed into a properties-panel field while a gesture happens to be live.
    */
   _suppressKey(event) {
-    if (!this.isDragging) return false;
+    if (!this.isDragging && !this._deferred) return false;
     if (!shouldCaptureKeyEvent(event)) return false;
     this._suppress(event);
     return true;
@@ -1298,6 +1462,8 @@ class EasyGizmoControls extends GizmoPointerControls {
   _onKeyUp(event) {
     if (!this._suppressKey(event)) return;
     if (event.key === 'Escape' || event.keyCode === 27) {
+      // A held press is let go; the Escape does nothing else.
+      if (this._clearDeferredPress()) return;
       this.endGesture('escape');
     }
   }
@@ -1397,6 +1563,8 @@ class EasyGizmoControls extends GizmoPointerControls {
     ];
     const mouse = this._lastPointerType === 'mouse';
     const pressed = this._landingPress;
+    // A held press shows its control as active, as a drag does.
+    const held = this.isDragging || !!this._deferred;
     const activeAxis = pressed && !pressed.armed ? null : axis;
     const someActive =
       mouse && groups.some((g) => g.group.userData.gizmoAxis === activeAxis);
@@ -1404,14 +1572,13 @@ class EasyGizmoControls extends GizmoPointerControls {
     groups.forEach(({ group, slot, edge, flatness }) => {
       const active = group.userData.gizmoAxis === activeAxis;
       let level = OPACITY_REST;
-      if (active && this.isDragging) level = OPACITY_ACTION;
+      if (active && held) level = OPACITY_ACTION;
       else if (active && mouse) level = OPACITY_HOVER;
       else if (someActive) level = OPACITY_DIM;
       const opacity = Math.min(level + OPACITY_FLAT_BOOST * flatness, 1);
       if (slot.flat) slot.flat.opacity = opacity;
       if (slot.solid) slot.solid.opacity = opacity;
-      const outlined =
-        active && (mouse || this.isDragging || (pressed && pressed.armed));
+      const outlined = active && (mouse || held || (pressed && pressed.armed));
       if (edge) edge.opacity = outlined ? opacity * EDGE_OPACITY_RATIO : 0;
       if (group === this.moveGroup) {
         this.materials.moveHeadFading.opacity = opacity * (1 - flat);
@@ -1759,6 +1926,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     if (typeof AFRAME === 'undefined') return;
     const open = this._inspectorOpen();
     if (this._wasOpen && !open) {
+      this._clearDeferredPress();
       if (this.isDragging) this.endGesture('editorclosed');
       this._removeListeners();
       this.probe.setFlatteningSuspended(false);
@@ -1789,6 +1957,10 @@ class EasyGizmoControls extends GizmoPointerControls {
   _updateBase() {
     this.object.updateWorldMatrix(true, false);
     this.object.matrixWorld.decompose(_p, _q, _s);
+    if (this._policy) {
+      this._updateBaseFromPolicy();
+      return;
+    }
     if (isStreetEntity(this.el)) {
       // Managed roads sit above the dirt origin; standalone segments use local zero.
       const localY = this.el.hasAttribute('managed-street')
@@ -1804,6 +1976,44 @@ class EasyGizmoControls extends GizmoPointerControls {
     }
     this.baseOffset = this.baseY - _p.y;
     this._anchor.set(_p.x, this.baseY, _p.z);
+  }
+
+  /**
+   * The handles stand at the policy's pivot, on the bottom of its box (or at
+   * the pivot's own height when there is no box), so `_p` leaves here with the
+   * pivot's X and Z and the origin's Y. The pivot held for a gesture is used
+   * while one is live.
+   */
+  _updateBaseFromPolicy() {
+    const matrixWorld = this.object.matrixWorld;
+    if (this._pivotHeld) _pivot.copy(this._pivotLocal);
+    else this._policy.pivotLocal(this.el, _pivot);
+    _pivot.applyMatrix4(matrixWorld);
+    const box = this._policy.localBox(this.el);
+    this.baseY = box
+      ? _box.copy(box).applyMatrix4(matrixWorld).min.y
+      : _pivot.y;
+    this.baseOffset = this.baseY - _p.y;
+    _p.x = _pivot.x;
+    _p.z = _pivot.z;
+    this._anchor.set(_p.x, this.baseY, _p.z);
+  }
+
+  /** Capture the policy's pivot for the gesture starting now. */
+  _holdPivot() {
+    this._policy.pivotLocal(this.el, this._pivotLocal);
+    this.object.updateWorldMatrix(true, false);
+    this._pivotParent.copy(this._pivotLocal).applyMatrix4(this.object.matrix);
+    this._pivotWorld
+      .copy(this._pivotLocal)
+      .applyMatrix4(this.object.matrixWorld);
+    const pos = this.el.getAttribute('position');
+    this._posStart.set(pos.x, pos.y, pos.z);
+    const rot = this.el.getAttribute('rotation');
+    this._quatStart.setFromEuler(
+      _e.set(rot.x * DEG, rot.y * DEG, rot.z * DEG, 'YXZ')
+    );
+    this._pivotHeld = true;
   }
 
   _layoutFrame() {
@@ -1841,6 +2051,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     // selected street keeps flattening the terrain around it until a drag
     // begins and gets it back the moment the drag ends.
     if (!this.object || !this._inspectorOpen()) return;
+    if (!this._followsGround()) return;
     this._updateBase();
     const baseY = this.currentBaseY();
     const column = this.probe.probeColumn(_p.x, _p.z, baseY);
@@ -2506,15 +2717,18 @@ class EasyGizmoControls extends GizmoPointerControls {
    * transform, and copying that shape is exactly the build in which a gesture
    * released where it started still writes an undo entry — the snapshot and the
    * value it is compared against would have been through different roundings.
+   *
+   * Pitch and roll are written as read: the gizmo never edits them, and
+   * rounding them would change an axis the user did not touch (and turn a
+   * yaw of an entity that may only yaw into a refused pitch edit).
    */
   _formatPose(el) {
     const pos = el.getAttribute('position');
     const rot = el.getAttribute('rotation');
     const p = (v) => quantise(v, POSITION_DECIMALS);
-    const r = (v) => quantise(v, YAW_DECIMALS);
     return {
       position: `${p(pos.x)} ${p(pos.y)} ${p(pos.z)}`,
-      rotation: `${r(rot.x)} ${r(rot.y)} ${r(rot.z)}`
+      rotation: `${rot.x} ${quantise(rot.y, YAW_DECIMALS)} ${rot.z}`
     };
   }
 
@@ -2526,6 +2740,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.dragObject = this.object;
     this.dragSnapshot = this._formatPose(this.el);
     this._dodgeHeld = null;
+    if (this._policy) this._holdPivot();
 
     if (this._isLandingAxis(axis)) {
       const targetY =
@@ -2582,7 +2797,8 @@ class EasyGizmoControls extends GizmoPointerControls {
 
     if (axis === 'rotate') {
       this._measureRotateLever();
-      this.rotatePrevAngle = Math.atan2(_v.x - _p.x, _v.z - _p.z);
+      const centre = this._pivotHeld ? this._pivotWorld : _p;
+      this.rotatePrevAngle = Math.atan2(_v.x - centre.x, _v.z - centre.z);
       this.rotateAccum = 0;
       this.rotateStartYawDeg = this.el.getAttribute('rotation').y;
       return;
@@ -2592,7 +2808,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.dragStartXZ.set(_p.x, 0, _p.z);
     this._lastProcessedXZ = { x: _p.x, z: _p.z };
     this._pendingXZ = null;
-    this._seedDragReference(baseY);
+    if (this._followsGround()) this._seedDragReference(baseY);
   }
 
   /**
@@ -2745,8 +2961,10 @@ class EasyGizmoControls extends GizmoPointerControls {
         this._dragStartWorld.y + along - this._dragVerticalAlongStart,
         this._dragStartWorld.z
       );
-      const baseY = this.currentBaseY();
-      this._applyColumn(resplitColumn(this.probe.lastHits, baseY), baseY);
+      if (this._followsGround()) {
+        const baseY = this.currentBaseY();
+        this._applyColumn(resplitColumn(this.probe.lastHits, baseY), baseY);
+      }
       this.dispatchEvent(this.changeEvent);
       this.dispatchEvent(this.objectChangeEvent);
       return;
@@ -2787,8 +3005,10 @@ class EasyGizmoControls extends GizmoPointerControls {
       this.rotateAccum = this._shallowDragPixels() / this._dragRotPxPerRad;
     } else {
       if (!this.solvePlane(_v)) return;
-      this.object.getWorldPosition(_p);
-      const ang = Math.atan2(_v.x - _p.x, _v.z - _p.z);
+      const centre = this._pivotHeld
+        ? this._pivotWorld
+        : this.object.getWorldPosition(_p);
+      const ang = Math.atan2(_v.x - centre.x, _v.z - centre.z);
       // Accumulated across the half turn, so a full turn does not snap back.
       let d = ang - this.rotatePrevAngle;
       while (d > Math.PI) d -= Math.PI * 2;
@@ -2799,13 +3019,32 @@ class EasyGizmoControls extends GizmoPointerControls {
 
     const rot = this.el.getAttribute('rotation');
     const yawDeg = this.rotateStartYawDeg + (this.rotateAccum * 180) / Math.PI;
-    this.el.setAttribute('rotation', {
-      x: rot.x,
-      y: quantise(yawDeg, YAW_DECIMALS),
-      z: rot.z
-    });
+    const yaw = quantise(yawDeg, YAW_DECIMALS);
+    this.el.setAttribute('rotation', { x: rot.x, y: yaw, z: rot.z });
+    if (this._pivotHeld) this._orbitPivot(rot, yaw);
     this.dispatchEvent(this.changeEvent);
     this.dispatchEvent(this.objectChangeEvent);
+  }
+
+  /**
+   * Keep the held pivot still through a turn to `yaw` degrees: the origin
+   * orbits it. From the rounded yaw, the one written, so returning to the
+   * start angle returns the position exactly.
+   */
+  _orbitPivot(rot, yaw) {
+    _qNow.setFromEuler(_e.set(rot.x * DEG, yaw * DEG, rot.z * DEG, 'YXZ'));
+    this._policy.positionForRotation(
+      this._posStart,
+      this._quatStart,
+      _qNow,
+      this._pivotParent,
+      _v2
+    );
+    this.el.setAttribute('position', {
+      x: quantise(_v2.x, POSITION_DECIMALS),
+      y: quantise(_v2.y, POSITION_DECIMALS),
+      z: quantise(_v2.z, POSITION_DECIMALS)
+    });
   }
 
   /**
@@ -2822,6 +3061,14 @@ class EasyGizmoControls extends GizmoPointerControls {
     }
     const baseY = this.currentBaseY();
     const startY = _p.y;
+    if (!this._followsGround()) {
+      // Held at its height: no ground to follow and no landing to offer.
+      this.setWorldPosition(target.x, startY, target.z);
+      this._lastProcessedXZ = { x: target.x, z: target.z };
+      this.dispatchEvent(this.changeEvent);
+      this.dispatchEvent(this.objectChangeEvent);
+      return;
+    }
     const result = evaluatePath({
       from: this._lastProcessedXZ,
       to: target,
@@ -2864,8 +3111,8 @@ class EasyGizmoControls extends GizmoPointerControls {
     _v2.set(x, y, z);
     const parent = this.object.parent;
     // The gizmo reasons in world space and commits parent-local values, so the
-    // conversion is required even though no parent in the product carries a
-    // rotation off the vertical today.
+    // conversion is required: a parent may be scaled, and an imported parent
+    // may carry pitch or roll.
     if (parent) parent.worldToLocal(_v2);
     this.el.setAttribute('position', {
       x: quantise(_v2.x, POSITION_DECIMALS),
@@ -2896,6 +3143,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     const landing = this._landingPress;
 
     this.isDragging = false;
+    this._pivotHeld = false;
     // The selection's own flattening comes back on every exit, commit or
     // cancel: the terrain re-flattens around wherever the item ended up.
     this.probe.setFlatteningSuspended(false);
