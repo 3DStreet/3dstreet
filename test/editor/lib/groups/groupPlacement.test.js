@@ -274,10 +274,13 @@ describe('an item a route may not put in the open group', () => {
 });
 
 describe('the notice for an item added outside the open group', () => {
-  // The notices each create gives, past any earlier one: a repeat of the same
-  // text is held back briefly.
+  // One clock for these tests, only ever moved forward, and later than any
+  // notice an earlier test gave: a repeat of the same text is held back
+  // briefly, so each create is judged well clear of the one before.
+  let clock = Date.now() + 3600000;
   function noticesFor(add) {
-    vi.setSystemTime(Date.now() + 60000);
+    clock += 60000;
+    vi.setSystemTime(clock);
     scene.notify.infoMessage.mockClear();
     add();
     return scene.notify.infoMessage.mock.calls.map(([text]) => text);
