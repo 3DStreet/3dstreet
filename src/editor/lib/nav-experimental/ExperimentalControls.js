@@ -31,7 +31,7 @@
 // Public API (mirrors THREE.EditorControls):
 //   - enabled, center, panSpeed, zoomSpeed, minSpeedFactor, rotationSpeed
 //   - setCamera(camera), setAspectRatio(ratio)
-//   - focus(target) — reuses focus-animation A-Frame component
+//   - focus(target, options) — reuses focus-animation A-Frame component
 //   - newSceneCameraZoom(snapshotCameraState)
 //   - resetZoom()
 //   - zoomInStart/Stop, zoomOutStart/Stop
@@ -42,6 +42,10 @@
 import './navTuningComponent.js';
 import { streetFocusPose } from '../streetFocus.js';
 import { resolveFocusPose } from '../focusPose.js';
+import {
+  createLookAtGlide,
+  headingPreservingFocusPosition
+} from '../cameraGlide.js';
 import { isStreetLevelNav, isWasdNav } from './flag.js';
 import { ModifierState } from './modifierState.js';
 import { GestureLatch } from './gestureLatch.js';
@@ -95,6 +99,9 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // tweens because drive/WebXR take the camera away entirely.
     this._inputLocked = false;
     this.center = new THREE.Vector3();
+    // The entity a heading-preserving first-step focus is gliding to, so a
+    // repeat double-click on it mid-glide runs the full framing (#2054).
+    this._softFocusTarget = null;
     this.panSpeed = 0.002;
     // Legacy field used only by the ActionBar +/- buttons (_zoomActionBar),
     // which is out of the wheel-dolly path and must keep its current feel.
@@ -437,13 +444,21 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._aspectRatio = ratio;
   }
 
-  focus(target) {
+  // Frame `target`. With `options.twoStep` (the double-click routes, #2054)
+  // the first call keeps the camera's heading and only slides it so the
+  // entity is centered at framing distance; repeating it on the same entity
+  // once there (or while still gliding there) runs the full framing, with
+  // the orientation of the entity's focus view.
+  focus(target, options = {}) {
     if (this._disabledByOrtho || !this._focusAnimation) return;
     // A committed-motion tween (teleport / preset / recovery / scene-load
     // fly-in) may own the camera. Cancel it first — wheel/WASD/mousedown are
     // all tween-gated; focus was the one ungated writer, so F mid-tween had
     // two per-frame camera writers fighting (PR #1851 review).
+    const softFocusInFlight =
+      this._focusAnimation.transitioning && this._softFocusTarget === target;
     this._cancelCameraTween();
+    this._softFocusTarget = null;
 
     // The Starting View has no geometry to frame: focusing it means going
     // to the pose it stores, the same glide as Preview Start / Play.
@@ -455,22 +470,45 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       return;
     }
 
+    const camera = this._camera;
+    const frame = this._focusFrame(target);
+
+    if (options.twoStep && !softFocusInFlight) {
+      const softPosition = headingPreservingFocusPosition(
+        camera.quaternion,
+        frame.center,
+        frame.distance,
+        frame.minY
+      );
+      const alreadyThere =
+        softPosition &&
+        camera.position.distanceTo(softPosition) <
+          Math.max(0.05, frame.distance * 0.01);
+      if (softPosition && !alreadyThere) {
+        this._softFocusTarget = target;
+        this._startFocusGlide(softPosition, camera.quaternion, frame.center);
+        return;
+      }
+    }
+
     // A fully captured focus-camera-pose (orientation + fov, lookAt false)
     // is a stored camera state in the entity's frame: glide straight to it
     // through the same path as snapshots and the Viewer Start, no look-at
-    // reconstruction. Legacy position-only poses fall through below.
-    const storedPose = target.el?.getAttribute?.('focus-camera-pose');
-    if (storedPose && storedPose.lookAt === false) {
-      this.focusCameraState(resolveFocusPose(target, storedPose));
+    // reconstruction. Legacy position-only poses were resolved above.
+    if (frame.cameraState) {
+      this.focusCameraState(frame.cameraState);
       return;
     }
 
-    const camera = this._camera;
-    const fa = this._focusAnimation;
+    this._startFocusGlide(frame.position, null, frame.center);
+  }
 
-    fa.transitionCamPosStart.copy(camera.position);
-    fa.transitionCamQuaternionStart.copy(camera.quaternion);
-
+  // Where focusing `target` frames it: the bounds `center`, the framing
+  // `distance`, and either the camera `position` that looks at the center
+  // or, for a fully captured focus-camera-pose, its resolved `cameraState`.
+  // `minY` is the lowest a heading-preserving first step may put the camera
+  // (the bounds' floor).
+  _focusFrame(target) {
     const box = new THREE.Box3().setFromObject(target);
     // Batched entities have their mesh tree stripped at batch time, so
     // setFromObject finds no geometry under them. batch-models stashes an
@@ -486,11 +524,13 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     const targetCenter = new THREE.Vector3();
     let distance;
     let localCenterY;
+    let minY;
 
     if (!box.isEmpty() && !isNaN(box.min.x)) {
       box.getCenter(targetCenter);
       distance = box.getBoundingSphere(new THREE.Sphere()).radius;
       localCenterY = (box.max.y - box.min.y) / 2;
+      minY = box.min.y;
     } else {
       // No measurable geometry (a light, an empty wrapper, a geojson data
       // layer whose meshes aren't under the entity's object3D): frame the
@@ -501,8 +541,21 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       targetCenter.setFromMatrixPosition(target.matrixWorld);
       distance = FOCUS_EMPTY_BBOX_DISTANCE_METRES;
       localCenterY = target.position.y;
+      minY = targetCenter.y;
     }
-    this.center.copy(targetCenter);
+
+    const targetEl = target.el;
+    const storedPose = targetEl?.getAttribute?.('focus-camera-pose');
+    if (storedPose && storedPose.lookAt === false) {
+      const cameraState = resolveFocusPose(target, storedPose);
+      const p = cameraState.position;
+      return {
+        center: targetCenter,
+        distance: targetCenter.distanceTo(new THREE.Vector3(p.x, p.y, p.z)),
+        minY,
+        cameraState
+      };
+    }
 
     const focusWorldPos = new THREE.Vector3();
     const focusWorldQuat = new THREE.Quaternion();
@@ -513,12 +566,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       focusWorldScale
     );
 
-    const targetEl = target.el;
     let cameraPosition;
 
-    if (targetEl && targetEl.hasAttribute('focus-camera-pose')) {
-      const rel =
-        targetEl.getAttribute('focus-camera-pose').relativePosition || null;
+    if (storedPose) {
+      const rel = storedPose.relativePosition || null;
       if (rel) {
         cameraPosition = new THREE.Vector3(rel.x, rel.y, rel.z)
           .applyQuaternion(focusWorldQuat)
@@ -529,11 +580,10 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     // Managed street or one of its segments (#1213): fit the roadway width
     // (or the segment plus its neighbours) to the viewport.
     if (!cameraPosition) {
-      const pose = streetFocusPose(targetEl, camera);
+      const pose = streetFocusPose(targetEl, this._camera);
       if (pose) {
         cameraPosition = pose.position;
         targetCenter.copy(pose.center);
-        this.center.copy(targetCenter);
       }
     }
 
@@ -563,13 +613,38 @@ export class ExperimentalControls extends THREE.EventDispatcher {
         .add(focusWorldPos);
     }
 
-    camera.position.copy(cameraPosition);
-    camera.lookAt(targetCenter);
-    fa.transitionCamPosEnd.copy(camera.position);
-    fa.transitionCamQuaternionEnd.copy(camera.quaternion);
+    return {
+      center: targetCenter,
+      distance: cameraPosition.distanceTo(targetCenter),
+      minY,
+      position: cameraPosition
+    };
+  }
 
-    camera.position.copy(fa.transitionCamPosStart);
-    camera.quaternion.copy(fa.transitionCamQuaternionStart);
+  // Run the focus-animation tween as a look-at glide (#2054) to
+  // `endPosition`, aimed at `endTarget` (or holding `endQuaternion`). The
+  // glide's start target is the current orbit center; `endTarget` becomes
+  // the new one.
+  _startFocusGlide(endPosition, endQuaternion, endTarget) {
+    const camera = this._camera;
+    const fa = this._focusAnimation;
+    const glide = createLookAtGlide({
+      startPosition: camera.position,
+      startQuaternion: camera.quaternion,
+      startTarget: this.center,
+      endPosition,
+      endQuaternion,
+      endTarget
+    });
+    this.center.copy(endTarget);
+    fa.transitionCamPosStart.copy(camera.position);
+    fa.transitionCamQuaternionStart.copy(camera.quaternion);
+    fa.transitionCamPosEnd.copy(endPosition);
+    fa.transitionCamQuaternionEnd.copy(glide.endQuaternion);
+    fa.onFrame = (eased) => {
+      glide.apply(camera, eased);
+      camera.updateMatrixWorld();
+    };
     fa.transitionProgress = 0;
     fa.transitioning = true;
   }
@@ -595,16 +670,21 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       endPos,
       rot
     );
-    const startPos = camera.position.clone();
-    const startQuat = camera.quaternion.clone();
+    const glide = createLookAtGlide({
+      startPosition: camera.position,
+      startQuaternion: camera.quaternion,
+      startTarget: this.center,
+      endPosition: endPos,
+      endQuaternion: endQuat,
+      endTarget: endLookAt
+    });
     const fromFov = camera.fov;
     const toFov = cameraState.zoom || fromFov;
     this._runner.run({
       ownership: 'teleport',
       durationMs: 1000,
       onTick: (eased) => {
-        camera.position.lerpVectors(startPos, endPos, eased);
-        camera.quaternion.slerpQuaternions(startQuat, endQuat, eased);
+        glide.apply(camera, eased);
         camera.fov = fromFov + (toFov - fromFov) * eased;
         camera.updateProjectionMatrix();
         camera.updateMatrixWorld();

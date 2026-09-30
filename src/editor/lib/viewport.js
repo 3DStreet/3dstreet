@@ -1322,11 +1322,13 @@ export function Viewport(inspector) {
     }
   });
 
-  Events.on('objectfocus', (object) => {
+  // `options.twoStep` (double-click routes): first keep the heading, then
+  // frame fully on a repeat (#2054) — see ExperimentalControls.focus.
+  Events.on('objectfocus', (object, options) => {
     // Feature-discovery: count the first focus-on-entity (double-click,
     // F-key, or sidebar focus button all route through this event).
     captureNavDiscovery('focus');
-    controls.focus(object);
+    controls.focus(object, options);
   });
 
   // Cursor-aware double-click navigation (KD-23; street-level nav only —

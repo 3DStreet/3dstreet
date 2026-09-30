@@ -73,7 +73,8 @@ class Entity extends React.Component {
     }
   };
 
-  onDoubleClick = () => Events.emit('objectfocus', this.props.entity.object3D);
+  onDoubleClick = () =>
+    Events.emit('objectfocus', this.props.entity.object3D, { twoStep: true });
 
   // Badge click: focus the camera on this layer right away (the badge lives
   // inside the clickable row, so don't also toggle selection).

@@ -51,6 +51,16 @@ plain `Detached Model` entity, as one undo entry composed from `entityupdate`
   payload builders live in `src/editor/lib/detachClone.js`; doc is
   [docs/per-object-detach.md](../per-object-detach.md).
 
+**Camera glides and double-click focus (#2054):** focus and snapshot glides
+(`ExperimentalControls.focus` / `focusCameraState`, so hotspots and the
+Starting View too) tween the camera position and a virtual look-at target and
+derive rotation each frame (`createLookAtGlide` in
+`src/editor/lib/cameraGlide.js`); don't slerp orientations for a new glide.
+Double-click routes emit `objectfocus` with `{ twoStep: true }`: the first
+keeps the camera's heading and slides the entity to the view center at framing
+distance, a repeat (or one mid-glide) runs the full framing. F-key, Focus
+buttons, hotspots and the AI tool keep the one-step full framing.
+
 **Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
 spans `src/aframe-components/`, `src/editor/components/elements/`, `src/editor/lib/` and
 `src/editor/lib/commands/`; [docs/shapes.md](../shapes.md) is the entry point and carries the file

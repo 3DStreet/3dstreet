@@ -192,7 +192,9 @@ const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
               }}
               title={`${getEntityDisplayName(el)} · ${formatLength(width)}`}
               onClick={() => selectSegment(el)}
-              onDoubleClick={() => Events.emit('objectfocus', el.object3D)}
+              onDoubleClick={() =>
+                Events.emit('objectfocus', el.object3D, { twoStep: true })
+              }
               onMouseEnter={() => Events.emit('raycastermouseenter', el)}
               onMouseLeave={() => Events.emit('raycastermouseleave', null)}
             >
