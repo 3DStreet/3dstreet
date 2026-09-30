@@ -53,7 +53,9 @@ function fakeCursorEntity(sceneEl) {
       });
       return objects;
     },
+    // Always current (see `objects`), so there is nothing to refresh.
     refreshObjects() {},
+    setDirty() {},
     checkIntersections() {
       this.intersections = three
         .intersectObject(sceneEl.object3D, true)

@@ -66,6 +66,13 @@ export function initRaycaster(inspector) {
     });
   };
   raycaster.refreshObjects = overrideRefresh;
+  // A-Frame refreshes the list only when it is marked dirty (a DOM change in
+  // the scene, or an object3D set or removed), and a visibility change is
+  // neither. So mark it here: otherwise a hidden entity stays clickable, and
+  // one shown again stays unclickable, until something unrelated refreshes it.
+  Events.on('entityupdate', (detail) => {
+    if (detail.component === 'visible') raycaster.setDirty();
+  });
 
   inspector.sceneEl.appendChild(mouseCursor);
   inspector.cursor = mouseCursor;
