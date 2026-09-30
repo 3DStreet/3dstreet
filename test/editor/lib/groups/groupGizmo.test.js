@@ -559,11 +559,14 @@ describe('the easy gizmo on a group', () => {
       expect(arc.x).toBeCloseTo(12, 3);
       expect(arc.z).toBeCloseTo(22, 3);
     }
-    // The pivot really is still: the group's own transform keeps it there.
+    // The center really is still: the group's own transform keeps it there.
     g.object3D.updateMatrixWorld(true);
-    const pivot = new THREE.Vector3(12, 1.25, 22);
+    const groupCenter = new THREE.Vector3(12, 1.25, 22);
     expect(
-      pivot.clone().applyMatrix4(g.object3D.matrixWorld).distanceTo(pivot)
+      groupCenter
+        .clone()
+        .applyMatrix4(g.object3D.matrixWorld)
+        .distanceTo(groupCenter)
     ).toBeLessThan(0.002);
     release(offset(at, 45, 4));
     h.frame();

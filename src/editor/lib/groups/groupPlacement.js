@@ -21,7 +21,7 @@ import {
 } from './groupModel.js';
 import { groupMessage } from './groupMessages.js';
 import { localPoseFromWorld } from './groupTransformMath.js';
-import { getGroupBounds, getGroupPivot } from './groupBounds.js';
+import { getGroupBounds, getGroupCenter } from './groupBounds.js';
 import { TRANSFORM_REFUSED, notifyRefusal } from '../transformGuard.js';
 import pickPointOnGroundPlane, {
   pickGroundPoint
@@ -255,7 +255,7 @@ export function pastedWorldMatrix(worldMatrix, entityData, offsetX, out) {
 // Where a group's handles stand: below its center, on the bottom of its
 // members (its center for a group with no member geometry), in world space.
 function groupStandPoint(groupEl) {
-  const point = getGroupPivot(groupEl, new THREE.Vector3());
+  const point = getGroupCenter(groupEl, new THREE.Vector3());
   const box = getGroupBounds(groupEl);
   if (box) point.y = box.min.y;
   groupEl.object3D.updateWorldMatrix(true, false);
@@ -284,7 +284,7 @@ export function viewCentrePoint(camera) {
 export function nestedGroupPlacement() {
   const groupEl = innermostOpenGroup();
   if (!groupEl) return null;
-  const center = getGroupPivot(groupEl, new THREE.Vector3());
+  const center = getGroupCenter(groupEl, new THREE.Vector3());
   return {
     parentEl: groupEl,
     requireParent: true,

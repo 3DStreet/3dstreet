@@ -8,7 +8,7 @@ import { easyGizmoCommandName } from './gizmos/easyGizmoMessages.js';
 import { installEditorFrame } from './editorFrame.js';
 import {
   getGroupBounds,
-  getGroupPivot,
+  getGroupCenter,
   groupFocusFrame,
   holdGroupBounds,
   releaseGroupBounds,
@@ -1029,7 +1029,7 @@ export function Viewport(inspector) {
 
   function wireEasyGizmo(commandName) {
     // A group's box is held for the length of a gesture on it: the handles
-    // and the pivot stay where the gesture started, and nothing re-measures
+    // and the center stay where the gesture started, and nothing re-measures
     // the members while they move together.
     let heldGroup = null;
     easyGizmoControls.addEventListener('mouseDown', () => {
@@ -1157,9 +1157,10 @@ export function Viewport(inspector) {
   // A group has no base of its own: its handles stand at its center on the
   // bottom of its members' box, a move keeps its height, and it turns about
   // the center. A click on a handle can mean "open the group", so presses are
-  // held until they are known to be drags.
+  // held until they are known to be drags. The group's center is what the
+  // gizmo calls its pivot.
   const groupGizmoPolicy = {
-    pivotLocal: getGroupPivot,
+    pivotLocal: getGroupCenter,
     localBox: getGroupBounds,
     positionForRotation: positionForRotationAboutCenter,
     groundBehaviour: false,

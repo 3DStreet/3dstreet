@@ -16,7 +16,7 @@
 import Events from '../Events';
 import {
   getGroupBounds,
-  getGroupPivot,
+  getGroupCenter,
   readStoredCenter
 } from './groupBounds.js';
 import { isHiddenInHierarchy, isUserGroup } from './groupModel.js';
@@ -40,7 +40,7 @@ let scratch = null;
 function tmp() {
   if (!scratch) {
     scratch = {
-      pivot: new THREE.Vector3(),
+      center: new THREE.Vector3(),
       camera: new THREE.Vector3(),
       origin: new THREE.Vector3(),
       cube: new THREE.Box3(),
@@ -243,7 +243,7 @@ export class GroupAffordances {
     if (this.emptyGroups.has(groupEl)) {
       if (!readStoredCenter(groupEl, out)) out.set(0, 0, 0);
     } else {
-      getGroupPivot(groupEl, out);
+      getGroupCenter(groupEl, out);
     }
     return out.applyMatrix4(groupEl.object3D.matrixWorld);
   }
@@ -260,7 +260,7 @@ export class GroupAffordances {
   /** Distance along `ray` into `groupEl`'s marker pick cube, or null. */
   markerDistance(groupEl, ray, camera) {
     const t = tmp();
-    const position = this.markerPosition(groupEl, t.pivot);
+    const position = this.markerPosition(groupEl, t.center);
     const half = this.markerRadius(camera, position) * MARKER_PICK_RADII;
     t.cube.min.set(-half, -half, -half);
     t.cube.max.set(half, half, half);
@@ -342,7 +342,7 @@ export class GroupAffordances {
         this.markers.set(groupEl, marker);
         this.inspector.sceneHelpers.add(marker);
       }
-      const position = this.markerPosition(groupEl, t.pivot);
+      const position = this.markerPosition(groupEl, t.center);
       marker.position.copy(position);
       marker.scale.setScalar(this.markerRadius(camera, position));
       const look =

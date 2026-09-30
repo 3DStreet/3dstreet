@@ -24,28 +24,28 @@ function tmp() {
 }
 
 /**
- * The group's position after rotating it from `qStart` to `qNow` about a pivot,
- * so the pivot stays fixed in world space and the origin orbits it.
+ * The group's position after rotating it from `qStart` to `qNow` about its
+ * center, so the center stays fixed in world space and the origin orbits it.
  *
  * Everything is in the group's PARENT frame: `posStart` is the group's
- * position at gesture start and `pivotParent` the pivot, both held from the
- * start of the gesture. `qNow` is absolute, so the delta is always taken from
+ * position at gesture start and `centerInParent` its center, both held from
+ * the start of the gesture. `qNow` is absolute, so the delta is always taken from
  * the gesture start; composing per-frame deltas would compound the orbit.
  */
 export function positionForRotationAboutCenter(
   posStart,
   qStart,
   qNow,
-  pivotParent,
+  centerInParent,
   out
 ) {
   const t = tmp();
   t.delta.copy(qNow).multiply(t.inverse.copy(qStart).invert());
   return out
     .copy(posStart)
-    .sub(pivotParent)
+    .sub(centerInParent)
     .applyQuaternion(t.delta)
-    .add(pivotParent);
+    .add(centerInParent);
 }
 
 // Relative tolerance on the recomposed local matrix. A pose that three can

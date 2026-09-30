@@ -1,5 +1,5 @@
 /* global THREE */
-// A group's bounds, pivot and stored center.
+// A group's bounds, center and stored center.
 //
 // A group has no geometry of its own: its bounds are what its members span, in
 // the group's own local axes, so a rotated group has a rotated box rather than a
@@ -156,7 +156,7 @@ export function getGroupBounds(groupEl) {
 
 /**
  * Keep a group's stored bounds as they are until released: a transform gesture
- * on the group holds its box (and so its pivot) for the whole gesture.
+ * on the group holds its box (and so its center) for the whole gesture.
  */
 export function holdGroupBounds(groupEl) {
   held.add(groupEl);
@@ -177,11 +177,11 @@ export function readStoredCenter(groupEl, out) {
 }
 
 /**
- * The point a group rotates about and its handles sit at, in the group's local
- * frame: a stored center, else the middle of the member bounds, else the
- * origin (an empty group, where its marker is).
+ * A group's center, in its local frame: the point it turns about and its
+ * handles stand at. A stored center, else the middle of the member bounds,
+ * else the origin (an empty group, where its marker is).
  */
-export function getGroupPivot(groupEl, out) {
+export function getGroupCenter(groupEl, out) {
   if (readStoredCenter(groupEl, out)) return out;
   const box = getGroupBounds(groupEl);
   return box ? box.getCenter(out) : out.set(0, 0, 0);
@@ -195,7 +195,7 @@ export function getGroupPivot(groupEl, out) {
 export function groupFocusFrame(groupEl) {
   const matrixWorld = groupEl.object3D.matrixWorld;
   groupEl.object3D.updateWorldMatrix(true, false);
-  const center = getGroupPivot(groupEl, new THREE.Vector3()).applyMatrix4(
+  const center = getGroupCenter(groupEl, new THREE.Vector3()).applyMatrix4(
     matrixWorld
   );
   const box = getGroupBounds(groupEl);

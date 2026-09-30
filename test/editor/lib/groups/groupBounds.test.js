@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   getGroupBounds,
-  getGroupPivot,
+  getGroupCenter,
   memberBoundsLocal
 } from '@/editor/lib/groups/groupBounds.js';
 import { deriveLocalBoxOf } from '@/editor/lib/gizmos/easyGizmoMath.js';
@@ -25,8 +25,8 @@ describe('group bounds and automatic center', () => {
     sceneEl.object3D.updateMatrixWorld();
 
     expectBox(getGroupBounds(g), [10, 0, 20], [14, 2, 24]);
-    const pivot = getGroupPivot(g, new THREE.Vector3());
-    expect(pivot.toArray()).toEqual([12, 1, 22]);
+    const center = getGroupCenter(g, new THREE.Vector3());
+    expect(center.toArray()).toEqual([12, 1, 22]);
   });
 
   it('includes batched and nested members and leaves out the origin and hidden members (fails with deriveLocalBoxOf or when counting hidden members)', () => {
@@ -114,23 +114,25 @@ describe('group bounds and automatic center', () => {
     expect(snapshot()).toEqual(rendered);
   });
 
-  it('reports no bounds for a group with no member geometry, and pivots on the origin', () => {
+  it('reports no bounds for a group with no member geometry, and centers it on the origin', () => {
     const g = group(sceneEl, { position: [1, 2, 3] });
     entity(g);
     sceneEl.object3D.updateMatrixWorld();
     expect(getGroupBounds(g)).toBe(null);
-    expect(getGroupPivot(g, new THREE.Vector3()).toArray()).toEqual([0, 0, 0]);
+    expect(getGroupCenter(g, new THREE.Vector3()).toArray()).toEqual([0, 0, 0]);
   });
 
-  it('pivots on a stored center only while it is pinned', () => {
+  it('uses a stored center only while it is pinned', () => {
     const g = group(sceneEl);
     boxMesh(entity(g), [0, 0, 0], [2, 2, 2]);
     sceneEl.object3D.updateMatrixWorld();
     g.components['group-center'] = {
       data: { pinned: true, pin: { x: 30, y: 0, z: 0 } }
     };
-    expect(getGroupPivot(g, new THREE.Vector3()).toArray()).toEqual([30, 0, 0]);
+    expect(getGroupCenter(g, new THREE.Vector3()).toArray()).toEqual([
+      30, 0, 0
+    ]);
     g.components['group-center'].data.pinned = false;
-    expect(getGroupPivot(g, new THREE.Vector3()).toArray()).toEqual([1, 1, 1]);
+    expect(getGroupCenter(g, new THREE.Vector3()).toArray()).toEqual([1, 1, 1]);
   });
 });

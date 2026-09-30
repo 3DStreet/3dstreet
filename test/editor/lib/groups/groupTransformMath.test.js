@@ -32,9 +32,9 @@ function pose() {
 }
 
 describe('rotation about a center', () => {
-  it('keeps the pivot fixed and moves the origin around it', () => {
+  it('keeps the center fixed and moves the origin around it', () => {
     const posStart = new THREE.Vector3(0, 0, 0);
-    const pivot = new THREE.Vector3(10, 0, 0);
+    const center = new THREE.Vector3(10, 0, 0);
     const qStart = new THREE.Quaternion();
     const qNow = new THREE.Quaternion().setFromAxisAngle(
       new THREE.Vector3(0, 1, 0),
@@ -44,17 +44,17 @@ describe('rotation about a center', () => {
       posStart,
       qStart,
       qNow,
-      pivot,
+      center,
       new THREE.Vector3()
     );
-    // The origin sat 10 m from the pivot along -X; a quarter turn about +Y
-    // carries it to 10 m along +Z from the pivot.
+    // The origin sat 10 m from the center along -X; a quarter turn about +Y
+    // carries it to 10 m along +Z from the center.
     expect(out.x).toBeCloseTo(10, 9);
     expect(out.z).toBeCloseTo(10, 9);
     expect(out.y).toBeCloseTo(0, 9);
   });
 
-  it('turns a pitched group about the vertical through the pivot (fails if the turn is taken in the group frame)', () => {
+  it('turns a pitched group about the vertical through its center (fails if the turn is taken in the group frame)', () => {
     // Pitched 10 degrees, yawed from 30 to 60: a 30 degree turn about +Y.
     const qStart = new THREE.Quaternion().setFromEuler(
       new THREE.Euler(deg(10), deg(30), 0, 'YXZ')
@@ -63,32 +63,32 @@ describe('rotation about a center', () => {
       new THREE.Euler(deg(10), deg(60), 0, 'YXZ')
     );
     const posStart = new THREE.Vector3(1, 2, 3);
-    const pivot = new THREE.Vector3(4, 5, -2);
+    const center = new THREE.Vector3(4, 5, -2);
     const out = positionForRotationAboutCenter(
       posStart,
       qStart,
       qNow,
-      pivot,
+      center,
       new THREE.Vector3()
     );
 
-    // posStart turned 30 degrees about the vertical through the pivot,
+    // posStart turned 30 degrees about the vertical through the center,
     // written out: x' = x cos + z sin, z' = -x sin + z cos.
-    const dx = posStart.x - pivot.x;
-    const dz = posStart.z - pivot.z;
+    const dx = posStart.x - center.x;
+    const dz = posStart.z - center.z;
     const c = Math.cos(deg(30));
     const s = Math.sin(deg(30));
-    expect(out.x).toBeCloseTo(pivot.x + dx * c + dz * s, 9);
+    expect(out.x).toBeCloseTo(center.x + dx * c + dz * s, 9);
     expect(out.y).toBeCloseTo(posStart.y, 9);
-    expect(out.z).toBeCloseTo(pivot.z - dx * s + dz * c, 9);
+    expect(out.z).toBeCloseTo(center.z - dx * s + dz * c, 9);
 
-    // The pivot, a point of the group, stays where it was.
-    const pivotInGroup = pivot
+    // The center, a point of the group, stays where it was.
+    const centerInGroup = center
       .clone()
       .sub(posStart)
       .applyQuaternion(qStart.clone().invert());
-    const pivotAfter = pivotInGroup.applyQuaternion(qNow).add(out);
-    expect(pivotAfter.distanceTo(pivot)).toBeLessThan(1e-9);
+    const centerAfter = centerInGroup.applyQuaternion(qNow).add(out);
+    expect(centerAfter.distanceTo(center)).toBeLessThan(1e-9);
   });
 
   it('takes the total turn from the gesture start, not a per-call increment', () => {
@@ -97,9 +97,9 @@ describe('rotation about a center', () => {
       Math.PI / 4
     );
     const posStart = new THREE.Vector3(1, 2, 3);
-    const pivot = new THREE.Vector3(4, 2, 0);
+    const center = new THREE.Vector3(4, 2, 0);
     const out = new THREE.Vector3();
-    positionForRotationAboutCenter(posStart, qStart, qStart, pivot, out);
+    positionForRotationAboutCenter(posStart, qStart, qStart, center, out);
     expect(out.distanceTo(posStart)).toBeLessThan(1e-12);
   });
 });
