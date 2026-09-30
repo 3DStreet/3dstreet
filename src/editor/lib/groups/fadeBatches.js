@@ -66,7 +66,7 @@ export class BatchFade {
     this.fadedMaterial = fadedMaterial;
     this.supported = threeRevision === SUPPORTED_THREE_REVISION;
     this.warned = false;
-    // source -> its view, kept across renders and scopes.
+    // source -> its view, kept across renders and changes of open group.
     this.views = new Map();
     // Batches left unfaded for the rest of the session: a view that threw.
     this.leftUnfaded = new WeakSet();

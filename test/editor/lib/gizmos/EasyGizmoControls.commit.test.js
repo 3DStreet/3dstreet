@@ -65,7 +65,7 @@ function armGesture(c, axis) {
   c.axis = axis;
   c.isDragging = true;
   c.dragSnapshot = c._formatPose(el);
-  c.dragStart = c._readPose(el);
+  c.cancelPose = c._readPose(el);
   return { el, object };
 }
 

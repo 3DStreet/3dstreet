@@ -58,7 +58,7 @@ export function getSelectionChain(intersectedEl) {
 
 /**
  * The part of the chain a click may reach when user groups are involved: it
- * starts below the deepest OPEN group it passes through (the scope being
+ * starts below the deepest OPEN group it passes through (the group being
  * edited, so its outer levels are not re-selected) and stops at the first
  * CLOSED group, so a click on a member of a closed group selects the group
  * rather than reaching into it. With no user group in the chain it is the

@@ -233,8 +233,8 @@ export class GroupAffordances {
     }
     const selected = this.controller.selected();
     if (isShownGroup(selected) && !out.includes(selected)) out.push(selected);
-    const open = this.controller.openElements();
-    const innermost = open[open.length - 1];
+    const openGroups = this.controller.openElements();
+    const innermost = openGroups[openGroups.length - 1];
     if (
       isShownGroup(innermost) &&
       !out.includes(innermost) &&
@@ -290,7 +290,7 @@ export class GroupAffordances {
   collectHits(ray, camera, out) {
     this.rebuildIfDirty();
     const selected = this.controller.selected();
-    const open = this.controller.openElements();
+    const openGroups = this.controller.openElements();
     for (const groupEl of this.markerGroups(this.markerScratch)) {
       const distance = this.markerDistance(groupEl, ray, camera);
       if (distance !== null) {
@@ -299,7 +299,7 @@ export class GroupAffordances {
     }
     if (
       selected?.isConnected &&
-      isSelectedClosedGroup(selected, selected, open)
+      isSelectedClosedGroup(selected, selected, openGroups)
     ) {
       const box = getGroupBounds(selected);
       const distance = box
@@ -309,7 +309,7 @@ export class GroupAffordances {
         out.push({ el: selected, distance, kind: 'proxy' });
       }
     }
-    const innermost = open[open.length - 1];
+    const innermost = openGroups[openGroups.length - 1];
     if (innermost && !isHiddenInHierarchy(innermost)) {
       const distance = this.groupVolumeDistance(innermost, ray, camera);
       if (distance !== null) {

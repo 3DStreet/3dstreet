@@ -216,7 +216,7 @@ describe('the properties panel during an easy gizmo drag', () => {
     controls.dragEl = el;
     controls.dragObject = el.object3D;
     controls.dragSnapshot = { position: '0 0 0', rotation: '0 0 0' };
-    controls.dragStart = {
+    controls.cancelPose = {
       position: { x: 0, y: 0, z: 0 },
       rotation: { x: 0, y: 0, z: 0 }
     };

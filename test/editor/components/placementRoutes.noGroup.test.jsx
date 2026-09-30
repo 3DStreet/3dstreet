@@ -141,7 +141,7 @@ function ground(x, y) {
     new THREE.Vector3()
   );
 }
-const viewCentre = () => ground(0, -0.1);
+const viewCenter = () => ground(0, -0.1);
 const dropPoint = () =>
   ground(
     (2 * DROP.clientX) / RECT.width - 1,
@@ -211,7 +211,7 @@ describe('adding an item with no group in the scene', () => {
     expect(payload.mixin).toBe('tree3');
     expect(payload['data-layer-name']).toBe('Tree');
     expect(Object.keys(payload.components)).toEqual(['position']);
-    expectAt(payload.components.position, viewCentre());
+    expectAt(payload.components.position, viewCenter());
   });
 
   it('a catalog card click with a street segment selected places the model in its street-prop holder', () => {
@@ -249,11 +249,11 @@ describe('adding an item with no group in the scene', () => {
     ]);
     expect(circle['data-layer-name']).toBe('Geometry • Circle Asphalt');
     expect(circle.components.rotation).toBe('-90 -90 0');
-    expectAt(circle.components.position, viewCentre());
+    expectAt(circle.components.position, viewCenter());
     // Raised by half its 10 m height.
     expectAt(
       building.components.position,
-      viewCentre().add({ x: 0, y: 5, z: 0 })
+      viewCenter().add({ x: 0, y: 5, z: 0 })
     );
     expect(building.parentEl).toBeUndefined();
   });
@@ -322,7 +322,7 @@ describe('adding an item with no group in the scene', () => {
     expectAt(asset.components.position, dropPoint());
   });
 
-  it('the Assets panel and the asset link place at the view centre, and an upload or File > Import at the origin, all at the top level', () => {
+  it('the Assets panel and the asset link place at the view center, and an upload or File > Import at the origin, all at the top level', () => {
     const inputs = captureFileInputs();
     render(
       <IntlProvider locale="en">
@@ -345,7 +345,7 @@ describe('adding an item with no group in the scene', () => {
     for (const payload of [placed, linked]) {
       expect(payload.parentEl).toBeUndefined();
       expect(payload.components['data-asset-id']).toBe('asset-7');
-      expectAt(payload.components.position, viewCentre());
+      expectAt(payload.components.position, viewCenter());
     }
     for (const payload of [uploaded, imported]) {
       expect(payload.parentEl).toBeUndefined();
@@ -361,7 +361,7 @@ describe('adding an item with no group in the scene', () => {
     inputs[0].onchange({ target: { files: [new File(['s'], 'c.spz')] } });
     const [[, payload]] = creates();
     expect(payload.parentEl).toBeUndefined();
-    expectAt(payload.components.position, viewCentre());
+    expectAt(payload.components.position, viewCenter());
   });
 
   it('a polyline card places a shape at the top level', () => {

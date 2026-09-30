@@ -374,14 +374,14 @@ export class GroupScopeController {
    */
   applyHandleClick(hits, count) {
     if (count === 1) this.drillLatch = false;
-    const opens = this.handleClickOpens(hits);
-    if (opens) {
-      this.applyClick({ action: 'open', group: opens }, count);
+    const groupToOpen = this.handleClickOpens(hits);
+    if (groupToOpen) {
+      this.applyClick({ action: 'open', group: groupToOpen }, count);
       return;
     }
-    const open = this.openElements();
+    const openGroups = this.openElements();
     const selected = this.selected();
-    if (!selected || selected !== open[open.length - 1]) return;
+    if (!selected || selected !== openGroups[openGroups.length - 1]) return;
     const result = this.decide(hits);
     if (result.action === 'select') this.applyClick(result, count);
   }

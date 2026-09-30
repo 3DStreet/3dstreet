@@ -64,6 +64,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const undoneCommand = { type: 'entityremove' };
+
 async function untilUploadStarts() {
   await vi.waitFor(() => {
     if (!finishUpload) throw new Error('upload not started');
@@ -110,9 +112,10 @@ describe('an upload that finishes after its item has left the scene', () => {
       expect(el.getAttribute('data-asset-id')).toBe('asset-1');
       expect(el.getAttribute('data-asset-owner-uid')).toBe('user-1');
     };
-    // Undo of the deletion puts the same element back.
+    // Undo of the deletion puts the same element back. History announces an
+    // undo or redo with the command it ran.
     streetContainer.append(placeholder);
-    Events.emit('historychanged', null);
+    Events.emit('historychanged', undoneCommand);
     expectFinished(placeholder);
 
     // Redo of the creation builds it again from its definition.
@@ -123,10 +126,30 @@ describe('an upload that finishes after its item has left the scene', () => {
       rebuilt.setAttribute(name, value);
     }
     streetContainer.append(rebuilt);
-    Events.emit('historychanged', null);
+    Events.emit('historychanged', undoneCommand);
     expectFinished(rebuilt);
 
     expect(executed.map(([type]) => type)).toEqual(['entitycreate']);
+  });
+
+  it('forgets the item once the history is cleared, as a new scene clears it (fails if the record outlives the history that could bring the item back)', async () => {
+    finishUpload = null;
+    const file = new File(['splat bytes'], 'garden.spz');
+    const pending = uploadAndPlaceAsset(file, '1 0 2');
+    await untilUploadStarts();
+    const placeholder = document.getElementById('upload-placeholder');
+    placeholder.remove();
+    finishUpload();
+    await pending;
+
+    // History.clear() announces itself with no command.
+    Events.emit('historychanged', null);
+    // An element with that id and still marked temporary is not this upload's
+    // item any more, and is left alone.
+    streetContainer.append(placeholder);
+    Events.emit('historychanged', undoneCommand);
+    expect(placeholder.hasAttribute('data-temporary-file')).toBe(true);
+    expect(placeholder.hasAttribute('data-asset-id')).toBe(false);
   });
 
   it('finishes on the element that now carries the id when the item was moved (replaced) meanwhile', async () => {

@@ -126,9 +126,17 @@ function notifyInfo(msg) {
 // creation, brings the item back as it was while uploading: on a blob: URL
 // that has since been revoked, and marked temporary, so the scene would never
 // save it. It is finished as it comes back, with no history entry of its own.
+// Kept until the history is cleared (a new scene): until then any undo or
+// redo can bring the item back again.
 const finishedWhileGone = new Map();
 
-function finishReturnedItems() {
+function finishReturnedItems(cmd) {
+  // History.clear() announces itself with no command.
+  if (cmd === null) {
+    finishedWhileGone.clear();
+    Events.off('historychanged', finishReturnedItems);
+    return;
+  }
   for (const [entityId, attributes] of finishedWhileGone) {
     const el = document.getElementById(entityId);
     if (!el?.hasAttribute('data-temporary-file')) continue;

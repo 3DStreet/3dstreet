@@ -96,8 +96,8 @@ export class ScopePresentation {
     this.windowGeneration = null;
     // Entry work scheduled for the current scope, until it has run.
     this.pending = null;
-    // The fade of what is outside the open group: `apply(groupEl,
-    // generation)` and `restore()`. None until one is provided.
+    // The fade of what is outside the open group, a ScopeFade (see
+    // scopeFade.js). None until one is provided.
     this.outsideFade = null;
 
     this.onScopeChanged = (detail) => this.scopeChanged(detail.generation);
@@ -177,8 +177,8 @@ export class ScopePresentation {
     this.pending = pending;
   }
 
-  // At the end of a render: once one has shown this scope's outline and
-  // scrim, the outside fade is due on the next animation frame.
+  // At the end of a render: once one has shown the innermost open group's
+  // outline and scrim, the outside fade is due on the next animation frame.
   afterRender(pending) {
     if (this.windowGeneration !== pending.generation) return;
     pending.unregisterAfter();

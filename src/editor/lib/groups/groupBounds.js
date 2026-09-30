@@ -226,13 +226,15 @@ const failing = new WeakSet();
 
 function collectLiveGroups() {
   live.length = 0;
-  const inspector = globalThis.AFRAME?.INSPECTOR;
-  const selected = inspector?.selectedEntity;
+  // Runs from the editor frame, which the viewport installs together with the
+  // group scope.
+  const inspector = globalThis.AFRAME.INSPECTOR;
+  const selected = inspector.selectedEntity;
   if (isUserGroup(selected) && selected.isConnected) live.push(selected);
   // Only the innermost open group is drawn; outer open groups' bounds are
   // unused.
-  const stack = inspector?.groupScope?.openStack;
-  if (stack?.length) {
+  const stack = inspector.groupScope.openStack;
+  if (stack.length) {
     const innermost = document.getElementById(stack[stack.length - 1]);
     if (
       innermost !== selected &&

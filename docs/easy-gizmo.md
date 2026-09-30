@@ -122,8 +122,9 @@ editor end it with nothing done, and an Escape that ends one does nothing
 else. For a group, such a click over its box opens the group, and the
 double-click it starts does not frame ([groups](groups.md)).
 
-Commits and cancels leave pitch and roll exactly as read: the gizmo only ever
-edits yaw, so only yaw is rounded.
+A commit rounds yaw only and leaves pitch and roll exactly as read, since the
+gizmo only ever edits yaw. A cancel puts back the pose exactly as it was at
+the press.
 
 ## Work per frame and per event
 

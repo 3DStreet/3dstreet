@@ -314,7 +314,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.dragSupportY = 0;
     this.dragClearance = 0;
     this.dragSnapshot = null;
-    this.dragStart = null;
+    this.cancelPose = null;
     this.dragConstrained = false;
     this.dragEl = null;
     this.dragObject = null;
@@ -1074,6 +1074,9 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   /**
+   * Every click first completes a held handle click waiting for its count
+   * (see _reportClick). Then it suppresses:
+   *
    * The synthetic click that trails the gesture that set the latch, and no
    * other: reaching the canvas it would hand the selection to whatever sits
    * under the handle.
@@ -2775,11 +2778,12 @@ class EasyGizmoControls extends GizmoPointerControls {
     // underneath the gesture.
     this.dragEl = this.el;
     this.dragObject = this.object;
+    // The commit's before-value, formatted as the commit writes poses.
     this.dragSnapshot = this._formatPose(this.el);
     // What a cancel puts back: the pose as it was, not as formatted, so a
     // cancelled gesture leaves an unrounded yaw (and, for a group, every
     // member about its distant origin) exactly where it started.
-    this.dragStart = this._readPose(this.el);
+    this.cancelPose = this._readPose(this.el);
     this._dodgeHeld = null;
     if (this._policy) this._holdPivot();
 
@@ -2788,6 +2792,7 @@ class EasyGizmoControls extends GizmoPointerControls {
         axis === 'landingUp' ? this.landingUpY : this.landingDownY;
       if (targetY === null) {
         this.dragSnapshot = null;
+        this.cancelPose = null;
         return false;
       }
       // Freezing the target set is what gives "the target that was pressed" an
@@ -2824,6 +2829,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.dragConstrained = this.flat;
     if (!this.dragConstrained && !this.intersectPlane(this.dragPlane, _v)) {
       this.dragSnapshot = null;
+      this.cancelPose = null;
       return false;
     }
 
@@ -3171,10 +3177,10 @@ class EasyGizmoControls extends GizmoPointerControls {
     };
   }
 
-  _restore(start) {
-    if (!start || !this.el) return;
-    this.el.setAttribute('position', { ...start.position });
-    this.el.setAttribute('rotation', { ...start.rotation });
+  _restore(pose) {
+    if (!pose || !this.el) return;
+    this.el.setAttribute('position', { ...pose.position });
+    this.el.setAttribute('rotation', { ...pose.rotation });
   }
 
   /**
@@ -3185,7 +3191,7 @@ class EasyGizmoControls extends GizmoPointerControls {
    */
   endGesture(reason, event) {
     const snapshot = this.dragSnapshot;
-    const start = this.dragStart;
+    const cancelPose = this.cancelPose;
     const dragEl = this.dragEl;
     const dragObject = this.dragObject;
     const axis = this.axis;
@@ -3198,7 +3204,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.probe.setFlatteningSuspended(false);
     this._dragReferencePending = false;
     this.dragSnapshot = null;
-    this.dragStart = null;
+    this.cancelPose = null;
     this.dragEl = null;
     this.dragObject = null;
     this.dragConstrained = false;
@@ -3233,7 +3239,7 @@ class EasyGizmoControls extends GizmoPointerControls {
 
     const commits = reason === 'pointerup' || reason === 'mouseleave';
     if (!commits) {
-      this._restore(start);
+      this._restore(cancelPose);
       this.dispatchEvent(this.changeEvent);
       this.dispatchEvent(this.objectChangeEvent);
       return;

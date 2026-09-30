@@ -143,10 +143,10 @@ export class ScopeFade {
     this.needsPrune = false;
     // Splats faded now: splat -> { original, applied }.
     this.fadedSplats = new Map();
-    // Per-entity inside/outside answers for batch instances, per scope.
+    // Per-entity inside/outside answers for batch instances, per open group.
     this.outsideByEl = new WeakMap();
 
-    // Faded copies, kept across scopes so reopening compiles nothing new:
+    // Faded copies, kept across open groups so reopening compiles nothing new:
     // original material -> record, and material array -> array of copies.
     this.fadedByMaterial = new WeakMap();
     this.fadedByArray = new WeakMap();

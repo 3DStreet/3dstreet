@@ -704,7 +704,7 @@ export function Viewport(inspector) {
       // Inside a closed group, or anywhere while a group is open, a click
       // selects by the group rules rather than teleporting, so hover shows
       // what the click selects.
-      if (raw && !clickSelectsByGroupRules(raw)) target = raw;
+      if (raw && !groupOpenOrHitInGroup(raw)) target = raw;
     }
     if (!target || target === inspector.selectedEntity) return;
     // The hovered entity can leave the DOM under the cursor: a generated
@@ -718,9 +718,9 @@ export function Viewport(inspector) {
     hoverBox.setFromObject(target.object3D);
   }
 
-  // A click on `rawEl` is resolved by the group rules: a group is open, or
-  // `rawEl` is inside a user group.
-  function clickSelectsByGroupRules(rawEl) {
+  // Is a group open, or is `rawEl` inside a user group? Then a click on it in
+  // street-level navigation selects by the group rules instead of teleporting.
+  function groupOpenOrHitInGroup(rawEl) {
     return (
       inspector.groupScope.openStack.length > 0 ||
       userGroupAncestors(rawEl).length > 0
