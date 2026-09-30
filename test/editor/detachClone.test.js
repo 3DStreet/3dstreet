@@ -375,6 +375,230 @@ describe('detachClone (#2011)', () => {
       expect(copy.payload.components.position).toBe('1.5 0 -12');
     });
 
+    // The easy gizmo commits a whole drag as ONE multi command (a position
+    // tuple and a rotation tuple), and MultiCommand builds its members
+    // directly rather than through Inspector.execute — so the batch has to
+    // be unwrapped here or the rule never sees the clone (the build that
+    // shipped moved the clone in place, which the generator then discarded).
+    it('folds a multi of pose edits on one clone into a single detach', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            {
+              entity: clone,
+              component: 'position',
+              value: '4 0.15 -9',
+              oldValue: '1.5 0 -12'
+            }
+          ],
+          [
+            'entityupdate',
+            {
+              entity: clone,
+              component: 'rotation',
+              value: '0 90 0',
+              oldValue: '0 180 0'
+            }
+          ]
+        ])
+      ).toEqual({
+        cmdName: 'detachclone',
+        payload: {
+          entity: clone,
+          pose: { position: '4 0.15 -9', rotation: '0 90 0' }
+        }
+      });
+    });
+
+    it('folds mixed component edits on one clone, later edits winning', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const routed = routeCloneEdit('multi', [
+        [
+          'entityupdate',
+          {
+            entity: clone,
+            component: 'material',
+            property: 'color',
+            value: '#f00'
+          }
+        ],
+        [
+          'entityupdate',
+          {
+            entity: clone,
+            component: 'material',
+            property: 'opacity',
+            value: 0.5
+          }
+        ],
+        ['entityupdate', { entity: clone, component: 'mixin', value: 'tree' }],
+        ['entityupdate', { entity: clone, component: 'mixin', value: 'bench' }]
+      ]);
+      expect(routed).toEqual({
+        cmdName: 'detachclone',
+        payload: {
+          entity: clone,
+          pose: {},
+          mixin: 'bench',
+          components: { material: { color: '#f00', opacity: 0.5 } }
+        }
+      });
+    });
+
+    it('merges per-axis pose members instead of replacing the vector', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', property: 'x', value: 5 }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', property: 'z', value: 7 }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'rotation', value: '0 90 0' }
+          ]
+        ])
+      ).toEqual({
+        cmdName: 'detachclone',
+        payload: {
+          entity: clone,
+          pose: { position: { x: 5, y: 0, z: 7 }, rotation: '0 90 0' }
+        }
+      });
+      // A whole-vector member followed by a per-axis one keeps the vector.
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', value: '3 4 5' }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', property: 'y', value: 9 }
+          ]
+        ]).payload.pose
+      ).toEqual({ position: { x: 3, y: 9, z: 5 } });
+    });
+
+    it("carries a folded member's callback", () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const cb = () => {};
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'mixin', value: 'tree' },
+            cb
+          ]
+        ])
+      ).toEqual({
+        cmdName: 'detachclone',
+        payload: { entity: clone, pose: {}, mixin: 'tree' },
+        callback: cb
+      });
+      expect(
+        routeCloneEdit('multi', [['entityclone', clone, cb]])
+      ).toMatchObject({ cmdName: 'entitycreate', callback: cb });
+    });
+
+    it('routes each member of a mixed batch and keeps the others in place', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const other = makeClone(segment, { autocreated: false, key: null });
+      const plainEdit = {
+        entity: other,
+        component: 'position',
+        value: '0 0 0'
+      };
+      const cb = () => {};
+      const routed = routeCloneEdit('multi', [
+        ['entityupdate', plainEdit, cb],
+        [
+          'entityupdate',
+          { entity: clone, component: 'position', value: '1 1 1' }
+        ],
+        [
+          'entityupdate',
+          { entity: clone, component: 'rotation', value: '0 5 0' }
+        ],
+        ['entityremove', clone]
+      ]);
+      expect(routed.cmdName).toBe('multi');
+      expect(routed.payload).toEqual([
+        ['entityupdate', plainEdit, cb],
+        [
+          'detachclone',
+          {
+            entity: clone,
+            pose: { position: '1 1 1', rotation: '0 5 0' },
+            remove: true
+          }
+        ]
+      ]);
+    });
+
+    it('leaves a batch with no clone in it untouched', () => {
+      const segment = makeSegment();
+      const plain = makeClone(segment, { autocreated: false });
+      const tuples = [
+        [
+          'entityupdate',
+          { entity: plain, component: 'position', value: '1 1 1' }
+        ],
+        [
+          'entityupdate',
+          { entity: plain, component: 'rotation', value: '0 5 0' }
+        ]
+      ];
+      expect(routeCloneEdit('multi', tuples)).toBeNull();
+      expect(routeCloneEdit('multi', null)).toBeNull();
+      expect(routeCloneEdit('multi', [])).toBeNull();
+    });
+
+    it('re-aims a batch at the plain entity a clone became', () => {
+      const segment = makeSegment();
+      document.body.appendChild(segment);
+      const clone = makeClone(segment);
+      const replacement = makeClone(segment, { autocreated: false, key: null });
+      rememberDetached(clone, replacement);
+      clone.remove();
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', value: '1 1 1' }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'rotation', value: '0 5 0' }
+          ]
+        ])
+      ).toEqual({
+        cmdName: 'multi',
+        payload: [
+          [
+            'entityupdate',
+            { entity: replacement, component: 'position', value: '1 1 1' }
+          ],
+          [
+            'entityupdate',
+            { entity: replacement, component: 'rotation', value: '0 5 0' }
+          ]
+        ]
+      });
+      segment.remove();
+    });
+
     it('re-aims an edit at a clone that was already detached', () => {
       const segment = makeSegment();
       document.body.appendChild(segment);

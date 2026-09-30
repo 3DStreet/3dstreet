@@ -60,6 +60,35 @@ describe('geo-flatten', () => {
     expect(events).toBeGreaterThan(0);
   });
 
+  it('suspends only at runtime until every owner releases it', async () => {
+    const el = await makeFlattenEntity();
+    const comp = el.components['geo-flatten'];
+    const system = el.sceneEl.systems['geo-flatten'];
+    const first = {};
+    const second = {};
+    const saved = el.getAttribute('geo-flatten');
+    let changes = 0;
+    el.sceneEl.addEventListener(
+      'geo-flatten-registry-changed',
+      () => changes++
+    );
+    comp.setSuspended(first, true);
+    comp.setSuspended(first, true);
+    comp.setSuspended(second, true);
+    expect(system.getActiveComponents().includes(comp)).toBe(false);
+    expect(changes).toBe(1);
+    comp.setSuspended(first, false);
+    expect(system.getActiveComponents().includes(comp)).toBe(false);
+    comp.setSuspended(second, false);
+    expect(system.getActiveComponents().includes(comp)).toBe(true);
+    expect(changes).toBe(2);
+    expect(el.getAttribute('geo-flatten')).toEqual(saved);
+    el.setAttribute('geo-flatten', 'enabled', false);
+    comp.setSuspended(first, true);
+    comp.setSuspended(first, false);
+    expect(comp.isActive()).toBe(false);
+  });
+
   it('unregisters when the entity is detached', async () => {
     const el = await makeFlattenEntity();
     const system = el.sceneEl.systems['geo-flatten'];

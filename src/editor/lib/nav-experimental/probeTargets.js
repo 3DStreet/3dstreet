@@ -33,8 +33,10 @@
 // next probe recomputes with one scene-graph walk — O(scene objects), far
 // below a single un-BVH'd triangle scan of a buildings mesh.
 //
-// Cache lifetime: per-instance, owned by ExperimentalControls (constructed
-// alongside SceneBounds, disposed on teardown). No module-level state.
+// Cache lifetime: per-instance, owned by whichever layer constructed it — the
+// nav controller (alongside SceneBounds, disposed on teardown), and the editor's
+// easy-mode gizmo, which owns one of its own so it still works with the nav
+// controller absent. No module-level state.
 
 const IGNORE_ATTR = 'data-ignore-raycaster';
 

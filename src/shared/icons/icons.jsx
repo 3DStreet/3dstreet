@@ -391,6 +391,36 @@ export const Translate24Icon = () => (
   </svg>
 );
 
+// The easy move gizmo's own glyph, drawn as the gizmo looks: a square with a
+// marker on each side, inside a ring whose two arrowheads point up into the
+// gap at the top. Pixel-aligned, with a 1px gap between the square and its
+// markers and bold arrowheads, so it stays legible at 24px on a 1x display
+// (#2064): markers touching the square blur into a bumpy dot there, and small
+// arrowheads vanish into the ring.
+export const EasyTransform24Icon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M10 10H14V14H10Z" fill="white" />
+    <path d="M10 9H14L12 6Z" fill="white" />
+    <path d="M10 15H14L12 18Z" fill="white" />
+    <path d="M9 10V14L6 12Z" fill="white" />
+    <path d="M15 10V14L18 12Z" fill="white" />
+    <path
+      d="M20.87 8.6A9.5 9.5 0 1 1 3.13 8.6"
+      stroke="white"
+      strokeWidth="2"
+      fill="none"
+    />
+    <path d="M18.11 4.72L18.35 9.71L23.52 7.84Z" fill="white" />
+    <path d="M5.89 4.72L5.65 9.71L0.48 7.84Z" fill="white" />
+  </svg>
+);
+
 export const Cloud24Icon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"

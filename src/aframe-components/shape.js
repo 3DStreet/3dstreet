@@ -331,9 +331,10 @@ AFRAME.registerComponent('shape', {
     this.el.setAttribute('data-transform-no-scale', '');
     // Tilting out of the horizontal would make the plan-view area a projection
     // of the shape rather than its footprint, and editing a vertex assumes a
-    // horizontal plane to drag on. The gizmo already restricts rotation to Y;
-    // the marker is what makes that hold for the properties panel and the AI
-    // chat too. Reparenting is blocked for the same reason: vertex positions
+    // horizontal plane to drag on. The marker is what the stock rotate gizmo
+    // reads to offer its Y ring alone (viewport.js), and what makes the rule
+    // hold for the properties panel and the AI chat too. Reparenting is
+    // blocked for the same reason: vertex positions
     // are stored in the shape's own frame, and a new parent moves that frame.
     this.el.setAttribute('data-transform-yaw-only', '');
     this.el.setAttribute('data-transform-no-reparent', '');

@@ -82,9 +82,12 @@ export class DetachCloneCommand extends MultiCommand {
     // The create step hands back the plain entity: remember it so an edit
     // still aimed at the removed clone element (a scrub in progress) is
     // re-aimed at its replacement by routeCloneEdit.
-    super(editor, commands, (createdEl) =>
-      rememberDetached(cloneEl, createdEl)
-    );
+    let detachedEl = null;
+    super(editor, commands, (createdEl) => {
+      detachedEl = createdEl ?? null;
+      rememberDetached(cloneEl, createdEl);
+    });
+    this._detachedEl = () => detachedEl;
     this.type = 'detachclone';
     this.remove = !!payload.remove;
     this.name = this.remove ? 'Remove Model' : 'Detach Model';
@@ -92,7 +95,13 @@ export class DetachCloneCommand extends MultiCommand {
     this.cloneEl = cloneEl;
   }
 
-  execute() {
+  // Both take the chaining callback every command takes, because a detach
+  // can itself be a member of a MultiCommand batch (routeCloneEdit folds a
+  // clone's edits into one detachclone and leaves the batch's other members
+  // around it): the base MultiCommand runs its own members' chain from
+  // `this.callback` and ignores the argument, which would end the outer
+  // batch at this member.
+  execute(nextCommandCallback) {
     const result = super.execute();
     if (this.remove) {
       // The removed clone was the selection; land on its segment.
@@ -108,15 +117,21 @@ export class DetachCloneCommand extends MultiCommand {
         ? 'Removed from the street generator: that spot stays empty. Undo puts it back.'
         : 'Detached from the street generator: this object is now a plain model you can move, rotate, duplicate or delete. Undo puts it back.'
     );
+    if (nextCommandCallback) nextCommandCallback(this._detachedEl());
     return result;
   }
 
-  undo() {
+  undo(nextCommandCallback) {
     super.undo();
     forgetDetached(this.cloneEl);
-    // The create step's undo cleared the selection; hand it to the clone the
-    // generator just put back (same layout, so the same slot index) so the
-    // user lands where they started.
+    this._reselectClone();
+    if (nextCommandCallback) nextCommandCallback();
+  }
+
+  // The create step's undo cleared the selection; hand it to the clone the
+  // generator just put back (same layout, so the same slot index) so the
+  // user lands where they started.
+  _reselectClone() {
     const clone = findCloneAtSlot(
       this.slot.segmentEl,
       this.slot.componentName,
