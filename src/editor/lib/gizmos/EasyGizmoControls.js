@@ -844,7 +844,7 @@ class EasyGizmoControls extends GizmoPointerControls {
    *   instead of measuring el's meshes;
    * - `positionForRotation(posStart, qStart, qNow, pivotParent, out)`: where
    *   the origin goes when a turn holds the pivot still, in the parent frame;
-   * - `groundBehaviour: false`: a move keeps its height, with no ground
+   * - `followsGround: false`: a move keeps its height, with no ground
    *   following, support probing or landing targets;
    * - `endsGestureOnDescendantGeometry: false`: geometry edits inside el do
    *   not cancel a gesture;
@@ -968,7 +968,7 @@ class EasyGizmoControls extends GizmoPointerControls {
 
   /** Does this attachment follow the ground (the item rules)? */
   _followsGround() {
-    return this._policy?.groundBehaviour !== false;
+    return this._policy?.followsGround !== false;
   }
 
   // --- the pointer layer ------------------------------------------------
@@ -3062,7 +3062,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     const yawDeg = this.rotateStartYawDeg + (this.rotateAccum * 180) / Math.PI;
     const yaw = quantise(yawDeg, YAW_DECIMALS);
     this.el.setAttribute('rotation', { x: rot.x, y: yaw, z: rot.z });
-    if (this._pivotHeld) this._orbitPivot(rot, yaw);
+    if (this._pivotHeld) this._orbitOriginAboutPivot(rot, yaw);
     this.dispatchEvent(this.changeEvent);
     this.dispatchEvent(this.objectChangeEvent);
   }
@@ -3072,7 +3072,7 @@ class EasyGizmoControls extends GizmoPointerControls {
    * orbits it. From the rounded yaw, the one written, so returning to the
    * start angle returns the position exactly.
    */
-  _orbitPivot(rot, yaw) {
+  _orbitOriginAboutPivot(rot, yaw) {
     _qNow.setFromEuler(_e.set(rot.x * DEG, yaw * DEG, rot.z * DEG, 'YXZ'));
     this._policy.positionForRotation(
       this._posStart,

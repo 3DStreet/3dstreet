@@ -1165,7 +1165,7 @@ export function Viewport(inspector) {
     pivotLocal: getGroupCenter,
     localBox: getGroupBounds,
     positionForRotation: positionForRotationAboutCenter,
-    groundBehaviour: false,
+    followsGround: false,
     endsGestureOnDescendantGeometry: false,
     deferPress: true
   };
