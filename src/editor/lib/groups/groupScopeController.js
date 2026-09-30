@@ -180,17 +180,22 @@ export class GroupScopeController {
     return elements;
   }
 
-  /** A user group is selected, or a group is open: clicks follow group rules. */
-  isGroupingState() {
+  /**
+   * A user group is selected, or a group is open. While this holds, every
+   * click of a quick run counts (entering a group is select, open, select
+   * inside), not only the first.
+   */
+  groupSelectedOrOpen() {
     return this.stack.length > 0 || isUserGroup(this.selected());
   }
 
   /**
-   * Must a click or hover consult group pick targets? Also true with nothing
-   * selected while an empty group's marker is on screen.
+   * Must a click or hover consult the group pick targets? Whenever a group is
+   * selected or open, and also with nothing selected while an empty group's
+   * marker is on screen.
    */
-  isActive() {
-    return this.isGroupingState() || this.affordances.hasTargets();
+  hasGroupPickTargets() {
+    return this.groupSelectedOrOpen() || this.affordances.hasMarkers();
   }
 
   // ------------------------------------------------------------ transitions

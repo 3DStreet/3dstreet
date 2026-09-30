@@ -100,8 +100,8 @@ function mountCursor() {
     // The group scope controller as it is with no group in the scene: it
     // leaves every click and hover to the ordinary rules.
     groupScope: {
-      isActive: () => false,
-      isGroupingState: () => false,
+      hasGroupPickTargets: () => false,
+      groupSelectedOrOpen: () => false,
       openElements: () => [],
       clearHover() {},
       hoverOpens: null,

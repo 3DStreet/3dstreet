@@ -155,10 +155,15 @@ export function initRaycaster(inspector) {
     );
   }
 
-  // A tool that takes the canvas (the shape tool) pauses the cursor: its clicks
-  // are the tool's, and the group rules keep out of them.
-  function groupsActive() {
-    return mouseCursor.isPlaying !== false && inspector.groupScope.isActive();
+  // Are the canvas's clicks and hover resolved with the group rules? While
+  // there are group pick targets, unless a tool that takes the canvas (the
+  // shape tool) has paused the cursor: its clicks are the tool's, and the
+  // group rules keep out of them.
+  function groupRulesResolveClicks() {
+    return (
+      mouseCursor.isPlaying !== false &&
+      inspector.groupScope.hasGroupPickTargets()
+    );
   }
 
   // The group pick targets at a client point, cast afresh from the camera: a
@@ -199,7 +204,7 @@ export function initRaycaster(inspector) {
     // A click outside a nested open group only leaves it, so hovering there
     // previews nothing, not even an OSM street.
     let leavesScope = false;
-    if (groupsActive()) {
+    if (groupRulesResolveClicks()) {
       const hits = groupHits();
       const result = inspector.groupScope.decide(hits);
       inspector.groupScope.noteHover(result, hits);
@@ -236,7 +241,7 @@ export function initRaycaster(inspector) {
   // Losing the window ends a group's hover preview; the next poll restores it
   // once the pointer is back.
   window.addEventListener('blur', () => {
-    if (inspector.groupScope.isGroupingState()) rearmHover();
+    if (inspector.groupScope.groupSelectedOrOpen()) rearmHover();
   });
 
   // Hover-to-highlight for OSM street ways (#1930), matching the hover box
@@ -353,14 +358,14 @@ export function initRaycaster(inspector) {
     // group, open it, select inside it is a quick run of clicks, and each one
     // counts (a touch tap carries no count and is always a first click).
     const count = upEvt ? upEvt.detail : 1;
-    if (count > 1 && !inspector.groupScope.isGroupingState()) {
+    if (count > 1 && !inspector.groupScope.groupSelectedOrOpen()) {
       return;
     }
     const up = upEvt
       ? new THREE.Vector2(upEvt.clientX, upEvt.clientY)
       : onUpPosition;
     if (onDownPosition.distanceTo(up) <= CLICK_MAX_DRAG_PX) {
-      if (groupsActive()) {
+      if (groupRulesResolveClicks()) {
         resolveGroupClick(count);
         mouseCursor.components.cursor.clearCurrentIntersection(false);
         return;
@@ -426,7 +431,7 @@ export function initRaycaster(inspector) {
     // entering groups every click counts). Right/middle mouseups (context
     // menu, orbit/pan) are not "clicks".
     const multiClick =
-      event.detail > 1 && !inspector.groupScope.isGroupingState();
+      event.detail > 1 && !inspector.groupScope.groupSelectedOrOpen();
     if (event.button !== 0 || multiClick || gizmoCaptured) {
       return;
     }
@@ -437,7 +442,7 @@ export function initRaycaster(inspector) {
     // whether or not it hit an entity: empty space as far as the scene is
     // concerned, but inside an open group or on a group's box or marker it
     // still counts.
-    if (groupsActive()) {
+    if (groupRulesResolveClicks()) {
       pressResolved = true;
       resolveGroupClick(event.detail || 1);
       return;

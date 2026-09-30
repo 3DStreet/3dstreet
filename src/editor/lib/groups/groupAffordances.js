@@ -314,8 +314,8 @@ export class GroupAffordances {
     return out;
   }
 
-  /** Is any analytic target live, so a click or hover must consult them? */
-  hasTargets() {
+  /** Is any group's center marker shown (and so a pick target)? */
+  hasMarkers() {
     this.rebuildIfDirty();
     return this.markerGroups(this.markerScratch).length > 0;
   }
