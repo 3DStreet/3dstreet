@@ -154,6 +154,41 @@ export function captureFileInputs() {
   return inputs;
 }
 
+/**
+ * A drag event as the browser sends it, with client coordinates (jsdom has no
+ * DragEvent, and a plain Event carries none).
+ */
+export function dispatchDrag(type, target, { dataTransfer, ...at } = {}) {
+  const event = new MouseEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    ...at
+  });
+  Object.defineProperty(event, 'dataTransfer', { value: dataTransfer });
+  target.dispatchEvent(event);
+  return event;
+}
+
+/**
+ * The ground (y = 0) under client point (x, y) of the harness canvas, worked
+ * out from the camera rather than by the editor's picker; (x, y) omitted is
+ * the point the editor places "in view" at.
+ */
+export function groundUnder(camera, x, y) {
+  const ndc =
+    x === undefined
+      ? { x: 0, y: -0.1 }
+      : { x: (2 * x) / 1200 - 1, y: 1 - (2 * y) / 800 };
+  const direction = new THREE.Vector3(ndc.x, ndc.y, 1)
+    .unproject(camera)
+    .sub(camera.position)
+    .normalize();
+  return new THREE.Ray(camera.position.clone(), direction).intersectPlane(
+    new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+    new THREE.Vector3()
+  );
+}
+
 /** The world position a create's definition commits to. */
 export function committedWorldPosition(root, [, payload]) {
   const parent = payload.parentEl || root;

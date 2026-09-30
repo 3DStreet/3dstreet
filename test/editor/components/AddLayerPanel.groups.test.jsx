@@ -8,7 +8,9 @@ import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   captureFileInputs,
   committedWorldPosition,
+  dispatchDrag,
   entityIn,
+  groundUnder,
   mountPlacementScene
 } from '../lib/groups/_placementHarness.js';
 import { worldOf, worldOfDefinition } from '../lib/groups/_entityElement.js';
@@ -64,12 +66,12 @@ const DROP = { clientX: 700, clientY: 500 };
 function fileDrop(file) {
   // One upload at a time: the previous test drop is left unfinished.
   useCurrentUploadStore.getState().clear();
-  fireEvent.dragOver(document.body, {
+  dispatchDrag('dragover', document.body, {
     ...DROP,
     dataTransfer: { types: ['Files'], dropEffect: '' }
   });
   const previewWorld = preview().object3D.position.clone();
-  fireEvent.drop(document.body, {
+  dispatchDrag('drop', document.body, {
     ...DROP,
     dataTransfer: { types: ['Files'], files: [file], getData: () => '' }
   });
@@ -78,12 +80,12 @@ function fileDrop(file) {
 
 function assetDrop(asset) {
   const types = ['application/x-3dstreet-asset'];
-  fireEvent.dragOver(document.body, {
+  dispatchDrag('dragover', document.body, {
     ...DROP,
     dataTransfer: { types, dropEffect: '' }
   });
   const previewWorld = preview().object3D.position.clone();
-  fireEvent.drop(document.body, {
+  dispatchDrag('drop', document.body, {
     ...DROP,
     dataTransfer: {
       types,
@@ -104,14 +106,14 @@ function cardDrag(name) {
     setDragImage: () => {},
     files: []
   };
-  fireEvent.dragStart(card(name), { dataTransfer });
+  dispatchDrag('dragstart', card(name), { dataTransfer });
   // The panel's drop surface over the viewport.
   const surface = [...document.body.children].find(
     (el) => el.tagName === 'DIV' && el.style.position === 'absolute'
   );
-  fireEvent.dragOver(surface, { ...DROP, dataTransfer });
+  dispatchDrag('dragover', surface, { ...DROP, dataTransfer });
   const previewWorld = preview()?.object3D.position.clone();
-  fireEvent.drop(surface, { ...DROP, dataTransfer });
+  dispatchDrag('drop', surface, { ...DROP, dataTransfer });
   return previewWorld;
 }
 
@@ -124,9 +126,10 @@ const ASSET = {
 };
 
 describe('placing from the Add Layer panel while a group is open', () => {
-  it('commits every route where its preview showed, inside the open group, never at the group origin (fails for a route that writes the world point as the local position)', async () => {
+  it('commits every route where its preview showed, inside the open group, never at the group origin, even with the open group itself selected (fails for a route that writes the world point as the local position, or previews at the group)', async () => {
     const { inner } = scene.scopeGroups();
     scene.openGroups('outer', 'inner');
+    inspector.selectEntity(inner);
     renderPanel();
     const origin = new THREE.Vector3().setFromMatrixPosition(worldOf(inner));
     const routes = [];
@@ -134,29 +137,37 @@ describe('placing from the Add Layer panel while a group is open', () => {
     // A catalog model: hover shows the preview, the click places it.
     tab('🌿 Plants');
     fireEvent.mouseEnter(card('Tree'));
-    routes.push(['mixin card', preview().object3D.position.clone()]);
+    const inView = groundUnder(scene.camera);
+    const dropped = groundUnder(scene.camera, DROP.clientX, DROP.clientY);
+    routes.push(['mixin card', preview().object3D.position.clone(), inView]);
     fireEvent.click(card('Tree'));
 
     // A card whose handler builds its own entity.
     tab('🔵 Shapes');
     fireEvent.mouseEnter(card('Asphalt Circle'));
-    routes.push(['handler card', preview().object3D.position.clone()]);
+    routes.push(['handler card', preview().object3D.position.clone(), inView]);
     fireEvent.click(card('Asphalt Circle'));
 
     tab('🌿 Plants');
-    routes.push(['card drag', cardDrag('Tree')]);
-    routes.push(['file drop', fileDrop(new File(['splat'], 'garden.spz'))]);
-    routes.push(['asset card drop', assetDrop(ASSET)]);
+    routes.push(['card drag', cardDrag('Tree'), dropped]);
+    routes.push([
+      'file drop',
+      fileDrop(new File(['splat'], 'garden.spz')),
+      dropped
+    ]);
+    routes.push(['asset card drop', assetDrop(ASSET), dropped]);
 
     const made = scene.creates();
     expect(made).toHaveLength(routes.length);
     made.forEach((create, i) => {
-      const [route, previewWorld] = routes[i];
+      const [route, previewWorld, ground] = routes[i];
       const [, payload] = create;
       expect(payload.parentEl, route).toBe(inner);
       expect(payload.requireParent, route).toBe(true);
       const world = committedWorldPosition(root, create);
       expect(world.distanceTo(previewWorld), route).toBeLessThan(1e-6);
+      // Where the route aims, not a picker miss at the origin.
+      expect(world.distanceTo(ground), route).toBeLessThan(1e-6);
       expect(world.distanceTo(origin), route).toBeGreaterThan(5);
     });
     // The handler's own rotation is kept as a world rotation.
@@ -204,6 +215,48 @@ describe('placing from the Add Layer panel while a group is open', () => {
       expect(payload.parentEl).toBeUndefined();
       expect(payload.requireParent).toBeUndefined();
     }
+  });
+
+  it('with a group open, places into the group rather than the street-prop holder of a selected segment inside it (fails if the holder rule applies inside a group)', () => {
+    const { inner } = scene.scopeGroups();
+    const street = entityIn(inner, { id: 'street', position: '10 0 0' });
+    const segment = entityIn(street, {
+      id: 'segment',
+      cls: 'segment-parent-0'
+    });
+    inspector.selectEntity(segment);
+    scene.openGroups('outer', 'inner');
+    renderPanel();
+    tab('🌿 Plants');
+    fireEvent.click(card('Tree'));
+
+    const [[, payload]] = scene.creates();
+    expect(payload.parentEl).toBe(inner);
+    expect(segment.querySelector('.custom-group')).toBe(null);
+  });
+
+  it('with a group open, shows where a dragged card will land even when no preview was showing (fails if the drag shows nothing)', () => {
+    scene.scopeGroups();
+    scene.openGroups('outer', 'inner');
+    renderPanel();
+    tab('🌿 Plants');
+    expect(preview()).toBe(null);
+    const dataTransfer = {
+      setData: () => {},
+      getData: () => '',
+      setDragImage: () => {},
+      files: []
+    };
+    dispatchDrag('dragstart', card('Tree'), { dataTransfer });
+    const surface = [...document.body.children].find(
+      (el) => el.tagName === 'DIV' && el.style.position === 'absolute'
+    );
+    dispatchDrag('dragover', surface, { ...DROP, dataTransfer });
+    const shown = preview()?.object3D.position;
+    expect(shown).toBeDefined();
+    expect(
+      shown.distanceTo(groundUnder(scene.camera, DROP.clientX, DROP.clientY))
+    ).toBeLessThan(1e-6);
   });
 
   it('adds a model beside a selected street segment, in its street-prop holder, when no group is open (fails if the base rule changes outside a group)', () => {
