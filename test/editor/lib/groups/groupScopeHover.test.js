@@ -379,7 +379,7 @@ describe('a closed group is entered one level at a time', () => {
 });
 
 describe('ordinary click side effects with a group selected', () => {
-  it('offers an OSM street on empty ground, counts a selection once, and still offers one when the click closes isolation', () => {
+  it('offers an OSM street on empty ground, counts a selection once, and still offers one when the click closes the open group', () => {
     stubOsmStreets();
     const G = group(h.streetContainer, { id: 'G' });
     solid(G, [0, 0, 0], [1, 1, 1], { id: 'member' });

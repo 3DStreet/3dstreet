@@ -83,7 +83,7 @@ function nestedScene() {
   return { A, a1, B, b1, C, tree, tree2, outside };
 }
 
-describe('the selection and isolation rules', () => {
+describe('the selection and open-group rules', () => {
   it('walks every rule of the table: select, open, select inside, reselect the scope, leave one level, close', () => {
     const { A, B, C, tree, outside } = nestedScene();
 
@@ -127,13 +127,13 @@ describe('the selection and isolation rules', () => {
     expect(selected()).toBe(A);
     expect(h.openIds()).toEqual(['A']);
 
-    // Outermost: empty space outside closes isolation and clears selection.
+    // Outermost: empty space outside closes every group and clears selection.
     h.aimDown(...GROUND);
     h.click();
     expect(selected()).toBe(null);
     expect(h.openIds()).toEqual([]);
 
-    // Outermost: an outside item closes isolation and selects it as usual.
+    // Outermost: an outside item closes every group and is selected as usual.
     h.aimDown(...TREE);
     h.click();
     h.click();
@@ -143,7 +143,7 @@ describe('the selection and isolation rules', () => {
     expect(selected()).toBe(outside);
     expect(h.openIds()).toEqual([]);
 
-    // Outermost: Escape closes isolation and clears selection.
+    // Outermost: Escape closes every group and clears selection.
     h.inspector.selectEntity(tree);
     expect(h.openIds()).toEqual(['A', 'B', 'C']);
     h.escape();
@@ -275,7 +275,7 @@ describe('the selection and isolation rules', () => {
     const created = solid(A, [2, 0, 2], [3, 1, 3], { id: 'created' });
     h.inspector.selectEntity(created);
     expect(h.openIds()).toEqual(['A']);
-    // A tool switch clears the selection and keeps isolation.
+    // A tool switch clears the selection and keeps the groups open.
     h.inspector.selectEntity(null);
     expect(h.openIds()).toEqual(['A']);
     h.aimDown(...A1);

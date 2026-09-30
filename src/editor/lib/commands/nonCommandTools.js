@@ -26,7 +26,7 @@ import {
 import { applySegmentPreset } from './segmentPresets.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 import { TRANSFORM_REFUSED } from '../transformGuard.js';
-import { withOriginalAppearanceSync } from '../groups/scopeAttenuation.js';
+import { withOriginalAppearanceSync } from '../groups/scopeFade.js';
 import { executePlacedCreate } from '../groups/groupPlacement.js';
 
 /**

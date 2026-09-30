@@ -78,8 +78,8 @@ vi.mock('3d-tiles-renderer/plugins', () => {
 
 let THREE;
 let batch;
-let BatchAttenuation;
-let ScopeAttenuation;
+let BatchFade;
+let ScopeFade;
 let installEditorFrame;
 let presentation;
 let FadeMaterialManager;
@@ -90,10 +90,8 @@ beforeAll(async () => {
   THREE = window.THREE;
   window.STREET = window.STREET || {};
   batch = await import('../../src/batch-models.js');
-  ({ BatchAttenuation } =
-    await import('../../src/editor/lib/groups/attenuateBatches.js'));
-  ({ ScopeAttenuation } =
-    await import('../../src/editor/lib/groups/scopeAttenuation.js'));
+  ({ BatchFade } = await import('../../src/editor/lib/groups/fadeBatches.js'));
+  ({ ScopeFade } = await import('../../src/editor/lib/groups/scopeFade.js'));
   ({ installEditorFrame } =
     await import('../../src/editor/lib/editorFrame.js'));
   presentation =
@@ -206,7 +204,7 @@ describe('a batch with instances on both sides of the open group', () => {
     insideEl = { name: 'inside' };
     throwing = false;
     fades = new Map();
-    batches = new BatchAttenuation({
+    batches = new BatchFade({
       isOutside: (el) => {
         if (throwing) throw new Error('classification failed');
         return el === outsideEl;
@@ -269,14 +267,14 @@ describe('a batch with instances on both sides of the open group', () => {
     record.throwFor = view;
     expect(() => renderWindow(source)).not.toThrow();
     expect(error).toHaveBeenCalledTimes(1);
-    // Untreated from now on: no view, the batch draws everything.
+    // Unfaded from now on: no view, the batch draws everything.
     record.lists.clear();
     expect(renderWindow(source)).toBe(false);
     expect(record.lists.get(view)).toBeUndefined();
     expect(record.lists.get(source).main.sort()).toEqual([0, 1]);
   });
 
-  it('leaves a batch whose instance data would make three throw untreated, without attaching a view', () => {
+  it('leaves a batch whose instance data would make three throw unfaded, without attaching a view', () => {
     const parked = { name: 'parked outside' };
     const source = makeBatch([outsideEl, insideEl, parked]);
     // Culling the batch as a whole uses a bounding sphere computed first.
@@ -343,11 +341,11 @@ describe('a batch with instances on both sides of the open group', () => {
     expect(record.lists.get(view).main).toEqual([0]);
   });
 
-  it('is left untreated, with a warning, under a three.js revision it was not written for', () => {
+  it('is left unfaded, with a warning, under a three.js revision it was not written for', () => {
     const source = makeBatch([outsideEl, insideEl]);
     scene.add(source);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const other = new BatchAttenuation({
+    const other = new BatchFade({
       isOutside: () => true,
       fadedMaterial: (m) => m,
       threeRevision: '1'
@@ -440,7 +438,7 @@ describe('batch-models folding a member while outside content is faded', () => {
 
   let fixture;
   afterEach(() => {
-    fixture?.attenuation.dispose();
+    fixture?.outsideFade.dispose();
     fixture?.renderer.dispose();
     fixture?.sceneEl.remove();
     fixture = null;
@@ -463,8 +461,8 @@ describe('batch-models folding a member while outside content is faded', () => {
     await flush();
     const { renderer, camera } = makeRenderer(sceneEl.object3D);
     const editorFrame = installEditorFrame(sceneEl);
-    const attenuation = new ScopeAttenuation({ sceneEl, editorFrame });
-    fixture = { sceneEl, container, G, outside, renderer, camera, attenuation };
+    const outsideFade = new ScopeFade({ sceneEl, editorFrame });
+    fixture = { sceneEl, container, G, outside, renderer, camera, outsideFade };
     return fixture;
   }
 
@@ -499,7 +497,7 @@ describe('batch-models folding a member while outside content is faded', () => {
     const [source] = batches(f.sceneEl);
     expect(source).toBeDefined();
     const material = source.material;
-    f.attenuation.apply(f.G, 1);
+    f.outsideFade.apply(f.G, 1);
     render(f);
 
     // An inside copy of the same model loads and folds into the batch.
@@ -523,7 +521,7 @@ describe('batch-models folding a member while outside content is faded', () => {
     expect(batches(f.sceneEl)).toEqual([]);
     const outsideMesh = f.outside[0].getObject3D('mesh');
     const original = outsideMesh.material;
-    f.attenuation.apply(f.G, 1);
+    f.outsideFade.apply(f.G, 1);
     expect(render(f, () => outsideMesh.material.opacity)).toBeCloseTo(0.2, 9);
 
     const insideA = makeModelEl(f.G, 'a.glb', 'in-a', 4);
@@ -543,7 +541,7 @@ describe('batch-models folding a member while outside content is faded', () => {
     expect(during.children).toBe(0);
     expect(record.lists.get(source).main.sort()).toEqual([0, 1]);
 
-    f.attenuation.restore();
+    f.outsideFade.restore();
     const after = render(f, () => ({
       outside: outsideMesh.material,
       sorting: source.customSort,
@@ -700,7 +698,7 @@ describe('in an A-Frame scene', () => {
   );
 
   describe('with a group open', () => {
-    let attenuation;
+    let outsideFade;
     let group;
     let camera;
 
@@ -713,14 +711,14 @@ describe('in an A-Frame scene', () => {
       camera.position.set(0, 20, 20);
       camera.lookAt(0, 0, 0);
       camera.updateMatrixWorld(true);
-      attenuation = new ScopeAttenuation({
+      outsideFade = new ScopeFade({
         sceneEl,
         editorFrame: installEditorFrame(sceneEl)
       });
-      attenuation.apply(group, 1);
+      outsideFade.apply(group, 1);
     }
 
-    afterEach(() => attenuation?.dispose());
+    afterEach(() => outsideFade?.dispose());
 
     // One editor render; `between` sees what is drawn.
     function render(between) {
@@ -740,7 +738,7 @@ describe('in an A-Frame scene', () => {
       return seen;
     }
 
-    it('treats meshes arriving under a nested outside entity before they are drawn', async () => {
+    it('fades meshes arriving under a nested outside entity before they are drawn', async () => {
       await open();
       const container = document.getElementById('street-container');
       const outer = await add(container, '<a-entity></a-entity>');
@@ -793,7 +791,7 @@ describe('in an A-Frame scene', () => {
       expect(drawn).toBe(component.material);
       expect(drawn.opacity).toBeCloseTo(0.5 * 0.2, 12);
 
-      attenuation.restore();
+      outsideFade.restore();
       expect(component.material.opacity).toBe(0.5);
     });
   });

@@ -5,11 +5,11 @@
 // members' bounds (whatever is selected inside it has its own selection box)
 // and a scrim darkens the scene outside the box's outline on screen. Both
 // appear in the same task as the change of open group, so they are on screen
-// in the next frame. The treatment of objects outside the group
-// (`attenuation`) is costlier and follows: it is enabled after the first
-// render that shows the outline and scrim, one animation frame later. A
-// switch between open groups keeps the outside faded throughout: the new
-// group's treatment replaces the old one's in the same task.
+// in the next frame. Fading what is outside the group (`outsideFade`) is
+// costlier and follows: it is enabled after the first render that shows the
+// outline and scrim, one animation frame later. A switch between open groups
+// keeps the outside faded throughout: the new group's fade replaces the old
+// one's in the same task.
 // Every change of open group makes pending work for the previous one
 // obsolete: it is cancelled, and anything that still runs checks the scope
 // generation it was scheduled for.
@@ -29,8 +29,8 @@ import { ScopeScrim } from './scopeOverlay.js';
 export const SCOPE_MARKS = Object.freeze({
   open: 'group-scope:open',
   outlinedFrame: 'group-scope:outlined-frame',
-  attenuationEnabled: 'group-scope:attenuation-enabled',
-  firstAttenuatedFrame: 'group-scope:first-attenuated-frame'
+  fadeEnabled: 'group-scope:fade-enabled',
+  firstFadedFrame: 'group-scope:first-faded-frame'
 });
 const ALL_MARKS = Object.values(SCOPE_MARKS);
 
@@ -70,7 +70,7 @@ function noRaycast() {}
 
 /**
  * The outline and scrim of the open group, and the schedule of its outside
- * treatment. `lines` supplies the viewport's screen-space line helpers:
+ * fade. `lines` supplies the viewport's screen-space line helpers:
  * `createLineMaterial(color)` and `setLinePositions(lines, positions)`.
  */
 export class ScopePresentation {
@@ -89,9 +89,9 @@ export class ScopePresentation {
     this.windowGeneration = null;
     // Entry work scheduled for the current scope, until it has run.
     this.pending = null;
-    // The treatment of objects outside the open group: `apply(groupEl,
+    // The fade of what is outside the open group: `apply(groupEl,
     // generation)` and `restore()`. None until one is provided.
-    this.attenuation = null;
+    this.outsideFade = null;
 
     this.onScopeChanged = (detail) => this.scopeChanged(detail.generation);
     Events.on('groupscopechanged', this.onScopeChanged);
@@ -139,7 +139,7 @@ export class ScopePresentation {
     this.cancelPending();
     const groupEl = this.shownInnermostGroup();
     if (!groupEl) {
-      this.attenuation?.close();
+      this.outsideFade?.close();
       this.clear();
       return;
     }
@@ -155,12 +155,12 @@ export class ScopePresentation {
     // A switch from one open group to another, with the outside already
     // faded: fade the new outside in the same step, so nothing outside is
     // ever drawn at full strength in between.
-    if (this.attenuation?.enabled) {
-      this.attenuation.switchTo(groupEl, generation);
-      mark(SCOPE_MARKS.attenuationEnabled, generation);
+    if (this.outsideFade?.enabled) {
+      this.outsideFade.switchTo(groupEl, generation);
+      mark(SCOPE_MARKS.fadeEnabled, generation);
       return;
     }
-    this.attenuation?.restore();
+    this.outsideFade?.restore();
 
     const pending = { generation, unregisterAfter: null, frameRequest: null };
     pending.unregisterAfter = this.editorFrame.register(
@@ -171,30 +171,30 @@ export class ScopePresentation {
   }
 
   // At the end of a render: once one has shown this scope's outline and
-  // scrim, the outside treatment is due on the next animation frame.
+  // scrim, the outside fade is due on the next animation frame.
   afterRender(pending) {
     if (this.windowGeneration !== pending.generation) return;
     pending.unregisterAfter();
     pending.unregisterAfter = null;
     mark(SCOPE_MARKS.outlinedFrame, pending.generation);
     pending.frameRequest = requestAnimationFrame(() =>
-      this.enableAttenuation(pending.generation)
+      this.enableFade(pending.generation)
     );
   }
 
-  enableAttenuation(generation) {
+  enableFade(generation) {
     // Scheduled for a scope that has since changed: obsolete.
     if (generation !== this.controller.generation) return;
     const groupEl = this.shownInnermostGroup();
     if (!groupEl) return;
     this.pending = null;
-    this.attenuation?.apply(groupEl, generation);
-    mark(SCOPE_MARKS.attenuationEnabled, generation);
+    this.outsideFade?.apply(groupEl, generation);
+    mark(SCOPE_MARKS.fadeEnabled, generation);
   }
 
-  /** The first render drawn with the outside treated has ended. */
-  firstAttenuatedFrame(generation) {
-    mark(SCOPE_MARKS.firstAttenuatedFrame, generation);
+  /** The first render drawn with the outside faded has ended. */
+  firstFadedFrame(generation) {
+    mark(SCOPE_MARKS.firstFadedFrame, generation);
   }
 
   cancelPending() {

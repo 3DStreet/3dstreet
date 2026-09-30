@@ -8,7 +8,7 @@ import { SCOPE_MARKS } from '@/editor/lib/groups/scopePresentation.js';
 import {
   withOriginalAppearance,
   withOriginalAppearanceSync
-} from '@/editor/lib/groups/scopeAttenuation.js';
+} from '@/editor/lib/groups/scopeFade.js';
 import {
   getPresentationFactor,
   subscribePresentationFactor
@@ -35,7 +35,7 @@ vi.mock('@/editor/lib/nav-experimental/index.js', async () => {
   };
 });
 
-// The treatment of everything outside an open group, through the real
+// The fade of everything outside an open group, through the real
 // viewport, scope controller, entry schedule and editor frame (see
 // _editorHarness). A render is the harness's frame(): the scene's matrix
 // update, its onBeforeRender, then (`between`) what the renderer would draw,
@@ -74,7 +74,7 @@ function runFrameRequests() {
   pending.forEach((callback) => callback(performance.now()));
 }
 
-/** Open `g` and let its outside treatment start, as the editor schedules it. */
+/** Open `g` and let its outside fade start, as the editor schedules it. */
 function enter(g) {
   h.groupScope.open(g);
   h.frame();
@@ -380,7 +380,7 @@ describe('outside meshes', () => {
     expect(outside.splatMesh.opacity).toBe(1);
   });
 
-  it('treat content that arrives while the group is open before it is first drawn', () => {
+  it('fade content that arrives while the group is open before it is first drawn', () => {
     const { G, member } = simpleScene();
     h.inspector.selectEntity(member);
     enter(G);
@@ -493,11 +493,11 @@ describe('captures and exports', () => {
     return renderer;
   }
 
-  it('render the original appearance inside the wrapper, and the treatment outside it (control)', () => {
+  it('render the original appearance inside the wrapper, and the fade outside it (control)', () => {
     const f = fixture();
     h.inspector.selectEntity(f.member);
     enter(f.G);
-    const marked = performance.getEntriesByName(SCOPE_MARKS.attenuationEnabled);
+    const marked = performance.getEntriesByName(SCOPE_MARKS.fadeEnabled);
     expect(marked.length).toBeGreaterThan(0);
     const renderer = installRenderer(f);
     const original = f.treeMesh.material;
@@ -587,7 +587,7 @@ describe('captures and exports', () => {
 // ------------------------------------------------------ entry and exit
 
 describe('entering and leaving', () => {
-  it('marks the first faded frame after enabling it, and treats only the outside of the group opened last', () => {
+  it('marks the first faded frame after enabling it, and fades only the outside of the group opened last', () => {
     const marks = vi.spyOn(performance, 'mark');
     const A = group(h.streetContainer, { id: 'A' });
     const a1 = solid(A, [0, 0, 0], [1, 1, 1]);
@@ -597,7 +597,7 @@ describe('entering and leaving', () => {
     h.inspector.selectEntity(a1);
     h.groupScope.open(A);
     h.frame();
-    // B opened before A's treatment was due.
+    // B opened before A's fade was due.
     h.groupScope.open(B);
     h.frame();
     runFrameRequests();
@@ -616,11 +616,11 @@ describe('entering and leaving', () => {
       .map(([name, options]) => [name, options.detail.generation]);
     expect(scopeMarks.slice(-3)).toEqual([
       [SCOPE_MARKS.outlinedFrame, generation],
-      [SCOPE_MARKS.attenuationEnabled, generation],
-      [SCOPE_MARKS.firstAttenuatedFrame, generation]
+      [SCOPE_MARKS.fadeEnabled, generation],
+      [SCOPE_MARKS.firstFadedFrame, generation]
     ]);
     expect(
-      scopeMarks.filter(([name]) => name === SCOPE_MARKS.firstAttenuatedFrame)
+      scopeMarks.filter(([name]) => name === SCOPE_MARKS.firstFadedFrame)
     ).toHaveLength(1);
   });
 
@@ -646,12 +646,12 @@ describe('entering and leaving', () => {
     expect(drawnWith(treeMesh)[0]).toBe(treeMesh.material);
   });
 
-  it('leaves the treatment alone when members change places inside the open group', () => {
+  it('leaves the fade alone when members change places inside the open group', () => {
     const { G, member } = simpleScene();
     solid(G, [2, 0, 0], [3, 1, 1]);
     h.inspector.selectEntity(member);
     enter(G);
-    const restore = vi.spyOn(h.groupScope.attenuation, 'restore');
+    const restore = vi.spyOn(h.groupScope.outsideFade, 'restore');
     // What reordering a member reports: its element leaves and rejoins its
     // group, and history changes.
     h.sceneEl.dispatchEvent(
@@ -669,7 +669,7 @@ describe('entering and leaving', () => {
     expect(restore).not.toHaveBeenCalled();
   });
 
-  it('removes the treatment before any further render when the editor is left', () => {
+  it('removes the fade before any further render when the editor is left', () => {
     const { G, member, treeMesh } = simpleScene();
     const splat = splatEntity(h.streetContainer, 'splat');
     h.inspector.selectEntity(member);
@@ -688,8 +688,8 @@ describe('entering and leaving', () => {
 
   it('costs nothing per frame while no group is open, before a group is opened and after it closes (fails if the render window stays registered)', () => {
     const { G, member, treeMesh } = simpleScene();
-    const fadeWindow = vi.spyOn(h.groupScope.attenuation, 'fadeWindow');
-    const endWindow = vi.spyOn(h.groupScope.attenuation, 'endWindow');
+    const fadeWindow = vi.spyOn(h.groupScope.outsideFade, 'fadeWindow');
+    const endWindow = vi.spyOn(h.groupScope.outsideFade, 'endWindow');
     h.inspector.selectEntity(member);
     enter(G);
     h.frame();
@@ -779,7 +779,7 @@ describe('failures', () => {
     const next = drawnWith(...meshes);
     expect(next).toEqual(probes.map((probe) => probe.original));
     expect(probes.every((probe) => probe.assigned.length === 0)).toBe(true);
-    // Isolation itself goes on, and reopening does not fade again.
+    // The group itself stays open, and reopening does not fade again.
     expect(h.openIds()).toEqual(['G']);
     h.groupScope.close(null);
     h.inspector.selectEntity(member);

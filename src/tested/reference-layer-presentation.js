@@ -2,7 +2,7 @@
  * A presentation factor for the reference map layers (Google 3D Tiles, the 2D
  * basemap, OSM buildings), applied on top of each layer's own opacity.
  *
- * The editor lowers it while a group is open for editing, so the map recedes
+ * The editor lowers it while a group is open for editing, so the map fades
  * like everything else outside the group, and puts it back to 1 afterwards.
  * It is presentation state only: a layer's `opacity` component value, which
  * is what the scene saves, is never changed. Each layer reads the factor when
@@ -14,7 +14,7 @@
 let factor = 1;
 const listeners = new Set();
 
-/** The current factor, 1 when nothing is being de-emphasised. */
+/** The current factor, 1 when nothing is faded. */
 export function getPresentationFactor() {
   return factor;
 }

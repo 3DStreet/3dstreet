@@ -11,7 +11,7 @@
 //   is found from the material the mesh holds at that moment, so a material
 //   replaced or given a texture later is picked up on the next frame.
 // - Batches holding instances on both sides of the group are split per
-//   instance for that render (attenuateBatches.js).
+//   instance for that render (fadeBatches.js).
 // - The reference map layers fade through their own opacity path, by a
 //   presentation factor (tested/reference-layer-presentation.js), because
 //   their tile materials must keep their identity for tile fading.
@@ -22,7 +22,7 @@
 // appearance: see withOriginalAppearanceSync and withOriginalAppearance.
 // Visibility is never touched, so hidden content stays hidden.
 
-import { BatchAttenuation } from './attenuateBatches.js';
+import { BatchFade } from './fadeBatches.js';
 import { FRAME_ORDER } from '../editorFrame.js';
 import { setPresentationFactor } from '../../../tested/reference-layer-presentation.js';
 import { debugLog } from '../../../shared/utils/debug.js';
@@ -82,7 +82,7 @@ function canFade(material) {
   return !material.isShaderMaterial || !!material.uniforms?.opacity;
 }
 
-// The editor's one attenuation, for the capture and export wrappers below.
+// The editor's one outside fade, for the capture and export wrappers below.
 let installed = null;
 
 /**
@@ -90,13 +90,13 @@ let installed = null;
  * for a synchronous render that is read back (a screenshot). Nestable.
  */
 export function withOriginalAppearanceSync(fn) {
-  const attenuation = installed;
-  if (!attenuation) return fn();
-  attenuation.suspend();
+  const outsideFade = installed;
+  if (!outsideFade) return fn();
+  outsideFade.suspend();
   try {
     return fn();
   } finally {
-    attenuation.resume();
+    outsideFade.resume();
   }
 }
 
@@ -106,33 +106,33 @@ export function withOriginalAppearanceSync(fn) {
  * faded again once the last one finishes, if a group is still open then.
  */
 export async function withOriginalAppearance(fn) {
-  const attenuation = installed;
-  if (!attenuation) return fn();
-  attenuation.suspend();
+  const outsideFade = installed;
+  if (!outsideFade) return fn();
+  outsideFade.suspend();
   try {
     return await fn();
   } finally {
-    attenuation.resume();
+    outsideFade.resume();
   }
 }
 
-export class ScopeAttenuation {
+export class ScopeFade {
   /**
-   * `editorFrame` is the editor's render window; `onFirstAttenuatedFrame
+   * `editorFrame` is the editor's render window; `onFirstFadedFrame
    * (generation)` is called at the end of the first render drawn faded after
    * each apply().
    */
-  constructor({ sceneEl, editorFrame, onFirstAttenuatedFrame = () => {} }) {
+  constructor({ sceneEl, editorFrame, onFirstFadedFrame = () => {} }) {
     this.sceneEl = sceneEl;
     this.editorFrame = editorFrame;
-    this.onFirstAttenuatedFrame = onFirstAttenuatedFrame;
+    this.onFirstFadedFrame = onFirstFadedFrame;
 
     this.enabled = false;
-    // Set when a render window failed: isolation goes on unfaded.
+    // Set when a render window failed: the group stays open, unfaded.
     this.broken = false;
     this.suspendDepth = 0;
-    this.scopeEl = null;
-    this.scopeId = null;
+    this.groupEl = null;
+    this.groupId = null;
     this.generation = null;
     this.firstFramePending = false;
 
@@ -157,7 +157,7 @@ export class ScopeAttenuation {
     this.swapped = [];
     this.windowFaded = false;
 
-    this.batchAttenuation = new BatchAttenuation({
+    this.batchFade = new BatchFade({
       isOutside: (el) => this.isOutside(el),
       fadedMaterial: (material) => this.fadedMaterial(material)
     });
@@ -187,11 +187,11 @@ export class ScopeAttenuation {
     if (this.broken || !groupEl?.isConnected) return;
     this.enabled = true;
     this.generation = generation;
-    this.scopeId = groupEl.id;
+    this.groupId = groupEl.id;
     this.classifyAll(groupEl);
     this.listen();
     this.firstFramePending = true;
-    if (!this.suspendDepth) this.present();
+    if (!this.suspendDepth) this.applyPersistentFades();
     debugLog(
       '[groups] fading outside the open group:',
       this.meshes.size,
@@ -216,7 +216,7 @@ export class ScopeAttenuation {
     }
     this.revertWindow();
     this.generation = generation;
-    this.scopeId = groupEl.id;
+    this.groupId = groupEl.id;
     // Fades the splats outside groupEl that are not faded yet.
     this.classifyAll(groupEl);
     for (const [splat, record] of this.fadedSplats) {
@@ -234,10 +234,10 @@ export class ScopeAttenuation {
     this.enabled = false;
     this.firstFramePending = false;
     this.unlisten();
-    this.unpresent();
+    this.removePersistentFades();
     this.forget();
-    this.scopeEl = null;
-    this.scopeId = null;
+    this.groupEl = null;
+    this.groupId = null;
   }
 
   /**
@@ -265,7 +265,7 @@ export class ScopeAttenuation {
   releaseCopies() {
     for (const record of [...this.fadedRecords]) record.release();
     this.fadedByArray = new WeakMap();
-    this.batchAttenuation.retireDetached();
+    this.batchFade.retireDetached();
   }
 
   // Release the copies of materials nothing in the scene is drawn with any
@@ -283,7 +283,7 @@ export class ScopeAttenuation {
         if (!inUse.has(record.original)) record.release();
       }
     }
-    this.batchAttenuation.retireDetached((source) => this.inScene(source));
+    this.batchFade.retireDetached((source) => this.inScene(source));
   }
 
   inScene(object) {
@@ -331,23 +331,23 @@ export class ScopeAttenuation {
   suspend() {
     if (this.suspendDepth++ > 0) return;
     this.revertWindow();
-    if (this.enabled) this.unpresent();
+    if (this.enabled) this.removePersistentFades();
   }
 
   resume() {
     if (--this.suspendDepth > 0) return;
     // From the state now, not the state at suspend: the group may have
     // closed (or another opened) meanwhile.
-    if (this.enabled) this.present();
+    if (this.enabled) this.applyPersistentFades();
   }
 
   // The fades that are not per render: map layers and splats.
-  present() {
+  applyPersistentFades() {
     setPresentationFactor(OUTSIDE_OPACITY);
     for (const splat of this.splats) this.fadeSplat(splat);
   }
 
-  unpresent() {
+  removePersistentFades() {
     setPresentationFactor(1);
     for (const [splat, record] of this.fadedSplats) {
       // Unless something else has set it since.
@@ -370,7 +370,7 @@ export class ScopeAttenuation {
   isOutside(el) {
     let outside = this.outsideByEl.get(el);
     if (outside === undefined) {
-      outside = !!this.scopeEl && !this.scopeEl.contains(el);
+      outside = !!this.groupEl && !this.groupEl.contains(el);
       this.outsideByEl.set(el, outside);
     }
     return outside;
@@ -378,7 +378,7 @@ export class ScopeAttenuation {
 
   classifyAll(groupEl) {
     this.forget();
-    this.scopeEl = groupEl;
+    this.groupEl = groupEl;
     for (const id of CONTENT_ROOT_IDS) {
       const root = document.getElementById(id);
       if (root?.object3D && !isMapLayer(root)) this.classify(root.object3D);
@@ -388,11 +388,11 @@ export class ScopeAttenuation {
   // Record what is drawn under `object`, which is outside the open group,
   // skipping the group itself and the map layers.
   classify(object) {
-    const scopeObject = this.scopeEl.object3D;
+    const groupObject = this.groupEl.object3D;
     const stack = [object];
     while (stack.length) {
       const node = stack.pop();
-      if (node === scopeObject) continue;
+      if (node === groupObject) continue;
       if (node.userData?.source === 'INSPECTOR') continue;
       if (node.el?.object3D === node && isMapLayer(node.el)) continue;
       if (isSplatMesh(node)) {
@@ -413,15 +413,15 @@ export class ScopeAttenuation {
 
   // New content: classify it now, before it is first drawn.
   arrived(event) {
-    const scopeEl = this.scopeId
-      ? document.getElementById(this.scopeId)
-      : this.scopeEl;
+    const groupEl = this.groupId
+      ? document.getElementById(this.groupId)
+      : this.groupEl;
     // The open group is being moved (it is recreated with the same id).
-    if (!scopeEl) return;
-    if (scopeEl !== this.scopeEl) {
-      this.unpresent();
-      this.classifyAll(scopeEl);
-      if (!this.suspendDepth) this.present();
+    if (!groupEl) return;
+    if (groupEl !== this.groupEl) {
+      this.removePersistentFades();
+      this.classifyAll(groupEl);
+      if (!this.suspendDepth) this.applyPersistentFades();
       return;
     }
     const el =
@@ -432,7 +432,7 @@ export class ScopeAttenuation {
   // Is `el` scene content outside the open group and not in a map layer?
   isContentOutside(el) {
     for (let node = el; node && node !== this.sceneEl; node = node.parentNode) {
-      if (node === this.scopeEl || isMapLayer(node)) return false;
+      if (node === this.groupEl || isMapLayer(node)) return false;
       if (CONTENT_ROOT_IDS.includes(node.id)) return true;
     }
     return false;
@@ -445,7 +445,7 @@ export class ScopeAttenuation {
     for (const set of [this.meshes, this.batches, this.splats]) {
       for (const object of set) if (!inScene(object)) set.delete(object);
     }
-    this.batchAttenuation.retireDetached(inScene);
+    this.batchFade.retireDetached(inScene);
   }
 
   // ------------------------------------------------------ faded materials
@@ -551,7 +551,7 @@ export class ScopeAttenuation {
         mesh.material = faded;
       }
       for (const source of this.batches) {
-        this.batchAttenuation.prepare(source, context.camera);
+        this.batchFade.prepare(source, context.camera);
       }
     } catch (error) {
       this.revertWindow();
@@ -567,7 +567,7 @@ export class ScopeAttenuation {
     this.revertWindow();
     if (faded && this.firstFramePending) {
       this.firstFramePending = false;
-      this.onFirstAttenuatedFrame(this.generation);
+      this.onFirstFadedFrame(this.generation);
     }
   }
 
@@ -577,7 +577,7 @@ export class ScopeAttenuation {
       swapped[i].material = swapped[i + 1];
     }
     swapped.length = 0;
-    this.batchAttenuation.finish();
+    this.batchFade.finish();
     this.windowFaded = false;
   }
 

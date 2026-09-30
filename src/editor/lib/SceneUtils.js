@@ -8,7 +8,7 @@ import {
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.js';
 import { getCurrentCameraState } from '@/editor/lib/cameraUtils.js';
-import { withOriginalAppearanceSync } from '@/editor/lib/groups/scopeAttenuation.js';
+import { withOriginalAppearanceSync } from '@/editor/lib/groups/scopeFade.js';
 import { scenePath } from '@/tested/scene-url-utils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/services/firebase';

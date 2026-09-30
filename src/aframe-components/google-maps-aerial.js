@@ -158,7 +158,7 @@ AFRAME.registerComponent('google-maps-aerial', {
     };
     document.addEventListener('visibilitychange', this.onVisibilityChange);
 
-    // The editor de-emphasises the map while a group is open for editing.
+    // The editor fades the map while a group is open for editing.
     this.unsubscribePresentation = subscribePresentationFactor(() =>
       this.applyOpacityToLoadedTiles()
     );

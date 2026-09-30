@@ -1,5 +1,5 @@
 /* global THREE */
-// Attenuating part of a THREE.BatchedMesh: the instances of a batch that lie
+// Fading part of a THREE.BatchedMesh: the instances of a batch that lie
 // outside the open group are drawn faded, the ones inside it are not.
 //
 // Batching (batch-models.js) merges every copy of a model into one draw, so a
@@ -19,7 +19,7 @@
 // (the SHARED_FIELDS below), re-bound from the source at every render so it
 // never relies on when three replaces them (growing a batch recreates its
 // textures). They are checked at run time together with the three.js
-// revision, and a batch they do not fit is left untreated with one warning.
+// revision, and a batch they do not fit is left unfaded, with one warning.
 // docs/groups.md describes the dependency.
 //
 // A view owns only its own indirect texture and draw arrays. It never calls
@@ -50,13 +50,13 @@ function sortTransparent(a, b) {
 function noRaycast() {}
 
 /**
- * Per-instance attenuation of batches for one render window at a time.
+ * Fades batches per instance, for one render window at a time.
  *
  * `isOutside(el)` says whether an instance's entity is outside the open
  * group. `fadedMaterial(material)` returns the faded material to draw it
  * with.
  */
-export class BatchAttenuation {
+export class BatchFade {
   constructor({
     isOutside,
     fadedMaterial,
@@ -68,20 +68,20 @@ export class BatchAttenuation {
     this.warned = false;
     // source -> its view, kept across renders and scopes.
     this.views = new Map();
-    // Batches left untreated for the rest of the session: a view that threw.
-    this.untreated = new WeakSet();
+    // Batches left unfaded for the rest of the session: a view that threw.
+    this.leftUnfaded = new WeakSet();
     // What this render window changed, undone by finish().
     this.attached = [];
     this.sorted = [];
     this.camera = null;
 
-    const attenuation = this;
+    const batchFade = this;
     // `this` is the batch being drawn (three calls customSort on it).
     this.keepInside = function (list, camera) {
-      attenuation.filter(this, list, camera, false);
+      batchFade.filter(this, list, camera, false);
     };
     this.keepOutside = function (list, camera) {
-      attenuation.filter(this, list, camera, true);
+      batchFade.filter(this, list, camera, true);
     };
   }
 
@@ -143,7 +143,7 @@ export class BatchAttenuation {
    * outside the open group. Returns true when it did.
    */
   prepare(source, camera) {
-    if (this.untreated.has(source) || !this.supports(source)) return false;
+    if (this.leftUnfaded.has(source) || !this.supports(source)) return false;
     if (!this.hasOutsideInstance(source)) return false;
     if (!this.valid(source)) {
       this.warn('a batch has an instance with no geometry');
@@ -182,14 +182,14 @@ export class BatchAttenuation {
       view.frustumCulled = false;
       view.sortObjects = true;
       view.customSort = this.keepOutside;
-      const attenuation = this;
+      const batchFade = this;
       view.onBeforeRender = function () {
         try {
           THREE.BatchedMesh.prototype.onBeforeRender.apply(this, arguments);
         } catch (error) {
           // Thrown while three draws, outside any handler of ours: contain
-          // it, and draw that batch untreated from the next render on.
-          attenuation.untreated.add(source);
+          // it, and draw that batch unfaded from the next render on.
+          batchFade.leftUnfaded.add(source);
           console.error('[groups] fading a batch failed:', error);
         }
       };

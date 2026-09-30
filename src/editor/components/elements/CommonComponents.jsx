@@ -9,7 +9,7 @@ import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { expandBatchedMeshesForExport } from '../../../batch-models';
 import { isUserGroup } from '../../lib/groups/groupModel.js';
-import { withOriginalAppearance } from '../../lib/groups/scopeAttenuation.js';
+import { withOriginalAppearance } from '../../lib/groups/scopeFade.js';
 
 export default class CommonComponents extends React.Component {
   static propTypes = {

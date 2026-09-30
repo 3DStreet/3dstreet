@@ -1,4 +1,4 @@
-import { withOriginalAppearanceSync } from './groups/scopeAttenuation.js';
+import { withOriginalAppearanceSync } from './groups/scopeFade.js';
 
 /**
  * Capture the current editor viewport as a small JPEG for the AI assistant.

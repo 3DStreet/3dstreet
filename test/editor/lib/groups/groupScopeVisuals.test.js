@@ -27,7 +27,7 @@ vi.mock('@/editor/lib/nav-experimental/index.js', async () => {
 });
 
 // The outline and scrim of an open group, and the order in which it and the
-// outside treatment appear, through the real viewport, scope controller, easy
+// outside fade appear, through the real viewport, scope controller, easy
 // gizmo and editor frame (see _editorHarness). The canvas is 1200 × 800 px at
 // the page's top left.
 
@@ -439,7 +439,7 @@ describe('closing an open group', () => {
 describe('entering a group', () => {
   let frameRequests;
   let marks;
-  let attenuation;
+  let outsideFade;
 
   beforeEach(() => {
     frameRequests = [];
@@ -449,8 +449,8 @@ describe('entering a group', () => {
     });
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
     marks = vi.spyOn(performance, 'mark');
-    attenuation = { apply: vi.fn(), restore: vi.fn(), close: vi.fn() };
-    h.groupScope.presentation.attenuation = attenuation;
+    outsideFade = { apply: vi.fn(), restore: vi.fn(), close: vi.fn() };
+    h.groupScope.presentation.outsideFade = outsideFade;
   });
 
   const scopeMarks = () =>
@@ -464,7 +464,7 @@ describe('entering a group', () => {
     pending.forEach((callback) => callback(performance.now()));
   }
 
-  it('treats the outside only after a render has shown the outline and scrim, and one animation frame more', () => {
+  it('fades the outside only after a render has shown the outline and scrim, and one animation frame more', () => {
     const { g } = yawedGroup();
     select(g);
     h.groupScope.open(g);
@@ -479,22 +479,22 @@ describe('entering a group', () => {
       [SCOPE_MARKS.outlinedFrame, generation]
     ]);
     expect(frameRequests).toHaveLength(1);
-    expect(attenuation.apply).not.toHaveBeenCalled();
+    expect(outsideFade.apply).not.toHaveBeenCalled();
 
     runFrameRequests();
-    expect(attenuation.apply).toHaveBeenCalledTimes(1);
-    expect(attenuation.apply).toHaveBeenCalledWith(g, generation);
+    expect(outsideFade.apply).toHaveBeenCalledTimes(1);
+    expect(outsideFade.apply).toHaveBeenCalledWith(g, generation);
     expect(scopeMarks()).toEqual([
       [SCOPE_MARKS.open, generation],
       [SCOPE_MARKS.outlinedFrame, generation],
-      [SCOPE_MARKS.attenuationEnabled, generation]
+      [SCOPE_MARKS.fadeEnabled, generation]
     ]);
 
     // Later frames schedule nothing more.
     h.frame();
     h.frame();
     expect(frameRequests).toHaveLength(0);
-    expect(attenuation.apply).toHaveBeenCalledTimes(1);
+    expect(outsideFade.apply).toHaveBeenCalledTimes(1);
   });
 
   it('does not count a render already under way when the group opened as the one that showed it', () => {
@@ -514,31 +514,31 @@ describe('entering a group', () => {
     expect(frameRequests).toHaveLength(1);
   });
 
-  it('never treats the outside of a group closed before its treatment was due, and treats it when opened again', () => {
+  it('never fades the outside of a group closed before its fade was due, and fades it when opened again', () => {
     const { g } = yawedGroup();
     openGroup(g);
     h.frame();
     expect(frameRequests).toHaveLength(1);
-    expect(attenuation.close).not.toHaveBeenCalled();
+    expect(outsideFade.close).not.toHaveBeenCalled();
 
     h.escape();
     expect(h.openIds()).toEqual([]);
     expect(cancelAnimationFrame).toHaveBeenCalledWith(1);
-    expect(attenuation.close).toHaveBeenCalledTimes(1);
+    expect(outsideFade.close).toHaveBeenCalledTimes(1);
     // Even if the cancelled request still ran.
     runFrameRequests();
     h.frame();
-    expect(attenuation.apply).not.toHaveBeenCalled();
+    expect(outsideFade.apply).not.toHaveBeenCalled();
     expect(
-      scopeMarks().filter(([name]) => name === SCOPE_MARKS.attenuationEnabled)
+      scopeMarks().filter(([name]) => name === SCOPE_MARKS.fadeEnabled)
     ).toEqual([]);
 
     // The same steps with the group left open do treat it.
     openGroup(g);
     h.frame();
     runFrameRequests();
-    expect(attenuation.apply).toHaveBeenCalledTimes(1);
-    expect(attenuation.apply).toHaveBeenCalledWith(g, h.groupScope.generation);
+    expect(outsideFade.apply).toHaveBeenCalledTimes(1);
+    expect(outsideFade.apply).toHaveBeenCalledWith(g, h.groupScope.generation);
   });
 
   it('opening a nested group before the outer one was treated treats only the nested one, once', () => {
@@ -563,12 +563,12 @@ describe('entering a group', () => {
     // The outer group's request runs after all, then the nested one's.
     enableA(performance.now());
     enableB(performance.now());
-    expect(attenuation.apply).toHaveBeenCalledTimes(1);
-    expect(attenuation.apply).toHaveBeenCalledWith(b, generationB);
+    expect(outsideFade.apply).toHaveBeenCalledTimes(1);
+    expect(outsideFade.apply).toHaveBeenCalledWith(b, generationB);
     const enabled = scopeMarks().filter(
-      ([name]) => name === SCOPE_MARKS.attenuationEnabled
+      ([name]) => name === SCOPE_MARKS.fadeEnabled
     );
-    expect(enabled).toEqual([[SCOPE_MARKS.attenuationEnabled, generationB]]);
+    expect(enabled).toEqual([[SCOPE_MARKS.fadeEnabled, generationB]]);
   });
 });
 

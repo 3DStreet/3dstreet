@@ -20,7 +20,7 @@ import { FRAME_ORDER, PER_ITEM_PASS_MAX_THROWS } from '../editorFrame.js';
 import { createUniqueId } from '../entity';
 import { isReparentInFlight } from '../commands/EntityReparentCommand.js';
 import { GroupAffordances } from './groupAffordances.js';
-import { ScopeAttenuation } from './scopeAttenuation.js';
+import { ScopeFade } from './scopeFade.js';
 import { ScopePresentation } from './scopePresentation.js';
 import {
   isHiddenInHierarchy,
@@ -86,13 +86,13 @@ export function installGroupScope(inspector, editorFrame, { lines }) {
     editorFrame,
     lines
   );
-  controller.attenuation = new ScopeAttenuation({
+  controller.outsideFade = new ScopeFade({
     sceneEl: inspector.sceneEl,
     editorFrame,
-    onFirstAttenuatedFrame: (generation) =>
-      controller.presentation.firstAttenuatedFrame(generation)
+    onFirstFadedFrame: (generation) =>
+      controller.presentation.firstFadedFrame(generation)
   });
-  controller.presentation.attenuation = controller.attenuation;
+  controller.presentation.outsideFade = controller.outsideFade;
   inspector.groupScope = controller;
   return controller;
 }
@@ -150,7 +150,7 @@ export class GroupScopeController {
     this.unregisterFrame?.();
     this.affordances.dispose();
     this.presentation?.dispose();
-    this.attenuation?.dispose();
+    this.outsideFade?.dispose();
   }
 
   // ------------------------------------------------------------ read-only state

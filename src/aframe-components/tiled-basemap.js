@@ -92,7 +92,7 @@ AFRAME.registerComponent('tiled-basemap', {
 
     this.createTiles();
 
-    // The editor de-emphasises the map while a group is open for editing.
+    // The editor fades the map while a group is open for editing.
     this.unsubscribePresentation = subscribePresentationFactor(() =>
       this.applyOpacityToLoadedTiles()
     );

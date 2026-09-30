@@ -94,7 +94,7 @@ AFRAME.registerComponent('osm-buildings', {
     this._camDir = new THREE.Vector3();
     this._focus = new THREE.Vector3();
     this.tick = AFRAME.utils.throttleTick(this.tick, SCAN_INTERVAL_MS, this);
-    // The editor de-emphasises the map while a group is open for editing.
+    // The editor fades the map while a group is open for editing.
     this.unsubscribePresentation = subscribePresentationFactor(() =>
       this.applyOpacity()
     );

@@ -3,7 +3,7 @@ import useStore from '@/store';
 import { saveBlob } from './utils';
 import { convertToObject, getExportFilename } from './SceneUtils';
 import { expandBatchedMeshesForExport } from '../../batch-models';
-import { withOriginalAppearance } from './groups/scopeAttenuation.js';
+import { withOriginalAppearance } from './groups/scopeFade.js';
 
 const filterHelpers = (scene, visible) => {
   scene.traverse((o) => {

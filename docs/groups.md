@@ -112,14 +112,14 @@ that group. A handle click never leaves a group.
   previous one, and anything that still runs checks the scope generation it
   was scheduled for.
 - Each step leaves a `performance` mark (`group-scope:open`,
-  `group-scope:outlined-frame`, `group-scope:attenuation-enabled`,
-  `group-scope:first-attenuated-frame`) carrying the generation, so entry time
+  `group-scope:outlined-frame`, `group-scope:fade-enabled`,
+  `group-scope:first-faded-frame`) carrying the generation, so entry time
   can be measured in any build.
 
 ## Fading the outside
 
 While a group is open, scene content outside it is drawn at a fifth of its own
-opacity (`scopeAttenuation.js`). Editor helpers are drawn normally. Nothing
+opacity (`scopeFade.js`). Editor helpers are drawn normally. Nothing
 saved changes, and visibility is never written.
 
 - **Meshes** are drawn with a faded copy of their material, swapped in at the
@@ -145,7 +145,7 @@ saved changes, and visibility is never written.
 ### Batches
 
 A batch (`batch-models.js`) can hold instances on both sides of the group, so
-it is split per instance for each render (`attenuateBatches.js`). The batch
+it is split per instance for each render (`fadeBatches.js`). The batch
 keeps only its inside instances for the window's camera and everything for any
 other camera, so shadows are unchanged. A second `BatchedMesh`, attached as
 its child for the render, draws the outside instances with a faded material.
@@ -157,7 +157,7 @@ free data it borrows. At run time the fields and `THREE.REVISION` are checked
 against `SUPPORTED_THREE_REVISION`; a batch that does not fit keeps its outside
 instances unfaded and logs one warning. After a three.js upgrade, check the
 fields against `BatchedMesh` and update the revision;
-`test/components/group-scope-attenuation.test.js` runs the split against the
+`test/components/group-fade-real-three.test.js` runs the split against the
 real `BatchedMesh`.
 
 ### Map layers and splats
