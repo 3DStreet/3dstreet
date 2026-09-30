@@ -24,6 +24,12 @@ overlay `renderOrder` so they blend over Gaussian splats instead of hiding
 them. Apply opacity through `applyReferenceLayerOpacity` /
 `referenceLayerRenderOrder` in `src/tested/transparent-layering.js` (read its
 header first), never by hand-setting `transparent`/`opacity` on tile
-materials.
+materials. While a user group is open the editor multiplies a presentation
+factor into that fraction (`src/tested/reference-layer-presentation.js`;
+[docs/groups.md](../groups.md)): a map layer multiplies
+`getPresentationFactor()` into the opacity it applies, re-applies on
+`subscribePresentationFactor`, unsubscribes in `remove`, and is
+listed in `MAP_LAYERS` in `src/editor/lib/groups/scopeAttenuation.js`, which
+otherwise fades its meshes one by one. The saved `opacity` never changes.
 
 **Terrain flattening (#1476):** any number of entities may carry `geo-flatten` (`mode: mesh` = flatten onto the entity's own mesh, for simple primitives; `mode: auto` = invisible footprint proxy plane at local y=0, for complex subtrees). A scene-level `geo-flatten` registry system feeds `google-maps-aerial`, which reconciles shapes in tick with per-entry matrix-change detection and a 150ms throttle (every shape update re-flattens all active tiles on CPU). Managed streets auto-attach `geo-flatten` (mode: auto) in init — same pattern as `street-align`/`street-ground` — so streets flatten terrain under their footprint by default. `street-geo.enableFlattening` (default true) is the master gate; the legacy single-shape `street-geo.flatteningShape` reference is migrated to a `geo-flatten` component at load (`migrateLegacyFlatteningShape` in `src/json-utils_1.1.js`). Never raycast a street's real meshes for flattening — slow, and terrain would snap to the tops of vehicles/trees.

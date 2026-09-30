@@ -77,6 +77,8 @@ gesture follows its initiating pointer until release or cancellation. The click
 that trails a claimed press is swallowed (it would hand the selection to what
 sits under the handle); the double-click is not, so the editor's double-click
 focus frames the selected object even when the gizmo covers it at distance.
+Nothing of a claimed press is left for the canvas: the next click, mouse or
+touch, selects as usual.
 
 Native pointer capture is a convenience, not the ownership mechanism. Chrome
 drops capture mid-drag as soon as a pointermove reports no buttons held, which a
@@ -114,7 +116,8 @@ limit, it is a click: the gizmo dispatches `handleClick` with the press point
 and the click count, and nothing else. `handlePress` and `handlePressEnd`
 bracket the held press; blur, `pointercancel`, Escape, detach and closing the
 editor end it with nothing done, and an Escape that ends one does nothing
-else.
+else. For a group, such a click over its box opens the group, and the
+double-click it starts does not frame ([groups](groups.md)).
 
 Commits and cancels leave pitch and roll exactly as read: the gizmo only ever
 edits yaw, so only yaw is rounded.

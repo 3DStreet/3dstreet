@@ -671,6 +671,9 @@ anticipatable. Applied in both the experimental and the legacy
 (`?nav=classic`) flows **only if** an audit confirms the two paths haven't
 diverged for a legitimate reason; otherwise experimental-only.
 
+User groups follow the same rule: hovering a member of a closed group
+highlights the group, because that is what a click selects.
+
 ---
 
 ## G. Mode indicator

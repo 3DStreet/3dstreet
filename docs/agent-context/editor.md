@@ -15,8 +15,10 @@ repository root; bare filenames name modules within this subsystem.
 symbol (`src/editor/lib/transformGuard.js`) instead of running a command that
 would violate a transform-capability marker on the target entity — test for the
 symbol, not for a falsy return, since the success path returns `undefined`. The
-markers are `data-transform-no-scale`, `data-transform-yaw-only` and
-`data-transform-no-reparent`; an entity opts in by carrying the attribute and
+markers are `data-transform-no-scale`, `data-transform-yaw-only`,
+`data-transform-uniform-scale` and `data-transform-no-reparent`; an entity
+opts in by carrying the attribute (a user group implies yaw-only and
+uniform-scale by its class) and
 the guard is otherwise entity-type-agnostic. They are **not** the same thing as
 the far more common `data-no-transform`, which is a UI gate only (it hides the
 properties-panel transform rows and the gizmo) and is enforced nowhere at the
@@ -63,6 +65,12 @@ depth buffer (`index.html`), so any raw `ShaderMaterial` drawn into it (the
 and `logdepthbuf` pars/vertex/fragment chunks. Without them its depth is on a
 different scale from every built-in material and it occludes, or is occluded
 by, real geometry at random (#1988, #2009).
+
+**User groups:** entities with the `user-group` class, which users make, open
+for editing (`inspector.groupScope`) and move items into. Which parent an item
+may take is decided only by `canReparent` in `src/editor/lib/groups/groupModel.js`;
+per-frame work that must see final transforms registers in the editor frame
+window (`src/editor/lib/editorFrame.js`). Doc is [docs/groups.md](../groups.md).
 
 **Street gizmos:** always-on viewport handles for managed streets (endpoint
 nodes that rewrite position/rotation/length, segment width bars), additive to
