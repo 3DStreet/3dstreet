@@ -678,16 +678,16 @@ describe('failures', () => {
     return { G, member, meshes };
   }
 
-  // Records every material assigned to `mesh`; `throwOnce` makes the next
-  // read throw once.
+  // Records every material assigned to `mesh`. While `reads.armed`, the
+  // `reads.throwAt`-th material read across all instrumented meshes throws.
+  const reads = { armed: false, count: 0, throwAt: 3 };
   function instrument(mesh) {
     let material = mesh.material;
-    const probe = { assigned: [], original: material, throwOnce: false };
+    const probe = { assigned: [], original: material };
     Object.defineProperty(mesh, 'material', {
       configurable: true,
       get() {
-        if (probe.throwOnce) {
-          probe.throwOnce = false;
+        if (reads.armed && ++reads.count === reads.throwAt) {
           throw new Error('material unavailable');
         }
         return material;
@@ -702,28 +702,38 @@ describe('failures', () => {
 
   it('puts every original back before the render when the swap throws, and stops fading for the session', () => {
     const { G, member, meshes } = threeOutside();
+    const splat = splatEntity(h.streetContainer, 'splat');
     h.inspector.selectEntity(member);
     enter(G);
     const probes = meshes.map(instrument);
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    // Whichever mesh is reached last fails on its first read.
-    probes.forEach((probe) => (probe.throwOnce = true));
+    // The third mesh reached fails, after two have been swapped.
+    reads.armed = true;
+    reads.count = 0;
     let during;
     h.frame(() => {
-      during = meshes.map((mesh, i) => {
-        probes[i].throwOnce = false;
-        return mesh.material;
-      });
+      reads.armed = false;
+      during = meshes.map((mesh) => mesh.material);
     });
+    expect(reads.count).toBe(3);
+    expect(probes.filter((probe) => probe.assigned.length)).toHaveLength(2);
     expect(during).toEqual(probes.map((probe) => probe.original));
     expect(error).toHaveBeenCalledTimes(1);
+    // Nothing is faded any more: not the map layers, not splats.
+    expect(getPresentationFactor()).toBe(1);
+    expect(splat.splatMesh.opacity).toBe(1);
 
     probes.forEach((probe) => (probe.assigned = []));
     const next = drawnWith(...meshes);
     expect(next).toEqual(probes.map((probe) => probe.original));
     expect(probes.every((probe) => probe.assigned.length === 0)).toBe(true);
-    // Isolation itself goes on.
+    // Isolation itself goes on, and reopening does not fade again.
     expect(h.openIds()).toEqual(['G']);
+    h.scope.close(null);
+    h.inspector.selectEntity(member);
+    enter(G);
+    expect(drawnWith(...meshes)).toEqual(probes.map((probe) => probe.original));
+    expect(getPresentationFactor()).toBe(1);
   });
 
   it('undoes the swaps of a render that never finished before swapping again', () => {
