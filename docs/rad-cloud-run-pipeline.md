@@ -224,6 +224,7 @@ below the working set it evicts and re-fetches). `STREET.splatDebug.snapshot()`
 shows the resolved settings and the live pager queue under `streaming`, and
 frames drawn (by reason) vs skipped under `renderOnDemand`;
 `STREET.splatDebug.setRenderOnDemand(false)` turns skipping off for an A/B.
+Real-hardware test pass: [manual-test-plan-splat-on-demand.md](manual-test-plan-splat-on-demand.md).
 
 ## Open decisions / inputs needed
 
