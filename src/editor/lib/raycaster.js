@@ -121,10 +121,11 @@ export function initRaycaster(inspector) {
     // segment, then child — see cascadingSelection.js. Hover previews the
     // same resolution, so the hover box always shows what a click selects.
     // A click never reaches into a closed user group: it selects the group.
+    const open = inspector.groupScope.openElements();
     return resolveClickSelection(
       intersectedEl,
       inspector.selectedEntity,
-      new Set(inspector.groupScope?.openElements())
+      open.length ? new Set(open) : undefined
     );
   }
 
@@ -157,9 +158,7 @@ export function initRaycaster(inspector) {
   // A tool that takes the canvas (the shape tool) pauses the cursor: its clicks
   // are the tool's, and the group rules keep out of them.
   function groupsActive() {
-    return (
-      mouseCursor.isPlaying !== false && !!inspector.groupScope?.isActive()
-    );
+    return mouseCursor.isPlaying !== false && inspector.groupScope.isActive();
   }
 
   // The group pick targets at a client point, cast afresh from the camera: a
@@ -207,10 +206,10 @@ export function initRaycaster(inspector) {
       resolved = hoverTargetOf(result);
       leavesScope = result.action === 'exit';
     } else {
-      inspector.groupScope?.clearHover();
+      inspector.groupScope.clearHover();
       resolved = getIntersectedEl();
     }
-    const opens = inspector.groupScope?.hoverOpens || null;
+    const opens = inspector.groupScope.hoverOpens || null;
     if (resolved !== lastHoveredEl || opens !== lastHoverOpens) {
       if (lastHoveredEl) Events.emit('raycastermouseleave', lastHoveredEl);
       if (resolved) Events.emit('raycastermouseenter', resolved);
@@ -237,7 +236,7 @@ export function initRaycaster(inspector) {
   // Losing the window ends a group's hover preview; the next poll restores it
   // once the pointer is back.
   window.addEventListener('blur', () => {
-    if (inspector.groupScope?.isGroupingState()) rearmHover();
+    if (inspector.groupScope.isGroupingState()) rearmHover();
   });
 
   // Hover-to-highlight for OSM street ways (#1930), matching the hover box
@@ -354,7 +353,7 @@ export function initRaycaster(inspector) {
     // group, open it, select inside it is a quick run of clicks, and each one
     // counts (a touch tap carries no count and is always a first click).
     const count = upEvt ? upEvt.detail : 1;
-    if (count > 1 && !inspector.groupScope?.isGroupingState()) {
+    if (count > 1 && !inspector.groupScope.isGroupingState()) {
       return;
     }
     const up = upEvt
@@ -427,7 +426,7 @@ export function initRaycaster(inspector) {
     // entering groups every click counts). Right/middle mouseups (context
     // menu, orbit/pan) are not "clicks".
     const multiClick =
-      event.detail > 1 && !inspector.groupScope?.isGroupingState();
+      event.detail > 1 && !inspector.groupScope.isGroupingState();
     if (event.button !== 0 || multiClick || gizmoCaptured) {
       return;
     }
@@ -473,7 +472,7 @@ export function initRaycaster(inspector) {
   function onDoubleClick(event) {
     // The clicks of this double-click selected or opened a group: that was
     // the whole gesture, so the camera stays where it is.
-    if (inspector.groupScope?.consumeDoubleClick()) {
+    if (inspector.groupScope.consumeDoubleClick()) {
       return;
     }
     if (isStreetLevelNav()) {

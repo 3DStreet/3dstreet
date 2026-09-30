@@ -251,6 +251,44 @@ describe('outside meshes', () => {
     expect(clone).not.toHaveBeenCalled();
   });
 
+  it('let go of the faded copies and batch views of content removed from the scene when the group closes, and keep the rest for next time (fails if they are kept until the scene is replaced)', () => {
+    const { G, member, treeMesh } = simpleScene();
+    const bench = solid(h.streetContainer, [8, 0, 0], [9, 1, 1], {
+      id: 'bench'
+    });
+    const benchMesh = meshOf(bench);
+    const batchRoot = item(h.streetContainer, { id: 'batch-models-root' });
+    const source = batchOf([item(h.streetContainer, { id: 'car' })]);
+    batchRoot.object3D.add(source);
+    h.inspector.selectEntity(member);
+    enter(G);
+    let view;
+    h.frame(() => {
+      view = source.children[0];
+    });
+    const [treeCopy, benchCopy] = drawnWith(treeMesh, benchMesh);
+    const released = [];
+    treeCopy.addEventListener('dispose', () => released.push('tree copy'));
+    benchCopy.addEventListener('dispose', () => released.push('bench copy'));
+    view._indirectTexture.addEventListener('dispose', () =>
+      released.push('batch view')
+    );
+
+    // Removing a model takes its mesh away and disposes nothing.
+    treeMesh.removeFromParent();
+    source.removeFromParent();
+    h.frame();
+    expect(released).toEqual([]);
+    h.scope.close(null);
+    expect(released.sort()).toEqual(['batch view', 'tree copy']);
+
+    const clone = vi.spyOn(THREE.Material.prototype, 'clone');
+    h.inspector.selectEntity(member);
+    enter(G);
+    expect(drawnWith(benchMesh)[0]).toBe(benchCopy);
+    expect(clone).not.toHaveBeenCalled();
+  });
+
   it('leave editor helpers, the splat renderer and map layers alone, and never touch lights', () => {
     const { G, member, treeMesh } = simpleScene();
     const helperMesh = new THREE.Mesh(

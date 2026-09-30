@@ -135,7 +135,7 @@ export class ScopePresentation {
     this.cancelPending();
     const groupEl = this.innermostScope();
     if (!groupEl) {
-      this.attenuation?.restore();
+      this.attenuation?.close();
       this.clear();
       return;
     }

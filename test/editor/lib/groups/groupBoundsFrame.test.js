@@ -183,6 +183,36 @@ describe('live group bounds in the editor frame', () => {
     expect(error).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps one box for a group whose member moves every frame (fails if each change makes a new box)', () => {
+    const g = group(sceneEl);
+    const member = entity(g);
+    boxMesh(member, [0, 0, 0], [1, 1, 1]);
+    inspector.selectedEntity = g;
+    frame();
+    const box = getGroupBounds(g);
+    const clone = vi.spyOn(THREE.Box3.prototype, 'clone');
+    for (let x = 1; x <= 5; x++) {
+      member.object3D.position.x = x;
+      frame();
+    }
+    expect(clone).not.toHaveBeenCalled();
+    expect(getGroupBounds(g)).toBe(box);
+    expectBox(box, [5, 0, 0], [6, 1, 1]);
+    expect(emitted).toHaveLength(6);
+  });
+
+  it('asks a splat that has not loaded for its box every frame into the same box, making none (fails if each frame allocates one)', () => {
+    const g = group(sceneEl);
+    const splatEl = entity(g);
+    const getBoundingBox = vi.fn(() => null);
+    splatEl.components.splat = { getBoundingBox };
+    inspector.selectedEntity = g;
+    for (let i = 0; i < 3; i++) frame();
+    expect(getBoundingBox).toHaveBeenCalledTimes(3);
+    const targets = new Set(getBoundingBox.mock.calls.map(([, t]) => t));
+    expect(targets.size).toBe(1);
+  });
+
   it('measures a splat member once while it is unchanged, and again after it loads (fails with an uncached splat walk)', () => {
     const g = group(sceneEl);
     const splatEl = entity(g, { position: [2, 0, 0] });

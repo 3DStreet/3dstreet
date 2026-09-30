@@ -132,6 +132,11 @@ function markerParts() {
 
 function noRaycast() {}
 
+// A group that can show a marker: in the scene and not hidden.
+function isShownGroup(el) {
+  return isUserGroup(el) && el.isConnected && !isHiddenInHierarchy(el);
+}
+
 function buildMarker() {
   const parts = markerParts();
   const marker = new THREE.Group();
@@ -175,6 +180,16 @@ export class GroupAffordances {
     Events.on('historychanged', this.markDirty);
   }
 
+  dispose() {
+    const sceneEl = this.inspector.sceneEl;
+    sceneEl.removeEventListener('child-attached', this.markDirty);
+    sceneEl.removeEventListener('child-detached', this.markDirty);
+    sceneEl.removeEventListener('newScene', this.markDirty);
+    Events.off('historychanged', this.markDirty);
+    for (const marker of this.markers.values()) marker.removeFromParent();
+    this.markers.clear();
+  }
+
   /** Pixel height of the canvas the markers are sized for. */
   viewportHeight() {
     return this.inspector.container?.clientHeight || 0;
@@ -204,17 +219,15 @@ export class GroupAffordances {
    */
   markerGroups(out = []) {
     out.length = 0;
-    const shown = (el) =>
-      isUserGroup(el) && el.isConnected && !isHiddenInHierarchy(el);
     for (const groupEl of this.emptyGroups) {
-      if (shown(groupEl)) out.push(groupEl);
+      if (isShownGroup(groupEl)) out.push(groupEl);
     }
     const selected = this.scope.selected();
-    if (shown(selected) && !out.includes(selected)) out.push(selected);
+    if (isShownGroup(selected) && !out.includes(selected)) out.push(selected);
     const open = this.scope.openElements();
     const innermost = open[open.length - 1];
     if (
-      shown(innermost) &&
+      isShownGroup(innermost) &&
       !out.includes(innermost) &&
       getGroupBounds(innermost) === null
     ) {

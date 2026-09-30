@@ -190,6 +190,26 @@ describe('the box drawn for a group', () => {
     expect(during).toEqual(volumeCorners(moved, G));
   });
 
+  it('takes its markers and scene listeners away when the scope controller is disposed (fails if they outlive it)', () => {
+    const G = group(h.streetContainer, { id: 'G' });
+    h.inspector.selectEntity(G);
+    h.frame();
+    expect(h.markers()).toHaveLength(1);
+    const { affordances } = h.inspector.groupScope;
+
+    h.inspector.groupScope.dispose();
+    const markers = h.inspector.sceneHelpers.children.filter(
+      (c) => c.name === 'group-center-marker'
+    );
+    expect(markers).toEqual([]);
+    affordances.dirty = false;
+    Events.emit('historychanged', null);
+    for (const type of ['child-attached', 'child-detached', 'newScene']) {
+      h.sceneEl.dispatchEvent(new Event(type));
+    }
+    expect(affordances.dirty).toBe(false);
+  });
+
   it('draws no box for a group with no member geometry, shows its marker instead, and never brings the old box back', () => {
     const G = group(h.streetContainer, { id: 'G' });
     const member = solid(G, [0, 0, 0], [1, 1, 1], { id: 'member' });

@@ -59,6 +59,22 @@ function isSplatMesh(node) {
   return !!node.el && node.el.components?.splat?.splatMesh === node;
 }
 
+// Every material drawn under `object`, outside the map layers, into `out`.
+function collectMaterials(object, out) {
+  const stack = [object];
+  while (stack.length) {
+    const node = stack.pop();
+    if (node.el?.object3D === node && isMapLayer(node.el)) continue;
+    const material = node.material;
+    if (Array.isArray(material)) material.forEach((m) => out.add(m));
+    else if (material) out.add(material);
+    for (let i = 0; i < node.children.length; i++) {
+      stack.push(node.children[i]);
+    }
+  }
+  return out;
+}
+
 // A shader that draws its own colour ignores a material's opacity, so it
 // can only be faded if it reads an opacity uniform.
 function canFade(material) {
@@ -223,6 +239,15 @@ export class ScopeAttenuation {
     this.scopeId = null;
   }
 
+  /**
+   * The last open group has closed: put everything back, and let go of the
+   * copies kept for content that has since left the scene.
+   */
+  close() {
+    this.restore();
+    this.releaseUnused();
+  }
+
   forget() {
     this.meshes.clear();
     this.batches.clear();
@@ -240,6 +265,30 @@ export class ScopeAttenuation {
     for (const record of [...this.fadedRecords]) record.release();
     this.fadedByArray = new WeakMap();
     this.batchAttenuation.retireDetached();
+  }
+
+  // Release the copies of materials nothing in the scene is drawn with any
+  // more, and the views of batches that have left it. Removing a model
+  // disposes nothing, so a copy would otherwise keep the original and its
+  // textures until the scene is replaced.
+  releaseUnused() {
+    if (this.fadedRecords.size) {
+      const inUse = new Set();
+      for (const id of CONTENT_ROOT_IDS) {
+        const root = document.getElementById(id);
+        if (root?.object3D) collectMaterials(root.object3D, inUse);
+      }
+      for (const record of [...this.fadedRecords]) {
+        if (!inUse.has(record.original)) record.release();
+      }
+    }
+    this.batchAttenuation.retireDetached((source) => this.inScene(source));
+  }
+
+  inScene(object) {
+    let node = object;
+    while (node.parent) node = node.parent;
+    return node === this.sceneEl.object3D;
   }
 
   // Frame callbacks and scene listeners exist only while a group is faded,
@@ -392,12 +441,7 @@ export class ScopeAttenuation {
   // Drop what has left the scene.
   prune() {
     this.needsPrune = false;
-    const scene = this.sceneEl.object3D;
-    const inScene = (object) => {
-      let node = object;
-      while (node.parent) node = node.parent;
-      return node === scene;
-    };
+    const inScene = (object) => this.inScene(object);
     for (const set of [this.meshes, this.batches, this.splats]) {
       for (const object of set) if (!inScene(object)) set.delete(object);
     }
@@ -459,6 +503,7 @@ export class ScopeAttenuation {
     const copy = original.clone();
     this.prepareCopy(copy, original);
     const record = {
+      original,
       copy,
       version: original.version,
       map: original.map,

@@ -75,10 +75,6 @@ export class ScopeScrim {
     if (this.root) this.root.style.display = 'none';
   }
 
-  get shown() {
-    return !!this.root?.isConnected && this.root.style.display !== 'none';
-  }
-
   dispose() {
     this.root?.remove();
     this.root = null;

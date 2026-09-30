@@ -46,13 +46,7 @@ class EditorFrame {
     this.renderIsFirstOfFrame = false;
     this.nextSeq = 0;
     // Reused for every call, so the window allocates nothing per frame.
-    this.context = {
-      renderer: null,
-      scene: null,
-      camera: null,
-      renderTarget: null,
-      firstOfFrame: false
-    };
+    this.context = { camera: null, firstOfFrame: false };
 
     const scene = sceneEl.object3D;
     const defaults = THREE.Object3D.prototype;
@@ -71,18 +65,19 @@ class EditorFrame {
     }
 
     const frame = this;
-    scene.onBeforeRender = function (renderer, s, camera, renderTarget) {
-      frame.runBefore(renderer, s, camera, renderTarget);
+    scene.onBeforeRender = function (renderer, s, camera) {
+      frame.runBefore(camera);
       previousBefore?.apply(this, arguments);
     };
     scene.onAfterRender = function (renderer, s, camera) {
-      frame.runAfter(renderer, s, camera);
+      frame.runAfter(camera);
       previousAfter?.apply(this, arguments);
     };
   }
 
   /**
-   * Register `callback(context)` for the render window.
+   * Register `callback(context)` for the render window. `context` is one
+   * shared object: the render's `camera`, and `firstOfFrame`.
    *
    * - `phase`: 'before' (in onBeforeRender, before the render lists are built)
    *   or 'after' (in onAfterRender, once drawing is done).
@@ -128,27 +123,24 @@ class EditorFrame {
     this[list] = this[list].filter((e) => e !== entry);
   }
 
-  runBefore(renderer, scene, camera, renderTarget) {
+  runBefore(camera) {
     if (!inspectorOpen()) return;
     const time = this.sceneEl.time;
     // Without a clock every render counts as a new frame.
     const first = time === undefined || time !== this.lastFrameTime;
     this.lastFrameTime = time;
     this.renderIsFirstOfFrame = first;
-    this.run('before', renderer, scene, camera, renderTarget, first);
+    this.run('before', camera, first);
   }
 
-  runAfter(renderer, scene, camera) {
+  runAfter(camera) {
     if (!inspectorOpen()) return;
-    this.run('after', renderer, scene, camera, null, this.renderIsFirstOfFrame);
+    this.run('after', camera, this.renderIsFirstOfFrame);
   }
 
-  run(list, renderer, scene, camera, renderTarget, firstOfFrame) {
+  run(list, camera, firstOfFrame) {
     const context = this.context;
-    context.renderer = renderer;
-    context.scene = scene;
     context.camera = camera;
-    context.renderTarget = renderTarget;
     context.firstOfFrame = firstOfFrame;
     const entries = this[list];
     for (let i = 0; i < entries.length; i++) {

@@ -140,6 +140,7 @@ export class GroupScopeController {
     this.teardown.forEach((undo) => undo?.());
     this.teardown = [];
     this.unregisterFrame?.();
+    this.affordances.dispose();
     this.presentation?.dispose();
     this.attenuation?.dispose();
   }
@@ -160,8 +161,9 @@ export class GroupScopeController {
     return this.inspector.selectedEntity || null;
   }
 
-  /** The open groups as elements, outermost first. */
+  /** The open groups as elements, outermost first. Do not modify it. */
   openElements() {
+    if (this.stack.length === 0) return NO_GROUPS;
     const elements = [];
     for (const id of this.stack) {
       const el = document.getElementById(id);

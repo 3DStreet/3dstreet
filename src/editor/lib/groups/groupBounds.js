@@ -23,7 +23,8 @@ function tmp() {
       toLocal: new THREE.Matrix4(),
       nodeToLocal: new THREE.Matrix4(),
       part: new THREE.Box3(),
-      measured: new THREE.Box3()
+      measured: new THREE.Box3(),
+      splat: new THREE.Box3()
     };
   }
   return scratch;
@@ -59,9 +60,11 @@ function splatBox(el, splat) {
     entry = undefined;
   }
   if (!entry) {
-    const box = splat.getBoundingBox?.(true, new THREE.Box3());
+    // Null until the splat has loaded, which can be many frames: nothing is
+    // allocated until there is a box to keep.
+    const box = splat.getBoundingBox?.(true, tmp().splat);
     if (!box || box.isEmpty()) return null;
-    entry = { box, frame: measureSplatFrame };
+    entry = { box: box.clone(), frame: measureSplatFrame };
     splatBoxes.set(el, entry);
   }
   return entry.box;
@@ -257,8 +260,14 @@ function recomputeLiveBounds() {
         refreshSplats: !previouslyLive.has(groupEl)
       });
       const entry = stored.get(groupEl);
-      if (!entry || !sameBounds(entry.box, box)) {
+      if (!entry) {
         stored.set(groupEl, { box: box ? box.clone() : null });
+        changed.push(groupEl);
+      } else if (!sameBounds(entry.box, box)) {
+        // In place while it changes every frame (a member being dragged):
+        // readers copy the box or read it at once, never keep it.
+        if (entry.box && box) entry.box.copy(box);
+        else entry.box = box ? box.clone() : null;
         changed.push(groupEl);
       }
       failing.delete(groupEl);

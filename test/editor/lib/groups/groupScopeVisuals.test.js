@@ -451,7 +451,7 @@ describe('entering a group', () => {
     });
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
     marks = vi.spyOn(performance, 'mark');
-    attenuation = { apply: vi.fn(), restore: vi.fn() };
+    attenuation = { apply: vi.fn(), restore: vi.fn(), close: vi.fn() };
     h.scope.presentation.attenuation = attenuation;
   });
 
@@ -516,16 +516,17 @@ describe('entering a group', () => {
     expect(frameRequests).toHaveLength(1);
   });
 
-  it('never treats the outside of a group closed before its treatment was due', () => {
+  it('never treats the outside of a group closed before its treatment was due, and treats it when opened again', () => {
     const { g } = yawedGroup();
     openGroup(g);
     h.frame();
     expect(frameRequests).toHaveLength(1);
+    expect(attenuation.close).not.toHaveBeenCalled();
 
     h.escape();
     expect(h.openIds()).toEqual([]);
     expect(cancelAnimationFrame).toHaveBeenCalledWith(1);
-    expect(attenuation.restore).toHaveBeenCalled();
+    expect(attenuation.close).toHaveBeenCalledTimes(1);
     // Even if the cancelled request still ran.
     runFrameRequests();
     h.frame();
@@ -533,6 +534,13 @@ describe('entering a group', () => {
     expect(
       scopeMarks().filter(([name]) => name === SCOPE_MARKS.attenuationEnabled)
     ).toEqual([]);
+
+    // The same steps with the group left open do treat it.
+    openGroup(g);
+    h.frame();
+    runFrameRequests();
+    expect(attenuation.apply).toHaveBeenCalledTimes(1);
+    expect(attenuation.apply).toHaveBeenCalledWith(g, h.scope.generation);
   });
 
   it('opening a nested group before the outer one was treated treats only the nested one, once', () => {
@@ -563,7 +571,6 @@ describe('entering a group', () => {
       ([name]) => name === SCOPE_MARKS.attenuationEnabled
     );
     expect(enabled).toEqual([[SCOPE_MARKS.attenuationEnabled, generationB]]);
-    expect(attenuation.restore).toHaveBeenCalled();
   });
 });
 
