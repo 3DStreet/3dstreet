@@ -232,14 +232,87 @@ function onBoxOf(groupEl, at) {
   );
 }
 
+// Distance on screen from `p` to the segment a-b.
+function segmentDistance(p, a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const length2 = dx * dx + dy * dy;
+  const t = length2
+    ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length2))
+    : 0;
+  return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+}
+
+// Distance on screen from `p` to the triangle a-b-c: 0 inside it.
+function triangleDistance(p, a, b, c) {
+  const side = (u, v) => (v.x - u.x) * (p.y - u.y) - (v.y - u.y) * (p.x - u.x);
+  const s1 = side(a, b);
+  const s2 = side(b, c);
+  const s3 = side(c, a);
+  const inside =
+    (s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0);
+  if (inside) return 0;
+  return Math.min(
+    segmentDistance(p, a, b),
+    segmentDistance(p, b, c),
+    segmentDistance(p, c, a)
+  );
+}
+
+/**
+ * How near to `centre` on screen the gizmo's `axis` control is drawn: no
+ * nearer point can pick it. Zero when that cannot be told from its triangles
+ * (a part behind the camera, or one that is not a mesh).
+ */
+function controlScreenDistance(axis, centre) {
+  const camera = controls.camera;
+  const view = camera.matrixWorld.clone().invert();
+  const v = new THREE.Vector3();
+  let nearest = Infinity;
+  let bounded = true;
+  for (const picker of controls.getPickers()) {
+    picker.traverse((node) => {
+      let owner = node;
+      while (owner && !owner.userData.gizmoAxis) owner = owner.parent;
+      if (owner?.userData.gizmoAxis !== axis || !node.geometry) return;
+      const position = node.isMesh && node.geometry.attributes.position;
+      if (!position) {
+        bounded = false;
+        return;
+      }
+      const screen = [];
+      for (let i = 0; i < position.count; i++) {
+        v.fromBufferAttribute(position, i).applyMatrix4(node.matrixWorld);
+        if (v.clone().applyMatrix4(view).z >= -camera.near) bounded = false;
+        screen.push(screenOf(v));
+      }
+      const index = node.geometry.index;
+      const corner = (k) => screen[index ? index.getX(k) : k];
+      const count = index ? index.count : position.count;
+      for (let k = 0; k + 2 < count; k += 3) {
+        nearest = Math.min(
+          nearest,
+          triangleDistance(centre, corner(k), corner(k + 1), corner(k + 2))
+        );
+      }
+    });
+  }
+  return bounded && nearest !== Infinity ? nearest : 0;
+}
+
 /**
  * A screen point on the gizmo's `axis` control, over `groupEl`'s box or off
- * it as asked. Throws if the scene offers none, so a test cannot pass on a
- * point that is not where it says.
+ * it as asked: the nearest to the pad, searched outwards in rings. Throws if
+ * the scene offers none, so a test cannot pass on a point that is not where
+ * it says.
  */
 function handlePoint(axis, { overBoxOf = null, offBoxOf = null } = {}) {
   const centre = screenOf(worldOf(controls.moveGroup));
-  for (let r = 0; r <= 240; r += 1) {
+  // Picking is a raycast against every control, so the rings too near the
+  // pad to reach this one are passed over without one (a point is rounded to
+  // a whole pixel, at most a pixel from its ring).
+  const from = Math.max(0, Math.floor(controlScreenDistance(axis, centre)) - 1);
+  for (let r = from; r <= 240; r += 1) {
     for (let deg = 0; deg < 360; deg += r === 0 ? 360 : 5) {
       // Whole pixels, so a test's pixel offsets from here are exact.
       const at = {
