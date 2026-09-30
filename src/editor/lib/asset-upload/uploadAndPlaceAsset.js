@@ -16,6 +16,10 @@
  * In-flight transient state (status, progress, sizeBytes, originalFilename)
  * lives in the Zustand assetUploadStore keyed by entity.id, not on DOM
  * attributes. It does not survive scene save/reload — by design.
+ *
+ * Once the placeholder exists the flow keeps only its id and looks the entity
+ * up whenever it needs it: moving an item in the layer panel replaces its
+ * element (same id), and a delete or undo can remove it while the upload runs.
  */
 
 import posthog from 'posthog-js';
@@ -37,6 +41,7 @@ import {
   gltfRejectionMessage
 } from '@shared/asset-upload';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
+import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 
 export { FILE_PICKER_ACCEPT, isAcceptedAssetFile };
 
@@ -92,6 +97,12 @@ function notifyError(msg) {
 function notifySuccess(msg) {
   if (window.STREET?.notify?.successMessage) {
     window.STREET.notify.successMessage(msg);
+  }
+}
+
+function notifyInfo(msg) {
+  if (window.STREET?.notify?.infoMessage) {
+    window.STREET.notify.infoMessage(msg);
   }
 }
 
@@ -336,11 +347,11 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
   } else {
     ({ entity, blobUrl } = await createPlaceholderEntity(file, position, kind));
   }
+  const entityId = entity.id;
   // Start watching the local preview's load outcome immediately — before any
   // awaits — so a fast model-error can't slip past. Consumed below (after the
   // quota check) to refuse uploading a model that can't even render locally.
-  const modelLoadGate = kind === 'glb' ? watchModelLoad(entity) : null;
-  const entityId = entity.id;
+  const modelLoadGate = kind === 'glb' ? watchModelLoad(entityId) : null;
   const { setUpload, clearUpload } = useAssetUploadStore.getState();
 
   setUpload(entityId, {
@@ -569,6 +580,20 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       }
     );
     pendingAssetId = assetId;
+    // Thumbnail capture ran in parallel with the upload. Fire-and-forget
+    // the upload step — errors are logged but never block the success
+    // toast. The 'assetUpdated' event from updateAsset will replace the
+    // gallery card placeholder with the generated JPEG when it lands.
+    const uploadThumbnail = () => {
+      thumbnailCapture?.then((jpegBlob) => {
+        if (!jpegBlob) return;
+        import('@shared/asset-upload/captureThumbnail.js').then(
+          ({ uploadCapturedThumbnail }) => {
+            uploadCapturedThumbnail(assetId, userId, jpegBlob);
+          }
+        );
+      });
+    };
     // Hide the new asset from the gallery grid while finalization runs
     // (preload + entity swap). The pending card keeps showing progress
     // until we call clear() below — atomic swap, no overlap.
@@ -593,6 +618,24 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     // through the browser image cache quickly).
     if (kind === 'glb') {
       await preloadGltfWithTimeout(cloudUrl, 12000);
+    }
+
+    // The item may have been deleted (or its creation undone) while the
+    // upload ran. It is not brought back: the asset is in the user's library.
+    const placed = document.getElementById(entityId);
+    if (!placed) {
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      clearUpload(entityId);
+      currentUploadStore.clear();
+      uploadThumbnail();
+      notifyInfo(groupMessage('uploadFinishedItemGone'));
+      captureUploadEvent(
+        kind,
+        'success',
+        Date.now() - uploadStartTime,
+        optimizationMetadata
+      );
+      return { entity: null, assetId, kind };
     }
 
     // Swap the temp blob URL for the cloud URL and write persistent identity
@@ -620,7 +663,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
         [
           'entityupdate',
           {
-            entity,
+            entity: placed,
             component: modelComponent,
             value: modelValue,
             noSelectEntity: true
@@ -629,7 +672,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
         [
           'entityupdate',
           {
-            entity,
+            entity: placed,
             component: 'data-asset-id',
             value: assetId,
             noSelectEntity: true
@@ -638,7 +681,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
         [
           'entityupdate',
           {
-            entity,
+            entity: placed,
             component: 'data-asset-owner-uid',
             value: userId,
             noSelectEntity: true
@@ -649,7 +692,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
           // including this entity in saved scenes.
           'entityupdate',
           {
-            entity,
+            entity: placed,
             component: 'data-temporary-file',
             value: null,
             noSelectEntity: true
@@ -668,20 +711,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     // this is the moment of the atomic swap: card vanishes, real item appears.
     currentUploadStore.clear();
 
-    // Thumbnail capture ran in parallel with the upload. Fire-and-forget
-    // the upload step — errors are logged but never block the success
-    // toast. The 'assetUpdated' event from updateAsset will replace the
-    // gallery card placeholder with the generated JPEG when it lands.
-    if (thumbnailCapture) {
-      thumbnailCapture.then((jpegBlob) => {
-        if (!jpegBlob) return;
-        import('@shared/asset-upload/captureThumbnail.js').then(
-          ({ uploadCapturedThumbnail }) => {
-            uploadCapturedThumbnail(assetId, userId, jpegBlob);
-          }
-        );
-      });
-    }
+    uploadThumbnail();
 
     notifySuccess(`Uploaded ${file.name}`);
     captureUploadEvent(
@@ -690,12 +720,13 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       Date.now() - uploadStartTime,
       optimizationMetadata
     );
-    return { entity, assetId, kind };
+    return { entity: placed, assetId, kind };
   } catch (err) {
     if (err.name === 'AbortError') {
       // User cancelled — remove the placeholder entity and clean up silently.
-      if (entity?.parentNode) {
-        AFRAME.INSPECTOR.execute('entityremove', entity);
+      const placed = document.getElementById(entityId);
+      if (placed) {
+        AFRAME.INSPECTOR.execute('entityremove', placed);
       }
       if (blobUrl) URL.revokeObjectURL(blobUrl);
       clearUpload(entityId);
@@ -737,10 +768,14 @@ const MODEL_LOAD_GATE_TIMEOUT_MS = 30000;
  * `{ loaded: true }` on model-loaded (or an already-present mesh, e.g. the
  * retry path), `{ loaded: false }` on model-error, `{ loaded: true }` on
  * timeout so a slow parse never blocks an upload.
+ *
+ * Listens at the document, filtered by id, so the outcome still arrives when
+ * the entity is moved in the layer panel (which replaces its element) before
+ * its model loads. Both events bubble.
  */
-function watchModelLoad(entity, timeoutMs = MODEL_LOAD_GATE_TIMEOUT_MS) {
+function watchModelLoad(entityId, timeoutMs = MODEL_LOAD_GATE_TIMEOUT_MS) {
   return new Promise((resolve) => {
-    if (entity.getObject3D('mesh')) {
+    if (document.getElementById(entityId)?.getObject3D('mesh')) {
       resolve({ loaded: true });
       return;
     }
@@ -748,15 +783,16 @@ function watchModelLoad(entity, timeoutMs = MODEL_LOAD_GATE_TIMEOUT_MS) {
     const finish = (result) => {
       if (done) return;
       done = true;
-      entity.removeEventListener('model-loaded', onLoaded);
-      entity.removeEventListener('model-error', onError);
+      document.removeEventListener('model-loaded', onLoaded);
+      document.removeEventListener('model-error', onError);
       clearTimeout(timer);
       resolve(result);
     };
-    const onLoaded = () => finish({ loaded: true });
-    const onError = () => finish({ loaded: false });
-    entity.addEventListener('model-loaded', onLoaded);
-    entity.addEventListener('model-error', onError);
+    const isOurs = (event) => event.target?.id === entityId;
+    const onLoaded = (event) => isOurs(event) && finish({ loaded: true });
+    const onError = (event) => isOurs(event) && finish({ loaded: false });
+    document.addEventListener('model-loaded', onLoaded);
+    document.addEventListener('model-error', onError);
     const timer = setTimeout(
       () => finish({ loaded: true, timedOut: true }),
       timeoutMs

@@ -1,5 +1,6 @@
-// User-facing strings for groups that are raised from plain modules (the
-// command guard, placement), where no react-intl provider is in reach.
+// User-facing strings for groups and moves that are raised from plain modules
+// (the command guard, the move command, placement and uploads), where no
+// react-intl provider is in reach.
 //
 // Declared with defineMessages so the formatjs extraction finds them, and
 // resolved framework-free against the active locale's catalog, as
@@ -31,6 +32,16 @@ export const groupMessages = defineMessages({
     id: 'groups.refusal.destinationGone',
     defaultMessage:
       'The group this was being added to is no longer available, so nothing was added.'
+  },
+  reparentFailed: {
+    id: 'groups.reparent.failed',
+    defaultMessage:
+      'This item could not be moved, so it was left where it was. If it no longer shows correctly, save and reload the scene to restore it.'
+  },
+  uploadFinishedItemGone: {
+    id: 'groups.upload.finishedItemGone',
+    defaultMessage:
+      'Your upload finished, but its item is no longer in the scene. The asset is saved in your library.'
   }
 });
 

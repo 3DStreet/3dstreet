@@ -26,6 +26,17 @@
     }
   }
 
+  // Drop target after the last row: drops there go to the end of the top
+  // level, so an item can leave a group that is itself the last row.
+  .layers-drop-end {
+    min-height: 16px;
+    border-top: 2px solid transparent;
+
+    &.drop-after {
+      border-top-color: variables.$blue-100;
+    }
+  }
+
   // Empty state for the layers panel
   .layers-empty-state {
     display: flex;

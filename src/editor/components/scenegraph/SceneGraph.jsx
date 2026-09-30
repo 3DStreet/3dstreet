@@ -3,15 +3,24 @@ import classNames from 'classnames';
 import debounce from 'lodash-es/debounce';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { FormattedMessage, injectIntl } from 'react-intl';
+import { FormattedMessage, defineMessages, injectIntl } from 'react-intl';
+import { faObjectGroup } from '@fortawesome/free-solid-svg-icons';
 import Events from '../../lib/Events';
 import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { Plus20Circle } from '@shared/icons';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
 import {
+  createUniqueId,
   getEntityDisplayName,
   reorderEntityRelativeTo
 } from '../../lib/entity';
+import {
+  USER_GROUP_CLASS,
+  canReparent,
+  isUserGroup
+} from '../../lib/groups/groupModel.js';
+import { isReparentInFlight } from '../../lib/commands/EntityReparentCommand.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
@@ -27,6 +36,18 @@ import { AuthContext } from '@/editor/contexts';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
 const HIDDEN_IDS = ['dropPlane', 'previewEntity'];
+
+const messages = defineMessages({
+  newGroup: {
+    id: 'sceneGraph.newGroup',
+    defaultMessage: 'New group'
+  }
+});
+
+// The move command and the layer's own undo look parents up by id.
+function ensureId(el) {
+  if (el && !el.id) el.setAttribute('id', createUniqueId());
+}
 
 class SceneGraph extends React.Component {
   static contextType = AuthContext;
@@ -55,6 +76,9 @@ class SceneGraph extends React.Component {
       // Row whose label is in inline-rename mode (context menu Rename)
       renamingEntity: null
     };
+    // Ids of expanded rows whose element a move has just discarded, so the
+    // element that replaces it (same id) opens expanded too.
+    this.expandedIdsInTransit = new Set();
 
     this.rebuildEntityOptions = debounce(
       this.rebuildEntityOptions.bind(this),
@@ -88,6 +112,8 @@ class SceneGraph extends React.Component {
     Events.on('componentadd', this.rebuildEntityOptions);
     Events.on('componentremove', this.rebuildEntityOptions);
     Events.on('openassetspanel', this.showAssetsPanel);
+    Events.on('entityremoved', this.onEntityRemoved);
+    Events.on('entitycreated', this.onEntityCreated);
     document.addEventListener('child-attached', this.onChildAttachedDetached);
     document.addEventListener('child-detached', this.onChildAttachedDetached);
     this.unsubscribePanels = useStore.subscribe(
@@ -101,6 +127,8 @@ class SceneGraph extends React.Component {
     Events.off('componentadd', this.rebuildEntityOptions);
     Events.off('componentremove', this.rebuildEntityOptions);
     Events.off('openassetspanel', this.showAssetsPanel);
+    Events.off('entityremoved', this.onEntityRemoved);
+    Events.off('entitycreated', this.onEntityCreated);
     document.removeEventListener(
       'child-attached',
       this.onChildAttachedDetached
@@ -111,6 +139,27 @@ class SceneGraph extends React.Component {
     );
     this.unsubscribePanels?.();
   }
+
+  // Expand state is keyed by element, and a move replaces the moved subtree's
+  // elements with new ones carrying the same ids.
+  onEntityRemoved = (entity) => {
+    for (const el of [entity, ...entity.querySelectorAll('[id]')]) {
+      if (el.id && this.isExpanded(el)) this.expandedIdsInTransit.add(el.id);
+    }
+  };
+
+  onEntityCreated = (entity) => {
+    if (this.expandedIdsInTransit.size) {
+      for (const el of [entity, ...entity.querySelectorAll('[id]')]) {
+        if (this.expandedIdsInTransit.delete(el.id)) {
+          this.state.expandedElements.set(el, true);
+        }
+      }
+    }
+    // Also re-renders rows whose move has just settled, so they can be
+    // dragged again.
+    this.setState({ expandedElements: this.state.expandedElements });
+  };
 
   /**
    * Selected entity updated from somewhere else in the app.
@@ -176,11 +225,16 @@ class SceneGraph extends React.Component {
       !isContainer(entity) &&
       !entity.classList.contains('autocreated') &&
       // Pinned to the top of the list (see rebuildEntityOptions).
-      !entity.hasAttribute('viewer-start')
+      !entity.hasAttribute('viewer-start') &&
+      !isReparentInFlight(entity.id)
     );
   };
 
-  canBeDropTarget = (entity, draggedEntity) => {
+  /**
+   * May `draggedEntity` be dropped at `position` ('before', 'after' or
+   * 'child') of the row for `entity`?
+   */
+  canBeDropTarget = (entity, draggedEntity, position) => {
     // Segments only accept other segments (reorder within their managed
     // street, which relayouts via its childList observer); dropping anything
     // else into a street is still disallowed.
@@ -192,24 +246,68 @@ class SceneGraph extends React.Component {
       entity.id === 'cameraRig' ||
       entity.hasAttribute('viewer-start') ||
       (entity.hasAttribute('street-segment') &&
-        !draggedEntity.hasAttribute('street-segment'))
+        !draggedEntity.hasAttribute('street-segment')) ||
+      isReparentInFlight(draggedEntity.id) ||
+      isReparentInFlight(entity.id)
     ) {
       return false;
     }
 
-    // Only allow reordering within the same parent for now.
-    // To re-enable reparenting, replace this check with the descendant-walk check:
-    //   let current = entity.parentNode;
-    //   while (current && current.isEntity) {
-    //     if (current === draggedEntity) return false;
-    //     current = current.parentNode;
-    //   }
-    // and re-enable the "child" drop position in Entity.js onDragOver.
-    if (entity.parentNode !== draggedEntity.parentNode) {
+    if (position === 'child') {
+      return isUserGroup(entity) && canReparent(draggedEntity, entity);
+    }
+    // A reorder within the current parent is allowed wherever it always was;
+    // a move to another parent only where the group model allows it.
+    const parent = entity.parentNode;
+    return (
+      parent === draggedEntity.parentNode || canReparent(draggedEntity, parent)
+    );
+  };
+
+  // The strip after the last row drops at the end of the top level, so an
+  // item can always leave a group, even when that group is the last row.
+  canDropAtEnd = (draggedEntity) => {
+    const root = this.props.scene.querySelector('#street-container');
+    if (!draggedEntity || !root || isReparentInFlight(draggedEntity.id)) {
       return false;
     }
+    if (draggedEntity.parentNode === root) {
+      return root.lastElementChild !== draggedEntity;
+    }
+    return canReparent(draggedEntity, root);
+  };
 
-    return true;
+  onDragOverEnd = (e) => {
+    const draggedEntity = this.state.draggedEntity;
+    if (!this.canDropAtEnd(draggedEntity)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (this.state.insertionInfo?.position !== 'end') {
+      this.setState({
+        hoveredDropTarget: null,
+        insertionInfo: { entity: null, position: 'end' }
+      });
+    }
+  };
+
+  onDragLeaveEnd = () => {
+    if (this.state.insertionInfo?.position === 'end') {
+      this.setState({ insertionInfo: null });
+    }
+  };
+
+  onDropEnd = (e) => {
+    e.preventDefault();
+    const draggedEntity = this.state.draggedEntity;
+    this.setState({ hoveredDropTarget: null, insertionInfo: null });
+    if (!this.canDropAtEnd(draggedEntity)) return;
+    const root = this.props.scene.querySelector('#street-container');
+    ensureId(draggedEntity.parentNode);
+    AFRAME.INSPECTOR.execute('entityreparent', {
+      entity: draggedEntity,
+      parentEl: root.id,
+      indexInParent: root.children.length
+    });
   };
 
   // Drag and drop handlers
@@ -241,6 +339,8 @@ class SceneGraph extends React.Component {
     }
 
     // Make draggedEntity a child of targetEntity, added at the end
+    ensureId(targetEntity);
+    ensureId(draggedEntity.parentNode);
     const parentEl = targetEntity.id;
     const indexInParent = targetEntity.children.length;
 
@@ -431,6 +531,16 @@ class SceneGraph extends React.Component {
     posthog.capture('add_layer_panel_opened', { source: 'left_panel_plus' });
   };
 
+  createGroup = () => {
+    // Not 'custom-group': the Add Layer panel finds its own street-prop
+    // holders by that class.
+    AFRAME.INSPECTOR.execute('entitycreate', {
+      class: USER_GROUP_CLASS,
+      'data-layer-name': 'Group',
+      components: { position: '0 0 0' }
+    });
+  };
+
   getEntityById = (id) => document.getElementById(id);
 
   selectGeoTab = () => {
@@ -474,6 +584,7 @@ class SceneGraph extends React.Component {
           onReparentEntity={this.onReparentEntity}
           canBeDragged={this.canBeDragged}
           canBeDropTarget={this.canBeDropTarget}
+          isMoving={isReparentInFlight(entityOption.entity.id)}
           // Context menu rename state
           renamingEntity={this.state.renamingEntity}
           setRenamingEntity={this.setRenamingEntity}
@@ -585,6 +696,17 @@ class SceneGraph extends React.Component {
                     <Plus20Circle />
                   </button>
                 )}
+                {this.state.activeTab === 'layers' && (
+                  <button
+                    type="button"
+                    className="left-panel-add-layer"
+                    onClick={this.createGroup}
+                    aria-label={intl.formatMessage(messages.newGroup)}
+                    title={intl.formatMessage(messages.newGroup)}
+                  >
+                    <AwesomeIcon icon={faObjectGroup} size={16} />
+                  </button>
+                )}
               </div>
               {this.state.activeTab === 'layers' && (
                 <div className="layers">
@@ -611,7 +733,18 @@ class SceneGraph extends React.Component {
                       </button>
                     </div>
                   ) : (
-                    <div>{this.renderEntities()}</div>
+                    <div>
+                      {this.renderEntities()}
+                      <div
+                        className={classNames('layers-drop-end', {
+                          'drop-after':
+                            this.state.insertionInfo?.position === 'end'
+                        })}
+                        onDragOver={this.onDragOverEnd}
+                        onDragLeave={this.onDragLeaveEnd}
+                        onDrop={this.onDropEnd}
+                      />
+                    </div>
                   )}
                 </div>
               )}

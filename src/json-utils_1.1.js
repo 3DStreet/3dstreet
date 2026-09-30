@@ -116,7 +116,7 @@ function getElementData(entity, options = {}) {
   if (
     !entity.isEntity ||
     (entity.classList.contains('autocreated') && !options.includeAutocreated) ||
-    entity.hasAttribute('data-temporary-file')
+    (entity.hasAttribute('data-temporary-file') && !options.includeTemporary)
   ) {
     // autocreated entities are procedural output (regenerated on load from
     // their generator component's config) and are skipped on save. Callers
@@ -126,7 +126,9 @@ function getElementData(entity, options = {}) {
     // (a gltf-model/src pointing at a transient blob: URL). Skipping these
     // honors the design brief's "Local only — will not persist" guarantee.
     // The marker is removed by uploadAndPlaceAsset.js once the cloud URL
-    // is wired up.
+    // is wired up. Moving an entity in the layer panel recreates it from this
+    // data, so that caller passes includeTemporary to keep a pending upload
+    // (and its marker) through the move.
     return;
   }
   // node id's that should save without child nodes
@@ -178,6 +180,9 @@ function getAttributes(entity, options = {}) {
     elemObj['data-asset-owner-uid'] = entity.getAttribute(
       'data-asset-owner-uid'
     );
+  }
+  if (options.includeTemporary && entity.hasAttribute('data-temporary-file')) {
+    elemObj['data-temporary-file'] = entity.getAttribute('data-temporary-file');
   }
   const entityComponents = entity.components;
 
@@ -810,6 +815,14 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
     entity.setAttribute(
       'data-asset-owner-uid',
       entityData['data-asset-owner-uid']
+    );
+  }
+  // Only present in data serialized with includeTemporary (a pending upload
+  // being moved); a saved scene never carries it.
+  if (entityData['data-temporary-file'] !== undefined) {
+    entity.setAttribute(
+      'data-temporary-file',
+      entityData['data-temporary-file']
     );
   }
 

@@ -9,6 +9,7 @@ import { AwesomeIcon } from '../elements/AwesomeIcon';
 import EntityContextMenu from './EntityContextMenu';
 import EntityLabel from './EntityLabel';
 import EntityLoadSheen from './EntityLoadSheen';
+import { isContainer, isUserGroup } from '../../lib/groups/groupModel.js';
 import {
   faCaretDown,
   faCaretRight,
@@ -17,15 +18,19 @@ import {
   faGripVertical
 } from '@fortawesome/free-solid-svg-icons';
 
-// Utility function to check if entity is a container (including scene)
-export const isContainer = (entity) => {
-  return (
-    entity.tagName === 'A-SCENE' ||
-    entity.id === 'street-container' ||
-    entity.id === 'reference-layers' ||
-    entity.id === 'environment'
-  );
-};
+export { isContainer };
+
+// Where a drop at `fraction` of a row's height (0 = top) would put the dragged
+// row. A group row has a middle band that drops into the group; every other row
+// splits at its midpoint, so it has no dead middle.
+function dropPositionAt(entity, fraction) {
+  if (isUserGroup(entity)) {
+    if (fraction < 0.25) return 'before';
+    if (fraction > 0.75) return 'after';
+    return 'child';
+  }
+  return fraction <= 0.5 ? 'before' : 'after';
+}
 
 // Tooltips for the passive role badges at the right of a row (keys from
 // getEntityBadges).
@@ -58,6 +63,8 @@ class Entity extends React.Component {
     onReparentEntity: PropTypes.func,
     canBeDragged: PropTypes.func,
     canBeDropTarget: PropTypes.func,
+    // A move of this row is still settling: it cannot be dragged meanwhile.
+    isMoving: PropTypes.bool,
     // Context menu rename state (owned by SceneGraph)
     renamingEntity: PropTypes.object,
     setRenamingEntity: PropTypes.func
@@ -119,45 +126,38 @@ class Entity extends React.Component {
   };
 
   onDragOver = (e) => {
+    const { entity, draggedEntity } = this.props;
+    if (!draggedEntity || isContainer(entity)) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    let position = dropPositionAt(entity, (e.clientY - rect.top) / rect.height);
+    // Drops that would leave the dragged row where it already is.
     if (
-      !this.props.canBeDropTarget(this.props.entity, this.props.draggedEntity)
+      (position === 'before' &&
+        draggedEntity === entity.previousElementSibling) ||
+      (position === 'after' && draggedEntity === entity.nextElementSibling) ||
+      (position === 'child' && draggedEntity.parentNode === entity)
     ) {
+      position = null;
+    }
+
+    // An illegal zone is not advertised: no preventDefault, so the browser
+    // shows the no-drop cursor, and no insertion line.
+    if (
+      !position ||
+      !this.props.canBeDropTarget(entity, draggedEntity, position)
+    ) {
+      if (this.props.insertionInfo?.entity === entity) {
+        this.props.setHoveredDropTarget(null);
+        this.props.setInsertionInfo(null);
+      }
       return;
     }
 
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY;
-    const midpoint = rect.top + rect.height * 0.5;
-
-    // Currently only "before" and "after" are enabled (reorder within same parent).
-    // To re-enable reparenting (dropping as a child of another entity), restore
-    // the three-zone layout: top 25% = "before", middle 50% = "child", bottom 25% = "after"
-    // and remove the same-parent check in canBeDropTarget in SceneGraph.js.
-    let position = null;
-
-    if (!isContainer(this.props.entity)) {
-      if (y <= midpoint) {
-        const draggedEntity = this.props.draggedEntity;
-        const prevSibling = this.props.entity.previousElementSibling;
-        if (draggedEntity !== prevSibling) {
-          position = 'before';
-        }
-      } else {
-        const draggedEntity = this.props.draggedEntity;
-        const nextSibling = this.props.entity.nextElementSibling;
-        if (draggedEntity !== nextSibling) {
-          position = 'after';
-        }
-      }
-    }
-
-    if (!position) return;
-
-    this.props.setHoveredDropTarget(this.props.entity);
-    this.props.setInsertionInfo({ entity: this.props.entity, position });
+    this.props.setHoveredDropTarget(entity);
+    this.props.setInsertionInfo({ entity, position });
   };
 
   onDragLeave = (e) => {
@@ -181,8 +181,8 @@ class Entity extends React.Component {
     const dragged = this.props.draggedEntity;
     if (
       dragged &&
-      this.props.canBeDropTarget(this.props.entity, dragged) &&
-      insertion
+      insertion &&
+      this.props.canBeDropTarget(insertion.entity, dragged, insertion.position)
     ) {
       this.props.onReparentEntity(
         dragged,
@@ -201,13 +201,17 @@ class Entity extends React.Component {
 
     // Drag and drop state
     const isDragging = this.props.draggedEntity === entity;
-    const isHoveredDropTarget =
-      this.props.hoveredDropTarget === entity &&
-      this.props.canBeDropTarget(entity, this.props.draggedEntity);
     const insertionPosition =
       this.props.insertionInfo && this.props.insertionInfo.entity === entity
         ? this.props.insertionInfo.position
         : null;
+    const isHoveredDropTarget =
+      this.props.hoveredDropTarget === entity &&
+      this.props.canBeDropTarget(
+        entity,
+        this.props.draggedEntity,
+        insertionPosition
+      );
 
     // Check if entity can be dragged. Suspended while the row's label is in
     // inline-rename mode so drag-start can't swallow text selection there.
@@ -341,7 +345,8 @@ class Entity extends React.Component {
       // Drag and drop classes
       dragging: isDragging,
       'drop-before': isHoveredDropTarget && insertionPosition === 'before',
-      'drop-after': isHoveredDropTarget && insertionPosition === 'after'
+      'drop-after': isHoveredDropTarget && insertionPosition === 'after',
+      'drop-child': isHoveredDropTarget && insertionPosition === 'child'
     });
 
     return (
@@ -364,6 +369,9 @@ class Entity extends React.Component {
         >
           {/* Ambient load sheen behind the row content (#2009). */}
           <EntityLoadSheen entity={entity} />
+          {this.props.isMoving && (
+            <span className="entityLoadSheen is-pending" aria-hidden="true" />
+          )}
           <span>
             <span
               style={{

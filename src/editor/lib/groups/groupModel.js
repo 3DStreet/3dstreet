@@ -20,8 +20,8 @@ function isStreetContainer(el) {
   return el?.id === STREET_CONTAINER_ID;
 }
 
-// The scene and the fixed top-level layers, as the layer panel defines them.
-function isContainer(el) {
+/** The scene and the fixed top-level layers, which the layer panel never moves. */
+export function isContainer(el) {
   return (
     el.tagName === 'A-SCENE' ||
     el.id === STREET_CONTAINER_ID ||
