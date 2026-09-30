@@ -726,6 +726,9 @@ export function createPanoramaSphere() {
         'data-layer-name': 'Sphere Geometry • 360° Panorama'
       }
     };
-    executePlacedCreate(definition);
+    // A backdrop around the whole scene rather than an item in it: it stays at
+    // the top level with a group open, where it would otherwise become the
+    // group's bounds.
+    executePlacedCreate(definition, { ticket: null });
   }
 }

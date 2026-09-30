@@ -334,6 +334,26 @@ describe('placing from the Add Layer panel while a group is open', () => {
     );
   });
 
+  it('adds a panorama sphere at the top level, not into the open group, and says so (fails if the backdrop becomes a member)', () => {
+    scene.scopeGroups();
+    scene.openGroups('outer', 'inner');
+    vi.stubGlobal('prompt', () => 'https://example.com/pano.png');
+    renderPanel();
+    tab('⚙️ Custom');
+    fireEvent.click(card('360° Panorama Sphere'));
+
+    const [[, payload]] = scene.creates();
+    expect(payload.parentEl).toBeUndefined();
+    expect(payload.requireParent).toBeUndefined();
+    const sphere = root.lastElementChild;
+    expect(sphere.getAttribute('data-layer-name')).toBe(
+      'Sphere Geometry • 360° Panorama'
+    );
+    expect(notify.infoMessage).toHaveBeenCalledWith(
+      groupMessage('placedAtTopLevel')
+    );
+  });
+
   it('puts an upload from a picker card into the group open when the card was clicked, whatever is open when the file is chosen', async () => {
     const { outer, inner } = scene.scopeGroups();
     scene.openGroups('outer', 'inner');

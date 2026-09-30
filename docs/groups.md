@@ -11,10 +11,11 @@ and edited in isolation. The code is in `src/editor/lib/groups/`; the
   scene saves, and it is not `custom-group`, which the Add Layer panel uses for
   its own street-prop holders.
 - Items move between the top level of the scene and user groups only.
-  `canReparent` in `groupModel.js` is the one rule for that, used by the layer
-  panel's drop zones, by placement and by the command guard, so they cannot
-  disagree. Items the editor keeps under a fixed parent (street segments,
-  generated content, shapes, the Starting View) never enter a group.
+  `groupModel.js` holds the one rule for that, used by the layer panel's drop
+  zones, by placement and by the command guard: `canReparent` reads it from an
+  entity, and `isGroupableItem` from the data of an item about to be created.
+  Items the editor keeps under a fixed parent (street segments, generated
+  content, shapes, the Starting View) never enter a group.
 - A group turns about Y only and scales by the same amount on every axis. The
   command guard (`transformGuard.js`) reads both from the class, so an AI
   command sees them with no editor code having run. A group scaled unevenly

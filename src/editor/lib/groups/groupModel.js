@@ -12,6 +12,20 @@ export const USER_GROUP_CLASS = 'user-group';
 
 const STREET_CONTAINER_ID = 'street-container';
 
+// Items that keep the parent the editor gives them, so they never move into or
+// out of a user group: street segments, shapes, the Starting View, anything
+// marked not to be reparented, and generated content. Each is named by a
+// component or attribute, or a class, that an entity and its data (an
+// `entitycreate` definition, or copied entity data) both carry, so the rule
+// reads the same for an item that exists and for one about to be created.
+const KEEPS_ITS_PARENT = [
+  'street-segment',
+  'shape',
+  'viewer-start',
+  'data-transform-no-reparent'
+];
+const GENERATED_CLASS = 'autocreated';
+
 export function isUserGroup(el) {
   return !!el?.classList?.contains(USER_GROUP_CLASS);
 }
@@ -55,15 +69,27 @@ export function canReparent(child, newParent) {
   if (!canAcceptChild(child.parentNode)) return false;
   if (
     isContainer(child) ||
-    child.classList.contains('autocreated') ||
-    child.hasAttribute('viewer-start') ||
     child.id === 'cameraRig' ||
-    child.hasAttribute('street-segment') ||
-    child.hasAttribute('data-transform-no-reparent')
+    child.classList.contains(GENERATED_CLASS) ||
+    KEEPS_ITS_PARENT.some((name) => child.hasAttribute(name))
   ) {
     return false;
   }
   return newParent !== child && !child.contains(newParent);
+}
+
+/**
+ * May an item described by `data` (an `entitycreate` definition, or entity
+ * data from the serializer) be placed in a group? The same rule as
+ * canReparent's for an entity.
+ */
+export function isGroupableItem(data) {
+  const components = data?.components || {};
+  if (KEEPS_ITS_PARENT.some((name) => name in components)) return false;
+  const classes = Array.isArray(data?.class)
+    ? data.class
+    : String(data?.class || '').split(/\s+/);
+  return !classes.includes(GENERATED_CLASS);
 }
 
 /** The user groups enclosing `el`, outermost first, excluding `el` itself. */

@@ -14,7 +14,11 @@
 // somewhere it can no longer take items. Such a placement is refused with an
 // explanation; it never falls back to the top level.
 
-import { canAcceptChild, userGroupAncestors } from './groupModel.js';
+import {
+  canAcceptChild,
+  isGroupableItem,
+  userGroupAncestors
+} from './groupModel.js';
 import { groupMessage } from './groupMessages.js';
 import { localPoseFromWorld } from './groupTransformMath.js';
 import { getGroupBounds, getGroupPivot } from './groupBounds.js';
@@ -22,11 +26,6 @@ import { TRANSFORM_REFUSED, notifyRefusal } from '../transformGuard.js';
 import pickPointOnGroundPlane, {
   pickGroundPoint
 } from '../pick-point-on-ground-plane.js';
-
-// Items that keep a parent the editor imposes, so they never enter a group.
-// Mirrors the per-item half of groupModel.canReparent for items that do not
-// exist yet (a definition, or copied entity data).
-const NOT_GROUPABLE_COMPONENTS = ['street-segment', 'shape', 'viewer-start'];
 
 const NOTICE_DEDUP_MS = 1500;
 let lastNotice = null;
@@ -55,21 +54,6 @@ export function innermostOpenGroup() {
   if (!stack?.length) return null;
   const el = document.getElementById(stack[stack.length - 1]);
   return el?.isConnected ? el : null;
-}
-
-/**
- * May an item described by `data` (an `entitycreate` definition, or entity
- * data from the serializer) be placed in a group?
- */
-export function isGroupableItem(data) {
-  const components = data?.components || {};
-  if (NOT_GROUPABLE_COMPONENTS.some((name) => name in components)) {
-    return false;
-  }
-  const classes = Array.isArray(data?.class)
-    ? data.class
-    : String(data?.class || '').split(/\s+/);
-  return !classes.includes('autocreated');
 }
 
 /**

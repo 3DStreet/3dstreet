@@ -5,9 +5,9 @@ import { auth } from '@shared/services/firebase.js';
 import * as assetUpload from '@shared/asset-upload';
 import {
   beginPlacement,
-  isGroupableItem,
   placeDefinition
 } from '@/editor/lib/groups/groupPlacement.js';
+import { isGroupableItem } from '@/editor/lib/groups/groupModel.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { dispatchToolCall } from '@/editor/lib/commands/registry.js';

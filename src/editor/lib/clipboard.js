@@ -25,11 +25,11 @@
  * undoable `entityremove` command.
  */
 import { createUniqueId } from './entity.js';
+import { isGroupableItem } from './groups/groupModel.js';
 import {
   beginPlacement,
   copiedPlacement,
   entityDataUnder,
-  isGroupableItem,
   pastedWorldMatrix,
   resolvePlacement
 } from './groups/groupPlacement.js';

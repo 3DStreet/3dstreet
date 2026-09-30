@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   canAcceptChild,
   canReparent,
+  isGroupableItem,
   isHiddenInHierarchy,
   isUserGroup,
   userGroupAncestors
@@ -128,6 +129,33 @@ describe('cross-parent moves', () => {
     expect(canReparent(s.model, s.customGroup)).toBe(false);
     expect(canReparent(s.model, s.managedStreet)).toBe(false);
     expect(canReparent(s.model, s.referenceLayers)).toBe(false);
+  });
+});
+
+describe('an item and its data', () => {
+  it('are refused and accepted alike, whether the item exists or is about to be created (fails if the layer panel and placement keep separate lists)', () => {
+    const keepsItsParent = [
+      { attrs: ['street-segment'] },
+      { attrs: ['shape'] },
+      { attrs: ['viewer-start'] },
+      { attrs: ['data-transform-no-reparent'] },
+      { cls: 'autocreated' }
+    ];
+    for (const { attrs = [], cls } of keepsItsParent) {
+      const el = add(s.root, { attrs, cls });
+      const data = {
+        components: Object.fromEntries(attrs.map((name) => [name, ''])),
+        ...(cls ? { class: [cls] } : {})
+      };
+      expect([canReparent(el, s.groupA), isGroupableItem(data)]).toEqual([
+        false,
+        false
+      ]);
+    }
+    expect([
+      canReparent(s.model, s.groupA),
+      isGroupableItem({ mixin: 'tree3', components: {} })
+    ]).toEqual([true, true]);
   });
 });
 
