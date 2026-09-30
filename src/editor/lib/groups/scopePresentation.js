@@ -24,7 +24,7 @@ import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeome
 import { getGroupBounds } from './groupBounds.js';
 import { isHiddenInHierarchy, isUserGroup } from './groupModel.js';
 import { projectBoxSilhouette } from './projectBox.js';
-import { ScopeScrim } from './scopeOverlay.js';
+import { ScopeScrim } from './scopeScrim.js';
 
 export const SCOPE_MARKS = Object.freeze({
   open: 'group-scope:open',
@@ -83,8 +83,15 @@ export class ScopePresentation {
     this.outline = null;
     this.outlineBox = null;
     this.presented = false;
-    // What the scrim was last built from; see scrimOutdated().
+    // What the scrim was last built from (see recordScrimInputs), and the
+    // record reused for it.
     this.drawnFrom = null;
+    this.drawnFromScratch = {
+      camera: new THREE.Matrix4(),
+      projection: new THREE.Matrix4(),
+      group: new THREE.Matrix4(),
+      box: new THREE.Box3()
+    };
     // The scope generation the last render window presented.
     this.windowGeneration = null;
     // Entry work scheduled for the current scope, until it has run.
@@ -222,7 +229,7 @@ export class ScopePresentation {
     this.poseOutline(box, matrixWorld);
 
     const rect = this.inspector.container.getBoundingClientRect();
-    if (!this.scrimOutdated(camera, rect, box, matrixWorld)) return;
+    if (!this.recordScrimInputs(camera, rect, box, matrixWorld)) return;
     // No member geometry yet: nothing to leave uncovered.
     const outline = box
       ? projectBoxSilhouette(box, matrixWorld, camera, rect.width, rect.height)
@@ -238,9 +245,10 @@ export class ScopePresentation {
     this.scrim.hide();
   }
 
-  // Is the scrim out of date: has the camera, the canvas, the box or the
-  // group's placement changed since it was built? Records the new state.
-  scrimOutdated(camera, rect, box, matrixWorld) {
+  // Record what the scrim is built from (the camera, the canvas, the box and
+  // the group's placement), and return whether any of it changed since it was
+  // last built.
+  recordScrimInputs(camera, rect, box, matrixWorld) {
     let from = this.drawnFrom;
     if (
       from &&
@@ -256,12 +264,7 @@ export class ScopePresentation {
       return false;
     }
     if (!from) {
-      from = this.drawnFromScratch ||= {
-        camera: new THREE.Matrix4(),
-        projection: new THREE.Matrix4(),
-        group: new THREE.Matrix4(),
-        box: new THREE.Box3()
-      };
+      from = this.drawnFromScratch;
       this.drawnFrom = from;
     }
     from.camera.copy(camera.matrixWorld);

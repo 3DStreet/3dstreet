@@ -30,7 +30,7 @@ const ASSET_PICKER_ACCEPT = {
 //
 // With a group open, the upload goes into the group open at the click.
 function openAssetUploadPicker(position, kind) {
-  const placement = beginPlacement();
+  const ticket = beginPlacement();
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = ASSET_PICKER_ACCEPT[kind];
@@ -40,7 +40,7 @@ function openAssetUploadPicker(position, kind) {
       // Reveal the Assets panel so the user sees the upload begin and its
       // progress, even if the left panel was showing Layers or Geospatial.
       Events.emit('openassetspanel');
-      await uploadAndPlaceAsset(file, position, undefined, placement);
+      await uploadAndPlaceAsset(file, position, undefined, ticket);
     }
   };
   input.click();

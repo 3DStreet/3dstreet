@@ -1418,8 +1418,10 @@ export function Viewport(inspector) {
   function followSelectedGroupVisibility() {
     const el = inspector.selectedEntity;
     if (!isUserGroup(el)) return;
+    // The handles belong on a shown group and not on a hidden one.
     const attached = easyGizmoControls.el === el;
-    if (attached === isHiddenInHierarchy(el)) attachControlsForSelection();
+    const hidden = isHiddenInHierarchy(el);
+    if (attached ? hidden : !hidden) attachControlsForSelection();
   }
   Events.on('historychanged', followSelectedGroupVisibility);
 

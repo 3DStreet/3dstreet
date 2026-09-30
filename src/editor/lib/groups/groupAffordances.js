@@ -19,7 +19,12 @@ import {
   getGroupCenter,
   readStoredCenter
 } from './groupBounds.js';
-import { isHiddenInHierarchy, isUserGroup } from './groupModel.js';
+import {
+  USER_GROUP_CLASS,
+  isHiddenInHierarchy,
+  isUserGroup
+} from './groupModel.js';
+import { isSelectedClosedGroup } from './groupScope.js';
 import { rayHitsGroupBox } from './groupTransformMath.js';
 
 // The marker is a small white sphere with six axis stubs, sized in screen
@@ -53,11 +58,11 @@ function tmp() {
 
 /**
  * World length of `pixels` screen pixels at `worldPos`, seen by `camera` in a
- * viewport `viewportHeight` pixels tall. With no layout yet (height 0) it
- * falls back to one world unit per pixel-size unit, which keeps tests and a
- * not-yet-shown canvas deterministic.
+ * viewport `viewportHeight` pixels tall. With no layout yet (height 0) the
+ * marker is one world unit in radius, which keeps tests and a not-yet-shown
+ * canvas deterministic.
  */
-export function screenSpaceSize(camera, worldPos, pixels, viewportHeight) {
+function screenSpaceSize(camera, worldPos, pixels, viewportHeight) {
   if (!camera || !viewportHeight) return pixels / MARKER_RADIUS_PX;
   let worldPerPixel;
   if (camera.isOrthographicCamera) {
@@ -199,7 +204,9 @@ export class GroupAffordances {
   rebuildIfDirty() {
     if (!this.dirty) return;
     this.dirty = false;
-    const found = this.inspector.sceneEl.querySelectorAll('.user-group');
+    const found = this.inspector.sceneEl.querySelectorAll(
+      '.' + USER_GROUP_CLASS
+    );
     this.groups = Array.from(found);
     this.emptyGroups.clear();
     for (const groupEl of this.groups) {
@@ -291,10 +298,8 @@ export class GroupAffordances {
       }
     }
     if (
-      isUserGroup(selected) &&
-      selected.isConnected &&
-      !open.includes(selected) &&
-      !isHiddenInHierarchy(selected)
+      selected?.isConnected &&
+      isSelectedClosedGroup(selected, selected, open)
     ) {
       const box = getGroupBounds(selected);
       const distance = box

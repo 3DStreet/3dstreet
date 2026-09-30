@@ -72,6 +72,7 @@ function cutAtGroups(chain, openGroups) {
       break;
     }
   }
+  // When the click hit the deepest open group itself, it alone is reachable.
   const reachable = start < chain.length ? chain.slice(start) : [chain.at(-1)];
   const closed = reachable.findIndex(
     (el) => isUserGroup(el) && !openGroups?.has(el)

@@ -17,6 +17,7 @@
 import {
   canAcceptChild,
   isGroupableItem,
+  isStreetContainer,
   userGroupAncestors
 } from './groupModel.js';
 import { groupMessage } from './groupMessages.js';
@@ -24,10 +25,13 @@ import { localPoseFromWorld } from './groupTransformMath.js';
 import { getGroupBounds, getGroupCenter } from './groupBounds.js';
 import { TRANSFORM_REFUSED, notifyRefusal } from '../transformGuard.js';
 import pickPointOnGroundPlane, {
-  pickGroundPoint
+  pickGroundPointOrNull
 } from '../pick-point-on-ground-plane.js';
 
 const NOTICE_DEDUP_MS = 1500;
+// Where on the screen viewCenterPoint picks the ground: a little below the
+// middle of the view.
+const VIEW_CENTER_PICK_Y = -0.1;
 let lastNotice = null;
 let lastNoticeAt = 0;
 
@@ -268,11 +272,11 @@ function groupStandPoint(groupEl) {
  * group open and a view that does not meet the ground, the group's stand
  * point instead: never the group's origin, which can be far from its members.
  */
-export function viewCentrePoint(camera) {
-  const pick = { normalizedX: 0, normalizedY: -0.1, camera };
+export function viewCenterPoint(camera) {
+  const pick = { normalizedX: 0, normalizedY: VIEW_CENTER_PICK_Y, camera };
   const groupEl = innermostOpenGroup();
   if (!groupEl) return pickPointOnGroundPlane(pick);
-  const point = pickGroundPoint(pick);
+  const point = pickGroundPointOrNull(pick);
   return point ? point.clone() : groupStandPoint(groupEl);
 }
 
@@ -302,7 +306,7 @@ export function notePlacedOutsideOpenGroup(entity, { requireParent } = {}) {
   if (requireParent || !entity?.isConnected) return;
   const groupEl = innermostOpenGroup();
   if (!groupEl || groupEl.contains(entity)) return;
-  const topLevel = entity.parentNode?.id === 'street-container';
+  const topLevel = isStreetContainer(entity.parentNode);
   const text = groupMessage(
     topLevel ? 'placedAtTopLevel' : 'placedOutsideGroup'
   );

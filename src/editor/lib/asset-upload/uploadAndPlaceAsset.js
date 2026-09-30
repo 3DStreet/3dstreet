@@ -176,7 +176,7 @@ function readImageDimensions(blob) {
 }
 
 // Resolves to { entity: null } when the placement is refused.
-async function createPlaceholderEntity(file, position, kind, placement) {
+async function createPlaceholderEntity(file, position, kind, ticket) {
   const blobUrl = URL.createObjectURL(file);
   const kindLabel =
     kind === 'glb' ? 'glTF Model' : kind === 'splat' ? 'Splat' : 'Image';
@@ -225,7 +225,7 @@ async function createPlaceholderEntity(file, position, kind, placement) {
   }
 
   // Checked here, after the reads above, just before the item is created.
-  const placed = placeDefinition(definition, placement);
+  const placed = placeDefinition(definition, ticket);
   if (placed.refusal) {
     notifyRefusal(null, placed.refusal);
     URL.revokeObjectURL(blobUrl);
@@ -259,10 +259,10 @@ async function createPlaceholderEntity(file, position, kind, placement) {
  * @param {string} asset.name
  * @param {string} asset.type     - 'mesh' | 'image' | 'splat'
  * @param {THREE.Vector3 | string} position
- * @param {object|null} [placement] - Where it goes with a group open, from
+ * @param {object|null} [ticket] - Where it goes with a group open, from
  *   groups/groupPlacement.js `beginPlacement`; taken now when not given.
  */
-export function placeCloudAsset(asset, position, placement = beginPlacement()) {
+export function placeCloudAsset(asset, position, ticket = beginPlacement()) {
   if (!asset?.assetId || !getServedUrl(asset)) return;
   const isMesh = asset.type === 'mesh';
   const isSplat = asset.type === 'splat';
@@ -303,7 +303,7 @@ export function placeCloudAsset(asset, position, placement = beginPlacement()) {
       }
     };
   }
-  executePlacedCreate(definition, { ticket: placement });
+  executePlacedCreate(definition, { ticket });
 }
 
 async function preflightQuota(proposedBytes) {
@@ -328,7 +328,7 @@ async function preflightQuota(proposedBytes) {
  * @param {THREE.Vector3 | string} [position] - Drop position in world space.
  * @param {Element} [existingEntity] - When retrying a failed upload, the
  *   existing placeholder entity. Skips creating a new placeholder.
- * @param {object|null} [placement] - Where the item goes with a group open,
+ * @param {object|null} [ticket] - Where the item goes with a group open,
  *   from groups/groupPlacement.js `beginPlacement`, taken when the operation
  *   began (a file picker takes it on the click that opened it). Taken now,
  *   before anything is awaited, when not given.
@@ -338,7 +338,7 @@ export async function uploadAndPlaceAsset(
   file,
   position,
   existingEntity,
-  placement = existingEntity ? null : beginPlacement()
+  ticket = existingEntity ? null : beginPlacement()
 ) {
   const kind = getAssetKind(file);
   if (!kind) {
@@ -414,7 +414,7 @@ export async function uploadAndPlaceAsset(
       file,
       position,
       kind,
-      placement
+      ticket
     ));
     if (!entity) {
       // The group it was going into has gone: nothing was placed, and

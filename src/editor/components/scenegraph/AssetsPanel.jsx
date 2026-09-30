@@ -14,12 +14,12 @@ import {
   openInGenerator,
   focusSnapshotScene
 } from '@/editor/lib/asset-modal-handlers.js';
-import { viewCentrePoint } from '@/editor/lib/groups/groupPlacement.js';
+import { viewCenterPoint } from '@/editor/lib/groups/groupPlacement.js';
 import { signIn } from '../../api';
 import useStore from '@/store';
 
 const handlePlaceAsset = (asset) => {
-  const position = viewCentrePoint(AFRAME.INSPECTOR.camera);
+  const position = viewCenterPoint(AFRAME.INSPECTOR.camera);
   placeCloudAsset(asset, position);
 };
 

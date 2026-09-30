@@ -30,7 +30,7 @@ export function isUserGroup(el) {
   return !!el?.classList?.contains(USER_GROUP_CLASS);
 }
 
-function isStreetContainer(el) {
+export function isStreetContainer(el) {
   return el?.id === STREET_CONTAINER_ID;
 }
 

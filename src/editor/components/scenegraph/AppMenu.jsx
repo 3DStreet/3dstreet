@@ -128,14 +128,14 @@ const AppMenu = ({ currentUser }) => {
 
   const importAssetFromPicker = () => {
     // With a group open, the import goes into the group open at the click.
-    const placement = beginPlacement();
+    const ticket = beginPlacement();
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = FILE_PICKER_ACCEPT;
     input.onchange = async (event) => {
       const file = event.target.files?.[0];
       if (file) {
-        await uploadAndPlaceAsset(file, undefined, undefined, placement);
+        await uploadAndPlaceAsset(file, undefined, undefined, ticket);
       }
     };
     input.click();

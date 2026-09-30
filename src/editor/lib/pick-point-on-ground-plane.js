@@ -8,7 +8,7 @@ const pickingVector = new THREE.Vector3();
 const pickingRaycaster = new THREE.Raycaster();
 
 export default function pickPointOnGroundPlane(args) {
-  const point = pickGroundPoint(args);
+  const point = pickGroundPointOrNull(args);
   if (!point) {
     console.warn('Picking raycaster got 0 results.');
     return new THREE.Vector3();
@@ -17,7 +17,7 @@ export default function pickPointOnGroundPlane(args) {
 }
 
 /** As pickPointOnGroundPlane, but null when the ray misses the ground. */
-export function pickGroundPoint(args) {
+export function pickGroundPointOrNull(args) {
   // API
   const x = args.x;
   const y = args.y;

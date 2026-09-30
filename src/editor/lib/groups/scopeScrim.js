@@ -10,8 +10,8 @@
 // - every editor panel, toolbar and the compass live in #inspectorContainer,
 //   fixed at z-index 9.
 // So a body-level fixed element at z-index 2 covers the scene and its labels
-// (outside labels dim with the objects they belong to) and nothing of the
-// editor's own interface.
+// (labels outside the hole are darkened with the objects they belong to) and
+// nothing of the editor's own interface.
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const SCRIM_Z_INDEX = '2';

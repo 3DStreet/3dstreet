@@ -37,8 +37,8 @@ and edited in isolation. The code is in `src/editor/lib/groups/`; the
   box changes. Every other read returns the stored box. A gesture on a group
   holds its box, and so its center, until release.
 - `group-center` stores its point in the group's local frame, so it travels
-  with the group. Nothing in the editor writes it yet; scenes that carry one
-  keep it.
+  with the group. The editor reads and keeps it but has no control that sets
+  it.
 
 ## The editor frame window
 

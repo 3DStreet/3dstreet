@@ -265,7 +265,7 @@ export class ScopeFade {
   releaseCopies() {
     for (const record of [...this.fadedRecords]) record.release();
     this.fadedByArray = new WeakMap();
-    this.batchFade.retireDetached();
+    this.batchFade.retireAll();
   }
 
   // Release the copies of materials nothing in the scene is drawn with any

@@ -87,7 +87,7 @@ describe('group bounds and automatic center', () => {
     expect(world.z).toBeCloseTo(12 / Math.SQRT2, 9);
   });
 
-  it('leaves every descendant matrixWorld as a render traversal computes it (fails with the identity-matrix trick)', () => {
+  it('leaves every descendant matrixWorld as a render traversal computes it (fails if measuring parks the parent at an unrotated matrix, as the selection box helper does)', () => {
     const outer = group(sceneEl, {
       position: [5, 1, -3],
       yaw: 30,

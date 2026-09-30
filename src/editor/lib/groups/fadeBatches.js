@@ -253,8 +253,13 @@ export class BatchFade {
     }
   }
 
-  /** Retire the view of every batch `inScene(source)` rejects (default: all). */
-  retireDetached(inScene = () => false) {
+  /** Retire every view. */
+  retireAll() {
+    for (const view of [...this.views.values()]) this.retireView(view);
+  }
+
+  /** Retire the view of every batch `inScene(source)` rejects. */
+  retireDetached(inScene) {
     for (const [source, view] of [...this.views]) {
       if (!inScene(source)) this.retireView(view);
     }

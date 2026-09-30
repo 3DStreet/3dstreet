@@ -30,7 +30,7 @@ import {
   beginPlacement,
   executePlacedCreate,
   innermostOpenGroup,
-  viewCentrePoint
+  viewCenterPoint
 } from '@/editor/lib/groups/groupPlacement.js';
 
 const ASSET_CARD_MIME = 'application/x-3dstreet-asset';
@@ -245,7 +245,7 @@ const cardMouseEnter = (mixinId) => {
     }
   }
 
-  const position = viewCentrePoint(AFRAME.INSPECTOR.camera);
+  const position = viewCenterPoint(AFRAME.INSPECTOR.camera);
   previewEntity.setAttribute('position', position);
 };
 
@@ -254,7 +254,7 @@ const cardMouseEnter = (mixinId) => {
 const getPreviewPosition = () => {
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) return previewEntity.object3D.position.clone();
-  return viewCentrePoint(AFRAME.INSPECTOR.camera);
+  return viewCenterPoint(AFRAME.INSPECTOR.camera);
 };
 
 const cardMouseLeave = (mixinId) => {

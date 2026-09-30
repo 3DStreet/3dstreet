@@ -38,7 +38,7 @@ function tmp() {
 let measureRoot = null;
 let measureOut = null;
 let measureFound = false;
-let measureSplatFrame;
+let measureSceneTime;
 let measureRefreshSplats = false;
 
 // Loaded splats' boxes, in the splat entity's local frame. Walking every splat
@@ -57,7 +57,7 @@ function addBox(box, matrixWorld) {
 
 function splatBox(el, splat) {
   let entry = splatBoxes.get(el);
-  if (measureRefreshSplats && entry && entry.frame !== measureSplatFrame) {
+  if (measureRefreshSplats && entry && entry.measuredAt !== measureSceneTime) {
     entry = undefined;
   }
   if (!entry) {
@@ -65,7 +65,7 @@ function splatBox(el, splat) {
     // allocated until there is a box to keep.
     const box = splat.getBoundingBox?.(true, tmp().splat);
     if (!box || box.isEmpty()) return null;
-    entry = { box: box.clone(), frame: measureSplatFrame };
+    entry = { box: box.clone(), measuredAt: measureSceneTime };
     splatBoxes.set(el, entry);
   }
   return entry.box;
@@ -121,7 +121,7 @@ export function memberBoundsLocal(groupEl, outBox, { refreshSplats } = {}) {
   measureRoot = group;
   measureOut = outBox;
   measureFound = false;
-  measureSplatFrame = groupEl.sceneEl?.time;
+  measureSceneTime = groupEl.sceneEl?.time;
   measureRefreshSplats = !!refreshSplats;
   try {
     group.traverseVisible(visitMember);

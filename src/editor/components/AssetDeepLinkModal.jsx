@@ -25,7 +25,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { AssetDetailModal } from '@shared/assets';
 import { placeCloudAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import { viewCentrePoint } from '@/editor/lib/groups/groupPlacement.js';
+import { viewCenterPoint } from '@/editor/lib/groups/groupPlacement.js';
 
 // #asset:OWNER/ID — OWNER has no slash; ID is the remainder (also slash-free in
 // practice, but `.+` keeps us robust to any future id shape).
@@ -68,7 +68,7 @@ export default function AssetDeepLinkModal() {
   // { assetId, ownerUid, storageUrl, optimizedSourceUrl, name, type } and closes
   // itself afterward, so the user sees it land in the scene.
   const handlePlace = useCallback((asset) => {
-    const position = viewCentrePoint(AFRAME.INSPECTOR.camera);
+    const position = viewCenterPoint(AFRAME.INSPECTOR.camera);
     placeCloudAsset(asset, position);
   }, []);
 
