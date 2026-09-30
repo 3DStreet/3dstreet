@@ -108,7 +108,7 @@ describe('live group bounds in the editor frame', () => {
     expect(traverse).toHaveBeenCalledTimes(1);
   });
 
-  it('measures the selected group and the innermost open scope, never an outer scope (fails if outer scopes are recomputed)', () => {
+  it('measures the selected group and the innermost open group, never an outer open group (fails if outer open groups are recomputed)', () => {
     const a = group(sceneEl);
     a.id = 'scope-a';
     boxMesh(entity(a), [0, 0, 0], [1, 1, 1]);
@@ -130,7 +130,8 @@ describe('live group bounds in the editor frame', () => {
     expect(traverseA).toHaveBeenCalledTimes(1);
     expect(traverseB).toHaveBeenCalledTimes(bDuringA + 3);
 
-    // A member of the innermost scope selected: the scope is still measured.
+    // A member of the innermost open group selected: that group is still
+    // measured.
     inspector.selectedEntity = b.firstElementChild;
     frame();
     expect(traverseB).toHaveBeenCalledTimes(bDuringA + 4);

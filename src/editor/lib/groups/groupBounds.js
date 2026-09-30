@@ -8,7 +8,7 @@
 //
 // FRESHNESS. Bounds are recomputed, not invalidated by events: a member can move
 // or gain a mesh through paths that emit nothing the editor hears. So the groups
-// something is drawn for (the selected user group, and the innermost open scope)
+// something is drawn for (the selected user group, and the innermost open group)
 // are re-measured in every editor frame window, after three's own matrix update,
 // and `groupboundschanged` is emitted when a box changes. Every other read
 // returns the stored box; a group with none is measured on demand.

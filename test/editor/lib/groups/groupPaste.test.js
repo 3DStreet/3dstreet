@@ -123,7 +123,7 @@ function groupWithMember() {
 describe('pasting an item copied from inside a group', () => {
   it('keeps its world pose, plus the offset along world X, at the top level and inside an open group turned the other way (fails with a local-position paste or a local-X offset)', async () => {
     const { member } = groupWithMember();
-    const scope = entityIn(scene.root, {
+    const openGroup = entityIn(scene.root, {
       id: 's',
       cls: 'user-group',
       position: '-30 0 10',
@@ -139,7 +139,7 @@ describe('pasting an item copied from inside a group', () => {
     scene.openGroups('s');
     await pasteFromClipboard();
     pasted = pastedElement();
-    expect(pasted.parentNode).toBe(scope);
+    expect(pasted.parentNode).toBe(openGroup);
     expect(pastes().at(-1)[1].requireParent).toBe(true);
     expectMatrixClose(expect, worldOf(pasted), besideSource(member));
   });

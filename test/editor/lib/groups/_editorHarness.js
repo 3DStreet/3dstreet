@@ -256,7 +256,7 @@ export function mountEditor({ gizmo = false, cursorFirst = false } = {}) {
     camera,
     raycaster,
     cursorEl,
-    scope: inspector.groupScope,
+    groupScope: inspector.groupScope,
     selectionBox: helperByColor(0x1faaf2),
     hoverBox,
     groupHoverBox,

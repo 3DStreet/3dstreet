@@ -73,9 +73,9 @@ function noRaycast() {}
  * `createLineMaterial(color)` and `setLinePositions(lines, positions)`.
  */
 export class ScopePresentation {
-  constructor(inspector, scope, editorFrame, lines) {
+  constructor(inspector, controller, editorFrame, lines) {
     this.inspector = inspector;
-    this.scope = scope;
+    this.controller = controller;
     this.editorFrame = editorFrame;
     this.lines = lines;
     this.scrim = new ScopeScrim();
@@ -97,7 +97,7 @@ export class ScopePresentation {
     this.unregisterFrame = editorFrame.register(
       (context) => {
         this.present(context.camera);
-        this.windowGeneration = this.scope.generation;
+        this.windowGeneration = this.controller.generation;
       },
       // After the live bounds (20) and the markers (30), so the outline and
       // the scrim use this frame's box. Placing catches nothing per item, so a
@@ -118,8 +118,8 @@ export class ScopePresentation {
   }
 
   /** The innermost open group, if it is in the scene and shown. */
-  innermostScope() {
-    const stack = this.scope.openStack;
+  shownInnermostGroup() {
+    const stack = this.controller.openStack;
     if (!stack.length) return null;
     const groupEl = document.getElementById(stack[stack.length - 1]);
     return isUserGroup(groupEl) &&
@@ -133,7 +133,7 @@ export class ScopePresentation {
 
   scopeChanged(generation) {
     this.cancelPending();
-    const groupEl = this.innermostScope();
+    const groupEl = this.shownInnermostGroup();
     if (!groupEl) {
       this.attenuation?.close();
       this.clear();
@@ -180,8 +180,8 @@ export class ScopePresentation {
 
   enableAttenuation(generation) {
     // Scheduled for a scope that has since changed: obsolete.
-    if (generation !== this.scope.generation) return;
-    const groupEl = this.innermostScope();
+    if (generation !== this.controller.generation) return;
+    const groupEl = this.shownInnermostGroup();
     if (!groupEl) return;
     this.pending = null;
     this.attenuation?.apply(groupEl, generation);
@@ -207,7 +207,7 @@ export class ScopePresentation {
 
   /** Draw the outline and scrim of the open group as `camera` sees it. */
   present(camera) {
-    const groupEl = this.innermostScope();
+    const groupEl = this.shownInnermostGroup();
     if (!groupEl) {
       this.clear();
       return;

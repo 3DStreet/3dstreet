@@ -1,7 +1,7 @@
 /* global THREE */
 // Canvas affordances for user groups that are not part of the scene: the
 // center marker, and the analytic pick volumes (the selected group's box, the
-// markers, the open scope's volume).
+// markers, the innermost open group's volume).
 //
 // None of them is a scene object the entity raycaster or the navigation probes
 // can hit. Markers live in the inspector's helper scene with a no-op raycast,
@@ -156,13 +156,14 @@ function buildMarker() {
 /**
  * Markers and pick volumes for the user groups of one scene.
  *
- * `scope` supplies the current state: `selected()` (the selected entity) and
- * `openElements()` (the open groups, outermost first).
+ * `controller` (the scope controller) supplies the current state:
+ * `selected()` (the selected entity) and `openElements()` (the open groups,
+ * outermost first).
  */
 export class GroupAffordances {
-  constructor(inspector, scope) {
+  constructor(inspector, controller) {
     this.inspector = inspector;
-    this.scope = scope;
+    this.controller = controller;
     this.groups = [];
     this.emptyGroups = new Set();
     this.markers = new Map();
@@ -215,16 +216,17 @@ export class GroupAffordances {
 
   /**
    * The groups that show a center marker: every shown empty group, the
-   * selected group, and an open scope with no member geometry to box.
+   * selected group, and the innermost open group when it has no member
+   * geometry to box.
    */
   markerGroups(out = []) {
     out.length = 0;
     for (const groupEl of this.emptyGroups) {
       if (isShownGroup(groupEl)) out.push(groupEl);
     }
-    const selected = this.scope.selected();
+    const selected = this.controller.selected();
     if (isShownGroup(selected) && !out.includes(selected)) out.push(selected);
-    const open = this.scope.openElements();
+    const open = this.controller.openElements();
     const innermost = open[open.length - 1];
     if (
       isShownGroup(innermost) &&
@@ -267,7 +269,7 @@ export class GroupAffordances {
   }
 
   /** Distance along `ray` into `groupEl`'s box, or its marker if it has none. */
-  scopeDistance(groupEl, ray, camera) {
+  groupVolumeDistance(groupEl, ray, camera) {
     const box = getGroupBounds(groupEl);
     if (!box) return this.markerDistance(groupEl, ray, camera);
     return volumeDistance(ray, box, groupEl.object3D.matrixWorld);
@@ -275,12 +277,13 @@ export class GroupAffordances {
 
   /**
    * Append the analytic pick targets along `ray` to `out` (unsorted):
-   * markers, the selected closed group's box, and the open scope's volume.
+   * markers, the selected closed group's box, and the innermost open group's
+   * volume.
    */
   collectHits(ray, camera, out) {
     this.rebuildIfDirty();
-    const selected = this.scope.selected();
-    const open = this.scope.openElements();
+    const selected = this.controller.selected();
+    const open = this.controller.openElements();
     for (const groupEl of this.markerGroups(this.markerScratch)) {
       const distance = this.markerDistance(groupEl, ray, camera);
       if (distance !== null) {
@@ -303,7 +306,7 @@ export class GroupAffordances {
     }
     const innermost = open[open.length - 1];
     if (innermost && !isHiddenInHierarchy(innermost)) {
-      const distance = this.scopeDistance(innermost, ray, camera);
+      const distance = this.groupVolumeDistance(innermost, ray, camera);
       if (distance !== null) {
         out.push({ el: innermost, distance, kind: 'scope' });
       }

@@ -35,20 +35,24 @@ import {
 
 const NO_GROUPS = Object.freeze([]);
 
-function scopeId(groupEl) {
-  // A group made by the editor always has an id; one written by hand into a
-  // scene file may not, and the scope refers to groups by id.
+// The scope refers to groups by id. A group made by the editor always has
+// one; a group written by hand into a scene file may not, and is given one
+// here, which the scene then saves.
+function ensureGroupId(groupEl) {
   if (!groupEl.id) groupEl.id = createUniqueId();
   return groupEl.id;
 }
 
-/** Ids of the shown user groups enclosing `el`, outermost first. */
-function enclosingScopes(el) {
+/**
+ * Ids of the shown user groups enclosing `el`, outermost first; an id-less
+ * group is given an id (see ensureGroupId).
+ */
+function ensureEnclosingGroupIds(el) {
   const ids = [];
   for (const groupEl of userGroupAncestors(el)) {
     // Hiding is inherited, so every group inside a hidden one is hidden too.
     if (isHiddenInHierarchy(groupEl)) break;
-    ids.push(scopeId(groupEl));
+    ids.push(ensureGroupId(groupEl));
   }
   return ids;
 }
@@ -64,29 +68,29 @@ function sameIds(a, b) {
  * screen-space line helpers (see ScopePresentation).
  */
 export function installGroupScope(inspector, editorFrame, { lines }) {
-  const scope = new GroupScopeController(inspector);
-  scope.unregisterFrame = editorFrame.register(
-    (context) => scope.affordances.updateMarkers(context),
+  const controller = new GroupScopeController(inspector);
+  controller.unregisterFrame = editorFrame.register(
+    (context) => controller.affordances.updateMarkers(context),
     // After the live bounds (order 20), so a marker placed at a group's center
     // uses this frame's box. Placing catches nothing per item, so a persistent
     // defect is dropped after a few frames rather than on the first.
     { order: 30, maxConsecutiveThrows: 5 }
   );
-  scope.presentation = new ScopePresentation(
+  controller.presentation = new ScopePresentation(
     inspector,
-    scope,
+    controller,
     editorFrame,
     lines
   );
-  scope.attenuation = new ScopeAttenuation({
+  controller.attenuation = new ScopeAttenuation({
     sceneEl: inspector.sceneEl,
     editorFrame,
     onFirstAttenuatedFrame: (generation) =>
-      scope.presentation.firstAttenuatedFrame(generation)
+      controller.presentation.firstAttenuatedFrame(generation)
   });
-  scope.presentation.attenuation = scope.attenuation;
-  inspector.groupScope = scope;
-  return scope;
+  controller.presentation.attenuation = controller.attenuation;
+  inspector.groupScope = controller;
+  return controller;
 }
 
 export class GroupScopeController {
@@ -210,7 +214,10 @@ export class GroupScopeController {
   /** Open `groupEl` (and the groups around it) for editing. */
   open(groupEl) {
     if (!isUserGroup(groupEl) || isHiddenInHierarchy(groupEl)) return;
-    this.setStack([...enclosingScopes(groupEl), scopeId(groupEl)]);
+    this.setStack([
+      ...ensureEnclosingGroupIds(groupEl),
+      ensureGroupId(groupEl)
+    ]);
   }
 
   /** Close the innermost open group and select the one around it. */
@@ -248,7 +255,7 @@ export class GroupScopeController {
     const selected = this.selected();
     // A move replaces the element: the new one is selected once it has loaded.
     if (!selected || !selected.isConnected) return;
-    const ids = enclosingScopes(selected);
+    const ids = ensureEnclosingGroupIds(selected);
     if (
       isUserGroup(selected) &&
       !isHiddenInHierarchy(selected) &&

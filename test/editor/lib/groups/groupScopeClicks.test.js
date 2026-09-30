@@ -445,7 +445,7 @@ describe('reconciling the open groups', () => {
     expect(h.openIds()).toEqual(['A', 'B', 'C']);
     h.inspector.execute('entityremove', B);
     expect(h.openIds()).toEqual(['A']);
-    const open = h.scope.openElements();
+    const open = h.groupScope.openElements();
     expect(open).toEqual([A]);
     expect(open.every((el) => el.isConnected)).toBe(true);
 

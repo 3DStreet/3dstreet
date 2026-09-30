@@ -76,7 +76,7 @@ function runFrameRequests() {
 
 /** Open `g` and let its outside treatment start, as the editor schedules it. */
 function enter(g) {
-  h.scope.open(g);
+  h.groupScope.open(g);
   h.frame();
   runFrameRequests();
 }
@@ -243,7 +243,7 @@ describe('outside meshes', () => {
 
     // Exit, then enter again: the same copy, nothing cloned again.
     const clone = vi.spyOn(THREE.Material.prototype, 'clone');
-    h.scope.close(null);
+    h.groupScope.close(null);
     expect(drawnWith(treeMesh)[0]).toBe(replacement);
     h.inspector.selectEntity(member);
     enter(G);
@@ -279,7 +279,7 @@ describe('outside meshes', () => {
     source.removeFromParent();
     h.frame();
     expect(released).toEqual([]);
-    h.scope.close(null);
+    h.groupScope.close(null);
     expect(released.sort()).toEqual(['batch view', 'tree copy']);
 
     const clone = vi.spyOn(THREE.Material.prototype, 'clone');
@@ -331,7 +331,7 @@ describe('outside meshes', () => {
     expect(light.intensity).toBe(2);
     expect(light.visible).toBe(true);
 
-    h.scope.close(null);
+    h.groupScope.close(null);
     expect(getPresentationFactor()).toBe(1);
   });
 
@@ -361,7 +361,7 @@ describe('outside meshes', () => {
     const [drawn] = drawnWith(hiddenMesh);
     expect(drawn.opacity).toBeCloseTo(0.2, 9);
     expect(drawn.visible).toBe(true);
-    h.scope.close(null);
+    h.groupScope.close(null);
     h.frame();
 
     expect(hidden.object3D.visible).toBe(false);
@@ -376,7 +376,7 @@ describe('outside meshes', () => {
     enter(G);
     expect(outside.splatMesh.opacity).toBeCloseTo(0.2, 9);
     expect(inside.splatMesh.opacity).toBe(1);
-    h.scope.close(null);
+    h.groupScope.close(null);
     expect(outside.splatMesh.opacity).toBe(1);
   });
 
@@ -575,7 +575,7 @@ describe('captures and exports', () => {
     const exporting = withOriginalAppearance(
       () => new Promise((resolve) => (finish = resolve))
     );
-    h.scope.close(null);
+    h.groupScope.close(null);
     finish();
     await exporting;
     expect(getPresentationFactor()).toBe(1);
@@ -595,10 +595,10 @@ describe('entering and leaving', () => {
     const b1 = solid(B, [2, 0, 0], [3, 1, 1]);
     const tree = solid(h.streetContainer, [8, 0, 0], [9, 1, 1]);
     h.inspector.selectEntity(a1);
-    h.scope.open(A);
+    h.groupScope.open(A);
     h.frame();
     // B opened before A's treatment was due.
-    h.scope.open(B);
+    h.groupScope.open(B);
     h.frame();
     runFrameRequests();
     const [onA1, onB1, onTree] = drawnWith(
@@ -610,7 +610,7 @@ describe('entering and leaving', () => {
     expect(onA1.opacity).toBeCloseTo(0.2, 9);
     expect(onTree.opacity).toBeCloseTo(0.2, 9);
 
-    const generation = h.scope.generation;
+    const generation = h.groupScope.generation;
     const scopeMarks = marks.mock.calls
       .filter(([name]) => name.startsWith('group-scope:'))
       .map(([name, options]) => [name, options.detail.generation]);
@@ -651,7 +651,7 @@ describe('entering and leaving', () => {
     solid(G, [2, 0, 0], [3, 1, 1]);
     h.inspector.selectEntity(member);
     enter(G);
-    const restore = vi.spyOn(h.scope.attenuation, 'restore');
+    const restore = vi.spyOn(h.groupScope.attenuation, 'restore');
     // What reordering a member reports: its element leaves and rejoins its
     // group, and history changes.
     h.sceneEl.dispatchEvent(
@@ -688,13 +688,13 @@ describe('entering and leaving', () => {
 
   it('costs nothing per frame while no group is open, before a group is opened and after it closes (fails if the render window stays registered)', () => {
     const { G, member, treeMesh } = simpleScene();
-    const fadeWindow = vi.spyOn(h.scope.attenuation, 'fadeWindow');
-    const endWindow = vi.spyOn(h.scope.attenuation, 'endWindow');
+    const fadeWindow = vi.spyOn(h.groupScope.attenuation, 'fadeWindow');
+    const endWindow = vi.spyOn(h.groupScope.attenuation, 'endWindow');
     h.inspector.selectEntity(member);
     enter(G);
     h.frame();
     expect(fadeWindow).toHaveBeenCalled();
-    h.scope.close(null);
+    h.groupScope.close(null);
     fadeWindow.mockClear();
     endWindow.mockClear();
     const frame = installEditorFrame(h.sceneEl);
@@ -781,7 +781,7 @@ describe('failures', () => {
     expect(probes.every((probe) => probe.assigned.length === 0)).toBe(true);
     // Isolation itself goes on, and reopening does not fade again.
     expect(h.openIds()).toEqual(['G']);
-    h.scope.close(null);
+    h.groupScope.close(null);
     h.inspector.selectEntity(member);
     enter(G);
     expect(drawnWith(...meshes)).toEqual(probes.map((probe) => probe.original));
@@ -842,7 +842,7 @@ describe('switching between groups', () => {
     });
 
     // Into B: a1 is now outside too; the tree never stops being faded.
-    h.scope.open(B);
+    h.groupScope.open(B);
     for (let i = 0; i < 3; i++) {
       const drawn = drawnWith(...meshes);
       expect([faded(drawn, 0), faded(drawn, 1), drawn[2]]).toEqual([
@@ -930,7 +930,7 @@ describe('switching between groups', () => {
     // a1, b1 and the tree: three distinct outside originals.
     expect(clone).toHaveBeenCalledTimes(3);
 
-    h.scope.close(null);
+    h.groupScope.close(null);
     expect(counts()).toEqual(baseline);
     expect(meshOf(b1).material.opacity).toBe(1);
   });

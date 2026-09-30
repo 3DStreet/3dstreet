@@ -320,8 +320,8 @@ export function initRaycaster(inspector) {
   // Decide and apply a click with the group rules (see groups/groupScope.js),
   // keeping the side effects of an ordinary click.
   function resolveGroupClick(count) {
-    const scope = inspector.groupScope;
-    const result = scope.decide(groupHits());
+    const controller = inspector.groupScope;
+    const result = controller.decide(groupHits());
     if (result.action === 'select' || result.action === 'close') {
       if (result.el) captureNavDiscovery('select');
       useStore
@@ -330,7 +330,7 @@ export function initRaycaster(inspector) {
           result.el ? null : probeOsmWayAtCursor(mouseCursor)
         );
     }
-    scope.applyClick(result, count);
+    controller.applyClick(result, count);
   }
 
   function handleClick(evt) {

@@ -806,7 +806,7 @@ describe('a press on a group handle', () => {
     send('mousedown', at);
     send('mouseup', at);
     expect(h.openIds()).toEqual([g.id]);
-    h.scope.close(g);
+    h.groupScope.close(g);
     h.frame();
     expect(h.inspector.selectedEntity).toBe(g);
     // The same spot through the pad: opened once, and the release that the
@@ -913,7 +913,7 @@ describe('a press on a group handle', () => {
   it('on an open, selected group falls through to the member beneath, once, and still drags from 2 px', () => {
     const { g, member } = farGroup();
     select(g);
-    h.scope.open(g);
+    h.groupScope.open(g);
     h.frame();
     expect(controls.el).toBe(g);
     const selections = [];
@@ -942,7 +942,7 @@ describe('a press on a group handle', () => {
     const b = posable(group(a));
     posable(solid(b, [-0.15, 0, -0.15], [0.15, 0.3, 0.15]));
     select(a);
-    h.scope.open(a);
+    h.groupScope.open(a);
     select(b);
     expect(h.openIds()).toEqual([a.id]);
     const off = handlePoint('rotate', { offBoxOf: b });
@@ -980,7 +980,7 @@ describe('a press on a group handle', () => {
 
     flags.streetLevel = true;
     select(g);
-    h.scope.close(g);
+    h.groupScope.close(g);
     h.frame();
     const again = handlePoint('move', { overBoxOf: g });
     clickAt(again, { detail: 1 });
@@ -1022,7 +1022,7 @@ describe('Escape and lost presses on a group handle', () => {
     const inner = posable(group(outer));
     posable(solid(inner, [11, 0.5, 21], [13, 1.5, 23]));
     select(outer);
-    h.scope.open(outer);
+    h.groupScope.open(outer);
     select(inner);
     return { outer, inner, member };
   }
@@ -1168,7 +1168,7 @@ describe('the magenta box during a press', () => {
     release(at);
 
     const plain = posable(solid(h.streetContainer, [30, 0, 30], [31, 1, 31]));
-    h.scope.close(null);
+    h.groupScope.close(null);
     h.frame();
     h.aimDown(30.5, 30.5);
     h.poll();

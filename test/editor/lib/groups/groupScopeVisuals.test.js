@@ -104,7 +104,7 @@ function select(el) {
 
 function openGroup(g) {
   select(g);
-  h.scope.open(g);
+  h.groupScope.open(g);
 }
 
 // ------------------------------------------------------------------ screen
@@ -214,7 +214,7 @@ describe('the outline of an open group', () => {
     expect(scrimShown()).toBe(false);
     expect(outline()?.visible ?? false).toBe(false);
 
-    h.scope.open(g);
+    h.groupScope.open(g);
     // No frame has run since the group opened.
     expect(scrimShown()).toBe(true);
     expect(outline().visible).toBe(true);
@@ -450,7 +450,7 @@ describe('entering a group', () => {
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
     marks = vi.spyOn(performance, 'mark');
     attenuation = { apply: vi.fn(), restore: vi.fn(), close: vi.fn() };
-    h.scope.presentation.attenuation = attenuation;
+    h.groupScope.presentation.attenuation = attenuation;
   });
 
   const scopeMarks = () =>
@@ -467,8 +467,8 @@ describe('entering a group', () => {
   it('treats the outside only after a render has shown the outline and scrim, and one animation frame more', () => {
     const { g } = yawedGroup();
     select(g);
-    h.scope.open(g);
-    const generation = h.scope.generation;
+    h.groupScope.open(g);
+    const generation = h.groupScope.generation;
     expect(scrimShown()).toBe(true);
     expect(scopeMarks()).toEqual([[SCOPE_MARKS.open, generation]]);
     expect(frameRequests).toHaveLength(0);
@@ -501,8 +501,8 @@ describe('entering a group', () => {
     const { g } = yawedGroup();
     select(g);
     // Opened after this render's frame window, before its end.
-    h.frame(() => h.scope.open(g));
-    const generation = h.scope.generation;
+    h.frame(() => h.groupScope.open(g));
+    const generation = h.groupScope.generation;
     expect(scopeMarks()).toEqual([[SCOPE_MARKS.open, generation]]);
     expect(frameRequests).toHaveLength(0);
 
@@ -538,7 +538,7 @@ describe('entering a group', () => {
     h.frame();
     runFrameRequests();
     expect(attenuation.apply).toHaveBeenCalledTimes(1);
-    expect(attenuation.apply).toHaveBeenCalledWith(g, h.scope.generation);
+    expect(attenuation.apply).toHaveBeenCalledWith(g, h.groupScope.generation);
   });
 
   it('opening a nested group before the outer one was treated treats only the nested one, once', () => {
@@ -546,14 +546,14 @@ describe('entering a group', () => {
     const b = group(a);
     solid(b, [11, 0.5, 21], [12, 1.5, 22]);
     openGroup(a);
-    const generationA = h.scope.generation;
+    const generationA = h.groupScope.generation;
     h.frame();
     const [enableA] = frameRequests;
     frameRequests = [];
 
     h.inspector.selectEntity(b);
-    h.scope.open(b);
-    const generationB = h.scope.generation;
+    h.groupScope.open(b);
+    const generationB = h.groupScope.generation;
     expect(generationB).not.toBe(generationA);
     expect(h.openIds()).toEqual([a.id, b.id]);
     h.frame();
