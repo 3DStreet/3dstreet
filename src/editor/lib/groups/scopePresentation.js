@@ -176,6 +176,11 @@ export class ScopePresentation {
     mark(SCOPE_MARKS.attenuationEnabled, generation);
   }
 
+  /** The first render drawn with the outside treated has ended. */
+  firstAttenuatedFrame(generation) {
+    mark(SCOPE_MARKS.firstAttenuatedFrame, generation);
+  }
+
   cancelPending() {
     const pending = this.pending;
     if (!pending) return;

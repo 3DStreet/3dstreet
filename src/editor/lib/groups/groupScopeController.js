@@ -19,6 +19,7 @@ import useStore from '@/store';
 import { createUniqueId } from '../entity';
 import { isReparentInFlight } from '../commands/EntityReparentCommand.js';
 import { GroupAffordances } from './groupAffordances.js';
+import { ScopeAttenuation } from './scopeAttenuation.js';
 import { ScopePresentation } from './scopePresentation.js';
 import {
   isHiddenInHierarchy,
@@ -77,6 +78,13 @@ export function installGroupScope(inspector, editorFrame, { lines }) {
     editorFrame,
     lines
   );
+  scope.attenuation = new ScopeAttenuation({
+    sceneEl: inspector.sceneEl,
+    editorFrame,
+    onFirstAttenuatedFrame: (generation) =>
+      scope.presentation.firstAttenuatedFrame(generation)
+  });
+  scope.presentation.attenuation = scope.attenuation;
   inspector.groupScope = scope;
   return scope;
 }
@@ -133,6 +141,7 @@ export class GroupScopeController {
     this.teardown = [];
     this.unregisterFrame?.();
     this.presentation?.dispose();
+    this.attenuation?.dispose();
   }
 
   // ------------------------------------------------------------ read-only state

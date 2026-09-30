@@ -8,6 +8,7 @@ import {
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.js';
 import { getCurrentCameraState } from '@/editor/lib/cameraUtils.js';
+import { withOriginalAppearanceSync } from '@/editor/lib/groups/scopeAttenuation.js';
 import { scenePath } from '@/tested/scene-url-utils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/services/firebase';
@@ -247,8 +248,11 @@ export async function makeScreenshot(hideOverlays = false) {
       screenshotEl.setAttribute('screentock', 'showLogo', false);
       screenshotEl.setAttribute('screentock', 'showTitle', false);
     }
-    // take the screenshot
-    screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+    // take the screenshot (it renders synchronously, as the scene is,
+    // without an open group's outside treatment)
+    withOriginalAppearanceSync(() =>
+      screenshotEl.setAttribute('screentock', 'takeScreenshot', true)
+    );
     screenshotEl.setAttribute('screentock', 'showLogo', oldVals.showLogo);
     screenshotEl.setAttribute('screentock', 'showTitle', oldVals.showTitle);
   });

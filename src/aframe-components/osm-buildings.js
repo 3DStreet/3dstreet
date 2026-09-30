@@ -3,6 +3,10 @@ import { tilesWithinRadius, EQUATOR_M } from '../tested/osm-tile-math.js';
 import { BuildingTileClient } from '../osm/building-tile-client.js';
 import { VECTOR_TILE_SOURCES } from '../tested/basemap-providers.js';
 import { referenceLayerRenderOrder } from '../tested/transparent-layering.js';
+import {
+  getPresentationFactor,
+  subscribePresentationFactor
+} from '../tested/reference-layer-presentation.js';
 
 const THREE = AFRAME.THREE;
 
@@ -90,6 +94,15 @@ AFRAME.registerComponent('osm-buildings', {
     this._camDir = new THREE.Vector3();
     this._focus = new THREE.Vector3();
     this.tick = AFRAME.utils.throttleTick(this.tick, SCAN_INTERVAL_MS, this);
+    // The editor de-emphasises the map while a group is open for editing.
+    this.unsubscribePresentation = subscribePresentationFactor(() =>
+      this.applyOpacity()
+    );
+  },
+
+  // The layer's opacity as drawn: its own, times the presentation factor.
+  effectiveOpacity: function () {
+    return this.data.opacity * getPresentationFactor();
   },
 
   update: function (oldData) {
@@ -111,7 +124,7 @@ AFRAME.registerComponent('osm-buildings', {
   // translucent the tile meshes are overlays drawn after the splats, so the
   // buildings blend over them instead of hiding them (#1754).
   applyOpacity: function () {
-    const opacity = this.data.opacity;
+    const opacity = this.effectiveOpacity();
     const transparent = opacity < 1;
     if (this.material.transparent !== transparent) {
       this.material.transparent = transparent;
@@ -267,7 +280,7 @@ AFRAME.registerComponent('osm-buildings', {
     // where it matters: buildings shade the street and each other.
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    mesh.renderOrder = referenceLayerRenderOrder(this.data.opacity);
+    mesh.renderOrder = referenceLayerRenderOrder(this.effectiveOpacity());
     // setObject3D fires object3dset, which bvh-geometry listens for.
     this.el.setObject3D('tile-' + key, mesh);
     this.loadedTiles.set(key, { mesh });
@@ -295,6 +308,8 @@ AFRAME.registerComponent('osm-buildings', {
   },
 
   remove: function () {
+    this.unsubscribePresentation?.();
+    this.unsubscribePresentation = null;
     this.reset();
     this.material.dispose();
   }

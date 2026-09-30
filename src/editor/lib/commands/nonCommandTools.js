@@ -26,6 +26,7 @@ import {
 import { applySegmentPreset } from './segmentPresets.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 import { TRANSFORM_REFUSED } from '../transformGuard.js';
+import { withOriginalAppearanceSync } from '../groups/scopeAttenuation.js';
 
 /**
  * Wait for a freshly created managed street to settle — segments mounted
@@ -413,13 +414,14 @@ async function takeSnapshotHandler(args) {
 
         const scene = AFRAME.scenes[0].object3D;
         const camera = AFRAME.scenes[0].camera;
-        renderer.render(scene, camera);
-
-        screenshotCanvas.width = renderer.domElement.width;
-        screenshotCanvas.height = renderer.domElement.height;
-
         const ctx = screenshotCanvas.getContext('2d');
-        ctx.drawImage(renderer.domElement, 0, 0);
+        // Drawn as the scene is, without an open group's outside treatment.
+        withOriginalAppearanceSync(() => {
+          renderer.render(scene, camera);
+          screenshotCanvas.width = renderer.domElement.width;
+          screenshotCanvas.height = renderer.domElement.height;
+          ctx.drawImage(renderer.domElement, 0, 0);
+        });
 
         let sceneTitle;
         try {
