@@ -8,8 +8,7 @@ import {
   PathSampler,
   mapStraightPoint,
   buildRibbonGeometry,
-  computeRibbonOutline,
-  controlPointRights
+  computeRibbonOutline
 } from '@/tested/street-path-utils.js';
 
 const v = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -255,39 +254,5 @@ describe('computeRibbonOutline', () => {
     expect(lastLeft.x).toBeCloseTo(10);
     expect(lastLeft.z).toBeCloseTo(11);
     expect(lastRight.z).toBeCloseTo(9);
-  });
-});
-
-describe('controlPointRights', () => {
-  it('uses the end frames at the ends and the corner bisector between', () => {
-    const control = [v(0, 0, 0), v(0, 0, 10), v(10, 0, 10)];
-    const sampler = new PathSampler(
-      buildCenterlinePoints(control, { curveType: 'linear' }),
-      false
-    );
-    const [first, corner, last] = controlPointRights(control, sampler);
-    // heading +z: right is +x
-    expect(first.x).toBeCloseTo(1);
-    expect(first.z).toBeCloseTo(0);
-    // heading +x: right is -z
-    expect(last.x).toBeCloseTo(0);
-    expect(last.z).toBeCloseTo(-1);
-    // the corner's right bisects the two legs' rights
-    expect(corner.x).toBeCloseTo(Math.SQRT1_2);
-    expect(corner.z).toBeCloseTo(-Math.SQRT1_2);
-  });
-
-  it('matches the sampler end frames exactly on a smooth curve', () => {
-    const control = [v(0, 0, 0), v(5, 0, 20), v(30, 0, 25)];
-    const sampler = new PathSampler(
-      buildCenterlinePoints(control, { curveType: 'smooth' }),
-      false
-    );
-    const rights = controlPointRights(control, sampler);
-    const start = sampler.frameAtS(0).right;
-    const end = sampler.frameAtS(sampler.totalLength).right;
-    expect(rights[0].distanceTo(start)).toBeCloseTo(0);
-    expect(rights[2].distanceTo(end)).toBeCloseTo(0);
-    rights.forEach((r) => expect(r.length()).toBeCloseTo(1));
   });
 });

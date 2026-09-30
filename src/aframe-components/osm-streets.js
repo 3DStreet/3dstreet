@@ -26,7 +26,6 @@ import {
   roadWidthMeters
 } from '../tested/osm-street-style.js';
 import { buildWayRibbons } from '../tested/osm-street-ribbon.js';
-import { formatCenterlinePoints } from '../tested/street-centerline.js';
 
 const THREE = AFRAME.THREE;
 
@@ -76,6 +75,20 @@ const HIGHLIGHT_KINDS = {
 // street never exceeds 2×window.
 const UPGRADE_WINDOW_M = 200;
 
+// The generated street's path shape (the editable centerline polyline):
+// understated next to the drawn-shape default (#ffe600 / 0.15) — it is
+// scaffolding under a street, not a drawing of its own — but visible and
+// vertex-editable so users can refine the OSM geometry.
+const PATH_LINE_COLOR = '#7d8aa0';
+const PATH_LINE_WIDTH = 0.06;
+
+let pathIdCounter = 0;
+// Way ids can carry '/' and '#' (tile-key fallback ids), unusable in a
+// `path: #id` selector — mint clean ids instead.
+function uniquePathId() {
+  return `osm-path-${Date.now().toString(36)}-${pathIdCounter++}`;
+}
+
 // Overpass hydration (phase 6, first slice): one small bbox query per
 // clicked way, interactive budget — one attempt per endpoint, short
 // timeouts — the chip generates from the class rules if it hasn't
@@ -99,10 +112,10 @@ const HYDRATE_BBOX_PAD_M = 20;
  *   point (editor "Generate Street" affordance), and
  * - `upgradeWayAt(worldPoint)` — mint real managed streets for the
  *   clicked stretch of that way: the stretch splits where other ways
- *   cross it, each piece becomes ONE curved street that OWNS the way's
- *   centerline as its `managed-street.points` (vertex-editable with the
- *   street's node handles; straight when the piece simplifies to a
- *   single chord), and a `managed-intersection` is minted at each junction cut
+ *   cross or terminate on it, each piece becomes ONE path-following
+ *   street bent along the way's centerline (its path shape stays
+ *   vertex-editable; straight when the piece simplifies to a single
+ *   chord), and a `managed-intersection` is minted at each junction cut
  *   a generated street end borders — later generates of crossing
  *   ways connect to it automatically (proximity snap radius). Each
  *   street carries a `data-osm-stretch` coverage stamp, so clicking the
@@ -189,8 +202,8 @@ AFRAME.registerComponent('osm-streets', {
 
   /**
    * Has this way already been generated into streets? Derived from the
-   * scene (every generated street carries `data-osm-way-id`) rather
-   * than a component-side set, so undo, manual
+   * scene (every generated street and its path shape carry
+   * `data-osm-way-id`) rather than a component-side set, so undo, manual
    * delete, save + reload and scene switches all stay consistent.
    */
   isWayUpgraded: function (wayId) {
@@ -673,10 +686,10 @@ AFRAME.registerComponent('osm-streets', {
     const commands = [];
     for (const piece of pieces) {
       if (piece.points.length === 2) {
-        // Degenerate straight piece: a plain street (the 2-point case).
+        // Degenerate straight piece: a plain street, no path shape.
         commands.push(this.straightStreetCommand(way, piece, tags));
       } else {
-        commands.push(this.curvedStreetCommand(way, piece, tags));
+        commands.push(...this.pathStreetCommands(way, piece, tags));
       }
     }
     for (const junction of junctions) {
@@ -826,17 +839,20 @@ AFRAME.registerComponent('osm-streets', {
   },
 
   /**
-   * One curved street for a stretch: a managed street that OWNS the
-   * stretch's simplified centerline as `points` (street-local, relative
-   * to the entity at the vertices' centroid; smooth catmull-rom, the same
-   * default the street sidebar applies when copying a drawn shape in).
-   * No shape entity is minted: the street's points are vertex-editable
-   * with its node handles, and the street moves with its own transform.
+   * One path-following street for a curved stretch: a `shape` polyline
+   * (control points at the stretch's simplified vertices, smooth
+   * catmull-rom — the same assignment-gesture bump the street sidebar
+   * applies) plus a managed street following it via `managed-street.path`.
+   * Same commit conventions as the editor's shape draw tool: entity at
+   * the vertices' centroid, vertices stored relative, `shape-vertex`
+   * children hidden from the scene graph — so the generated centerline is
+   * vertex-editable exactly like a hand-drawn path.
    *
-   * The points carry no elevation; the entity sits at the upgraded
-   * street Y so the curve renders at ground height.
+   * The shape sits at the street's Y so the curve carries the height (a
+   * pathed street renders at the path's world position; path vertex
+   * elevation is followed).
    */
-  curvedStreetCommand: function (way, stretch, tags = null) {
+  pathStreetCommands: function (way, stretch, tags = null) {
     const points = stretch.points;
     const centroid = { x: 0, z: 0 };
     for (const p of points) {
@@ -846,22 +862,50 @@ AFRAME.registerComponent('osm-streets', {
     centroid.x /= points.length;
     centroid.z /= points.length;
 
+    const shapeId = uniquePathId();
+    const shapeDefinition = {
+      id: shapeId,
+      element: 'a-entity',
+      components: {
+        shape: {
+          lineColor: PATH_LINE_COLOR,
+          lineWidth: PATH_LINE_WIDTH,
+          curveType: 'smooth'
+        },
+        position: `${centroid.x.toFixed(2)} ${UPGRADED_STREET_Y} ${centroid.z.toFixed(2)}`,
+        'data-layer-name': `Path • OSM ${way.class || 'street'}`,
+        'data-osm-way-id': way.wayId
+      },
+      children: points.map((p) => ({
+        element: 'a-entity',
+        class: 'hideFromSceneGraph',
+        components: {
+          'shape-vertex': '',
+          position: `${(p.x - centroid.x).toFixed(2)} 0 ${(p.z - centroid.z).toFixed(2)}`
+        }
+      }))
+    };
+
     const { managedStreet, stampWayId } = this.streetDefinitionFor(
       way,
       stretch,
       tags
     );
-    managedStreet.points = formatCenterlinePoints(
-      points.map((p) => ({ x: p.x - centroid.x, y: 0, z: p.z - centroid.z }))
-    );
-    managedStreet.curveType = 'smooth';
+    managedStreet.path = `#${shapeId}`;
     const streetDefinition = {
       components: {
         position: `${centroid.x.toFixed(2)} ${UPGRADED_STREET_Y} ${centroid.z.toFixed(2)}`,
         'managed-street': managedStreet
       }
     };
-    return ['entitycreate', streetDefinition, stampWayId];
+
+    // Shape first: the street create fires from its `loaded` callback in
+    // the multi, so the path resolves immediately; undo removes street
+    // then shape.
+    return [
+      ['entitycreate', shapeDefinition],
+      ['entitycreate', streetDefinition, stampWayId]
+    ];
   },
 
   // A managed intersection at a junction (schema defaults: zebra

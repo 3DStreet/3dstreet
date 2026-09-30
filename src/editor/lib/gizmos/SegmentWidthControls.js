@@ -1,5 +1,4 @@
 import { GizmoPointerControls } from './GizmoPointerControls';
-import { getLongitudinalSpan } from '../../../tested/street-nodes-utils.js';
 
 /**
  * SegmentWidthControls — "Segment Width Handles" prototype (#1218).
@@ -132,9 +131,8 @@ class SegmentWidthControls extends GizmoPointerControls {
       Math.max(this.barLen / 2, length - this.barLen / 2)
     );
     if (!curve) {
-      // straight: segments are centered on their z (street-nodes-utils)
-      const span = getLongitudinalSpan(length);
-      this.lateralOrigin.set(seg.x, seg.y, seg.z + span.zStart + s);
+      // straight: segments are centered on their z, spanning ± length/2
+      this.lateralOrigin.set(seg.x, seg.y, seg.z + s - length / 2);
       this.lateralRight.set(1, 0, 0);
       this.barYawWorld = null;
       return;
