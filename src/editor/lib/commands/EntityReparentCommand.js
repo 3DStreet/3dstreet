@@ -30,10 +30,8 @@ function scratch() {
 const vec3String = (v) => `${v.x} ${v.y} ${v.z}`;
 
 export class EntityReparentCommand extends Command {
-  // Deliberately NOT exposed as an LLM tool (no `static llmTool`): arbitrary
-  // reparenting is not an officially supported user-facing feature yet, and
-  // agent-driven reparents can produce unexpected scene structure. Revisit
-  // once grouping ships as a user-facing feature.
+  // Deliberately NOT exposed as an LLM tool (no `static llmTool`):
+  // agent-driven reparents can produce unexpected scene structure.
   constructor(editor, payload = null) {
     super(editor);
 

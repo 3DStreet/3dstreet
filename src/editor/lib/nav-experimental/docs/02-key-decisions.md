@@ -632,6 +632,10 @@ to the nearest ground. Only an *inside-solid* standoff pulls inward. The
 collision-validated; the path is not per-frame clamped, so a teleport can
 descend through an intervening roof to a clear lane below.
 
+Content inside a closed user group is the exception: the double-click that
+selects or opens the group leaves the camera where it is (see
+`01-overview.md`).
+
 ### KD-24 — Category B aims at the building centre; height encodes air-vs-street
 
 A building double-click looks at the building's **centre**, not the
