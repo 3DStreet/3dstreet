@@ -499,6 +499,23 @@ describe('entering a group', () => {
     expect(attenuation.apply).toHaveBeenCalledTimes(1);
   });
 
+  it('does not count a render already under way when the group opened as the one that showed it', () => {
+    const { g } = yawedGroup();
+    select(g);
+    // Opened after this render's frame window, before its end.
+    h.frame(() => h.scope.open(g));
+    const generation = h.scope.generation;
+    expect(scopeMarks()).toEqual([[SCOPE_MARKS.open, generation]]);
+    expect(frameRequests).toHaveLength(0);
+
+    h.frame();
+    expect(scopeMarks()).toEqual([
+      [SCOPE_MARKS.open, generation],
+      [SCOPE_MARKS.outlinedFrame, generation]
+    ]);
+    expect(frameRequests).toHaveLength(1);
+  });
+
   it('never treats the outside of a group closed before its treatment was due', () => {
     const { g } = yawedGroup();
     openGroup(g);
