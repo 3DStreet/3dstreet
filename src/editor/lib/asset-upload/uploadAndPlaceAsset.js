@@ -46,6 +46,7 @@ import {
   gltfRejectionMessage
 } from '@shared/asset-upload';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
+import Events from '@/editor/lib/Events.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 import {
   beginPlacement,
@@ -118,6 +119,29 @@ function notifyInfo(msg) {
   if (window.STREET?.notify?.infoMessage) {
     window.STREET.notify.infoMessage(msg);
   }
+}
+
+// Uploads that finished after their item had left the scene: entity id ->
+// the attributes that finish the item. Undoing its deletion, or redoing its
+// creation, brings the item back as it was while uploading: on a blob: URL
+// that has since been revoked, and marked temporary, so the scene would never
+// save it. It is finished as it comes back, with no history entry of its own.
+const finishedWhileGone = new Map();
+
+function finishReturnedItems() {
+  for (const [entityId, attributes] of finishedWhileGone) {
+    const el = document.getElementById(entityId);
+    if (!el?.hasAttribute('data-temporary-file')) continue;
+    for (const [name, value] of attributes) el.setAttribute(name, value);
+    el.removeAttribute('data-temporary-file');
+  }
+}
+
+function finishIfItReturns(entityId, attributes) {
+  if (!finishedWhileGone.size) {
+    Events.on('historychanged', finishReturnedItems);
+  }
+  finishedWhileGone.set(entityId, attributes);
 }
 
 // Longest side of a placed image plane, in meters. The other side is scaled
@@ -672,10 +696,28 @@ export async function uploadAndPlaceAsset(
       await preloadGltfWithTimeout(cloudUrl, 12000);
     }
 
+    let modelComponent;
+    let modelValue;
+    if (kind === 'glb') {
+      modelComponent = 'gltf-model';
+      modelValue = `url(${cloudUrl})`;
+    } else if (kind === 'splat') {
+      modelComponent = 'splat';
+      modelValue = `src: ${cloudUrl}`;
+    } else {
+      modelComponent = 'src';
+      modelValue = cloudUrl;
+    }
+
     // The item may have been deleted (or its creation undone) while the
     // upload ran. It is not brought back: the asset is in the user's library.
     const placed = document.getElementById(entityId);
     if (!placed) {
+      finishIfItReturns(entityId, [
+        [modelComponent, modelValue],
+        ['data-asset-id', assetId],
+        ['data-asset-owner-uid', userId]
+      ]);
       if (blobUrl) URL.revokeObjectURL(blobUrl);
       clearUpload(entityId);
       currentUploadStore.clear();
@@ -697,18 +739,6 @@ export async function uploadAndPlaceAsset(
     //   - the change is one history entry, undoable as a unit,
     //   - serializer picks them up on next save (data-asset-* are special-
     //     cased to persist; see src/json-utils_1.1.js).
-    let modelComponent;
-    let modelValue;
-    if (kind === 'glb') {
-      modelComponent = 'gltf-model';
-      modelValue = `url(${cloudUrl})`;
-    } else if (kind === 'splat') {
-      modelComponent = 'splat';
-      modelValue = `src: ${cloudUrl}`;
-    } else {
-      modelComponent = 'src';
-      modelValue = cloudUrl;
-    }
     AFRAME.INSPECTOR.execute(
       'multi',
       [

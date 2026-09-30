@@ -3,6 +3,7 @@ import { auth } from '@shared/services/firebase.js';
 import { assetsService } from '@shared/assets';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
+import Events from '@/editor/lib/Events.js';
 
 // An upload finishes after the item it was placed as has left the scene (its
 // creation undone, or deleted). The upload itself went through: the asset is in
@@ -20,13 +21,16 @@ beforeEach(() => {
   document.body.append(streetContainer);
   executed = [];
 
-  // Placeholder creation as the editor does it: an element with an id, handed
-  // to the caller's callback.
+  // Placeholder creation as the editor does it: an element with an id and the
+  // definition's attributes, handed to the caller's callback.
   const execute = vi.fn((type, payload, _name, callback) => {
     executed.push([type, payload]);
     if (type === 'entitycreate') {
       const el = document.createElement('a-entity');
       el.id = 'upload-placeholder';
+      for (const [name, value] of Object.entries(payload.components || {})) {
+        el.setAttribute(name, value);
+      }
       streetContainer.append(el);
       callback?.(el);
     }
@@ -85,6 +89,44 @@ describe('an upload that finishes after its item has left the scene', () => {
       groupMessage('uploadFinishedItemGone')
     );
     expect(result).toEqual({ entity: null, assetId: 'asset-1', kind: 'splat' });
+  });
+
+  it('finishes the item if undo or redo brings it back, so it can be saved, with no history entry (fails if it returns on its revoked upload URL, marked temporary)', async () => {
+    finishUpload = null;
+    const file = new File(['splat bytes'], 'garden.spz');
+    const pending = uploadAndPlaceAsset(file, '1 0 2');
+    await untilUploadStarts();
+    const placeholder = document.getElementById('upload-placeholder');
+    expect(placeholder.hasAttribute('data-temporary-file')).toBe(true);
+    placeholder.remove();
+    finishUpload();
+    await pending;
+
+    const expectFinished = (el) => {
+      expect(el.hasAttribute('data-temporary-file')).toBe(false);
+      expect(el.getAttribute('splat')).toBe(
+        'src: https://storage.example/asset-1.spz'
+      );
+      expect(el.getAttribute('data-asset-id')).toBe('asset-1');
+      expect(el.getAttribute('data-asset-owner-uid')).toBe('user-1');
+    };
+    // Undo of the deletion puts the same element back.
+    streetContainer.append(placeholder);
+    Events.emit('historychanged', null);
+    expectFinished(placeholder);
+
+    // Redo of the creation builds it again from its definition.
+    placeholder.remove();
+    const rebuilt = document.createElement('a-entity');
+    rebuilt.id = 'upload-placeholder';
+    for (const [name, value] of Object.entries(executed[0][1].components)) {
+      rebuilt.setAttribute(name, value);
+    }
+    streetContainer.append(rebuilt);
+    Events.emit('historychanged', null);
+    expectFinished(rebuilt);
+
+    expect(executed.map(([type]) => type)).toEqual(['entitycreate']);
   });
 
   it('finishes on the element that now carries the id when the item was moved (replaced) meanwhile', async () => {
