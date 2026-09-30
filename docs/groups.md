@@ -15,9 +15,11 @@ and edited in isolation. The code is in `src/editor/lib/groups/`; the
   zones, by placement and by the command guard: `canReparent` reads it from an
   entity, and `isGroupableItem` from the data of an item about to be created.
   Items the editor keeps under a fixed parent (street segments, generated
-  content, shapes, the Starting View) never enter a group, and nor does a
-  360° panorama, which surrounds the whole scene. It carries the
-  `scene-backdrop` class, which the scene saves.
+  content, shapes, the Starting View) never enter a group. Nor does a new
+  360° panorama, which surrounds the whole scene: it carries the saved
+  `scene-backdrop` class and stays at the top level on every route. A
+  panorama in a scene saved before that class existed has none, and can still
+  be pasted or dragged into a group.
 - A group turns about Y only and scales by the same amount on every axis. The
   command guard (`transformGuard.js`) reads both from the class, so an AI
   command sees them with no editor code having run. A group scaled unevenly

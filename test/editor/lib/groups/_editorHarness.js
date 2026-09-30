@@ -294,7 +294,9 @@ export function mountEditor({ gizmo = false, cursorFirst = false } = {}) {
     },
     /**
      * A left press on the canvas released `dx` pixels away, with click count
-     * `detail`: a drag, even at 1 pixel.
+     * `detail`: a drag, even at 1 pixel. Leaves out the `mousemove` a browser
+     * sends between the two (it does not change the entity under the harness
+     * ray, and hover is not under test here).
      */
     drag(dx, { detail = 1 } = {}) {
       raycaster.checkIntersections();
@@ -323,7 +325,10 @@ export function mountEditor({ gizmo = false, cursorFirst = false } = {}) {
      * A press begun off the canvas (on a panel) and released over it, at the
      * spot of the last canvas press: the canvas sees only the mouseup. (A
      * press a gizmo handle claims sends the canvas neither: its cancelled
-     * pointerdown suppresses both compatibility events.)
+     * pointerdown suppresses both compatibility events.) Leaves out the
+     * pointer pair (a pointerdown on the panel, a pointerup on the canvas):
+     * with no gizmo mounted, as in the test that uses this, nothing listens
+     * for them.
      */
     releaseFromOffCanvasPress() {
       const panel = document.createElement('div');

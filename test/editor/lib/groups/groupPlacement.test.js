@@ -27,6 +27,16 @@ vi.mock('@shared/asset-upload', async (importOriginal) => ({
 
 let scene;
 
+// One clock for every notice test in this file, only ever moved forward and
+// later than any real time: a repeat of the same notice text is held back
+// briefly, so each test and each step is judged well clear of the one before,
+// whatever order the tests run in.
+let clock = Date.now() + 3600000;
+function tick() {
+  clock += 60000;
+  vi.setSystemTime(clock);
+}
+
 beforeEach(() => {
   scene = mountPlacementScene();
 });
@@ -231,6 +241,12 @@ describe('an upload that is still being read when the scope changes', () => {
 });
 
 describe('an item a route may not put in the open group', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    tick();
+  });
+  afterEach(() => vi.useRealTimers());
+
   it('lands where the route puts it and the user is told it is outside the group', () => {
     scene.scopeGroups();
     scene.openGroups('outer', 'inner');
@@ -246,9 +262,6 @@ describe('an item a route may not put in the open group', () => {
   });
 
   it('says nothing when no group is open, when the item went into the group, or when redo brings it back; says it once when it lands outside (fails if the notice repeats on redo)', () => {
-    // Past any notice an earlier test gave: repeats are held back briefly.
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(Date.now() + 60000);
     const { inner } = scene.scopeGroups();
     scene.inspector.execute('entitycreate', {
       components: { shape: '' }
@@ -265,22 +278,16 @@ describe('an item a route may not put in the open group', () => {
       components: { shape: '' }
     });
     expect(scene.notify.infoMessage).toHaveBeenCalledTimes(1);
-    vi.setSystemTime(Date.now() + 60000);
+    tick();
     scene.inspector.history.undo();
     scene.inspector.history.redo();
     expect(scene.notify.infoMessage).toHaveBeenCalledTimes(1);
-    vi.useRealTimers();
   });
 });
 
 describe('the notice for an item added outside the open group', () => {
-  // One clock for these tests, only ever moved forward, and later than any
-  // notice an earlier test gave: a repeat of the same text is held back
-  // briefly, so each create is judged well clear of the one before.
-  let clock = Date.now() + 3600000;
   function noticesFor(add) {
-    clock += 60000;
-    vi.setSystemTime(clock);
+    tick();
     scene.notify.infoMessage.mockClear();
     add();
     return scene.notify.infoMessage.mock.calls.map(([text]) => text);
