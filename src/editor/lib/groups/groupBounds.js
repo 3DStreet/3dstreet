@@ -229,7 +229,8 @@ function collectLiveGroups() {
   const inspector = globalThis.AFRAME?.INSPECTOR;
   const selected = inspector?.selectedEntity;
   if (isUserGroup(selected) && selected.isConnected) live.push(selected);
-  // Only the innermost open scope is drawn; outer scopes' bounds are unused.
+  // Only the innermost open group is drawn; outer open groups' bounds are
+  // unused.
   const stack = inspector?.groupScope?.openStack;
   if (stack?.length) {
     const innermost = document.getElementById(stack[stack.length - 1]);

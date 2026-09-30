@@ -80,7 +80,7 @@ export default class CommonComponents extends React.Component {
 
   exportToGLTF() {
     const entity = this.props.entity;
-    // Exported as it is, without an open group's outside treatment, until
+    // Exported as it is, without an open group's outside fade, until
     // the exporter has finished.
     withOriginalAppearance(
       () =>

@@ -417,7 +417,7 @@ async function takeSnapshotHandler(args) {
         const scene = AFRAME.scenes[0].object3D;
         const camera = AFRAME.scenes[0].camera;
         const ctx = screenshotCanvas.getContext('2d');
-        // Drawn as the scene is, without an open group's outside treatment.
+        // Drawn as the scene is, without an open group's outside fade.
         withOriginalAppearanceSync(() => {
           renderer.render(scene, camera);
           screenshotCanvas.width = renderer.domElement.width;

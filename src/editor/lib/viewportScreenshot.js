@@ -22,7 +22,7 @@ export function captureViewportScreenshot({
     const hideHelpers = inspector && inspector.opened && inspector.sceneHelpers;
     if (hideHelpers) inspector.sceneHelpers.visible = false;
     try {
-      // Drawn as the scene is, without an open group's outside treatment.
+      // Drawn as the scene is, without an open group's outside fade.
       return withOriginalAppearanceSync(() => {
         // Re-render right before reading pixels — the drawing buffer isn't
         // preserved between frames (same pattern as takeSnapshot).

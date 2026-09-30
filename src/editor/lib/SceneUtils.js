@@ -249,7 +249,7 @@ export async function makeScreenshot(hideOverlays = false) {
       screenshotEl.setAttribute('screentock', 'showTitle', false);
     }
     // take the screenshot (it renders synchronously, as the scene is,
-    // without an open group's outside treatment)
+    // without an open group's outside fade)
     withOriginalAppearanceSync(() =>
       screenshotEl.setAttribute('screentock', 'takeScreenshot', true)
     );

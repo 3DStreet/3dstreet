@@ -61,7 +61,7 @@ const filterRiggedEntities = (scene, visible) => {
 // notification side effects — callers own the UX. Returns
 // { blob, uvTransformSkipped } so callers can surface the AR-Ready
 // post-processing fallback their own way. Exports the scene as it is,
-// without an open group's outside treatment.
+// without an open group's outside fade.
 export const generateGlbBlob = (arReady) =>
   withOriginalAppearance(() => buildGlbBlob(arReady));
 
