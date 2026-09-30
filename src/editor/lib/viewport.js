@@ -6,7 +6,10 @@ import { EasyGizmoControls } from './gizmos/EasyGizmoControls.js';
 import { installEasyGizmoOutline } from './gizmos/easyGizmoOutline.js';
 import { easyGizmoCommandName } from './gizmos/easyGizmoMessages.js';
 import { installEditorFrame } from './editorFrame.js';
-import { trackLiveGroupBounds } from './groups/groupBounds.js';
+import { getGroupBounds, trackLiveGroupBounds } from './groups/groupBounds.js';
+import { isUserGroup, userGroupAncestors } from './groups/groupModel.js';
+import { isSelectedClosedGroup } from './groups/groupScope.js';
+import { installGroupScope } from './groups/groupScopeController.js';
 import { DEFAULT_TRANSFORM_MODE } from './transformModes.js';
 import { computeRibbonOutline } from '@/tested/street-path-utils.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
@@ -40,6 +43,7 @@ const tempBox3 = new THREE.Box3();
 const auxLocalBbox = new THREE.Box3();
 const tempVector3Size = new THREE.Vector3();
 const tempVector3Center = new THREE.Vector3();
+const auxCorner = new THREE.Vector3();
 
 // Selection / hover lines are drawn with three's screen-space "fat" lines:
 // WebGL ignores LineBasicMaterial.linewidth (always 1px), so the helper
@@ -337,6 +341,14 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
       return;
     }
 
+    // A user group has no geometry of its own: its box is its members' bounds
+    // in its own axes, never its origin, and is read from the bounds store
+    // rather than measured here (see groups/groupBounds.js).
+    if (this.object !== undefined && isUserGroup(this.object.el)) {
+      this.updateForGroup();
+      return;
+    }
+
     // The bounds are measured at a temporary pose: the entity is parked at
     // its parent's origin with no rotation, and the parent's world matrix is
     // replaced by its scale alone. Everything from here to the restore runs
@@ -400,46 +412,7 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
       }
 
       if (!tempBox3.isEmpty()) {
-        const min = tempBox3.min;
-        const max = tempBox3.max;
-
-        const position = this.geometry.attributes.position;
-        const array = position.array;
-
-        array[0] = max.x;
-        array[1] = max.y;
-        array[2] = max.z;
-        array[3] = min.x;
-        array[4] = max.y;
-        array[5] = max.z;
-        array[6] = min.x;
-        array[7] = min.y;
-        array[8] = max.z;
-        array[9] = max.x;
-        array[10] = min.y;
-        array[11] = max.z;
-        array[12] = max.x;
-        array[13] = max.y;
-        array[14] = min.z;
-        array[15] = min.x;
-        array[16] = max.y;
-        array[17] = min.z;
-        array[18] = min.x;
-        array[19] = min.y;
-        array[20] = min.z;
-        array[21] = max.x;
-        array[22] = min.y;
-        array[23] = min.z;
-
-        position.needsUpdate = true;
-
-        this.geometry.computeBoundingSphere();
-        if (this.fatBox) {
-          setFatLinePositions(
-            this.fatBox,
-            indexedLinePairs(this.geometry, boxPairsScratch)
-          );
-        }
+        this.setBoxCorners(tempBox3);
       }
     } catch (error) {
       console.error(
@@ -474,6 +447,78 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
 
     // After the box (and this helper's own world pose) are settled, swap in
     // the conforming overlay for curved street surfaces.
+    this.updateConformingHighlight();
+  }
+
+  // The drawn box, in this helper's local frame (the tracked object's world
+  // position and rotation, without its scale).
+  setBoxCorners(box) {
+    const min = box.min;
+    const max = box.max;
+
+    const position = this.geometry.attributes.position;
+    const array = position.array;
+
+    array[0] = max.x;
+    array[1] = max.y;
+    array[2] = max.z;
+    array[3] = min.x;
+    array[4] = max.y;
+    array[5] = max.z;
+    array[6] = min.x;
+    array[7] = min.y;
+    array[8] = max.z;
+    array[9] = max.x;
+    array[10] = min.y;
+    array[11] = max.z;
+    array[12] = max.x;
+    array[13] = max.y;
+    array[14] = min.z;
+    array[15] = min.x;
+    array[16] = max.y;
+    array[17] = min.z;
+    array[18] = min.x;
+    array[19] = min.y;
+    array[20] = min.z;
+    array[21] = max.x;
+    array[22] = min.y;
+    array[23] = min.z;
+
+    position.needsUpdate = true;
+
+    this.geometry.computeBoundingSphere();
+    if (this.fatBox) {
+      setFatLinePositions(
+        this.fatBox,
+        indexedLinePairs(this.geometry, boxPairsScratch)
+      );
+    }
+  }
+
+  // A user group's box: its members' bounds in the group's own axes, scaled
+  // by the group's world scale because this helper takes only the group's
+  // world position and rotation. No bounds (an empty group, or members with
+  // no geometry yet) draws nothing; the group's center marker stands in.
+  updateForGroup() {
+    const box = getGroupBounds(this.object.el);
+    if (!box) {
+      this.setPartsVisible(false);
+      return;
+    }
+    this.object.getWorldScale(auxScale);
+    tempBox3.makeEmpty();
+    tempBox3.expandByPoint(auxCorner.copy(box.min).multiply(auxScale));
+    tempBox3.expandByPoint(auxCorner.copy(box.max).multiply(auxScale));
+    this.setBoxCorners(tempBox3);
+    if (this.boxFill) {
+      tempBox3.getSize(tempVector3Size);
+      tempBox3.getCenter(tempVector3Center);
+      this.boxFill.position.copy(tempVector3Center);
+      this.boxFill.scale.copy(tempVector3Size);
+    }
+    this.object.getWorldQuaternion(this.quaternion);
+    this.object.getWorldPosition(this.position);
+    this.updateMatrix();
     this.updateConformingHighlight();
   }
 
@@ -585,6 +630,15 @@ export function Viewport(inspector) {
   hoverBox.visible = false;
   sceneHelpers.add(hoverBox);
 
+  // The selected, closed group's hover: a grey box saying "click to open",
+  // distinct from the red hover that previews a selection. It is not a scene
+  // surface, so nothing raycasting the scene can land on it.
+  const groupHoverBox = new OrientedBoxHelper(undefined, 0x888888, true);
+  groupHoverBox.visible = false;
+  groupHoverBox.raycast = function () {};
+  groupHoverBox.boxFill.raycast = function () {};
+  sceneHelpers.add(groupHoverBox);
+
   // A street bending along / straightening off its path re-meshes segments
   // in place — no mouseenter or entityupdate fires, so a helper snapshotted
   // before the change keeps showing the stale (box vs conforming) highlight.
@@ -635,7 +689,10 @@ export function Viewport(inspector) {
           ? inspector.cursor.components.cursor
           : null;
       const raw = cursorComp ? cursorComp.intersectedEl : null;
-      if (raw) target = raw;
+      // Inside a closed group, or anywhere while a group is open, a click
+      // selects by the group rules rather than teleporting, so hover shows
+      // what the click selects.
+      if (raw && !groupRulesApply(raw)) target = raw;
     }
     if (!target || target === inspector.selectedEntity) return;
     // The hovered entity can leave the DOM under the cursor: a generated
@@ -649,8 +706,36 @@ export function Viewport(inspector) {
     hoverBox.setFromObject(target.object3D);
   }
 
+  function groupRulesApply(rawEl) {
+    return (
+      inspector.groupScope.openStack.length > 0 ||
+      userGroupAncestors(rawEl).length > 0
+    );
+  }
+
+  // Shown while a click at the hovered spot would open the selected closed
+  // group (its box or marker is the nearest target). Independent of the red
+  // hover and of the gizmo's control hover: over a handle on the box, both
+  // show.
+  function applyGroupHover(el) {
+    const show =
+      el === inspector.groupScope.hoverOpens &&
+      isSelectedClosedGroup(
+        el,
+        inspector.selectedEntity,
+        inspector.groupScope.openElements()
+      );
+    if (!show) {
+      groupHoverBox.visible = false;
+      return;
+    }
+    groupHoverBox.visible = true;
+    groupHoverBox.setFromObject(el.object3D);
+  }
+
   Events.on('raycastermouseenter', (el) => {
     lastHoveredEl = el;
+    applyGroupHover(el);
     if (hoverSuppressed()) return;
     applyHoverHighlight(el);
   });
@@ -674,6 +759,11 @@ export function Viewport(inspector) {
   Events.on('raycastermouseleave', (el) => {
     lastHoveredEl = null;
     hoverBox.visible = false;
+    groupHoverBox.visible = false;
+  });
+  // What the grey box stood for is gone: the group opened or closed.
+  Events.on('groupscopechanged', () => {
+    groupHoverBox.visible = false;
   });
 
   function updateHelpers(object) {
@@ -997,7 +1087,22 @@ export function Viewport(inspector) {
 
   // Work that must see each frame's final transforms before it is drawn runs
   // in this window; the selected group's bounds are kept current there.
-  trackLiveGroupBounds(installEditorFrame(sceneEl), sceneEl);
+  const editorFrame = installEditorFrame(sceneEl);
+  trackLiveGroupBounds(editorFrame, sceneEl);
+  // Installed before the selection handlers below, so the open groups follow
+  // a selection before the controls are routed for it.
+  installGroupScope(inspector, editorFrame);
+
+  // A drawn group's box moved or resized this frame (emitted from the frame
+  // window, after the scene's matrix update, so each redrawn helper updates
+  // its own world matrix too).
+  Events.on('groupboundschanged', (groupEl) => {
+    [selectionBox, hoverBox, groupHoverBox].forEach((helper) => {
+      if (!helper.visible || helper.object?.el !== groupEl) return;
+      helper.update();
+      helper.updateMatrixWorld(true);
+    });
+  });
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
@@ -1251,6 +1356,7 @@ export function Viewport(inspector) {
 
   Events.on('objectselect', (object) => {
     hoverBox.visible = false;
+    groupHoverBox.visible = false;
     selectionBox.visible = false;
     detachAllTransformControls();
     // Not part of detachAllTransformControls(): the router calls that at the

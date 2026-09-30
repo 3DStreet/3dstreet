@@ -2,6 +2,8 @@ import Events from './Events';
 import { isStreetLevelNav } from './nav-experimental/flag.js';
 import { captureNavDiscovery } from './navAnalytics.js';
 import { resolveClickSelection } from './cascadingSelection.js';
+import { hoverTargetOf } from './groups/groupScope.js';
+import { isUserGroup } from './groups/groupModel.js';
 import useStore from '@/store';
 
 // OSM click-to-upgrade (#1930): an empty-space click in osm3d mode probes
@@ -68,6 +70,20 @@ export function initRaycaster(inspector) {
   inspector.sceneEl.appendChild(mouseCursor);
   inspector.cursor = mouseCursor;
 
+  // The entity an intersection belongs to: batched and placeholder hits are
+  // remapped to the entity whose instance was hit (see getBatchedIntersectedEl).
+  function entityOfIntersection(intersection) {
+    const object = intersection.object;
+    if (object?.isBatchedMesh) {
+      const map = object._batchIdToEl;
+      return map ? map[intersection.batchId] || null : null;
+    }
+    if (object?._placeholderEls) {
+      return object._placeholderEls[intersection.instanceId] || null;
+    }
+    return object?.el || null;
+  }
+
   function getBatchedIntersectedEl() {
     // BatchedMeshes are hosted on a dedicated batch-models-root a-entity via setObject3D,
     // so A-Frame's raycaster keeps the intersection (it has .el). The closest intersection
@@ -97,24 +113,96 @@ export function initRaycaster(inspector) {
     // the intersected entity's ancestor chain per click — street, then
     // segment, then child — see cascadingSelection.js. Hover previews the
     // same resolution, so the hover box always shows what a click selects.
-    return resolveClickSelection(intersectedEl, inspector.selectedEntity);
+    // A click never reaches into a closed user group: it selects the group.
+    return resolveClickSelection(
+      intersectedEl,
+      inspector.selectedEntity,
+      new Set(inspector.groupScope?.openElements())
+    );
+  }
+
+  // With user groups in play a click is decided from EVERY target along the
+  // cursor ray, not just the nearest: a click inside an open group must reach
+  // its member behind a nearer outside object, and a selected group's box and
+  // the groups' center markers are pick targets the scene raycast cannot see.
+  function groupHits() {
+    const hits = [];
+    const intersections = raycaster.intersections || [];
+    for (let i = 0; i < intersections.length; i++) {
+      const el = entityOfIntersection(intersections[i]);
+      if (el) {
+        hits.push({ el, distance: intersections[i].distance, kind: 'entity' });
+      }
+    }
+    const ray = raycaster.raycaster?.ray;
+    if (ray) {
+      inspector.groupScope.affordances.collectHits(ray, inspector.camera, hits);
+    }
+    // Nearest first; at equal distance a group's own target before an entity,
+    // so a box face flush with a member still opens the group.
+    return hits.sort(
+      (a, b) =>
+        a.distance - b.distance || (a.kind === 'entity') - (b.kind === 'entity')
+    );
+  }
+
+  function groupsActive() {
+    return !!inspector.groupScope?.isActive();
   }
 
   // Poll the raycaster's closest intersection each check and fire hover events when the
   // RESOLVED entity changes. Cursor-based mouseenter/mouseleave compare `el` references
   // and miss transitions within a BatchedMesh (both hits have the same batchRootEl).
   let lastHoveredEl = null;
+  // Whether a click at the hovered spot would open the (selected) group: the
+  // same target previews differently when it would.
+  let lastHoverOpens = null;
   const origCheckIntersections = raycaster.checkIntersections.bind(raycaster);
   raycaster.checkIntersections = function () {
     origCheckIntersections();
-    const resolved = getIntersectedEl();
-    if (resolved !== lastHoveredEl) {
+    let resolved;
+    // A click outside a nested open group only leaves it, so hovering there
+    // previews nothing, not even an OSM street.
+    let leavesScope = false;
+    if (groupsActive()) {
+      const hits = groupHits();
+      const result = inspector.groupScope.decide(hits);
+      inspector.groupScope.noteHover(result, hits);
+      resolved = hoverTargetOf(result);
+      leavesScope = result.action === 'exit';
+    } else {
+      inspector.groupScope?.clearHover();
+      resolved = getIntersectedEl();
+    }
+    const opens = inspector.groupScope?.hoverOpens || null;
+    if (resolved !== lastHoveredEl || opens !== lastHoverOpens) {
       if (lastHoveredEl) Events.emit('raycastermouseleave', lastHoveredEl);
       if (resolved) Events.emit('raycastermouseenter', resolved);
       lastHoveredEl = resolved;
+      lastHoverOpens = opens;
     }
-    updateOsmHover(resolved ? null : probeOsmWayAtCursor(mouseCursor));
+    updateOsmHover(
+      resolved || leavesScope ? null : probeOsmWayAtCursor(mouseCursor)
+    );
   };
+
+  // What a click on the same spot does can change without the cursor moving:
+  // selecting a group makes its box an entry target, and opening or leaving a
+  // group changes what is inside. Forget the hovered target so the next poll
+  // announces it afresh.
+  function rearmHover() {
+    if (lastHoveredEl) Events.emit('raycastermouseleave', lastHoveredEl);
+    lastHoveredEl = null;
+  }
+  Events.on('groupscopechanged', rearmHover);
+  Events.on('objectselect', () => {
+    if (isUserGroup(inspector.selectedEntity)) rearmHover();
+  });
+  // Losing the window ends a group's hover preview; the next poll restores it
+  // once the pointer is back.
+  window.addEventListener('blur', () => {
+    if (inspector.groupScope?.isGroupingState()) rearmHover();
+  });
 
   // Hover-to-highlight for OSM street ways (#1930), matching the hover box
   // entities get: while the cursor is over empty ground near a streamed
@@ -175,8 +263,31 @@ export function initRaycaster(inspector) {
   // clicks with 1-2px of hand jitter, common on trackpads — revisit if
   // dead clicks get reported.)
   const CLICK_MAX_DRAG_PX = 0;
+  // A press is resolved once, and only if the container saw it begin: the
+  // cursor's click (an entity hit) resolves it first, and the container's
+  // mouseup that follows (empty space) only acts on a press no one resolved.
+  // A press a gizmo claimed never reaches the container's mousedown, so its
+  // mouseup, if the browser sends one, resolves nothing.
+  let pressSeen = false;
+
+  // Decide and apply a click with the group rules (see groups/groupScope.js),
+  // keeping the side effects of an ordinary click.
+  function resolveGroupClick(count) {
+    const scope = inspector.groupScope;
+    const result = scope.decide(groupHits());
+    if (result.action === 'select' || result.action === 'close') {
+      if (result.el) captureNavDiscovery('select');
+      useStore
+        .getState()
+        .setOsmWayCandidate(
+          result.el ? null : probeOsmWayAtCursor(mouseCursor)
+        );
+    }
+    scope.applyClick(result, count);
+  }
 
   function handleClick(evt) {
+    pressSeen = false;
     // Compute up position from the click event's source mouseup rather
     // than the side-state onUpPosition. The cursor component emits
     // click synchronously from inside its canvas mouseup handler, which
@@ -188,14 +299,22 @@ export function initRaycaster(inspector) {
     // 2+ for the later clicks of a double/triple-click. Only the first click
     // cascades the selection one level; the second click of a dblclick is
     // the user asking to focus what that first click selected, not to drill
-    // further (see onDoubleClick).
-    if (upEvt && upEvt.detail > 1) {
+    // further (see onDoubleClick). Entering groups is the exception: select a
+    // group, open it, select inside it is a quick run of clicks, and each one
+    // counts (a touch tap carries no count and is always a first click).
+    const count = upEvt ? upEvt.detail : 1;
+    if (count > 1 && !inspector.groupScope?.isGroupingState()) {
       return;
     }
     const up = upEvt
       ? new THREE.Vector2(upEvt.clientX, upEvt.clientY)
       : onUpPosition;
     if (onDownPosition.distanceTo(up) <= CLICK_MAX_DRAG_PX) {
+      if (groupsActive()) {
+        resolveGroupClick(count);
+        mouseCursor.components.cursor.clearCurrentIntersection(false);
+        return;
+      }
       const intersectedEl = getIntersectedEl();
       // Feature-discovery: count a viewport click that actually selects an
       // entity (a click on empty space deselects — not a "select").
@@ -220,6 +339,7 @@ export function initRaycaster(inspector) {
     }
     event.preventDefault();
     onDownPosition.set(event.clientX, event.clientY);
+    pressSeen = true;
   }
 
   function onMouseUp(event) {
@@ -228,7 +348,11 @@ export function initRaycaster(inspector) {
     }
     event.preventDefault();
     onUpPosition.set(event.clientX, event.clientY);
-    handleEmptySpaceClick(event);
+    const gizmoCaptured = inspector.gizmoCapturedPress;
+    inspector.gizmoCapturedPress = false;
+    const seen = pressSeen;
+    pressSeen = false;
+    if (seen) handleEmptySpaceClick(event, gizmoCaptured);
   }
 
   // Empty-space clicks never reach handleClick — the cursor component only
@@ -245,16 +369,24 @@ export function initRaycaster(inspector) {
   // (viewport.js): those helpers are invisible to the entity raycaster, so
   // without the flag a zero-movement click on a handle would read as empty
   // space and deselect the entity being manipulated.
-  function handleEmptySpaceClick(event) {
-    const gizmoCaptured = inspector.gizmoCapturedPress;
-    inspector.gizmoCapturedPress = false;
+  function handleEmptySpaceClick(event, gizmoCaptured) {
     // Left button only, and only the first click of a multi-click — same
-    // rule as handleClick (the dblclick handler owns the second click).
-    // Right/middle mouseups (context menu, orbit/pan) are not "clicks".
-    if (event.button !== 0 || event.detail > 1 || gizmoCaptured) {
+    // rule as handleClick (the dblclick handler owns the second click; while
+    // entering groups every click counts). Right/middle mouseups (context
+    // menu, orbit/pan) are not "clicks".
+    const multiClick =
+      event.detail > 1 && !inspector.groupScope?.isGroupingState();
+    if (event.button !== 0 || multiClick || gizmoCaptured) {
       return;
     }
     if (onDownPosition.distanceTo(onUpPosition) > CLICK_MAX_DRAG_PX) {
+      return;
+    }
+    // With groups in play the press is resolved here exactly when the cursor
+    // did not resolve it: empty space as far as the scene is concerned, but
+    // inside an open group or on a group's box or marker it still counts.
+    if (groupsActive()) {
+      resolveGroupClick(event.detail || 1);
       return;
     }
     // When the click hit an entity, handleClick already ran (the cursor's
@@ -286,6 +418,11 @@ export function initRaycaster(inspector) {
    * gated off, double-click keeps the frame-the-entity behaviour.
    */
   function onDoubleClick(event) {
+    // The clicks of this double-click selected or opened a group: that was
+    // the whole gesture, so the camera stays where it is.
+    if (inspector.groupScope?.consumeDoubleClick()) {
+      return;
+    }
     if (isStreetLevelNav()) {
       Events.emit('nav-experimental:doubleclick', {
         clientX: event.clientX,

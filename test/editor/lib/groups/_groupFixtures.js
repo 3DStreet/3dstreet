@@ -18,6 +18,8 @@ export function entity(
   el.object3D.rotation.set(0, THREE.MathUtils.degToRad(yaw), 0);
   el.object3D.scale.set(...scale);
   el.components = {};
+  el.isEntity = true;
+  el.flushToDOM = () => {};
   el.sceneEl = parent.sceneEl || parent;
   // A-Frame hands vec3 components back as {x, y, z} and accepts either form.
   const nativeGet = el.getAttribute.bind(el);
@@ -30,13 +32,19 @@ export function entity(
     }
     return raw;
   };
-  el.setAttribute = (name, value) =>
-    nativeSet(
+  el.setAttribute = (name, value) => {
+    // The visible component drives the object3D, which is what the layer
+    // panel's eye and everything reading visibility use.
+    if (name === 'visible') {
+      el.object3D.visible = value !== false && value !== 'false';
+    }
+    return nativeSet(
       name,
       VEC3.has(name) && value && typeof value === 'object'
         ? `${value.x} ${value.y} ${value.z}`
         : value
     );
+  };
   parent.append(el);
   parent.object3D.add(el.object3D);
   return el;
@@ -54,6 +62,8 @@ export function boxMesh(el, min, max) {
   geometry.translate(size.x / 2, size.y / 2, size.z / 2);
   const mesh = new THREE.Mesh(geometry);
   mesh.position.set(...min);
+  // A-Frame's raycaster maps a hit to its entity through this.
+  mesh.el = el;
   el.object3D.add(mesh);
   return mesh;
 }

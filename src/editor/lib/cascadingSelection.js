@@ -13,6 +13,8 @@
  * (chain of length one).
  */
 
+import { isUserGroup } from './groups/groupModel.js';
+
 // Grouping-only elements that head the scene graph; a chain never includes
 // them and never crosses above them (mirrors isContainer in
 // editor/components/scenegraph/Entity.jsx, minus A-SCENE which is handled
@@ -55,8 +57,33 @@ export function getSelectionChain(intersectedEl) {
 }
 
 /**
+ * The part of the chain a click may reach when user groups are involved: it
+ * starts below the deepest OPEN group it passes through (the scope being
+ * edited, so its outer levels are not re-selected) and stops at the first
+ * CLOSED group, so a click on a member of a closed group selects the group
+ * rather than reaching into it. With no user group in the chain it is the
+ * chain unchanged.
+ */
+function cutAtGroups(chain, openGroups) {
+  let start = 0;
+  for (let i = chain.length - 1; i >= 0; i--) {
+    if (openGroups?.has(chain[i])) {
+      start = i + 1;
+      break;
+    }
+  }
+  const reachable = start < chain.length ? chain.slice(start) : [chain.at(-1)];
+  const closed = reachable.findIndex(
+    (el) => isUserGroup(el) && !openGroups?.has(el)
+  );
+  return closed === -1 ? reachable : reachable.slice(0, closed + 1);
+}
+
+/**
  * Resolve what a click on `intersectedEl` should select, given the current
  * selection. Returns null for a click on empty space (deselect).
+ * `openGroups` is the set of user groups currently open for editing; every
+ * other user group is closed (see cutAtGroups).
  *
  * - Nothing selected → the top of the chain (e.g. the managed street).
  * - Selection on the chain → one step deeper toward the click target
@@ -69,9 +96,13 @@ export function getSelectionChain(intersectedEl) {
  *   selects it directly.
  * - Selection in an unrelated tree → back to the top of the chain.
  */
-export function resolveClickSelection(intersectedEl, selectedEntity) {
+export function resolveClickSelection(
+  intersectedEl,
+  selectedEntity,
+  openGroups
+) {
   if (!intersectedEl) return null;
-  const chain = getSelectionChain(intersectedEl);
+  const chain = cutAtGroups(getSelectionChain(intersectedEl), openGroups);
   if (!selectedEntity) return chain[0];
 
   const selectedIndex = chain.indexOf(selectedEntity);

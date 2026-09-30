@@ -31,8 +31,8 @@ export const Shortcuts = {
 
     var keyCode = event.keyCode;
 
-    // esc: unselect entity
-    if (keyCode === 27) {
+    // esc: leave one open group level if a group is open, else unselect entity
+    if (keyCode === 27 && !this.inspector.groupScope?.escape()) {
       if (this.inspector.selectedEntity) {
         this.inspector.selectEntity(null);
       }
