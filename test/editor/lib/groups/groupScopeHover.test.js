@@ -32,8 +32,8 @@ vi.mock('@/editor/lib/nav-experimental/index.js', async () => {
   };
 });
 
-// What the canvas draws and previews for user groups: their boxes, the grey
-// hover of a selected closed group, center markers, and hover parity with
+// What the canvas draws and previews for user groups: their boxes, the
+// magenta hover of a selected closed group, center markers, and hover parity with
 // clicks. Real viewport, raycaster and scope controller (see _editorHarness).
 
 let h;
@@ -248,7 +248,7 @@ describe('the box drawn for a group', () => {
 });
 
 describe('hovering groups', () => {
-  it('shows the grey hover over the selected closed group and keeps red hover for an ordinary item', () => {
+  it('shows the #808 hover, not grey or red, over the selected closed group and keeps red hover for an ordinary item', () => {
     const G = group(h.streetContainer, { id: 'G' });
     solid(G, [0, 0, 0], [1, 1, 1], { id: 'member' });
     const plain = solid(h.streetContainer, [10, 0, 0], [11, 1, 1], {
@@ -260,6 +260,8 @@ describe('hovering groups', () => {
     h.poll();
     expect(h.groupHoverBox.visible).toBe(true);
     expect(h.groupHoverBox.object).toBe(G.object3D);
+    expect(h.groupHoverBox.material.color.getHex()).toBe(0x880088);
+    expect(h.groupHoverBox.boxFill.material.color.getHex()).toBe(0x880088);
     expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.3);
     expect(h.hoverBox.visible).toBe(false);
 
@@ -425,7 +427,7 @@ describe('center markers', () => {
     expect(selected()).toBe(below);
   });
 
-  it('are not surfaces: nothing raycasting the scene hits a marker or the grey hover', () => {
+  it('are not surfaces: nothing raycasting the scene hits a marker or the group hover', () => {
     const G = group(h.streetContainer, { id: 'G' });
     solid(G, [0, 0, 0], [1, 1, 1], { id: 'member' });
     group(h.streetContainer, { id: 'E', position: [10, 0, 0] });

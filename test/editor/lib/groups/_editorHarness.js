@@ -175,6 +175,12 @@ export function mountEditor({ gizmo = false } = {}) {
     inspector.sceneHelpers.children.find(
       (c) => c.material?.color?.getHex?.() === hex
     );
+  const hoverBox = helperByColor(0xff0000);
+  // Found by what it is, not by its colour, so a wrong colour fails a colour
+  // assertion rather than every test: the other filled box helper.
+  const groupHoverBox = inspector.sceneHelpers.children.find(
+    (c) => c.boxFill && c !== hoverBox
+  );
 
   const pointer = { x: 100, y: 100 };
   const lastPress = { x: 0, y: 0 };
@@ -198,8 +204,8 @@ export function mountEditor({ gizmo = false } = {}) {
     cursorEl,
     scope: inspector.groupScope,
     selectionBox: helperByColor(0x1faaf2),
-    hoverBox: helperByColor(0xff0000),
-    groupHoverBox: helperByColor(0x888888),
+    hoverBox,
+    groupHoverBox,
 
     /** Point the cursor ray straight down onto (x, z). */
     aimDown(x, z) {

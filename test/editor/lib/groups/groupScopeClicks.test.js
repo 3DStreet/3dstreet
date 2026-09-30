@@ -342,7 +342,7 @@ describe('the double-click that enters a group', () => {
   });
 });
 
-describe('the grey hover of a selected closed group', () => {
+describe('the magenta hover of a selected closed group', () => {
   it('shows over the box and clears on blur, on a selection change and on opening', () => {
     const G = group(h.streetContainer, { id: 'G' });
     solid(G, [0, 0, 0], [1, 1, 1], { id: 'member' });

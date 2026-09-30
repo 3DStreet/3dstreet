@@ -79,8 +79,8 @@ outermost first. The stack is session state only and is never saved.
   placement never land on them.
 - **Double-click.** The clicks of a double-click that select or open a group
   are the whole gesture: the camera does not move.
-- **Hover** previews what a click would select. A grey box means the click
-  would open the selected group.
+- **Hover** previews what a click would select. A dark magenta (#808) box
+  means the click would open the selected group.
 - **Touch.** The A-Frame cursor acts on a tap only when it hits an entity. On a
   touch device, taps on empty space, on the empty inside of a group's box and
   on an empty group's marker do nothing; the layer panel does those jobs, and

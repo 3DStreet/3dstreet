@@ -642,10 +642,10 @@ export function Viewport(inspector) {
   hoverBox.visible = false;
   sceneHelpers.add(hoverBox);
 
-  // The selected, closed group's hover: a grey box saying "click to open",
-  // distinct from the red hover that previews a selection. It is not a scene
-  // surface, so nothing raycasting the scene can land on it.
-  const groupHoverBox = new OrientedBoxHelper(undefined, 0x888888, true);
+  // The selected, closed group's hover: a dark magenta (#808) box saying
+  // "click to open", distinct from the red hover that previews a selection.
+  // It is not a scene surface, so nothing raycasting the scene can land on it.
+  const groupHoverBox = new OrientedBoxHelper(undefined, 0x880088, true);
   groupHoverBox.visible = false;
   groupHoverBox.raycast = function () {};
   groupHoverBox.boxFill.raycast = function () {};
@@ -747,7 +747,7 @@ export function Viewport(inspector) {
   }
 
   // A press held on the easy gizmo's handle over the selected closed group's
-  // box: releasing it without moving opens the group, so the grey box shows,
+  // box: releasing it without moving opens the group, so the magenta box shows,
   // a little stronger, until the press ends, for touch as much as for mouse.
   const GROUP_HOVER_FILL = groupHoverBox.boxFill.material.opacity;
   const GROUP_PRESSED_FILL = 0.4;
@@ -794,7 +794,7 @@ export function Viewport(inspector) {
     hoverBox.visible = false;
     if (!pressedGroup) groupHoverBox.visible = false;
   });
-  // What the grey box stood for is gone: the group opened or closed.
+  // What the magenta box stood for is gone: the group opened or closed.
   Events.on('groupscopechanged', () => {
     clearPressedGroup();
     groupHoverBox.visible = false;
@@ -1047,7 +1047,7 @@ export function Viewport(inspector) {
         heldGroup = null;
       }
     });
-    // A press held on a group's handle (see groupGizmoPolicy): the grey box
+    // A press held on a group's handle (see groupGizmoPolicy): the magenta box
     // while it would open the group, and the click it turns out to be.
     easyGizmoControls.addEventListener('handlePress', (evt) => {
       const hits = mouseCursor.groupHitsAt(evt.clientX, evt.clientY);

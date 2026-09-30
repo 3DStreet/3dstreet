@@ -897,7 +897,7 @@ describe('Escape and lost presses on a group handle', () => {
     ['pointercancel', (at) => send('pointercancel', at)],
     ['a tool switch', () => h.inspector.selectEntity(null)]
   ])(
-    'forgets a held press and its grey box on %s, and the release opens nothing',
+    'forgets a held press and its magenta box on %s, and the release opens nothing',
     (_, lose) => {
       const { g } = farGroup();
       select(g);
@@ -914,7 +914,7 @@ describe('Escape and lost presses on a group handle', () => {
   );
 });
 
-describe('the grey box during a press', () => {
+describe('the magenta box during a press', () => {
   it.each(['mouse', 'touch'])(
     'shows stronger through a still press over the box and clears at 2 px (%s)',
     (pointerType) => {
@@ -924,6 +924,7 @@ describe('the grey box during a press', () => {
       press(at, { pointerType });
       expect(h.groupHoverBox.visible).toBe(true);
       expect(h.groupHoverBox.object).toBe(g.object3D);
+      expect(h.groupHoverBox.boxFill.material.color.getHex()).toBe(0x880088);
       expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.4);
       move(offset(at, 1), { pointerType });
       expect(h.groupHoverBox.visible).toBe(true);
