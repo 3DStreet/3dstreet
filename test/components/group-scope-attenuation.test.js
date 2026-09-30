@@ -327,6 +327,22 @@ describe('a batch with instances on both sides of the open group', () => {
     expect(disposed).toEqual([]);
   });
 
+  it('re-binds the view it keeps when the batch replaces its geometry without growing', () => {
+    const source = makeBatch([outsideEl, insideEl]);
+    scene.add(source);
+    renderWindow(source);
+    const view = batches.views.get(source);
+    const oldGeometry = source.geometry;
+
+    source.setGeometrySize(256, 512);
+    expect(source.geometry).not.toBe(oldGeometry);
+    const record = recordDrawLists();
+    renderWindow(source);
+    expect(batches.views.get(source)).toBe(view);
+    expect(view.geometry).toBe(source.geometry);
+    expect(record.lists.get(view).main).toEqual([0]);
+  });
+
   it('is left untreated, with a warning, under a three.js revision it was not written for', () => {
     const source = makeBatch([outsideEl, insideEl]);
     scene.add(source);
