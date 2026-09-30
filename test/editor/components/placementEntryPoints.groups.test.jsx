@@ -145,7 +145,7 @@ describe('adding assets from the library, a link and the File menu while a group
     expect(payload.parentEl).toBe(inner);
     expect(payload.parentEl).not.toBe(outer);
 
-    // With no group open at the click, it goes where it always went.
+    // With no group open at the click, it goes to the top level.
     scene.executed.length = 0;
     scene.closeGroups();
     fireEvent.click(screen.getByText('Import...'));

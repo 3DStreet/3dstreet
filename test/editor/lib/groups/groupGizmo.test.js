@@ -1009,7 +1009,7 @@ describe('hiding the selected group', () => {
 });
 
 describe('an ordinary item under the easy gizmo', () => {
-  it('stays selected after a still click on its pad, and a drag commits as before', () => {
+  it('stays selected after a still click on its pad, and a press on the pad drags at once with no handle events', () => {
     aimCamera([0, 12, 14], [0, 0, 0]);
     const box = posable(
       solid(h.streetContainer, [-0.3, 0, -0.3], [0.3, 1, 0.3])
@@ -1024,7 +1024,7 @@ describe('an ordinary item under the easy gizmo', () => {
     h.frame();
     expect(controls.isDragging).toBe(false);
     expect(h.inspector.selectedEntity).toBe(box);
-    // A press on an item's handle is a drag at once, as before.
+    // A press on an item's handle is a drag at once.
     press(at);
     expect(controls.isDragging).toBe(true);
     move(offset(at, 1));

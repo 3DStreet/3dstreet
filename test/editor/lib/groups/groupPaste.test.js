@@ -249,7 +249,7 @@ describe('a paste that cannot land where it began', () => {
     );
   });
 
-  it('pastes an item that may not go into a group where it always went, and says it landed at the top level', async () => {
+  it('pastes an item that may not go into a group at the top level with its copied pose, and says it landed there', async () => {
     const shape = entityIn(scene.root, { id: 'shape', position: '2 0 2' });
     STREET.utils.getElementData = (el) => ({
       ...elementData(el),

@@ -322,7 +322,7 @@ describe('adding an item with no group in the scene', () => {
     expectAt(asset.components.position, dropPoint());
   });
 
-  it('the Assets panel, the asset link and File > Import place as before', () => {
+  it('the Assets panel and the asset link place at the view centre, and an upload or File > Import at the origin, all at the top level', () => {
     const inputs = captureFileInputs();
     render(
       <IntlProvider locale="en">

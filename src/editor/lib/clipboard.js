@@ -19,7 +19,7 @@
  *     into the innermost open group instead, keeping its world pose
  *
  * An item copied from inside a user group pastes by its world pose wherever it
- * lands; every other paste keeps the copied local pose, as it always has.
+ * lands; every other paste keeps the copied local pose.
  *
  * Copy itself never touches undo history; Cut is a Copy plus the existing
  * undoable `entityremove` command.

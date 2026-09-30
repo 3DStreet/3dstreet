@@ -280,7 +280,7 @@ function groupStandPoint(groupEl) {
 
 /**
  * Where an item placed "in view" goes (a card click, or placing an asset from
- * the library): the ground at the middle of the view, as it always has. With a
+ * the library): the ground at the middle of the view. With a
  * group open and a view that does not meet the ground, the group's stand
  * point instead: never the group's origin, which can be far from its members.
  */

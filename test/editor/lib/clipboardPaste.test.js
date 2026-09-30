@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 describe('pasting an item copied from a street segment', () => {
-  it('pastes its saved pose into the top level, 5 along its own X, exactly as before (fails if world-pose pasting reaches an item outside any group)', async () => {
+  it('pastes its saved pose into the top level, 5 along its own X (fails if world-pose pasting reaches an item outside any group)', async () => {
     await copySelectedEntity();
     await pasteFromClipboard();
     expect(executed).toEqual([

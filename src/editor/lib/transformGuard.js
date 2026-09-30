@@ -223,7 +223,7 @@ export function refuseGuardedTransform(commandType, payload) {
       return 'This element cannot be moved to a different parent.';
     }
     const newParent = document.getElementById(payload.parentEl);
-    // An unknown parent is left to the command, as before.
+    // An unknown parent is left to the command.
     if (!newParent) return null;
     if (!canReparent(entity, newParent)) return groupMessage('illegalParent');
     if (!poseRepresentableUnder(entity, newParent)) {
