@@ -18,6 +18,7 @@
 // entry takes can be measured in any build.
 
 import Events from '../Events';
+import { FRAME_ORDER, PER_ITEM_PASS_MAX_THROWS } from '../editorFrame.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { getGroupBounds } from './groupBounds.js';
@@ -99,10 +100,13 @@ export class ScopePresentation {
         this.present(context.camera);
         this.windowGeneration = this.controller.generation;
       },
-      // After the live bounds (20) and the markers (30), so the outline and
-      // the scrim use this frame's box. Placing catches nothing per item, so a
-      // persistent defect is dropped after a few frames rather than the first.
-      { order: 40, maxConsecutiveThrows: 5 }
+      // After the bounds and the markers, so the outline and the scrim use
+      // this frame's box. Placing catches nothing per item, so a persistent
+      // defect is dropped after a few frames rather than the first.
+      {
+        order: FRAME_ORDER.openGroupOutline,
+        maxConsecutiveThrows: PER_ITEM_PASS_MAX_THROWS
+      }
     );
   }
 
@@ -161,7 +165,7 @@ export class ScopePresentation {
     const pending = { generation, unregisterAfter: null, frameRequest: null };
     pending.unregisterAfter = this.editorFrame.register(
       () => this.afterRender(pending),
-      { phase: 'after' }
+      { phase: 'after', order: FRAME_ORDER.openGroupEntry }
     );
     this.pending = pending;
   }

@@ -16,6 +16,7 @@
 
 import Events from '../Events';
 import useStore from '@/store';
+import { FRAME_ORDER, PER_ITEM_PASS_MAX_THROWS } from '../editorFrame.js';
 import { createUniqueId } from '../entity';
 import { isReparentInFlight } from '../commands/EntityReparentCommand.js';
 import { GroupAffordances } from './groupAffordances.js';
@@ -71,10 +72,13 @@ export function installGroupScope(inspector, editorFrame, { lines }) {
   const controller = new GroupScopeController(inspector);
   controller.unregisterFrame = editorFrame.register(
     (context) => controller.affordances.updateMarkers(context),
-    // After the live bounds (order 20), so a marker placed at a group's center
-    // uses this frame's box. Placing catches nothing per item, so a persistent
-    // defect is dropped after a few frames rather than on the first.
-    { order: 30, maxConsecutiveThrows: 5 }
+    // After the bounds, so a marker placed at a group's center uses this
+    // frame's box. Placing catches nothing per item, so a persistent defect
+    // is dropped after a few frames rather than on the first.
+    {
+      order: FRAME_ORDER.groupMarkers,
+      maxConsecutiveThrows: PER_ITEM_PASS_MAX_THROWS
+    }
   );
   controller.presentation = new ScopePresentation(
     inspector,

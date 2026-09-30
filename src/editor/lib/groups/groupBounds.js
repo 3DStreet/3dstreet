@@ -14,6 +14,7 @@
 // returns the stored box; a group with none is measured on demand.
 
 import Events from '../Events';
+import { FRAME_ORDER, PER_ITEM_PASS_MAX_THROWS } from '../editorFrame.js';
 import { isUserGroup } from './groupModel.js';
 
 let scratch = null;
@@ -309,9 +310,9 @@ export function trackLiveGroupBounds(editorFrame, sceneEl) {
     splatBoxes.delete(event.target);
   });
   // Measuring catches per group, so only a defect in the pass itself reaches
-  // the frame; tolerate a few frames of that before giving up.
+  // the frame.
   return editorFrame.register(recomputeLiveBounds, {
-    order: 20,
-    maxConsecutiveThrows: 5
+    order: FRAME_ORDER.groupBounds,
+    maxConsecutiveThrows: PER_ITEM_PASS_MAX_THROWS
   });
 }

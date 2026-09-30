@@ -46,9 +46,11 @@ and edited in isolation. The code is in `src/editor/lib/groups/`; the
 `onBeforeRender` and `onAfterRender`, only while the editor is open. By then
 every tick has run (including a gizmo drag) and three has updated every
 `matrixWorld`, so this is the place for work that must see the frame's final
-transforms and land before the frame is drawn. The groups code registers, in
-order: bounds (20), center markers (30), outline and scrim (40), fading (50);
-after the render, fading is undone (-10) before the entry schedule's step (0).
+transforms and land before the frame is drawn. `FRAME_ORDER` in the same file
+names where each piece of the groups code runs: the bounds, then the center
+markers, the outline and scrim, and the fading of the outside; after the
+render, the fading is undone before the step of opening a group that waits for
+that render.
 
 - Anything a callback poses after three's matrix update calls that object's
   own `updateMatrixWorld(true)`.

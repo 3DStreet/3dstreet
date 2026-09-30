@@ -19,6 +19,39 @@
 const installed = new WeakMap();
 
 /**
+ * Where each piece of the groups code runs in the window (`register`'s
+ * `order`; lower runs first). Each step reads what an earlier one wrote in the
+ * same render.
+ *
+ * Before the render:
+ * - `groupBounds`: re-measure the boxes of the groups that are drawn.
+ * - `groupMarkers`: place the center markers at this frame's centers.
+ * - `openGroupOutline`: pose the open group's outline and scrim around this
+ *   frame's box.
+ * - `outsideFade`: swap the faded materials in, last before drawing.
+ *
+ * After the render:
+ * - `outsideFadeEnd`: swap the original materials back, before
+ * - `openGroupEntry`: the step of opening a group that waits for the first
+ *   render showing the outline.
+ */
+export const FRAME_ORDER = Object.freeze({
+  groupBounds: 20,
+  groupMarkers: 30,
+  openGroupOutline: 40,
+  outsideFade: 50,
+  outsideFadeEnd: -10,
+  openGroupEntry: 0
+});
+
+/**
+ * `maxConsecutiveThrows` for a per-frame pass that catches per item: a throw
+ * that still reaches the window this many frames running is a defect in the
+ * pass itself, not in one item.
+ */
+export const PER_ITEM_PASS_MAX_THROWS = 5;
+
+/**
  * Install the frame window on `sceneEl`'s scene once and return its registry.
  * Later calls return the same registry.
  */

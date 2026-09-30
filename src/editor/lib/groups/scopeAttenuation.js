@@ -23,6 +23,7 @@
 // Visibility is never touched, so hidden content stays hidden.
 
 import { BatchAttenuation } from './attenuateBatches.js';
+import { FRAME_ORDER } from '../editorFrame.js';
 import { setPresentationFactor } from '../../../tested/reference-layer-presentation.js';
 import { debugLog } from '../../../shared/utils/debug.js';
 
@@ -297,13 +298,12 @@ export class ScopeAttenuation {
     const frame = this.editorFrame;
     this.unregister.push(
       frame.register((context) => this.fadeWindow(context), {
-        order: 50,
+        order: FRAME_ORDER.outsideFade,
         everyRender: true
       }),
-      // Before the entry schedule's own after-render step (order 0).
       frame.register(() => this.endWindow(), {
         phase: 'after',
-        order: -10,
+        order: FRAME_ORDER.outsideFadeEnd,
         everyRender: true
       })
     );
