@@ -216,6 +216,10 @@ describe('the properties panel during an easy gizmo drag', () => {
     controls.dragEl = el;
     controls.dragObject = el.object3D;
     controls.dragSnapshot = { position: '0 0 0', rotation: '0 0 0' };
+    controls.dragStart = {
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 }
+    };
     controls.isDragging = true;
     controls.axis = 'move';
     const updates = [];

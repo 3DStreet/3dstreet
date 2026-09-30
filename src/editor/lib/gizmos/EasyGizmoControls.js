@@ -314,6 +314,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.dragSupportY = 0;
     this.dragClearance = 0;
     this.dragSnapshot = null;
+    this.dragStart = null;
     this.dragConstrained = false;
     this.dragEl = null;
     this.dragObject = null;
@@ -2775,6 +2776,10 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.dragEl = this.el;
     this.dragObject = this.object;
     this.dragSnapshot = this._formatPose(this.el);
+    // What a cancel puts back: the pose as it was, not as formatted, so a
+    // cancelled gesture leaves an unrounded yaw (and, for a group, every
+    // member about its distant origin) exactly where it started.
+    this.dragStart = this._readPose(this.el);
     this._dodgeHeld = null;
     if (this._policy) this._holdPivot();
 
@@ -3157,12 +3162,19 @@ class EasyGizmoControls extends GizmoPointerControls {
     });
   }
 
-  _restore(snapshot) {
-    if (!snapshot || !this.el) return;
-    const [px, py, pz] = snapshot.position.split(' ').map(Number);
-    const [rx, ry, rz] = snapshot.rotation.split(' ').map(Number);
-    this.el.setAttribute('position', { x: px, y: py, z: pz });
-    this.el.setAttribute('rotation', { x: rx, y: ry, z: rz });
+  _readPose(el) {
+    const pos = el.getAttribute('position');
+    const rot = el.getAttribute('rotation');
+    return {
+      position: { x: pos.x, y: pos.y, z: pos.z },
+      rotation: { x: rot.x, y: rot.y, z: rot.z }
+    };
+  }
+
+  _restore(start) {
+    if (!start || !this.el) return;
+    this.el.setAttribute('position', { ...start.position });
+    this.el.setAttribute('rotation', { ...start.rotation });
   }
 
   /**
@@ -3173,6 +3185,7 @@ class EasyGizmoControls extends GizmoPointerControls {
    */
   endGesture(reason, event) {
     const snapshot = this.dragSnapshot;
+    const start = this.dragStart;
     const dragEl = this.dragEl;
     const dragObject = this.dragObject;
     const axis = this.axis;
@@ -3185,6 +3198,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.probe.setFlatteningSuspended(false);
     this._dragReferencePending = false;
     this.dragSnapshot = null;
+    this.dragStart = null;
     this.dragEl = null;
     this.dragObject = null;
     this.dragConstrained = false;
@@ -3219,7 +3233,7 @@ class EasyGizmoControls extends GizmoPointerControls {
 
     const commits = reason === 'pointerup' || reason === 'mouseleave';
     if (!commits) {
-      this._restore(snapshot);
+      this._restore(start);
       this.dispatchEvent(this.changeEvent);
       this.dispatchEvent(this.objectChangeEvent);
       return;

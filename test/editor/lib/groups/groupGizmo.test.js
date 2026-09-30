@@ -690,6 +690,34 @@ describe('the easy gizmo on a group', () => {
     expect(calls).toHaveLength(2);
   });
 
+  it('puts a group back exactly where it started when a move or a turn is cancelled, unrounded yaw and position included (fails if a cancel restores the rounded pose)', () => {
+    const { g } = farGroup({
+      position: [0.123456, 0.000321, -0.987654],
+      rotation: [0, 12.3456, 0]
+    });
+    select(g);
+    lookAtGizmo();
+    const calls = spyExecute();
+    const start = {
+      position: { ...g.getAttribute('position') },
+      rotation: { ...g.getAttribute('rotation') }
+    };
+    for (const at of [pad(), handlePoint('rotate')]) {
+      press(at);
+      move(offset(at, 0, 3));
+      move(offset(at, 40, 20));
+      h.frame();
+      expect(g.getAttribute('position')).not.toEqual(start.position);
+      escape();
+      expect(controls.isDragging).toBe(false);
+      expect(g.getAttribute('position')).toEqual(start.position);
+      expect(g.getAttribute('rotation')).toEqual(start.rotation);
+      release(offset(at, 40, 20));
+      h.frame();
+    }
+    expect(calls).toHaveLength(0);
+  });
+
   it('commits nothing for an item turned and released where it started, whatever its unrounded yaw', () => {
     aimCamera([0, 12, 14], [0, 0, 0]);
     const tree = posable(

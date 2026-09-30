@@ -65,6 +65,7 @@ function armGesture(c, axis) {
   c.axis = axis;
   c.isDragging = true;
   c.dragSnapshot = c._formatPose(el);
+  c.dragStart = c._readPose(el);
   return { el, object };
 }
 
@@ -133,17 +134,22 @@ describe('the routes out of a gesture', () => {
     'detach',
     'editorclosed'
   ]) {
-    it(`reverts to the mouse-down pose and commits nothing on ${reason}`, () => {
+    it(`reverts to the mouse-down pose, unrounded, and commits nothing on ${reason}`, () => {
       // The commit lives on the release path alone. Every other exit puts the
-      // object back where the press found it and executes no history command.
+      // object back exactly where the press found it (not at the pose as
+      // formatted for the commit) and executes no history command.
       const c = makeControls();
       const { el } = armGesture(c, 'move');
       const commits = captureCommit(c);
       c.setWorldPosition(4, 0, 4);
       c.endGesture(reason);
       expect(commits).toHaveLength(0);
-      expect(el.getAttribute('position').x).toBeCloseTo(1.235, 6);
-      expect(el.getAttribute('position').z).toBeCloseTo(2.718, 6);
+      expect(el.getAttribute('position')).toEqual({
+        x: 1.2345678,
+        y: 0,
+        z: 2.7182818
+      });
+      expect(el.getAttribute('rotation')).toEqual({ x: 0, y: 30.123456, z: 0 });
     });
   }
 });
