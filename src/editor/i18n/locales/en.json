@@ -1469,8 +1469,17 @@
   "geoSidebar.usesFreeTokens": {
     "defaultMessage": "Uses 1 of {geoToken} free geo tokens to add real-world map data."
   },
+  "groups.placement.backdropTopLevel": {
+    "defaultMessage": "A 360° panorama surrounds the whole scene, so it cannot go inside a group. It was added at the top level of the scene."
+  },
   "groups.placement.outsideGroup": {
     "defaultMessage": "This kind of item cannot go inside a group, so it was added outside the open group."
+  },
+  "groups.placement.routeOutsideGroup": {
+    "defaultMessage": "This was added outside the open group. To put it in the group, drag it there in the Layers panel."
+  },
+  "groups.placement.routeTopLevel": {
+    "defaultMessage": "This was added at the top level of the scene, not inside the open group. To put it in the group, drag it there in the Layers panel."
   },
   "groups.placement.topLevel": {
     "defaultMessage": "This kind of item cannot go inside a group, so it was added at the top level of the scene."

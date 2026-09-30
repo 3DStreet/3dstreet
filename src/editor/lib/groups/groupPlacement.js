@@ -5,8 +5,12 @@
 // group open, an item that may live in a group goes into the innermost open
 // group, at the world pose it would have had at the top level: the preview a
 // route shows is where the item lands. An item that may not live in a group
-// (a street segment, a shape, the Starting View) keeps its route's
-// destination, and the user is told it landed outside the group.
+// (a street segment, a shape, the Starting View, the 360° panorama) keeps its
+// route's destination, and the user is told it landed outside the group.
+// A route that creates its item with a raw `entitycreate` and no ticket keeps
+// its own destination too, even for an item that could be grouped (the
+// Traffic Replay layer, the Geo panel's flattening box, OSM upgrades, street
+// imports); the notice then says the item can be dragged into the group.
 //
 // The destination is chosen when the operation begins, as a ticket naming the
 // group, and checked again when the item is committed: an upload, a clipboard
@@ -15,6 +19,7 @@
 // explanation; it never falls back to the top level.
 
 import {
+  BACKDROP_CLASS,
   canAcceptChild,
   isGroupableItem,
   isStreetContainer,
@@ -54,6 +59,8 @@ function tmp() {
 
 /** The innermost group open for editing, or null. */
 export function innermostOpenGroup() {
+  // The inspector takes commands from the start, and installs its group scope
+  // only once its viewport is built.
   const stack = globalThis.AFRAME?.INSPECTOR?.groupScope?.openStack;
   if (!stack?.length) return null;
   const el = document.getElementById(stack[stack.length - 1]);
@@ -296,20 +303,35 @@ export function nestedGroupPlacement() {
   };
 }
 
+// Which notice an item added outside the open group gets. One that may go
+// into a group was put elsewhere by its route, and the user can drag it in;
+// one that may not is told so, and is not invited to try.
+function outsideGroupNotice(entity, groupable) {
+  const topLevel = isStreetContainer(entity.parentNode);
+  if (groupable) {
+    return topLevel ? 'routePlacedAtTopLevel' : 'routePlacedOutsideGroup';
+  }
+  if (topLevel && entity.classList.contains(BACKDROP_CLASS)) {
+    return 'backdropAtTopLevel';
+  }
+  return topLevel ? 'placedAtTopLevel' : 'placedOutsideGroup';
+}
+
 /**
- * Tell the user when a command added an item outside the open group: an item
- * that may not go into a group, added by a route with its own destination.
- * Called by the create and paste commands on their first run; `requireParent`
- * placements were put where they belong and are never reported.
+ * Tell the user when a command added an item outside the open group, and why.
+ * Called by the create and paste commands on their first run, with
+ * `groupable` from the item's data (isGroupableItem): the entity itself is
+ * not initialised yet. `requireParent` placements were put where they belong
+ * and are never reported.
  */
-export function notePlacedOutsideOpenGroup(entity, { requireParent } = {}) {
+export function notePlacedOutsideOpenGroup(
+  entity,
+  { requireParent, groupable } = {}
+) {
   if (requireParent || !entity?.isConnected) return;
   const groupEl = innermostOpenGroup();
   if (!groupEl || groupEl.contains(entity)) return;
-  const topLevel = isStreetContainer(entity.parentNode);
-  const text = groupMessage(
-    topLevel ? 'placedAtTopLevel' : 'placedOutsideGroup'
-  );
+  const text = groupMessage(outsideGroupNotice(entity, groupable));
   const now = Date.now();
   // A route adding several items at once (an import) gets one notice.
   if (text !== lastNotice || now - lastNoticeAt > NOTICE_DEDUP_MS) {

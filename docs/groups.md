@@ -15,7 +15,9 @@ and edited in isolation. The code is in `src/editor/lib/groups/`; the
   zones, by placement and by the command guard: `canReparent` reads it from an
   entity, and `isGroupableItem` from the data of an item about to be created.
   Items the editor keeps under a fixed parent (street segments, generated
-  content, shapes, the Starting View) never enter a group.
+  content, shapes, the Starting View) never enter a group, and nor does a
+  360° panorama, which surrounds the whole scene. It carries the
+  `scene-backdrop` class, which the scene saves.
 - A group turns about Y only and scales by the same amount on every axis. The
   command guard (`transformGuard.js`) reads both from the class, so an AI
   command sees them with no editor code having run. A group scaled unevenly
@@ -178,6 +180,11 @@ real `BatchedMesh`.
   world pose it would have had at the top level, so a route's preview is where
   the item lands. An item that may not keeps its route's destination, and a
   notice says it landed outside the group.
+- A few routes keep their own destination even for an item that could be
+  grouped: the Traffic Replay layer and the street its panel creates, the Geo
+  panel's flattening box, OSM street upgrades and street imports from a URL.
+  Their items land at the top level, and the notice says the item can be
+  dragged into the group in the layer panel.
 - The destination is taken when the operation begins (a card click, a file
   picker opening, a paste) and checked again when the item is committed. If the
   group has gone, or can no longer take the item, the placement is refused with
@@ -197,8 +204,7 @@ under the new parent with the same id.
 
 - A move to another parent keeps the item's world pose. It is refused when
   that pose would need a shear, or when the group model does not allow the
-  move. A reorder within
-  the same parent keeps the saved local pose.
+  move. A reorder within the same parent keeps the saved local pose.
 - Everything that can be checked is checked before the original leaves the
   scene. If building the copy still throws, the original goes back where it
   was and the user is told; its components have already been removed, so its

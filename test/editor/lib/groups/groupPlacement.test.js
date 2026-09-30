@@ -11,6 +11,7 @@ import { isGroupableItem } from '@/editor/lib/groups/groupModel.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { dispatchToolCall } from '@/editor/lib/commands/registry.js';
+import { createReplayEntityFromManifest } from '@/editor/components/elements/AddLayerPanel/createLayerFunctions.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   committedWorldPosition,
@@ -269,6 +270,85 @@ describe('an item a route may not put in the open group', () => {
     scene.inspector.history.redo();
     expect(scene.notify.infoMessage).toHaveBeenCalledTimes(1);
     vi.useRealTimers();
+  });
+});
+
+describe('the notice for an item added outside the open group', () => {
+  // The notices each create gives, past any earlier one: a repeat of the same
+  // text is held back briefly.
+  function noticesFor(add) {
+    vi.setSystemTime(Date.now() + 60000);
+    scene.notify.infoMessage.mockClear();
+    add();
+    return scene.notify.infoMessage.mock.calls.map(([text]) => text);
+  }
+  const create = (definition) => () =>
+    scene.inspector.execute('entitycreate', definition);
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    scene.scopeGroups();
+    scene.openGroups('outer', 'inner');
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('tells the user an item that could be grouped, put at the top level by its route, can be dragged into the group (fails if it says the item cannot go in a group)', () => {
+    const draggable = [groupMessage('routePlacedAtTopLevel')];
+    // The Geo panel's flattening box and an OSM upgrade's street, as their
+    // routes create them: raw creates with no destination of their own.
+    expect(
+      noticesFor(
+        create({
+          'data-layer-name': 'Geo Flattening Shape',
+          components: { scale: '20 5 40', 'geo-flatten': 'mode: mesh' }
+        })
+      )
+    ).toEqual(draggable);
+    expect(
+      noticesFor(
+        create({
+          components: {
+            position: '10 0.1 4',
+            'managed-street': { sourceType: 'json-blob', synchronize: true }
+          }
+        })
+      )
+    ).toEqual(draggable);
+    expect(
+      noticesFor(() =>
+        createReplayEntityFromManifest({ agents: [{ mode: 'car' }] })
+      )
+    ).toEqual(draggable);
+    expect(
+      scene.root.lastElementChild.hasAttribute('street-traffic-replay')
+    ).toBe(true);
+    expect(draggable[0]).toContain('drag it there in the Layers panel');
+    expect(draggable[0]).not.toContain('cannot');
+  });
+
+  it('keeps "cannot go inside a group" for an item that cannot, and gives a 360° panorama its own reason with no invitation to drag it (fails if the notice ignores what the item is)', () => {
+    expect(noticesFor(create({ components: { shape: '' } }))).toEqual([
+      groupMessage('placedAtTopLevel')
+    ]);
+    expect(
+      noticesFor(
+        create({
+          class: 'scene-backdrop',
+          components: { scale: '-1 1 1' }
+        })
+      )
+    ).toEqual([groupMessage('backdropAtTopLevel')]);
+    expect(groupMessage('backdropAtTopLevel')).not.toContain('drag');
+  });
+
+  it('says "outside the open group" when the route put the item in another group, for either kind (fails if every such item is said to be at the top level)', () => {
+    const other = entityIn(scene.root, { id: 'other', cls: 'user-group' });
+    expect(
+      noticesFor(create({ parentEl: other, components: { position: '1 0 1' } }))
+    ).toEqual([groupMessage('routePlacedOutsideGroup')]);
+    expect(
+      noticesFor(create({ parentEl: other, components: { shape: '' } }))
+    ).toEqual([groupMessage('placedOutsideGroup')]);
   });
 });
 

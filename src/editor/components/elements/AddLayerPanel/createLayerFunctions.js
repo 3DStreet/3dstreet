@@ -9,6 +9,7 @@ import {
   SPLAT_EXTS
 } from '@shared/asset-upload/uploadAsset.js';
 import Events from '../../../lib/Events.js';
+import { BACKDROP_CLASS } from '../../../lib/groups/groupModel.js';
 import {
   beginPlacement,
   executePlacedCreate
@@ -718,6 +719,9 @@ export function createPanoramaSphere() {
   if (panoramaUrl && panoramaUrl !== '') {
     const definition = {
       element: 'a-entity',
+      // A backdrop around the whole scene rather than an item in it, so it
+      // never goes into a group (see groupModel.js).
+      class: BACKDROP_CLASS,
       components: {
         geometry:
           'primitive: sphere; radius: 100; segmentsWidth: 64; segmentsHeight: 32',
@@ -726,9 +730,6 @@ export function createPanoramaSphere() {
         'data-layer-name': 'Sphere Geometry • 360° Panorama'
       }
     };
-    // A backdrop around the whole scene rather than an item in it: it stays at
-    // the top level with a group open, where it would otherwise become the
-    // group's bounds.
-    executePlacedCreate(definition, { ticket: null });
+    executePlacedCreate(definition);
   }
 }

@@ -13,18 +13,23 @@ export const USER_GROUP_CLASS = 'user-group';
 const STREET_CONTAINER_ID = 'street-container';
 
 // Items that keep the parent the editor gives them, so they never move into or
-// out of a user group: street segments, shapes, the Starting View, anything
-// marked not to be reparented, and generated content. Each is named by a
-// component or attribute, or a class, that an entity and its data (an
-// `entitycreate` definition, or copied entity data) both carry, so the rule
-// reads the same for an item that exists and for one about to be created.
+// out of a user group: street segments, shapes, the Starting View and anything
+// marked not to be reparented, named by a component or attribute. Each is
+// something an entity and its data (an `entitycreate` definition, or copied
+// entity data) both carry, so the rule reads the same for an item that exists
+// and for one about to be created.
 const KEEPS_ITS_PARENT = [
   'street-segment',
   'shape',
   'viewer-start',
   'data-transform-no-reparent'
 ];
+// The same, named by a class, which the scene serializer saves: generated
+// content, and a backdrop that surrounds the whole scene (the 360° panorama),
+// which would otherwise become a group's bounds.
 const GENERATED_CLASS = 'autocreated';
+export const BACKDROP_CLASS = 'scene-backdrop';
+const KEEPS_ITS_PARENT_CLASSES = [GENERATED_CLASS, BACKDROP_CLASS];
 
 export function isUserGroup(el) {
   return !!el?.classList?.contains(USER_GROUP_CLASS);
@@ -70,7 +75,7 @@ export function canReparent(child, newParent) {
   if (
     isContainer(child) ||
     child.id === 'cameraRig' ||
-    child.classList.contains(GENERATED_CLASS) ||
+    KEEPS_ITS_PARENT_CLASSES.some((name) => child.classList.contains(name)) ||
     KEEPS_ITS_PARENT.some((name) => child.hasAttribute(name))
   ) {
     return false;
@@ -80,8 +85,9 @@ export function canReparent(child, newParent) {
 
 /**
  * May an item described by `data` (an `entitycreate` definition, or entity
- * data from the serializer) be placed in a group? The same rule as
- * canReparent's for an entity.
+ * data from the serializer) be placed in a group? The item-level half of
+ * canReparent's rule, the part an item's data carries; the parent and cycle
+ * checks are the caller's.
  */
 export function isGroupableItem(data) {
   const components = data?.components || {};
@@ -89,7 +95,7 @@ export function isGroupableItem(data) {
   const classes = Array.isArray(data?.class)
     ? data.class
     : String(data?.class || '').split(/\s+/);
-  return !classes.includes(GENERATED_CLASS);
+  return !KEEPS_ITS_PARENT_CLASSES.some((name) => classes.includes(name));
 }
 
 /** The user groups enclosing `el`, outermost first, excluding `el` itself. */

@@ -139,7 +139,8 @@ describe('an item and its data', () => {
       { attrs: ['shape'] },
       { attrs: ['viewer-start'] },
       { attrs: ['data-transform-no-reparent'] },
-      { cls: 'autocreated' }
+      { cls: 'autocreated' },
+      { cls: 'scene-backdrop' }
     ];
     for (const { attrs = [], cls } of keepsItsParent) {
       const el = add(s.root, { attrs, cls });
@@ -156,6 +157,17 @@ describe('an item and its data', () => {
       canReparent(s.model, s.groupA),
       isGroupableItem({ mixin: 'tree3', components: {} })
     ]).toEqual([true, true]);
+  });
+
+  it('keeps a 360° panorama out of every group by its saved class, in the string form a create definition gives (fails if only the card route knows)', () => {
+    expect(
+      isGroupableItem({
+        class: 'scene-backdrop',
+        components: { scale: '-1 1 1' }
+      })
+    ).toBe(false);
+    expect(isGroupableItem({ class: 'other scene-backdrop' })).toBe(false);
+    expect(isGroupableItem({ class: 'other' })).toBe(true);
   });
 });
 

@@ -2,6 +2,7 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.jsx';
+import { isGroupableItem } from '../groups/groupModel.js';
 import { notePlacedOutsideOpenGroup } from '../groups/groupPlacement.js';
 import { migrateImplicitStreetAlign } from '@/tested/migrate-street-align.js';
 
@@ -84,7 +85,10 @@ export class EntityPasteCommand extends Command {
 
     if (!this.executed) {
       this.executed = true;
-      notePlacedOutsideOpenGroup(entity, { requireParent: this.requireParent });
+      notePlacedOutsideOpenGroup(entity, {
+        requireParent: this.requireParent,
+        groupable: isGroupableItem(this.entityData)
+      });
     }
     return entity;
   }

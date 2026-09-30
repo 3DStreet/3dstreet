@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { History } from '@/editor/lib/history.js';
 import { commandsByType } from '@/editor/lib/commands/index.js';
 import { refuseGuardedTransform } from '@/editor/lib/transformGuard.js';
+import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 import SceneGraph from '@/editor/components/scenegraph/SceneGraph.jsx';
 import { boxMesh } from '../lib/groups/_groupFixtures.js';
 
@@ -333,6 +334,34 @@ describe('layer panel drop zones', () => {
     ).toBe('This element cannot be moved to a different parent.');
     expect(editor.history.undos).toHaveLength(0);
     expect(shape.parentNode).toBe(root);
+  });
+});
+
+describe('a 360° panorama', () => {
+  it('is offered no group row to drop into, and the guard refuses a forced move (fails if only the Add Layer card keeps it out)', async () => {
+    const g = makeEntity(root, { id: 'g', name: 'Group A', cls: 'user-group' });
+    const panorama = makeEntity(root, {
+      id: 'pano',
+      name: 'Sphere Geometry • 360° Panorama',
+      cls: 'scene-backdrop'
+    });
+    await renderPanel();
+
+    startDrag('Sphere Geometry • 360° Panorama');
+    expect(dragOver(row('Group A'), 0.5)).toBe(false);
+    drop(row('Group A'));
+    expect(reparents()).toEqual([]);
+
+    expect(
+      composedExecute('entityreparent', {
+        entity: panorama,
+        parentEl: 'g',
+        indexInParent: 0
+      })
+    ).toBe(groupMessage('illegalParent'));
+    expect(editor.history.undos).toHaveLength(0);
+    expect(panorama.parentNode).toBe(root);
+    expect(g.children).toHaveLength(0);
   });
 });
 

@@ -349,8 +349,10 @@ describe('placing from the Add Layer panel while a group is open', () => {
     expect(sphere.getAttribute('data-layer-name')).toBe(
       'Sphere Geometry • 360° Panorama'
     );
+    // The saved class that keeps it out of groups on every route.
+    expect(sphere.classList.contains('scene-backdrop')).toBe(true);
     expect(notify.infoMessage).toHaveBeenCalledWith(
-      groupMessage('placedAtTopLevel')
+      groupMessage('backdropAtTopLevel')
     );
   });
 

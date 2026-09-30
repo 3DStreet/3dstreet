@@ -48,6 +48,21 @@ export const groupMessages = defineMessages({
     defaultMessage:
       'This kind of item cannot go inside a group, so it was added outside the open group.'
   },
+  routePlacedAtTopLevel: {
+    id: 'groups.placement.routeTopLevel',
+    defaultMessage:
+      'This was added at the top level of the scene, not inside the open group. To put it in the group, drag it there in the Layers panel.'
+  },
+  routePlacedOutsideGroup: {
+    id: 'groups.placement.routeOutsideGroup',
+    defaultMessage:
+      'This was added outside the open group. To put it in the group, drag it there in the Layers panel.'
+  },
+  backdropAtTopLevel: {
+    id: 'groups.placement.backdropTopLevel',
+    defaultMessage:
+      'A 360° panorama surrounds the whole scene, so it cannot go inside a group. It was added at the top level of the scene.'
+  },
   reparentFailed: {
     id: 'groups.reparent.failed',
     defaultMessage:

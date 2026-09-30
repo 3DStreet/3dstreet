@@ -299,4 +299,24 @@ describe('a paste that cannot land where it began', () => {
       groupMessage('placedAtTopLevel')
     );
   });
+
+  it('pastes a 360° panorama at the top level with a group open, not into the group, and gives its own reason (fails if paste lets the backdrop become a member)', async () => {
+    const panorama = entityIn(scene.root, {
+      id: 'pano',
+      cls: 'scene-backdrop',
+      scale: '-1 1 1'
+    });
+    const { group } = groupWithMember();
+    await copy(panorama);
+    scene.openGroups('g');
+    await pasteFromClipboard();
+    const [, payload] = pastes()[0];
+    expect(payload.parentId).toBe('street-container');
+    expect(payload.requireParent).toBeUndefined();
+    expect(pastedElement().classList.contains('scene-backdrop')).toBe(true);
+    expect(group.querySelector('.scene-backdrop')).toBe(null);
+    expect(scene.notify.infoMessage).toHaveBeenCalledWith(
+      groupMessage('backdropAtTopLevel')
+    );
+  });
 });

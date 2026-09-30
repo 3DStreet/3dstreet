@@ -116,7 +116,12 @@ export class EntityCreateCommand extends Command {
     const firstRun = !this.entityId;
     const entity = createEntity(definition, callback, parentEl);
     this.entityId = entity.id;
-    if (firstRun) notePlacedOutsideOpenGroup(entity, this.definition);
+    if (firstRun) {
+      notePlacedOutsideOpenGroup(entity, {
+        requireParent: this.definition.requireParent,
+        groupable: isGroupableItem(this.definition)
+      });
+    }
     return entity;
   }
 
