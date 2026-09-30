@@ -4,6 +4,15 @@ import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  // Some editor modules keep JSX in `.js` files (entity.js renders toasts), which
+  // the default transform only accepts in `.jsx`. `exclude` keeps a dependency's
+  // own `src/` folder out of this rule if vitest ever inlines one.
+  oxc: {
+    lang: 'jsx',
+    include: /src[\\/].*\.jsx?$/,
+    exclude: /node_modules/,
+    jsx: { runtime: 'automatic' }
+  },
   test: {
     environment: 'jsdom',
     globals: true,
