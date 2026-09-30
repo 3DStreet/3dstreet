@@ -19,6 +19,7 @@ import useStore from '@/store';
 import { createUniqueId } from '../entity';
 import { isReparentInFlight } from '../commands/EntityReparentCommand.js';
 import { GroupAffordances } from './groupAffordances.js';
+import { ScopePresentation } from './scopePresentation.js';
 import {
   isHiddenInHierarchy,
   isUserGroup,
@@ -57,9 +58,11 @@ function sameIds(a, b) {
 
 /**
  * Create the scope controller for `inspector` and publish it as
- * `inspector.groupScope`; its markers are placed in `editorFrame`'s window.
+ * `inspector.groupScope`; its markers, and the outline and scrim of the open
+ * group, are placed in `editorFrame`'s window. `lines` are the viewport's
+ * screen-space line helpers (see ScopePresentation).
  */
-export function installGroupScope(inspector, editorFrame) {
+export function installGroupScope(inspector, editorFrame, { lines }) {
   const scope = new GroupScopeController(inspector);
   scope.unregisterFrame = editorFrame.register(
     (context) => scope.affordances.updateMarkers(context),
@@ -67,6 +70,12 @@ export function installGroupScope(inspector, editorFrame) {
     // uses this frame's box. Placing catches nothing per item, so a persistent
     // defect is dropped after a few frames rather than on the first.
     { order: 30, maxConsecutiveThrows: 5 }
+  );
+  scope.presentation = new ScopePresentation(
+    inspector,
+    scope,
+    editorFrame,
+    lines
   );
   inspector.groupScope = scope;
   return scope;
@@ -123,6 +132,7 @@ export class GroupScopeController {
     this.teardown.forEach((undo) => undo?.());
     this.teardown = [];
     this.unregisterFrame?.();
+    this.presentation?.dispose();
   }
 
   // ------------------------------------------------------------ read-only state

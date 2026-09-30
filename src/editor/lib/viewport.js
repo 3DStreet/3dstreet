@@ -1173,7 +1173,12 @@ export function Viewport(inspector) {
   trackLiveGroupBounds(editorFrame, sceneEl);
   // Installed before the selection handlers below, so the open groups follow
   // a selection before the controls are routed for it.
-  installGroupScope(inspector, editorFrame);
+  installGroupScope(inspector, editorFrame, {
+    lines: {
+      createLineMaterial: createFatLineMaterial,
+      setLinePositions: setFatLinePositions
+    }
+  });
 
   // A drawn group's box moved or resized this frame (emitted from the frame
   // window, after the scene's matrix update, so each redrawn helper updates
