@@ -9,7 +9,10 @@ import {
   withOriginalAppearance,
   withOriginalAppearanceSync
 } from '@/editor/lib/groups/scopeAttenuation.js';
-import { getPresentationFactor } from '@/tested/reference-layer-presentation.js';
+import {
+  getPresentationFactor,
+  subscribePresentationFactor
+} from '@/tested/reference-layer-presentation.js';
 import { captureViewportScreenshot } from '@/editor/lib/viewportScreenshot.js';
 import { group, item, mountEditor, solid } from './_editorHarness.js';
 
@@ -761,6 +764,73 @@ describe('failures', () => {
 // ------------------------------------------------------------------ leaks
 
 describe('switching between groups', () => {
+  it('keeps the outside faded in every render across a switch, redoing no map-layer or splat fading for what stays outside (a switch that restores first draws it at full strength)', () => {
+    const A = group(h.streetContainer, { id: 'A' });
+    const a1 = solid(A, [0, 0, 0], [1, 1, 1]);
+    const B = group(A, { id: 'B' });
+    const b1 = solid(B, [2, 0, 0], [3, 1, 1]);
+    const tree = solid(h.streetContainer, [8, 0, 0], [9, 1, 1]);
+    const outsideBoth = splatEntity(h.streetContainer, 'splat-out').splatMesh;
+    const inA = splatEntity(A, 'splat-a').splatMesh;
+    const meshes = [meshOf(tree), meshOf(a1), meshOf(b1)];
+    const originals = meshes.map((mesh) => mesh.material);
+    const faded = (drawn, k) =>
+      drawn[k] !== originals[k] && Math.abs(drawn[k].opacity - 0.2) < 1e-9;
+    h.inspector.selectEntity(a1);
+    enter(A);
+
+    const factors = [];
+    const unsubscribe = subscribePresentationFactor((f) => factors.push(f));
+    const writes = [];
+    let opacity = outsideBoth.opacity;
+    Object.defineProperty(outsideBoth, 'opacity', {
+      configurable: true,
+      get: () => opacity,
+      set: (value) => {
+        opacity = value;
+        writes.push(value);
+      }
+    });
+
+    // Into B: a1 is now outside too; the tree never stops being faded.
+    h.scope.open(B);
+    for (let i = 0; i < 3; i++) {
+      const drawn = drawnWith(...meshes);
+      expect([faded(drawn, 0), faded(drawn, 1), drawn[2]]).toEqual([
+        true,
+        true,
+        originals[2]
+      ]);
+      runFrameRequests();
+    }
+    expect(inA.opacity).toBeCloseTo(0.2, 9);
+
+    // Back out to A: a1 and its splat are inside again, at once.
+    h.escape();
+    expect(h.openIds()).toEqual(['A']);
+    for (let i = 0; i < 3; i++) {
+      const drawn = drawnWith(...meshes);
+      expect([faded(drawn, 0), drawn[1], drawn[2]]).toEqual([
+        true,
+        originals[1],
+        originals[2]
+      ]);
+      runFrameRequests();
+    }
+    expect(inA.opacity).toBe(1);
+    expect(outsideBoth.opacity).toBeCloseTo(0.2, 9);
+    expect(writes).toEqual([]);
+    expect(factors).toEqual([]);
+    unsubscribe();
+
+    // Leaving the last group still puts everything back.
+    h.escape();
+    expect(h.openIds()).toEqual([]);
+    expect(outsideBoth.opacity).toBe(1);
+    expect(getPresentationFactor()).toBe(1);
+    expect(drawnWith(...meshes)).toEqual(originals);
+  });
+
   it('copies each outside material once, and leaves no callbacks or listeners behind', () => {
     const A = group(h.streetContainer, { id: 'A' });
     const a1 = solid(A, [0, 0, 0], [1, 1, 1]);

@@ -7,7 +7,9 @@
 // appear in the same task as the change of open group, so they are on screen
 // in the next frame. The treatment of objects outside the group
 // (`attenuation`) is costlier and follows: it is enabled after the first
-// render that shows the outline and scrim, one animation frame later.
+// render that shows the outline and scrim, one animation frame later. A
+// switch between open groups keeps the outside faded throughout: the new
+// group's treatment replaces the old one's in the same task.
 // Every change of open group makes pending work for the previous one
 // obsolete: it is cancelled, and anything that still runs checks the scope
 // generation it was scheduled for.
@@ -131,9 +133,9 @@ export class ScopePresentation {
 
   scopeChanged(generation) {
     this.cancelPending();
-    this.attenuation?.restore();
     const groupEl = this.innermostScope();
     if (!groupEl) {
+      this.attenuation?.restore();
       this.clear();
       return;
     }
@@ -145,6 +147,16 @@ export class ScopePresentation {
     camera.updateMatrixWorld();
     groupEl.object3D.updateWorldMatrix(true, false);
     this.present(camera);
+
+    // A switch from one open group to another, with the outside already
+    // faded: fade the new outside in the same step, so nothing outside is
+    // ever drawn at full strength in between.
+    if (this.attenuation?.enabled) {
+      this.attenuation.switchTo(groupEl, generation);
+      mark(SCOPE_MARKS.attenuationEnabled, generation);
+      return;
+    }
+    this.attenuation?.restore();
 
     const pending = { generation, unregisterAfter: null, frameRequest: null };
     pending.unregisterAfter = this.editorFrame.register(

@@ -186,6 +186,30 @@ export class ScopeAttenuation {
     );
   }
 
+  /**
+   * Fade everything outside `groupEl` instead of the group faded now, in one
+   * step: nothing outside either is drawn unfaded in between, and the map
+   * layers and the splats outside both are left as they are. Splats inside
+   * `groupEl` get their own opacity back. With nothing faded now, as apply().
+   */
+  switchTo(groupEl, generation) {
+    if (!this.enabled || !groupEl?.isConnected) {
+      this.apply(groupEl, generation);
+      return;
+    }
+    this.revertWindow();
+    this.generation = generation;
+    this.scopeId = groupEl.id;
+    // Fades the splats outside groupEl that are not faded yet.
+    this.classifyAll(groupEl);
+    for (const [splat, record] of this.fadedSplats) {
+      if (this.splats.has(splat)) continue;
+      if (splat.opacity === record.applied) splat.opacity = record.original;
+      this.fadedSplats.delete(splat);
+    }
+    this.firstFramePending = true;
+  }
+
   /** Put everything back as it was. Faded copies are kept for reuse. */
   restore() {
     this.revertWindow();
