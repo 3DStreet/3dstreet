@@ -42,7 +42,15 @@ defineEntityElement();
 
 let editor;
 let notify;
-const onHideCursor = () => editor.inspector.selectEntity(null);
+// As the inspector does when a tool takes the canvas and gives it back
+// (index.jsx): the cursor pauses, and the selection is cleared.
+const onHideCursor = () => {
+  editor.cursorEl.isPlaying = false;
+  editor.inspector.selectEntity(null);
+};
+const onShowCursor = () => {
+  editor.cursorEl.isPlaying = true;
+};
 
 beforeEach(() => {
   editor = mountEditor({ gizmo: true });
@@ -55,25 +63,31 @@ beforeEach(() => {
   editor.camera.updateMatrixWorld();
   // As the inspector does when a tool takes the cursor (index.jsx).
   Events.on('hidecursor', onHideCursor);
+  Events.on('showcursor', onShowCursor);
   notify = { infoMessage: vi.fn(), warningMessage: vi.fn() };
   vi.stubGlobal('STREET', { notify });
 });
 
 afterEach(() => {
   Events.off('hidecursor', onHideCursor);
+  Events.off('showcursor', onShowCursor);
   cleanup();
   editor.dispose();
   document.body.innerHTML = '';
   vi.unstubAllGlobals();
 });
 
+// A click on the canvas as the browser sends it: pointer then mouse events.
 function click(canvas, x, y) {
-  fireEvent.pointerDown(canvas, { clientX: x, clientY: y });
-  fireEvent.pointerUp(canvas, { clientX: x, clientY: y });
+  const at = { clientX: x, clientY: y, button: 0, detail: 1 };
+  fireEvent.pointerDown(canvas, at);
+  fireEvent.mouseDown(canvas, at);
+  fireEvent.pointerUp(canvas, at);
+  fireEvent.mouseUp(canvas, at);
 }
 
 describe('drawing a shape with a group open', () => {
-  it('keeps the group open when the tool is picked, and puts the shape at the top level with a notice (fails if picking the tool closes the group, or the shape is put in the group)', () => {
+  it('keeps the group open while the tool is picked and used, and puts the shape at the top level with a notice (fails if picking the tool or drawing closes the group, or the shape is put in the group)', () => {
     const { inspector, streetContainer } = editor;
     const outer = group(streetContainer, { id: 'outer' });
     const member = solid(outer, [0, 0, 0], [2, 2, 2], { id: 'member' });
@@ -95,6 +109,9 @@ describe('drawing a shape with a group open', () => {
     const canvas = editor.sceneEl.canvas;
     click(canvas, 500, 500);
     click(canvas, 700, 520);
+    // The clicks are the tool's: nothing selected, the group still open.
+    expect(inspector.selectedEntity).toBe(null);
+    expect(editor.openIds()).toEqual(['outer']);
     act(() => {
       document.body.dispatchEvent(
         new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })

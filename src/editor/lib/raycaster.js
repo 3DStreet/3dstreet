@@ -154,8 +154,12 @@ export function initRaycaster(inspector) {
     );
   }
 
+  // A tool that takes the canvas (the shape tool) pauses the cursor: its clicks
+  // are the tool's, and the group rules keep out of them.
   function groupsActive() {
-    return !!inspector.groupScope?.isActive();
+    return (
+      mouseCursor.isPlaying !== false && !!inspector.groupScope?.isActive()
+    );
   }
 
   // The group pick targets at a client point, cast afresh from the camera: a
