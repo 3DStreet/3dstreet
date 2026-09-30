@@ -174,6 +174,74 @@ describe('the selection and isolation rules', () => {
     expect(selected()).toBe(A);
   });
 
+  describe('one physical click, resolved once', () => {
+    // The raycaster's container listener and the cursor's run in the order
+    // they were added, which differs between a freshly opened editor and one
+    // back from the Viewer; each click here must do one step in either.
+    function remount(cursorFirst) {
+      h.dispose();
+      Events.removeAllListeners();
+      document.body.replaceChildren();
+      h = mountEditor({ cursorFirst });
+      Events.on('objectfocus', onFocus);
+      Events.on('nav-experimental:doubleclick', onTeleport);
+    }
+
+    it.each([
+      ['the raycaster first', false],
+      ['the cursor first', true]
+    ])(
+      'takes one step per click with %s, for groups and for ordinary items (a double resolution opens and selects inside in one click)',
+      (_, cursorFirst) => {
+        remount(cursorFirst);
+        const { A, B, outside } = nestedScene();
+        h.aimDown(...TREE);
+        const steps = [];
+        for (let i = 0; i < 4; i++) {
+          h.click();
+          steps.push([selected()?.id ?? null, h.openIds().join('')]);
+        }
+        expect(steps).toEqual([
+          ['A', ''],
+          ['A', 'A'],
+          ['B', 'A'],
+          ['B', 'AB']
+        ]);
+        expect(selected()).toBe(B);
+
+        // One level out per outside click, then ordinary selection.
+        h.aimDown(...OUT);
+        h.click();
+        expect(h.openIds()).toEqual(['A']);
+        expect(selected()).toBe(A);
+        h.click();
+        expect(h.openIds()).toEqual([]);
+        expect(selected()).toBe(outside);
+        // No groups in play: an ordinary click selects, empty ground deselects.
+        h.inspector.selectEntity(null);
+        h.click();
+        expect(selected()).toBe(outside);
+        h.aimDown(...GROUND);
+        h.click();
+        expect(selected()).toBe(null);
+      }
+    );
+
+    it('takes one step per touch tap, which reaches only the cursor, also right after a mouse click', () => {
+      const { A, B } = nestedScene();
+      h.aimDown(...TREE);
+      // A mouse click first: the tap that follows must not be taken for part of it.
+      h.click();
+      expect(selected()).toBe(A);
+      h.tap();
+      expect(h.openIds()).toEqual(['A']);
+      expect(selected()).toBe(A);
+      h.tap();
+      expect(selected()).toBe(B);
+      expect(h.openIds()).toEqual(['A']);
+    });
+  });
+
   it('lets a member be clicked through a nearer outside object', () => {
     const { a1 } = nestedScene();
     // Floating above a1, outside A's box (which is 1 m tall).

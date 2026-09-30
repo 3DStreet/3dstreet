@@ -26,6 +26,17 @@ import { boxMesh, entity } from './_groupFixtures.js';
 // driven with pointer events: a sized canvas, the helper scene inside the
 // main scene (as the editor mounts it), and A-Frame's system registry, so the
 // gizmo moves its entity from its own system tick as in the editor.
+//
+// The fake cursor listens on the canvas as A-Frame's cursor does (cursor.js
+// onCursorDown/onCursorUp): its mousedown/touchstart emits `mousedown` on the
+// cursor entity, and its mouseup/touchend emits `click` when the press began
+// and ended on the same intersected entity, carrying the originating event.
+// So a click is ONE mouseup event on the canvas, seen by the raycaster's
+// container listener and by the cursor in the order they were added, as in
+// the browser. In the editor that order changes with its history (the cursor
+// re-adds its listeners when it plays; the raycaster when it is enabled), so
+// `mountEditor({ cursorFirst })` picks it: by default the raycaster's run
+// first, the order a freshly opened editor has.
 
 function shownInScene(object) {
   for (let node = object; node; node = node.parent) {
@@ -40,6 +51,47 @@ function fakeCursorEntity(sceneEl) {
   const cursor = {
     intersectedEl: null,
     clearCurrentIntersection: vi.fn()
+  };
+  // As A-Frame's cursor: one detail object, reused for every event it emits
+  // (so a touch click still carries the last mouse click's mouseEvent).
+  const eventDetail = {};
+  let cursorDown = false;
+  let cursorDownEl = null;
+  const emit = (type, original) => {
+    eventDetail.intersectedEl = cursor.intersectedEl;
+    if (original instanceof MouseEvent) eventDetail.mouseEvent = original;
+    else if (original) eventDetail.touchEvent = original;
+    el.dispatchEvent(
+      new CustomEvent(type, { detail: eventDetail, bubbles: true })
+    );
+  };
+  const onCursorDown = (event) => {
+    cursorDown = true;
+    // A touch has no hover to aim with: the cursor raycasts on touchstart.
+    if (event.type === 'touchstart') {
+      el.components.raycaster.checkIntersections();
+      event.preventDefault();
+    }
+    emit('mousedown', event);
+    cursorDownEl = cursor.intersectedEl;
+  };
+  const onCursorUp = (event) => {
+    if (!cursorDown) return;
+    cursorDown = false;
+    emit('mouseup', event);
+    if (cursor.intersectedEl && cursorDownEl === cursor.intersectedEl) {
+      emit('click', event);
+    }
+    cursorDownEl = null;
+    if (event.type === 'touchend') event.preventDefault();
+  };
+  el.listenOnCanvas = (canvas) => {
+    for (const type of ['mousedown', 'touchstart']) {
+      canvas.addEventListener(type, onCursorDown);
+    }
+    for (const type of ['mouseup', 'touchend']) {
+      canvas.addEventListener(type, onCursorUp);
+    }
   };
   const raycaster = {
     raycaster: three,
@@ -70,7 +122,7 @@ function fakeCursorEntity(sceneEl) {
   return el;
 }
 
-export function mountEditor({ gizmo = false } = {}) {
+export function mountEditor({ gizmo = false, cursorFirst = false } = {}) {
   const canvas = document.createElement('canvas');
   document.body.append(canvas);
   if (gizmo) {
@@ -161,12 +213,14 @@ export function mountEditor({ gizmo = false } = {}) {
   vi.stubGlobal('AFRAME', aframe);
 
   const cursorEl = fakeCursorEntity(sceneEl);
+  if (cursorFirst) cursorEl.listenOnCanvas(canvas);
   // The raycaster creates its cursor entity first thing in the viewport.
   const create = vi
     .spyOn(document, 'createElement')
     .mockImplementationOnce(() => cursorEl);
   Viewport(inspector);
   create.mockRestore();
+  if (!cursorFirst) cursorEl.listenOnCanvas(canvas);
   Shortcuts.init(inspector);
   Shortcuts.enable();
 
@@ -223,36 +277,28 @@ export function mountEditor({ gizmo = false } = {}) {
       raycaster.checkIntersections();
     },
     /**
-     * A stationary left click with click count `detail`, in the browser's
-     * order: container mousedown; on release the cursor's click (only when
-     * the ray hits an entity, as A-Frame's cursor), then the container's
-     * mouseup, which bubbles after it.
+     * A stationary left click with click count `detail`: one mousedown and
+     * one mouseup on the canvas, each seen by the raycaster and the cursor in
+     * the order they listen (see mountEditor).
      */
     click({ detail = 1 } = {}) {
       raycaster.checkIntersections();
       mouse('mousedown', detail);
       lastPress.x = pointer.x;
       lastPress.y = pointer.y;
-      const up = new MouseEvent('mouseup', {
-        clientX: pointer.x,
-        clientY: pointer.y,
-        button: 0,
-        detail
-      });
-      if (raycaster.intersections.length) {
-        cursorEl.dispatchEvent(
-          new CustomEvent('click', { detail: { mouseEvent: up } })
+      mouse('mouseup', detail);
+    },
+    /**
+     * A touch tap, as the browser delivers it to the canvas once the cursor
+     * has cancelled the touch: touchstart and touchend, and no mouse events.
+     */
+    tap() {
+      const touch = (type) =>
+        canvas.dispatchEvent(
+          new TouchEvent(type, { bubbles: true, cancelable: true })
         );
-      }
-      canvas.dispatchEvent(
-        new MouseEvent('mouseup', {
-          clientX: pointer.x,
-          clientY: pointer.y,
-          button: 0,
-          detail,
-          bubbles: true
-        })
-      );
+      touch('touchstart');
+      touch('touchend');
     },
     dblclick() {
       mouse('dblclick', 2);

@@ -299,10 +299,22 @@ export function initRaycaster(inspector) {
   // clicks with 1-2px of hand jitter, common on trackpads — revisit if
   // dead clicks get reported.)
   const CLICK_MAX_DRAG_PX = 0;
-  // A press is resolved once, and only if the container saw it begin: the
-  // cursor's click (an entity hit) resolves it first, and the container's
-  // mouseup that follows (empty space) only acts on a press no one resolved.
-  // A press a gizmo claimed never reaches the container's mousedown, so its
+  // The end of a mouse press reaches two listeners on the canvas: the
+  // container's mouseup below, and the cursor's own mouseup, which emits its
+  // click when the press began and ended on one entity. They run in the order
+  // they were added, and that order changes: pausing and playing the cursor
+  // (the editor opening, a tool taking the canvas) re-adds the cursor's, and
+  // enable() re-adds the container's. So neither may assume it runs first:
+  // whichever resolves the press marks it, and the other then leaves it
+  // alone. A touch tap reaches only the cursor (it cancels the touch, so no
+  // mouse events follow), which is why the cursor's mousedown also starts a
+  // press.
+  let pressResolved = false;
+  mouseCursor.addEventListener('mousedown', () => {
+    pressResolved = false;
+  });
+  // The container's mouseup acts only on a press the container saw begin. A
+  // press a gizmo claimed never reaches the container's mousedown, so its
   // mouseup, if the browser sends one, resolves nothing.
   let pressSeen = false;
 
@@ -323,12 +335,15 @@ export function initRaycaster(inspector) {
   }
 
   function handleClick(evt) {
-    pressSeen = false;
+    if (pressResolved) {
+      // The container's mouseup ran first and resolved this press.
+      mouseCursor.components.cursor.clearCurrentIntersection(false);
+      return;
+    }
+    pressResolved = true;
     // Compute up position from the click event's source mouseup rather
-    // than the side-state onUpPosition. The cursor component emits
-    // click synchronously from inside its canvas mouseup handler, which
-    // runs before our container bubble mouseup — so onUpPosition would
-    // be stale (the previous click's value). evt.detail.mouseEvent is
+    // than the side-state onUpPosition, which the container's mouseup may
+    // not have written yet (see pressResolved). evt.detail.mouseEvent is
     // the originating mouseup; reading from it is order-independent.
     const upEvt = evt && evt.detail && evt.detail.mouseEvent;
     // MouseEvent.detail is the browser's click count: 1 for a fresh click,
@@ -376,6 +391,7 @@ export function initRaycaster(inspector) {
     event.preventDefault();
     onDownPosition.set(event.clientX, event.clientY);
     pressSeen = true;
+    pressResolved = false;
   }
 
   function onMouseUp(event) {
@@ -388,13 +404,13 @@ export function initRaycaster(inspector) {
     inspector.gizmoCapturedPress = false;
     const seen = pressSeen;
     pressSeen = false;
-    if (seen) handleEmptySpaceClick(event, gizmoCaptured);
+    if (seen && !pressResolved) handleEmptySpaceClick(event, gizmoCaptured);
   }
 
   // Empty-space clicks never reach handleClick — the cursor component only
   // emits `click` when the press and release both landed on the same
   // intersected entity — so the miss case is caught here, on the container
-  // mouseup that bubbles after it. Two things happen on a miss:
+  // mouseup. Two things happen on a miss:
   //   - deselect (#1992)
   //   - probe for an OSM street way under the cursor's ground point and
   //     offer it for upgrade (#1930); osm3d ground layers are
@@ -418,20 +434,21 @@ export function initRaycaster(inspector) {
     if (onDownPosition.distanceTo(onUpPosition) > CLICK_MAX_DRAG_PX) {
       return;
     }
-    // With groups in play the press is resolved here exactly when the cursor
-    // did not resolve it: empty space as far as the scene is concerned, but
-    // inside an open group or on a group's box or marker it still counts.
+    // With groups in play every press is resolved with the group rules,
+    // whether or not it hit an entity: empty space as far as the scene is
+    // concerned, but inside an open group or on a group's box or marker it
+    // still counts.
     if (groupsActive()) {
+      pressResolved = true;
       resolveGroupClick(event.detail || 1);
       return;
     }
-    // When the click hit an entity, handleClick already ran (the cursor's
-    // clearCurrentIntersection(false) re-reads the still-current
-    // intersections synchronously, so getIntersectedEl() is not blanked by
-    // it) — nothing to do here.
+    // A click on an entity is the cursor's to resolve (handleClick), before
+    // or after this — nothing to do here.
     if (getIntersectedEl()) {
       return;
     }
+    pressResolved = true;
     useStore.getState().setOsmWayCandidate(probeOsmWayAtCursor(mouseCursor));
     if (inspector.selectedEntity) {
       inspector.selectEntity(null);

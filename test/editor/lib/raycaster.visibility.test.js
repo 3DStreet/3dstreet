@@ -109,20 +109,24 @@ function mountCursor() {
   raycaster.raycaster.ray.origin.set(0, 20, 0);
   raycaster.raycaster.ray.direction.set(0, -1, 0);
 
-  // A still click at one point, through the cursor's `click`.
+  // A still click at one point. Its one mousedown and one mouseup reach the
+  // container's listeners and the cursor's (which emits `mousedown`, and
+  // `click` on an entity hit, with the mouseup as its mouseEvent), in the
+  // order a freshly opened editor runs them: the container's first.
   const click = () => {
     raycaster.checkIntersections();
     const at = { clientX: 10, clientY: 10, button: 0, detail: 1 };
     inspector.container.dispatchEvent(
       new MouseEvent('mousedown', { ...at, bubbles: true })
     );
+    cursorEl.dispatchEvent(new CustomEvent('mousedown', { detail: {} }));
     const up = new MouseEvent('mouseup', { ...at, bubbles: true });
+    inspector.container.dispatchEvent(up);
     if (raycaster.intersections.length) {
       cursorEl.dispatchEvent(
         new CustomEvent('click', { detail: { mouseEvent: up } })
       );
     }
-    inspector.container.dispatchEvent(up);
     return inspector.selectedEntity;
   };
   return { sceneEl, inspector, raycaster, click };
