@@ -183,6 +183,61 @@ describe('live group bounds in the editor frame', () => {
     expect(error).toHaveBeenCalledTimes(1);
   });
 
+  it('forgets the box of a group once it is no longer drawn, so a later read measures it afresh (fails if the stale box is kept)', () => {
+    const g = group(sceneEl);
+    const member = entity(g);
+    boxMesh(member, [0, 0, 0], [1, 1, 1]);
+    inspector.selectedEntity = g;
+    frame();
+    inspector.selectedEntity = null;
+    frame();
+    member.object3D.position.x = 5;
+    expectBox(getGroupBounds(g), [5, 0, 0], [6, 1, 1]);
+  });
+
+  it('still measures the other drawn group in a frame where one fails to measure (fails if one failure ends the pass)', () => {
+    const a = group(sceneEl);
+    a.id = 'scope-a';
+    const aMesh = boxMesh(entity(a), [0, 0, 0], [1, 1, 1]);
+    const b = group(sceneEl);
+    b.id = 'scope-b';
+    const bMember = entity(b);
+    boxMesh(bMember, [0, 0, 0], [1, 1, 1]);
+    inspector.selectedEntity = a;
+    inspector.groupScope = { openStack: ['scope-b'] };
+    frame();
+    expect(emitted).toEqual([a, b]);
+
+    aMesh.geometry.boundingBox = null;
+    aMesh.geometry.computeBoundingBox = () => {
+      throw new Error('mid-load');
+    };
+    bMember.object3D.position.x = 5;
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    frame(() => expectBox(getGroupBounds(b), [5, 0, 0], [6, 1, 1]));
+    expect(emitted).toEqual([a, b, b]);
+  });
+
+  it('measures a splat member again when its group starts being drawn again (fails if the box cached before is trusted)', () => {
+    const g = group(sceneEl);
+    const splatEl = entity(g);
+    let length = 3;
+    splatEl.components.splat = {
+      getBoundingBox: (centersOnly, target) =>
+        target.set(new THREE.Vector3(0, 0, 0), new THREE.Vector3(length, 1, 1))
+    };
+    inspector.selectedEntity = g;
+    frame();
+    expectBox(getGroupBounds(g), [0, 0, 0], [3, 1, 1]);
+    inspector.selectedEntity = null;
+    frame();
+    // More of it streamed in meanwhile, with no load event.
+    length = 6;
+    inspector.selectedEntity = g;
+    frame();
+    expectBox(getGroupBounds(g), [0, 0, 0], [6, 1, 1]);
+  });
+
   it('keeps one box for a group whose member moves every frame (fails if each change makes a new box)', () => {
     const g = group(sceneEl);
     const member = entity(g);

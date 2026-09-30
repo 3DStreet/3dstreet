@@ -155,4 +155,26 @@ describe('editor frame window', () => {
     frame();
     expect(callback).toHaveBeenCalledTimes(1);
   });
+
+  it('skips a callback unregistered by an earlier one in the same pass (fails if the pass runs a list taken before the removal)', () => {
+    const editorFrame = installEditorFrame(sceneEl);
+    const later = vi.fn();
+    const unregister = {};
+    editorFrame.register(() => unregister.later(), { order: 1 });
+    unregister.later = editorFrame.register(later, { order: 2 });
+    frame();
+    frame();
+    expect(later).not.toHaveBeenCalled();
+  });
+
+  it('treats every render as a new frame on a scene with no clock', () => {
+    const editorFrame = installEditorFrame(sceneEl);
+    const perFrame = vi.fn();
+    editorFrame.register(perFrame);
+    sceneEl.time = undefined;
+    frame({ newFrame: false });
+    frame({ newFrame: false });
+    expect(perFrame).toHaveBeenCalledTimes(2);
+    expect(perFrame.mock.calls.every(([c]) => c.firstOfFrame)).toBe(true);
+  });
 });

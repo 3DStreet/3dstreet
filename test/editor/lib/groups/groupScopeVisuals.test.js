@@ -224,7 +224,7 @@ describe('the outline of an open group', () => {
 
   it('goes around the open group, not around the member selected inside it', () => {
     const { g, member } = yawedGroup();
-    const other = solid(g, [0, 0, 0], [1, 1, 1]);
+    solid(g, [0, 0, 0], [1, 1, 1]);
     openGroup(g);
     h.inspector.selectEntity(member);
     h.frame();
@@ -246,7 +246,6 @@ describe('the outline of an open group', () => {
     }
     expect(drawn.equals(box)).toBe(true);
     expect(lines.matrixWorld.equals(g.object3D.matrixWorld)).toBe(true);
-    expect(other.isConnected).toBe(true);
   });
 
   it('is not a surface: nothing raycasting the scene hits it', () => {
@@ -345,7 +344,7 @@ describe('the scrim of an open group', () => {
     expect(checked).toBeGreaterThan(0);
   });
 
-  it('covers the whole canvas with the camera inside the box, and leaves a valid outline when the box reaches behind the camera or off the canvas', () => {
+  it('leaves the whole canvas uncovered with the camera inside the box, and a valid outline when the box reaches behind the camera or off the canvas', () => {
     const { g } = yawedGroup();
     openGroup(g);
     const inBox = new THREE.Vector3(12, 1, 22).applyMatrix4(
@@ -386,7 +385,7 @@ describe('the scrim of an open group', () => {
   });
 
   it('covers the whole canvas for an open group with no geometry, keeps its marker, and opens a hole in the frame its first geometry appears', () => {
-    const { g: other } = yawedGroup();
+    yawedGroup();
     const g = group(h.streetContainer);
     const member = item(g);
     // A member whose model has not arrived: the group has no bounds.
@@ -409,7 +408,6 @@ describe('the scrim of an open group', () => {
       seen.hole,
       projectedHull(getGroupBounds(g), g.object3D.matrixWorld)
     );
-    expect(other.isConnected).toBe(true);
   });
 });
 

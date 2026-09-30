@@ -818,6 +818,20 @@ describe('a press on a group handle', () => {
     expect(h.inspector.selectedEntity).not.toBe(member);
   });
 
+  it('moves the group for a release far from the press with no pointer move between (fails if such a release is read as a click, or dropped)', () => {
+    const { g } = farGroup();
+    select(g);
+    const calls = spyExecute();
+    const start = pad();
+    press(start);
+    release(offset(start, 40));
+    h.frame();
+    h.frame();
+    expect(g.object3D.position.x).not.toBe(0);
+    expect(calls.map((c) => c.args[0])).toEqual(['multi']);
+    expect(h.openIds()).toEqual([]);
+  });
+
   it('drags rather than opens when a coalesced sample went 2 px out, though every event reported 0 px', () => {
     const { g } = farGroup();
     select(g);
@@ -1051,7 +1065,7 @@ describe('Escape and lost presses on a group handle', () => {
   it.each([
     ['blur', () => window.dispatchEvent(new Event('blur'))],
     ['pointercancel', (at) => send('pointercancel', at)],
-    ['a tool switch', () => h.inspector.selectEntity(null)]
+    ['the selection being cleared', () => h.inspector.selectEntity(null)]
   ])(
     'forgets a held press and its magenta box on %s, and the release opens nothing',
     (_, lose) => {
@@ -1068,6 +1082,23 @@ describe('Escape and lost presses on a group handle', () => {
       expect(h.openIds()).toEqual([]);
     }
   );
+});
+
+describe('a held press on a group handle when the editor is left', () => {
+  it('is forgotten: back in the editor no press shows and nothing has opened (fails if leaving the editor keeps the press)', () => {
+    const { g } = farGroup();
+    select(g);
+    const at = handlePoint('move', { overBoxOf: g });
+    press(at);
+    expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.4);
+    useStore.getState().setIsInspectorEnabled(false);
+    h.frame();
+    release(at);
+    useStore.getState().setIsInspectorEnabled(true);
+    h.frame();
+    expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.3);
+    expect(h.openIds()).toEqual([]);
+  });
 });
 
 describe('the magenta box during a press', () => {

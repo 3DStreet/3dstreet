@@ -686,8 +686,17 @@ describe('entering and leaving', () => {
     expect(treeMesh.material.opacity).toBe(1);
   });
 
-  it('costs nothing per frame while no group is open', () => {
-    const { treeMesh } = simpleScene();
+  it('costs nothing per frame while no group is open, before a group is opened and after it closes (fails if the render window stays registered)', () => {
+    const { G, member, treeMesh } = simpleScene();
+    const fadeWindow = vi.spyOn(h.scope.attenuation, 'fadeWindow');
+    const endWindow = vi.spyOn(h.scope.attenuation, 'endWindow');
+    h.inspector.selectEntity(member);
+    enter(G);
+    h.frame();
+    expect(fadeWindow).toHaveBeenCalled();
+    h.scope.close(null);
+    fadeWindow.mockClear();
+    endWindow.mockClear();
     const frame = installEditorFrame(h.sceneEl);
     const callbacks = () => frame.before.length + frame.after.length;
     const baseline = callbacks();
@@ -703,6 +712,8 @@ describe('entering and leaving', () => {
     expect(writes).toEqual([]);
     expect(clone).not.toHaveBeenCalled();
     expect(callbacks()).toBe(baseline);
+    expect(fadeWindow).not.toHaveBeenCalled();
+    expect(endWindow).not.toHaveBeenCalled();
     expect(getPresentationFactor()).toBe(1);
   });
 });
@@ -892,7 +903,13 @@ describe('switching between groups', () => {
         return remove(type, ...rest);
       }
     );
-    const watched = ['object3dset', 'child-attached', 'model-loaded'];
+    const watched = [
+      'object3dset',
+      'child-attached',
+      'model-loaded',
+      'object3dremove',
+      'child-detached'
+    ];
     const counts = () => [
       callbacks(),
       ...watched.map((t) => listeners[t] || 0)

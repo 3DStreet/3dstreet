@@ -12,7 +12,11 @@ import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { dispatchToolCall } from '@/editor/lib/commands/registry.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
-import { entityIn, mountPlacementScene } from './_placementHarness.js';
+import {
+  committedWorldPosition,
+  entityIn,
+  mountPlacementScene
+} from './_placementHarness.js';
 import { expectMatrixClose, worldOf } from './_entityElement.js';
 
 vi.mock('@shared/asset-upload', async (importOriginal) => ({
@@ -133,6 +137,33 @@ describe('an entity created by the AI assistant', () => {
     expect(scene.creates()).toHaveLength(0);
   });
 
+  it('puts a street it creates inside the open group at the world position it gave (fails if the street route skips placement)', async () => {
+    const group = entityIn(scene.root, {
+      id: 'scope',
+      cls: 'user-group',
+      position: '10 0 5',
+      rotation: '0 90 0'
+    });
+    scene.openGroups('scope');
+    // No component is registered; the street is checked against no schema.
+    globalThis.AFRAME.components = {};
+    // The tool then waits for the street to settle, which it never does here.
+    vi.useFakeTimers();
+    const done = dispatchToolCall('managedStreetCreate', {
+      position: '12 0 5'
+    }).catch(() => {});
+    await vi.advanceTimersByTimeAsync(5000);
+    await done;
+    vi.useRealTimers();
+
+    const [create] = scene.creates();
+    expect(create[1].parentEl).toBe(group);
+    expect(create[1].requireParent).toBe(true);
+    const world = committedWorldPosition(scene.root, create);
+    expect(world.x).toBeCloseTo(12, 9);
+    expect(world.z).toBeCloseTo(5, 9);
+  });
+
   it('with no group open, is created at the top level with the values given', async () => {
     await dispatchToolCall('entityCreate', { position: '12 0 5' });
     const [[, payload]] = scene.creates();
@@ -213,7 +244,10 @@ describe('an item a route may not put in the open group', () => {
     );
   });
 
-  it('says nothing when no group is open, or when the item went into the group', () => {
+  it('says nothing when no group is open, when the item went into the group, or when redo brings it back; says it once when it lands outside (fails if the notice repeats on redo)', () => {
+    // Past any notice an earlier test gave: repeats are held back briefly.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + 60000);
     const { inner } = scene.scopeGroups();
     scene.inspector.execute('entitycreate', {
       components: { shape: '' }
@@ -225,6 +259,16 @@ describe('an item a route may not put in the open group', () => {
       components: {}
     });
     expect(scene.notify.infoMessage).not.toHaveBeenCalled();
+
+    scene.inspector.execute('entitycreate', {
+      components: { shape: '' }
+    });
+    expect(scene.notify.infoMessage).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(Date.now() + 60000);
+    scene.inspector.history.undo();
+    scene.inspector.history.redo();
+    expect(scene.notify.infoMessage).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
   });
 });
 

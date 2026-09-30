@@ -159,6 +159,15 @@ describe('pasting an item copied from inside a group', () => {
     expectMatrixClose(expect, worldOf(pasted), besideSource(tree));
   });
 
+  it('lands exactly at the copied world pose once its source is gone, as a paste from another scene does (fails if the beside-the-source offset is applied anyway)', async () => {
+    const { member } = groupWithMember();
+    await copy(member);
+    const copiedAt = worldOf(member);
+    member.remove();
+    await pasteFromClipboard();
+    expectMatrixClose(expect, worldOf(pastedElement()), copiedAt);
+  });
+
   it('is one undo step, and redo brings back the same item (fails if a paste records two entries or makes new ids on redo)', async () => {
     const { member } = groupWithMember();
     await copy(member);

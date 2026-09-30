@@ -336,6 +336,32 @@ describe('layer panel drop zones', () => {
   });
 });
 
+describe('before and after a row in another parent', () => {
+  it('offers the line only to an item that may move to that parent (fails if the zones are offered for any parent)', async () => {
+    const group = makeEntity(root, {
+      id: 'g',
+      name: 'Group A',
+      cls: 'user-group'
+    });
+    makeEntity(group, { id: 'm', name: 'Member' });
+    makeEntity(root, {
+      id: 'shape',
+      name: 'Shape',
+      attrs: { 'data-transform-no-reparent': '' }
+    });
+    makeEntity(root, { id: 'tree', name: 'Tree' });
+    await renderPanel();
+    await expand('Group A');
+
+    for (const fraction of [0.1, 0.9]) {
+      startDrag('Shape');
+      expect(dragOver(row('Member'), fraction)).toBe(false);
+      startDrag('Tree');
+      expect(dragOver(row('Member'), fraction)).toBe(true);
+    }
+  });
+});
+
 describe('the drop strip after the last row', () => {
   it('moves a child out of an expanded group that is the last row, to the end of the top level', async () => {
     makeEntity(root, { id: 'first', name: 'First' });

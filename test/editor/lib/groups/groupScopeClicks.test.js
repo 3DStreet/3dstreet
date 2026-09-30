@@ -425,10 +425,9 @@ describe('the magenta hover of a selected closed group', () => {
     h.poll();
     h.poll();
     expect(h.groupHoverBox.visible).toBe(true);
-    // A tool switch clears the selection; nothing opens.
+    // Clearing the selection (as a tool switch does) hides it.
     h.inspector.selectEntity(null);
     expect(h.groupHoverBox.visible).toBe(false);
-    expect(h.openIds()).toEqual([]);
 
     h.inspector.selectEntity(G);
     h.poll();

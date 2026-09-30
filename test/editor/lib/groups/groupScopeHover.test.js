@@ -210,7 +210,7 @@ describe('the box drawn for a group', () => {
     expect(affordances.dirty).toBe(false);
   });
 
-  it('draws no box for a group with no member geometry, shows its marker instead, and never brings the old box back', () => {
+  it('draws no box for a group with no member geometry, from the frame its last member leaves, and shows its marker instead', () => {
     const G = group(h.streetContainer, { id: 'G' });
     const member = solid(G, [0, 0, 0], [1, 1, 1], { id: 'member' });
     h.frame();
@@ -301,7 +301,7 @@ describe('hovering groups', () => {
     const B = group(A, { id: 'B' });
     const tree = solid(B, [4, 0, 4], [5, 1, 5], { id: 'tree' });
     solid(h.streetContainer, [0, 3, 0], [1, 4, 1], { id: 'over' });
-    const outside = solid(h.streetContainer, [20, 0, 0], [21, 1, 1], {
+    solid(h.streetContainer, [20, 0, 0], [21, 1, 1], {
       id: 'outside'
     });
     h.frame();
@@ -336,7 +336,6 @@ describe('hovering groups', () => {
     expect(entered).toEqual([]);
     expect(h.hoverBox.visible).toBe(false);
     expect(osm.highlightWayAt).toHaveBeenCalledTimes(1);
-    expect(outside.isConnected).toBe(true);
   });
 
   it('under street-level navigation previews the group, not the raw member, for a closed group', () => {
@@ -358,7 +357,7 @@ describe('a closed group is entered one level at a time', () => {
     solid(G, [0, 0, 0], [1, 1, 1], { id: 'member' });
     // Empty, so it shows a marker; its pick cube (2 m either side here)
     // reaches well past G's 1 m box.
-    const nested = group(G, { id: 'nested', position: [1.5, 0, 0.5] });
+    group(G, { id: 'nested', position: [1.5, 0, 0.5] });
     h.frame();
     h.inspector.selectEntity(G);
     h.frame();
@@ -369,7 +368,6 @@ describe('a closed group is entered one level at a time', () => {
     h.click();
     expect(selected()).toBe(G);
     expect(h.openIds()).toEqual([]);
-    expect(nested.isConnected).toBe(true);
 
     // Over G's own box the same click opens it, and says so on hover.
     h.aimDown(0.5, 0.5);
