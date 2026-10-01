@@ -371,3 +371,50 @@ describe('firestore.rules — tokenProfile/{uid} (pass fields)', () => {
     );
   });
 });
+
+// Project Pass codes (#1922): codes and redemptions are server-only.
+describe('firestore.rules — passCodes / passRedemptions', () => {
+  beforeAll(async () => {
+    testEnv = await initializeTestEnvironment({
+      projectId: 'demo-3dstreet-rules',
+      firestore: {
+        rules: readFileSync(
+          resolve(__dirname, '../../public/firestore.rules'),
+          'utf8'
+        ),
+        host: '127.0.0.1',
+        port: 8080
+      }
+    });
+  });
+
+  afterAll(async () => {
+    await testEnv?.cleanup();
+  });
+
+  beforeEach(async () => {
+    await testEnv.clearFirestore();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'passCodes', 'TEST-CODE'), {
+        maxUses: 10,
+        uses: 0
+      });
+    });
+  });
+
+  it('clients cannot read a code', async () => {
+    await assertFails(getDoc(doc(ownerDb(), 'passCodes', 'TEST-CODE')));
+  });
+
+  it('clients cannot bump a code or write a redemption', async () => {
+    await assertFails(
+      updateDoc(doc(ownerDb(), 'passCodes', 'TEST-CODE'), { uses: 0 })
+    );
+    await assertFails(
+      setDoc(doc(ownerDb(), 'passRedemptions', `TEST-CODE_${UID}`), {
+        code: 'TEST-CODE',
+        userId: UID
+      })
+    );
+  });
+});

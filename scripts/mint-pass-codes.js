@@ -1,0 +1,162 @@
+/**
+ * Mint, inspect or deactivate Project Pass codes (#1922 follow-up).
+ *
+ * One shared code per sale, capped at the number of passes paid for. Codes
+ * are sold by hand (invoice through Stripe), then minted here and emailed to
+ * the buyer. Recipients redeem at https://3dstreet.app/#redeem?code=CODE.
+ * Each recipient's days start when they redeem. See docs/project-pass.md.
+ *
+ * Usage:
+ *   gcloud auth application-default login   # one-time
+ *
+ *   # mint: 10 uses of a 90-day / 300-token pass, redeemable for 365 days
+ *   node scripts/mint-pass-codes.js --project=dev-3dstreet \
+ *     --uses=10 --org="Example Foundation" --prefix=FOUNDATION \
+ *     [--days=90] [--tokens=300] [--redeem-by-days=365] \
+ *     [--buyer-email=ops@example.org] [--notes="Invoice 1234"]
+ *
+ *   # status: uses so far (and redeeming uids with --list)
+ *   node scripts/mint-pass-codes.js --project=dev-3dstreet --status=FOUNDATION-7KQ2XXXX [--list]
+ *
+ *   # stop further redemptions (existing passes are unaffected)
+ *   node scripts/mint-pass-codes.js --project=dev-3dstreet --deactivate=FOUNDATION-7KQ2XXXX
+ *
+ * Or set GOOGLE_APPLICATION_CREDENTIALS to a service account key file.
+ */
+
+const admin = require('firebase-admin');
+const crypto = require('crypto');
+const os = require('os');
+const { PRO_PASSES } = require('../public/functions/pro-pass.js');
+const {
+  generatePassCode,
+  normalizePassCode
+} = require('../public/functions/pass-code-utils.js');
+
+const args = Object.fromEntries(
+  process.argv.slice(2).map((a) => {
+    const [k, ...rest] = a.replace(/^--/, '').split('=');
+    return [k, rest.length ? rest.join('=') : true];
+  })
+);
+
+const fail = (message) => {
+  console.error(`Error: ${message}`);
+  process.exit(1);
+};
+
+const projectId = args.project || process.env.GCLOUD_PROJECT;
+if (!projectId) fail('--project is required (e.g. --project=dev-3dstreet)');
+
+admin.initializeApp({ projectId });
+const db = admin.firestore();
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const positiveInt = (value, name) => {
+  const n = Number(value);
+  if (!Number.isInteger(n) || n <= 0) {
+    fail(`--${name} must be a positive integer`);
+  }
+  return n;
+};
+
+async function mint() {
+  const pass = PRO_PASSES.find((p) => p.id === (args.product || 'project'));
+  if (!pass) fail(`unknown --product ${args.product}`);
+  if (!args.org || args.org === true) fail('--org is required');
+
+  const maxUses = positiveInt(args.uses, 'uses');
+  const days = args.days ? positiveInt(args.days, 'days') : pass.days;
+  const tokens = args.tokens !== undefined ? Number(args.tokens) : pass.tokens;
+  if (!Number.isInteger(tokens) || tokens < 0) fail('--tokens must be >= 0');
+  const redeemByDays = args['redeem-by-days']
+    ? positiveInt(args['redeem-by-days'], 'redeem-by-days')
+    : 365;
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generatePassCode(args.prefix, crypto.randomInt);
+    try {
+      // create() fails if the doc exists, so a random collision retries
+      // instead of overwriting someone else's code.
+      await db
+        .collection('passCodes')
+        .doc(code)
+        .create({
+          product: pass.id,
+          days,
+          tokens,
+          maxUses,
+          uses: 0,
+          active: true,
+          redeemBy: admin.firestore.Timestamp.fromMillis(
+            Date.now() + redeemByDays * DAY_MS
+          ),
+          org: String(args.org),
+          buyerEmail:
+            typeof args['buyer-email'] === 'string'
+              ? args['buyer-email']
+              : null,
+          notes: typeof args.notes === 'string' ? args.notes : null,
+          createdBy: os.userInfo().username,
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      console.log(`Minted ${code}`);
+      console.log(
+        `  ${maxUses} uses · ${days} days + ${tokens} tokens each · redeemable for ${redeemByDays} days`
+      );
+      console.log(`  Link: https://3dstreet.app/#redeem?code=${code}`);
+      return;
+    } catch (err) {
+      if (err.code !== 6 /* ALREADY_EXISTS */) throw err;
+    }
+  }
+  fail('could not generate a unique code after 5 attempts');
+}
+
+async function status(rawCode) {
+  const code = normalizePassCode(rawCode);
+  if (!code) fail('malformed code');
+  const doc = await db.collection('passCodes').doc(code).get();
+  if (!doc.exists) fail(`no such code ${code}`);
+  const d = doc.data();
+  console.log(`${code} (${d.org})`);
+  console.log(`  uses: ${d.uses || 0} / ${d.maxUses}`);
+  console.log(`  pass: ${d.days} days + ${d.tokens} tokens (${d.product})`);
+  console.log(`  active: ${d.active !== false}`);
+  console.log(
+    `  redeem by: ${d.redeemBy?.toDate?.().toISOString() ?? 'never'}`
+  );
+  if (args.list) {
+    const snap = await db
+      .collection('passRedemptions')
+      .where('code', '==', code)
+      .get();
+    for (const r of snap.docs) {
+      const rd = r.data();
+      console.log(
+        `  - ${rd.userId} ${rd.redeemedAt?.toDate?.().toISOString() ?? ''}`
+      );
+    }
+  }
+}
+
+async function deactivate(rawCode) {
+  const code = normalizePassCode(rawCode);
+  if (!code) fail('malformed code');
+  await db.collection('passCodes').doc(code).update({
+    active: false,
+    deactivatedAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+  console.log(`Deactivated ${code}`);
+}
+
+(async () => {
+  if (args.status) await status(String(args.status));
+  else if (args.deactivate) await deactivate(String(args.deactivate));
+  else await mint();
+  process.exit(0);
+})().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

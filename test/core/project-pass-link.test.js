@@ -3,7 +3,9 @@
 import assert from 'assert';
 import {
   isProjectPassHash,
-  getProjectPassSource
+  getProjectPassSource,
+  isRedeemHash,
+  getRedeemCode
 } from '../../src/tested/project-pass-link.js';
 
 describe('project-pass-link (#1922)', function () {
@@ -53,6 +55,26 @@ describe('project-pass-link (#1922)', function () {
       );
       assert.strictEqual(getProjectPassSource('#project-pass?src=%E0'), null);
       assert.strictEqual(getProjectPassSource('#payment?src=email'), null);
+    });
+  });
+
+  describe('#isRedeemHash() / #getRedeemCode()', function () {
+    it('matches #redeem and reads the code', function () {
+      assert.strictEqual(isRedeemHash('#redeem'), true);
+      assert.strictEqual(isRedeemHash('#redeem?code=ABC-1234'), true);
+      assert.strictEqual(
+        getRedeemCode('#redeem?code=foundation-7kq2'),
+        'FOUNDATION-7KQ2'
+      );
+      assert.strictEqual(getRedeemCode('#redeem&code=%20ab-cd%20'), 'AB-CD');
+    });
+
+    it('does not match other routes; empty code when absent', function () {
+      assert.strictEqual(isRedeemHash('#redeemer'), false);
+      assert.strictEqual(isRedeemHash('#project-pass'), false);
+      assert.strictEqual(getRedeemCode('#redeem'), '');
+      assert.strictEqual(getRedeemCode('#redeem?code=%E0'), '');
+      assert.strictEqual(getRedeemCode('#project-pass?code=X'), '');
     });
   });
 });

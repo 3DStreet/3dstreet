@@ -219,6 +219,17 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Project Pass codes (#1922). Minted by scripts/mint-pass-codes.js and
+    // redeemed only through the redeemPassCode callable (Admin SDK, bypasses
+    // rules). Clients must never read codes (that would leak every code) or
+    // write redemptions (that would grant Pro), so both are fully closed.
+    match /passCodes/{code} {
+      allow read, write: if false;
+    }
+    match /passRedemptions/{redemptionId} {
+      allow read, write: if false;
+    }
+
     // Background-job health heartbeats (System Health admin page).
     // Each scheduled function records its last run + status here via the Admin
     // SDK (writes bypass rules). Admin-only read; never client-writable.

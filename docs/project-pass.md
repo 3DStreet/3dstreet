@@ -15,6 +15,7 @@ grant. Offer today: **$30 → 90 days of Pro + 300 tokens**.
 | Checkout gating | `createStripeSession` (`public/functions/stripe.js`) |
 | Webhook | `stripeWebhook` → `grantProPassForCheckout` |
 | Entry point | `#project-pass` → `store.firstModal()` → `EditorProjectPassModal` → shared `ProjectPassModal` |
+| Codes | `#redeem?code=` → `RedeemPassModal` → `redeemPassCode` (`public/functions/pass-codes.js`, pure helpers in `pass-code-utils.js`); minted by `scripts/mint-pass-codes.js` |
 
 Adding a second pass SKU (e.g. a team variant) is config-only: add a
 `PRO_PASSES` entry (server + client) and its price secret.
@@ -83,6 +84,41 @@ One transaction: credit `tokens`, extend `proUntil`, write the audit row
 session id as the key; a future pass-code redemption would use the
 redemption id.
 
+## Pass codes (gifting passes)
+
+An organization (a foundation, a class, a workshop) pays once for N passes
+and gets **one shared code capped at N uses**. Recipients don't need a shared
+email domain, unlike Pro Team. Each recipient's days start when **they**
+redeem, not when the buyer paid.
+
+- **Sold by hand for now.** Invoice through Stripe, then mint the code:
+  ```bash
+  node scripts/mint-pass-codes.js --project=<project> --uses=10 \
+    --org="Example Foundation" --prefix=FOUNDATION [--days=90] [--tokens=300] \
+    [--redeem-by-days=365] [--buyer-email=…] [--notes="Invoice 1234"]
+  ```
+  It prints the code and the link to send: `https://3dstreet.app/#redeem?code=CODE`.
+  `--status=CODE [--list]` shows uses so far (and the redeeming uids, if a
+  buyer needs them for grant reporting). `--deactivate=CODE` stops further
+  redemptions without touching passes already granted.
+- **Redeeming.** `#redeem?code=` opens `RedeemPassModal`, after sign-in for
+  signed-out visitors. It calls `redeemPassCode` (`public/functions/pass-codes.js`):
+  1. One transaction checks that the code exists, is active, is before
+     `redeemBy` and has uses left, and that this user hasn't redeemed it.
+     If so it increments `uses` and writes `passRedemptions/{CODE}_{uid}`.
+  2. It then calls `grantPass` with that redemption id as the idempotency key.
+  A repeat by the same user returns `already-redeemed` and consumes no use.
+  A crash between steps 1 and 2 is completed by the next attempt.
+- **Data** (server-only; rules deny all client access):
+  - `passCodes/{CODE}` holds `product`, `days`, `tokens`, `maxUses`, `uses`,
+    `redeemBy`, `active`, `org`, `buyerEmail` and `notes`
+  - `passRedemptions/{CODE_uid}` has one row per redemption
+- **Format:** `PREFIX-XXXXXXXX`. The 8 random characters come from an
+  alphabet with no 0/O/1/I/L.
+- **Later:** a self-serve "buy for others" checkout, where the webhook mints
+  a code instead of granting the buyer. Build it only once hand sales show
+  demand.
+
 ## Support
 
 Look up `tokenProfile/{uid}`:
@@ -91,7 +127,8 @@ Look up `tokenProfile/{uid}`:
 - `proPassSessionIds` lists the checkout sessions that paid for it
 - `proPassLastGrantedAt` is when the latest grant was applied
 
-Full audit rows are `tokenLog/pass-<sessionId>`: tokens and days granted,
+Full audit rows are `tokenLog/pass-<sessionId>` for a purchase, or
+`tokenLog/pass-<CODE>_<uid>` for a redeemed code: tokens and days granted,
 proUntil before and after, amount, and `checkoutSource`. Open checkouts are in
 `checkoutSessions` (`product`, `source`).
 

@@ -17,6 +17,7 @@ import { ScenesModal } from './modals/ScenesModal';
 import EditorUpgradeModal from './EditorUpgradeModal.jsx';
 import EditorBuyTokensModal from './EditorBuyTokensModal.jsx';
 import EditorProjectPassModal from './EditorProjectPassModal.jsx';
+import EditorRedeemPassModal from './EditorRedeemPassModal.jsx';
 import { AddLayerPanel } from './elements/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
 import { LoadingSceneModal } from './modals/LoadingSceneModal';
@@ -231,6 +232,7 @@ export default function Main() {
       <EditorUpgradeModal />
       <EditorBuyTokensModal />
       <EditorProjectPassModal />
+      <EditorRedeemPassModal />
       <ScenesModal />
       <ProfileModal />
       <NewModal />

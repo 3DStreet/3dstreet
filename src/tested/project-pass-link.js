@@ -43,4 +43,36 @@ function getProjectPassSource(hash) {
   return SOURCE_RE.test(value) ? value.toLowerCase() : null;
 }
 
-export { isProjectPassHash, getProjectPassSource };
+// `#redeem?code=CODE` (or `&code=`): redeem a Project Pass code someone
+// else paid for. Same exact-route matching as `#project-pass`.
+const REDEEM_HASH_RE = /^#redeem(?:$|[?&/])/i;
+
+/**
+ * @param {string} hash
+ * @returns {boolean}
+ */
+function isRedeemHash(hash) {
+  return REDEEM_HASH_RE.test(hash || '');
+}
+
+/**
+ * The code from a `#redeem` hash, uppercased and trimmed, or '' when absent.
+ * The server does the real validation (normalizePassCode); this only
+ * pre-fills the input, so it stays permissive and never throws.
+ * @param {string} hash
+ * @returns {string}
+ */
+function getRedeemCode(hash) {
+  if (!isRedeemHash(hash)) return '';
+  const match = hash.match(/[?&]code=([^&#]*)/i);
+  if (!match) return '';
+  let value;
+  try {
+    value = decodeURIComponent(match[1]);
+  } catch {
+    return '';
+  }
+  return value.trim().toUpperCase().slice(0, 40);
+}
+
+export { isProjectPassHash, getProjectPassSource, isRedeemHash, getRedeemCode };
