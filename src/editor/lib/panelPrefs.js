@@ -83,3 +83,29 @@ export function setPositionDisplayMode(mode) {
     // Ignore: the toggle still works for the current render tree.
   }
 }
+
+// Reveal a named section (#2069): a layers-list badge opens its section in
+// the properties panel instead of focusing the camera. The section is
+// expanded (and the preference stored), a mounted section scrolls itself
+// into view, and one that mounts next — the badge also selects its entity,
+// which re-renders the panel — consumes the pending reveal on mount.
+const revealListeners = new Set();
+let pendingReveal = null;
+
+export function revealSection(sectionKey) {
+  setSectionCollapsed(sectionKey, false);
+  pendingReveal = sectionKey;
+  revealListeners.forEach((listener) => listener(sectionKey));
+}
+
+export function onRevealSection(listener) {
+  revealListeners.add(listener);
+  return () => revealListeners.delete(listener);
+}
+
+/** True once for the section a reveal is still waiting on. */
+export function consumePendingReveal(sectionKey) {
+  if (pendingReveal !== sectionKey) return false;
+  pendingReveal = null;
+  return true;
+}
