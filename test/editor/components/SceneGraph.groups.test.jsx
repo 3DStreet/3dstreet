@@ -53,6 +53,14 @@ function composedExecute(type, payload) {
   return undefined;
 }
 
+// Marker attributes a moved element keeps (a street segment stays one after
+// an undo).
+const KEPT_ATTRIBUTES = [
+  'street-segment',
+  'managed-street',
+  'data-transform-no-reparent'
+];
+
 // What the serializer and loader do, reduced to what a move needs: the data
 // names the element, and recreation builds on the element the command made
 // and announces it to its parent as A-Frame does.
@@ -62,7 +70,8 @@ const serializerStub = {
   getElementData: (el) => ({
     id: el.id,
     class: el.className ? el.className.split(' ') : undefined,
-    'data-layer-name': el.getAttribute('data-layer-name') ?? undefined
+    'data-layer-name': el.getAttribute('data-layer-name') ?? undefined,
+    attributes: KEPT_ATTRIBUTES.filter((name) => el.hasAttribute(name))
   }),
   createEntityFromObj: (data, parent, before) => {
     const el = data.entityElement;
@@ -71,6 +80,7 @@ const serializerStub = {
     if (data['data-layer-name']) {
       el.setAttribute('data-layer-name', data['data-layer-name']);
     }
+    for (const name of data.attributes ?? []) el.setAttribute(name, '');
     el.isEntity = true;
     el.object3D = new THREE.Group();
     el.object3D.el = el;
@@ -162,12 +172,18 @@ function startDrag(name) {
 }
 
 // Returns whether the row advertised a drop there (preventDefault). jsdom
-// has no DragEvent, so the pointer height is set on the event directly.
-function dragOver(target, fraction) {
+// has no DragEvent, so the pointer position is set on the event directly;
+// every row's left edge is at 0.
+function dragOver(target, fraction, clientX = 0) {
   const event = createEvent.dragOver(target, { dataTransfer: dataTransfer() });
   Object.defineProperty(event, 'clientY', { value: ROW_HEIGHT * fraction });
+  Object.defineProperty(event, 'clientX', { value: clientX });
   return !fireEvent(target, event);
 }
+
+// A pointer 5 px into a level's band: a row's depth-1 content starts 6 px in
+// (2 px border, 4 px padding) and each level is indented 30 px.
+const atLevel = (level) => 6 + 30 * (level - 1) + 5;
 
 function drop(target) {
   fireEvent.drop(target, { dataTransfer: dataTransfer() });
@@ -181,6 +197,46 @@ const reparents = () =>
       parentEl: p.parentEl,
       indexInParent: p.indexInParent
     }));
+
+async function finishMove(id) {
+  act(() => {
+    document.getElementById(id).dispatchEvent(new Event('loaded'));
+  });
+  await settle();
+}
+
+// Drops on `target` and returns where the move went ({parentEl,
+// indexInParent}, or null for no move), then undoes it, so the next drop
+// starts from the same tree.
+async function dropAndUndo(target) {
+  const count = reparents().length;
+  drop(target);
+  fireEvent.dragEnd(target);
+  const move = reparents()[count];
+  if (!move) return null;
+  await finishMove(move.entity.id);
+  act(() => {
+    editor.history.undo();
+  });
+  await finishMove(move.entity.id);
+  return { parentEl: move.parentEl, indexInParent: move.indexInParent };
+}
+
+// The group-level drop line a row or the strip shows, if any.
+function dropLine(host) {
+  const line = host.querySelector(':scope > .drop-line');
+  return (
+    line && {
+      left: line.style.left,
+      chevron: !!line.querySelector('svg.fa-chevron-right')
+    }
+  );
+}
+
+const hostClasses = (host) =>
+  ['drop-before', 'drop-after', 'drop-child', 'drop-level'].filter((c) =>
+    host.classList.contains(c)
+  );
 
 describe('layer panel drop zones', () => {
   it('drops a model into a group through the group row middle band, and offers no middle band for a street segment', async () => {
@@ -289,25 +345,29 @@ describe('layer panel drop zones', () => {
     ]);
   });
 
-  it('drops a member after the whole group from its expanded group header', async () => {
-    const group = makeEntity(root, {
-      id: 'g',
-      name: 'Group A',
-      cls: 'user-group'
-    });
-    const member = makeEntity(group, { id: 'm', name: 'Member' });
-    makeEntity(group, { id: 'm2', name: 'Member Two' });
-    makeEntity(root, { id: 'after', name: 'Later' });
+  it("drops into a group's first place from its expanded header's lower zone and from its first member's upper zone, at any pointer x (fails if the header's lower zone still means after the whole group)", async () => {
+    makeEntity(root, { id: 'x', name: 'Loose' });
+    const a = makeEntity(root, { id: 'a', name: 'Group A', cls: 'user-group' });
+    const b = makeEntity(a, { id: 'b', name: 'Group B', cls: 'user-group' });
+    makeEntity(b, { id: 'tree', name: 'Tree' });
     await renderPanel();
     await expand('Group A');
 
-    startDrag('Member');
-    expect(dragOver(row('Group A'), 0.9)).toBe(true);
-    drop(row('Group A'));
-
-    expect(reparents()).toEqual([
-      { entity: member, parentEl: 'street-container', indexInParent: 1 }
-    ]);
+    for (const [name, fraction] of [
+      ['Group A', 0.9],
+      ['Group B', 0.1]
+    ]) {
+      for (const x of [0, atLevel(1), atLevel(3), 200]) {
+        startDrag('Loose');
+        expect(dragOver(row(name), fraction, x)).toBe(true);
+        expect(dropLine(row(name))).toEqual({ left: '34px', chevron: true });
+        expect(row(name).classList.contains('drop-level')).toBe(true);
+      }
+      expect(await dropAndUndo(row(name))).toEqual({
+        parentEl: 'a',
+        indexInParent: 0
+      });
+    }
   });
 
   it('refuses the middle band of a group for a shape that may not change parent, and the guard refuses a forced move', async () => {
@@ -334,6 +394,229 @@ describe('layer panel drop zones', () => {
     ).toBe('This element cannot be moved to a different parent.');
     expect(editor.history.undos).toHaveLength(0);
     expect(shape.parentNode).toBe(root);
+  });
+});
+
+describe('drop levels at a gap where groups end', () => {
+  // x, then A ⊃ B ⊃ (tree, bench), then Later, all expanded. The gap between
+  // bench and Later is the end of B, the end of A and the top level at once.
+  async function nestedScene() {
+    makeEntity(root, { id: 'x', name: 'Loose' });
+    const a = makeEntity(root, { id: 'a', name: 'Group A', cls: 'user-group' });
+    const b = makeEntity(a, { id: 'b', name: 'Group B', cls: 'user-group' });
+    makeEntity(b, { id: 'tree', name: 'Tree' });
+    makeEntity(b, { id: 'bench', name: 'Bench' });
+    makeEntity(root, { id: 'later', name: 'Later' });
+    await renderPanel();
+    await expand('Group A');
+    await expand('Group B');
+  }
+
+  it("lets the pointer's x choose the end of the inner group, the outer group or the top level, from either row at the gap, drawing a group level's line from its indent in the hovered row (fails if x is ignored, a group level's line is full width, or the two rows disagree)", async () => {
+    await nestedScene();
+
+    const expected = {
+      3: { parentEl: 'b', indexInParent: 2 },
+      2: { parentEl: 'a', indexInParent: 1 },
+      1: { parentEl: 'street-container', indexInParent: 2 }
+    };
+    for (const [name, fraction, edgeClass] of [
+      ['Bench', 0.85, 'drop-after'],
+      ['Later', 0.15, 'drop-before']
+    ]) {
+      for (const level of [3, 2, 1]) {
+        startDrag('Loose');
+        expect(dragOver(row(name), fraction, atLevel(level))).toBe(true);
+        if (level === 1) {
+          // The top level keeps the row's own border line.
+          expect(hostClasses(row(name))).toEqual([edgeClass]);
+          expect(dropLine(row(name))).toBe(null);
+        } else {
+          expect(hostClasses(row(name))).toEqual([edgeClass, 'drop-level']);
+          expect(dropLine(row(name))).toEqual({
+            left: level === 3 ? '64px' : '34px',
+            chevron: true
+          });
+        }
+        // Only the hovered row draws, never the row the drop is relative to.
+        expect(row('Group B').querySelector('.drop-line')).toBe(null);
+        expect(hostClasses(row('Group B'))).toEqual([]);
+        expect(await dropAndUndo(row(name))).toEqual(expected[level]);
+      }
+    }
+  });
+
+  it('offers a shape that may not change parent only its own top level at the end of a group, drawn full width, wherever the pointer is (fails if illegal levels are offered or drawn)', async () => {
+    makeEntity(root, {
+      id: 'shape',
+      name: 'Shape',
+      attrs: { 'data-transform-no-reparent': '' }
+    });
+    const a = makeEntity(root, { id: 'a', name: 'Group A', cls: 'user-group' });
+    const b = makeEntity(a, { id: 'b', name: 'Group B', cls: 'user-group' });
+    makeEntity(b, { id: 'tree', name: 'Tree' });
+    makeEntity(b, { id: 'bench', name: 'Bench' });
+    makeEntity(root, { id: 'later', name: 'Later' });
+    await renderPanel();
+    await expand('Group A');
+    await expand('Group B');
+
+    startDrag('Shape');
+    expect(dragOver(row('Bench'), 0.85, atLevel(3))).toBe(true);
+    expect(hostClasses(row('Bench'))).toEqual(['drop-after']);
+    expect(dropLine(row('Bench'))).toBe(null);
+    expect(await dropAndUndo(row('Bench'))).toEqual({
+      parentEl: 'street-container',
+      indexInParent: 2
+    });
+  });
+
+  it("offers each group level on the strip after the last row when that row is inside groups, drawn from the strip's own indent (fails if the strip offers only the top level, or uses a row's indent)", async () => {
+    makeEntity(root, { id: 'x', name: 'Loose' });
+    const a = makeEntity(root, { id: 'a', name: 'Group A', cls: 'user-group' });
+    const b = makeEntity(a, { id: 'b', name: 'Group B', cls: 'user-group' });
+    makeEntity(b, { id: 'tree', name: 'Tree' });
+    makeEntity(b, { id: 'bench', name: 'Bench' });
+    await renderPanel();
+    await expand('Group A');
+    await expand('Group B');
+    const strip = () => document.querySelector('.layers-drop-end');
+
+    const expected = {
+      3: { parentEl: 'b', indexInParent: 2 },
+      2: { parentEl: 'a', indexInParent: 1 },
+      1: { parentEl: 'street-container', indexInParent: 2 }
+    };
+    for (const level of [3, 2, 1]) {
+      startDrag('Loose');
+      expect(dragOver(strip(), 0.5, atLevel(level))).toBe(true);
+      if (level === 1) {
+        expect(strip().classList.contains('drop-after')).toBe(true);
+        expect(strip().classList.contains('drop-level')).toBe(false);
+        expect(dropLine(strip())).toBe(null);
+      } else {
+        expect(strip().classList.contains('drop-level')).toBe(true);
+        expect(dropLine(strip())).toEqual({
+          left: level === 3 ? '66px' : '36px',
+          chevron: true
+        });
+      }
+      expect(await dropAndUndo(strip())).toEqual(expected[level]);
+    }
+  });
+
+  it('under an expanded street inside a group, offers a model the group level after the street and a segment its own street, never the other (fails on an empty candidate list for an upward range, or on illegal levels offered)', async () => {
+    const a = makeEntity(root, { id: 'a', name: 'Group A', cls: 'user-group' });
+    const street = makeEntity(a, {
+      id: 'st',
+      name: 'Main Street',
+      attrs: { 'managed-street': '' }
+    });
+    makeEntity(street, {
+      id: 's1',
+      name: 'Lane 1',
+      attrs: { 'street-segment': '' }
+    });
+    makeEntity(street, {
+      id: 's2',
+      name: 'Lane 2',
+      attrs: { 'street-segment': '' }
+    });
+    makeEntity(root, { id: 'x', name: 'Loose' });
+    await renderPanel();
+    await expand('Group A');
+    await expand('Main Street');
+
+    for (const [name, fraction, edgeClass] of [
+      ['Main Street', 0.6, 'drop-after'],
+      ['Lane 1', 0.4, 'drop-before']
+    ]) {
+      for (const level of [2, 3]) {
+        startDrag('Loose');
+        expect(dragOver(row(name), fraction, atLevel(level))).toBe(true);
+        expect(hostClasses(row(name))).toEqual([edgeClass, 'drop-level']);
+        expect(dropLine(row(name))).toEqual({ left: '34px', chevron: true });
+        expect(await dropAndUndo(row(name))).toEqual({
+          parentEl: 'a',
+          indexInParent: 1
+        });
+
+        startDrag('Lane 2');
+        expect(dragOver(row(name), fraction, atLevel(level))).toBe(true);
+        // A street is not a group: its own border line, full width.
+        expect(hostClasses(row(name))).toEqual([edgeClass]);
+        expect(dropLine(row(name))).toBe(null);
+        expect(await dropAndUndo(row(name))).toEqual({
+          parentEl: 'st',
+          indexInParent: 0
+        });
+      }
+    }
+  });
+});
+
+describe('drop gaps in a scene without groups', () => {
+  it('resolve from the hovered row alone, as before: after an expanded street from its header, nothing for a model above its first segment, one place between two segments whatever the x, and the midpoint split between models (fails if a first-child rule or the pointer x applies outside groups)', async () => {
+    makeEntity(root, { id: 'model', name: 'Model' });
+    const street = makeEntity(root, {
+      id: 'st',
+      name: 'Main Street',
+      attrs: { 'managed-street': '' }
+    });
+    for (const n of [1, 2, 3]) {
+      makeEntity(street, {
+        id: `s${n}`,
+        name: `Lane ${n}`,
+        attrs: { 'street-segment': '' }
+      });
+    }
+    makeEntity(root, { id: 'shape', name: 'Shape' });
+    await renderPanel();
+    await expand('Main Street');
+
+    const noLevels = () =>
+      expect(document.querySelector('.drop-level, .drop-line')).toBe(null);
+
+    // (a) The header's lower zone is "after the street"; above the first
+    // segment nothing but a segment may go.
+    startDrag('Model');
+    expect(dragOver(row('Main Street'), 0.6, atLevel(2))).toBe(true);
+    expect(hostClasses(row('Main Street'))).toEqual(['drop-after']);
+    noLevels();
+    expect(await dropAndUndo(row('Main Street'))).toEqual({
+      parentEl: 'street-container',
+      indexInParent: 2
+    });
+    startDrag('Model');
+    expect(dragOver(row('Lane 1'), 0.4, atLevel(1))).toBe(false);
+    fireEvent.dragEnd(row('Lane 1'));
+
+    // (b) Between two segments, wherever the pointer is.
+    for (const x of [10, 200]) {
+      startDrag('Lane 3');
+      expect(dragOver(row('Lane 2'), 0.4, x)).toBe(true);
+      expect(hostClasses(row('Lane 2'))).toEqual(['drop-before']);
+      noLevels();
+      expect(await dropAndUndo(row('Lane 2'))).toEqual({
+        parentEl: 'st',
+        indexInParent: 1
+      });
+    }
+
+    // (c) Between top-level models, the row's own midpoint split.
+    for (const [fraction, edgeClass, indexInParent] of [
+      [0.4, 'drop-before', 0],
+      [0.6, 'drop-after', 1]
+    ]) {
+      startDrag('Shape');
+      expect(dragOver(row('Model'), fraction, atLevel(3))).toBe(true);
+      expect(hostClasses(row('Model'))).toEqual([edgeClass]);
+      noLevels();
+      expect(await dropAndUndo(row('Model'))).toEqual({
+        parentEl: 'street-container',
+        indexInParent
+      });
+    }
   });
 });
 

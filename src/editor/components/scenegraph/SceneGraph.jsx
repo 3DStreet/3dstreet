@@ -5,7 +5,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { FormattedMessage, defineMessages, injectIntl } from 'react-intl';
 import Events from '../../lib/Events';
-import Entity, { isContainer } from './Entity';
+import Entity, { DropLine, isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { Plus20Circle } from '@shared/icons';
 import {
@@ -20,6 +20,13 @@ import {
 } from '../../lib/groups/groupModel.js';
 import { isReparentInFlight } from '../../lib/commands/EntityReparentCommand.js';
 import { nestedGroupPlacement } from '../../lib/groups/groupPlacement.js';
+import {
+  groupGapLevels,
+  isNoOpDrop,
+  levelAtX,
+  lineIndentPx,
+  pickLevel
+} from './dropLevels.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
@@ -42,6 +49,9 @@ const messages = defineMessages({
     defaultMessage: 'New group'
   }
 });
+
+// `insertionInfo.host` of a drop drawn by the strip after the last row.
+const DROP_STRIP = 'drop-strip';
 
 // The move command and the layer's own undo look parents up by id.
 function ensureId(el) {
@@ -263,8 +273,9 @@ class SceneGraph extends React.Component {
     );
   };
 
-  // The strip after the last row drops at the end of the top level, so an
-  // item can always leave a group, even when that group is the last row.
+  // May the item drop at the end of the top level (the strip after the last
+  // row, at its top level)? So an item can always leave a group, even when
+  // that group is the last row.
   canDropAtEnd = (draggedEntity) => {
     const root = this.props.scene.querySelector('#street-container');
     if (!draggedEntity || !root || isReparentInFlight(draggedEntity.id)) {
@@ -289,30 +300,116 @@ class SceneGraph extends React.Component {
     return false;
   };
 
+  // May the dragged row land where `insertion` says?
+  isDropLegal = (insertion, draggedEntity) =>
+    insertion.position === 'end'
+      ? this.canDropAtEnd(draggedEntity)
+      : this.canBeDropTarget(insertion.ref, draggedEntity, insertion.position);
+
+  /**
+   * The drop at the gap between the listed rows `above` and `below` for a
+   * pointer at `clientX` over a host whose left edge is `hostLeft`: the
+   * legal level nearest the pointer's band, or null if no level is legal.
+   * Undefined where no group level is involved, so the host's own zone
+   * decides as it always has.
+   */
+  resolveGroupGap = (above, below, clientX, hostLeft, { strip } = {}) => {
+    const levels = groupGapLevels(above, below);
+    if (!levels) return undefined;
+    const dragged = this.state.draggedEntity;
+    const chosen = pickLevel(
+      levels.filter(
+        (c) => !isNoOpDrop(dragged, c) && this.isDropLegal(c, dragged)
+      ),
+      levelAtX(clientX, hostLeft)
+    );
+    if (!chosen) return null;
+    const chevron = isUserGroup(chosen.parent);
+    return {
+      ref: chosen.ref,
+      position: chosen.position,
+      level: chosen.level,
+      chevron,
+      indentPx: chevron ? lineIndentPx(chosen.level, { strip }) : null
+    };
+  };
+
+  lastListedRow = () => {
+    const rows = this.state.entities;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (this.isVisibleInSceneGraph(rows[i].entity)) return rows[i];
+    }
+    return null;
+  };
+
   onDragOverEnd = (e) => {
     const draggedEntity = this.state.draggedEntity;
-    if (!this.canDropAtEnd(draggedEntity)) return;
+    if (!draggedEntity) return;
+    const level = this.resolveGroupGap(
+      this.lastListedRow(),
+      null,
+      e.clientX,
+      e.currentTarget.getBoundingClientRect().left,
+      { strip: true }
+    );
+    const insertion =
+      level === undefined
+        ? this.canDropAtEnd(draggedEntity) && {
+            ref: null,
+            position: 'end',
+            level: null
+          }
+        : level;
+    if (!insertion) {
+      if (this.state.insertionInfo?.host === DROP_STRIP) {
+        this.setState({ insertionInfo: null });
+      }
+      return;
+    }
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (this.state.insertionInfo?.position !== 'end') {
+    const current = this.state.insertionInfo;
+    if (
+      current?.host !== DROP_STRIP ||
+      current.ref !== insertion.ref ||
+      current.position !== insertion.position ||
+      current.level !== insertion.level
+    ) {
       this.setState({
         hoveredDropTarget: null,
-        insertionInfo: { entity: null, position: 'end' }
+        insertionInfo: { ...insertion, host: DROP_STRIP, edge: 'top' }
       });
     }
   };
 
   onDragLeaveEnd = () => {
-    if (this.state.insertionInfo?.position === 'end') {
+    if (this.state.insertionInfo?.host === DROP_STRIP) {
       this.setState({ insertionInfo: null });
     }
   };
 
   onDropEnd = (e) => {
     e.preventDefault();
-    const draggedEntity = this.state.draggedEntity;
+    const insertion = this.state.insertionInfo;
     this.setState({ hoveredDropTarget: null, insertionInfo: null });
-    if (!this.canDropAtEnd(draggedEntity)) return;
+    if (insertion?.host === DROP_STRIP) {
+      this.dropAt(this.state.draggedEntity, insertion);
+    }
+  };
+
+  // Carry out a drop the panel resolved, if it is still allowed.
+  dropAt = (draggedEntity, insertion) => {
+    if (
+      !draggedEntity ||
+      !insertion ||
+      !this.isDropLegal(insertion, draggedEntity)
+    ) {
+      return;
+    }
+    if (insertion.position !== 'end') {
+      this.onReparentEntity(draggedEntity, insertion.ref, insertion.position);
+      return;
+    }
     const root = this.props.scene.querySelector('#street-container');
     ensureId(draggedEntity.parentNode);
     AFRAME.INSPECTOR.execute('entityreparent', {
@@ -589,6 +686,8 @@ class SceneGraph extends React.Component {
         <Entity
           {...entityOption}
           key={i}
+          aboveRow={entityOptions[i - 1] ?? null}
+          belowRow={entityOptions[i + 1] ?? null}
           isFiltering={!!this.state.filter}
           isExpanded={this.isExpanded(entityOption.entity)}
           isSelected={this.props.selectedEntity === entityOption.entity}
@@ -601,7 +700,9 @@ class SceneGraph extends React.Component {
           setHoveredDropTarget={this.setHoveredDropTarget}
           insertionInfo={this.state.insertionInfo}
           setInsertionInfo={this.setInsertionInfo}
-          onReparentEntity={this.onReparentEntity}
+          resolveGroupGap={this.resolveGroupGap}
+          isDropLegal={this.isDropLegal}
+          dropAt={this.dropAt}
           canBeDragged={this.canBeDragged}
           canBeDropTarget={this.canBeDropTarget}
           isMoving={isReparentInFlight(entityOption.entity.id)}
@@ -626,6 +727,30 @@ class SceneGraph extends React.Component {
       }
     }
     return renderedEntities;
+  };
+
+  // The strip after the last row: the gap below it, at the top level or, when
+  // the last row is inside groups, at any of their levels.
+  renderDropStrip = () => {
+    const insertion =
+      this.state.insertionInfo?.host === DROP_STRIP
+        ? this.state.insertionInfo
+        : null;
+    return (
+      <div
+        className={classNames('layers-drop-end', {
+          'drop-after': !!insertion,
+          'drop-level': !!insertion?.chevron
+        })}
+        onDragOver={this.onDragOverEnd}
+        onDragLeave={this.onDragLeaveEnd}
+        onDrop={this.onDropEnd}
+      >
+        {insertion?.chevron && (
+          <DropLine edge="top" indentPx={insertion.indentPx} />
+        )}
+      </div>
+    );
   };
 
   render() {
@@ -755,15 +880,7 @@ class SceneGraph extends React.Component {
                   ) : (
                     <div>
                       {this.renderEntities()}
-                      <div
-                        className={classNames('layers-drop-end', {
-                          'drop-after':
-                            this.state.insertionInfo?.position === 'end'
-                        })}
-                        onDragOver={this.onDragOverEnd}
-                        onDragLeave={this.onDragLeaveEnd}
-                        onDrop={this.onDropEnd}
-                      />
+                      {this.renderDropStrip()}
                     </div>
                   )}
                 </div>

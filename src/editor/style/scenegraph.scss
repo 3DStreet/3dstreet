@@ -27,13 +27,55 @@
   }
 
   // Drop target after the last row: drops there go to the end of the top
-  // level, so an item can leave a group that is itself the last row.
+  // level (or, when the last row is inside groups, of the level the pointer
+  // is at), so an item can leave a group that is itself the last row.
   .layers-drop-end {
+    // Host for a group level's drop line.
+    position: relative;
     min-height: 16px;
     border-top: 2px solid transparent;
 
     &.drop-after {
       border-top-color: variables.$blue-100;
+    }
+
+    &.drop-after.drop-level {
+      border-top-color: transparent;
+    }
+  }
+
+  // A drop that lands in a group draws its own line from the level's indent
+  // (inline `left`) instead of the host's border, on the edge the border
+  // would use. Written with `.option` so it outranks the row's `> span`
+  // layout rule, which would make it an in-flow flex item that shifts the
+  // row while it shows.
+  .entity.option > span.drop-line,
+  .layers-drop-end > span.drop-line {
+    position: absolute;
+    display: block;
+    right: 0;
+    height: 2px;
+    background: variables.$blue-100;
+    pointer-events: none;
+
+    &.at-top {
+      top: -2px;
+    }
+    &.at-bottom {
+      bottom: -2px;
+    }
+
+    // "Inside": a small chevron just left of the line, hanging into the host.
+    > svg {
+      position: absolute;
+      left: -9px;
+      color: variables.$blue-100;
+    }
+    &.at-top > svg {
+      top: 0;
+    }
+    &.at-bottom > svg {
+      bottom: 0;
     }
   }
 
@@ -257,6 +299,11 @@
 
     &.drop-child {
       border-color: variables.$blue-100;
+    }
+
+    &.drop-level.drop-before,
+    &.drop-level.drop-after {
+      border-color: transparent;
     }
   }
 

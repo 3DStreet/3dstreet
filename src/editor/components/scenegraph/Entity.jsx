@@ -13,12 +13,32 @@ import { isContainer, isUserGroup } from '../../lib/groups/groupModel.js';
 import {
   faCaretDown,
   faCaretRight,
+  faChevronRight,
   faEye,
   faEyeSlash,
   faGripVertical
 } from '@fortawesome/free-solid-svg-icons';
 
 export { isContainer };
+
+// The line of a drop that lands in a group: from the level's indent, with a
+// chevron for "inside". Absolutely placed on the host's top or bottom edge,
+// so showing it moves nothing.
+export function DropLine({ edge, indentPx }) {
+  return (
+    <span
+      className={`drop-line at-${edge}`}
+      style={{ left: `${indentPx}px` }}
+      aria-hidden="true"
+    >
+      <AwesomeIcon icon={faChevronRight} size={8} />
+    </span>
+  );
+}
+DropLine.propTypes = {
+  edge: PropTypes.oneOf(['top', 'bottom']),
+  indentPx: PropTypes.number
+};
 
 // Where a drop at `fraction` of a row's height (0 = top) would put the dragged
 // row. A group row has a middle band that drops into the group; every other row
@@ -30,6 +50,20 @@ function dropPositionAt(entity, fraction) {
     return 'child';
   }
   return fraction <= 0.5 ? 'before' : 'after';
+}
+
+// Same drop, drawn by the same row the same way: a drag over one band
+// re-renders nothing.
+function sameInsertion(a, b) {
+  return (
+    !!a &&
+    !!b &&
+    a.host === b.host &&
+    a.edge === b.edge &&
+    a.ref === b.ref &&
+    a.position === b.position &&
+    a.level === b.level
+  );
 }
 
 // Tooltips for the passive role badges at the right of a row (keys from
@@ -58,9 +92,18 @@ class Entity extends React.Component {
     setDraggedEntity: PropTypes.func,
     hoveredDropTarget: PropTypes.object,
     setHoveredDropTarget: PropTypes.func,
+    // The drop the pointer means: `ref` and `position` say where it lands;
+    // `host` (the row or the strip drawing the line) and `edge` say where it
+    // is drawn, with `chevron` and `indentPx` for a line inside a group.
     insertionInfo: PropTypes.object,
     setInsertionInfo: PropTypes.func,
-    onReparentEntity: PropTypes.func,
+    // The listed rows ({entity, depth}) just above and below this one, whose
+    // gaps with it its upper and lower zones drop into.
+    aboveRow: PropTypes.object,
+    belowRow: PropTypes.object,
+    resolveGroupGap: PropTypes.func,
+    isDropLegal: PropTypes.func,
+    dropAt: PropTypes.func,
     canBeDragged: PropTypes.func,
     canBeDropTarget: PropTypes.func,
     // A move of this row is still settling: it cannot be dragged meanwhile.
@@ -125,29 +168,46 @@ class Entity extends React.Component {
     this.props.setInsertionInfo(null);
   };
 
+  // What a drop in `zone` of this row would do, or null where none is
+  // allowed. The upper and lower zones are the gaps above and below the row;
+  // where a gap involves a group level, the pointer's x picks the level.
+  insertionAt(zone, clientX, rowLeft) {
+    const { entity, draggedEntity } = this.props;
+    const edge = { before: 'top', after: 'bottom' }[zone] ?? null;
+    if (edge) {
+      const row = { entity, depth: this.props.depth };
+      const [above, below] =
+        edge === 'top'
+          ? [this.props.aboveRow, row]
+          : [row, this.props.belowRow];
+      const level = this.props.resolveGroupGap(above, below, clientX, rowLeft);
+      if (level !== undefined) return level && { ...level, host: entity, edge };
+    }
+
+    // Drops that would leave the dragged row where it already is.
+    if (
+      (zone === 'before' && draggedEntity === entity.previousElementSibling) ||
+      (zone === 'after' && draggedEntity === entity.nextElementSibling) ||
+      (zone === 'child' && draggedEntity.parentNode === entity) ||
+      !this.props.canBeDropTarget(entity, draggedEntity, zone)
+    ) {
+      return null;
+    }
+    return { ref: entity, position: zone, host: entity, edge, level: null };
+  }
+
   onDragOver = (e) => {
     const { entity, draggedEntity } = this.props;
     if (!draggedEntity || isContainer(entity)) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
-    let position = dropPositionAt(entity, (e.clientY - rect.top) / rect.height);
-    // Drops that would leave the dragged row where it already is.
-    if (
-      (position === 'before' &&
-        draggedEntity === entity.previousElementSibling) ||
-      (position === 'after' && draggedEntity === entity.nextElementSibling) ||
-      (position === 'child' && draggedEntity.parentNode === entity)
-    ) {
-      position = null;
-    }
+    const zone = dropPositionAt(entity, (e.clientY - rect.top) / rect.height);
+    const insertion = this.insertionAt(zone, e.clientX, rect.left);
 
     // An illegal zone is not advertised: no preventDefault, so the browser
     // shows the no-drop cursor, and no insertion line.
-    if (
-      !position ||
-      !this.props.canBeDropTarget(entity, draggedEntity, position)
-    ) {
-      if (this.props.insertionInfo?.entity === entity) {
+    if (!insertion) {
+      if (this.props.insertionInfo?.host === entity) {
         this.props.setHoveredDropTarget(null);
         this.props.setInsertionInfo(null);
       }
@@ -156,8 +216,12 @@ class Entity extends React.Component {
 
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    this.props.setHoveredDropTarget(entity);
-    this.props.setInsertionInfo({ entity, position });
+    if (this.props.hoveredDropTarget !== entity) {
+      this.props.setHoveredDropTarget(entity);
+    }
+    if (!sameInsertion(this.props.insertionInfo, insertion)) {
+      this.props.setInsertionInfo(insertion);
+    }
   };
 
   onDragLeave = (e) => {
@@ -166,7 +230,10 @@ class Entity extends React.Component {
     const x = e.clientX;
     const y = e.clientY;
 
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+    if (
+      (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) &&
+      this.props.insertionInfo?.host === this.props.entity
+    ) {
       this.props.setHoveredDropTarget(null);
       this.props.setInsertionInfo(null);
     }
@@ -177,19 +244,7 @@ class Entity extends React.Component {
     const insertion = this.props.insertionInfo;
     this.props.setHoveredDropTarget(null);
     this.props.setInsertionInfo(null);
-
-    const dragged = this.props.draggedEntity;
-    if (
-      dragged &&
-      insertion &&
-      this.props.canBeDropTarget(insertion.entity, dragged, insertion.position)
-    ) {
-      this.props.onReparentEntity(
-        dragged,
-        insertion.entity,
-        insertion.position
-      );
-    }
+    this.props.dropAt(this.props.draggedEntity, insertion);
   };
 
   render() {
@@ -201,17 +256,21 @@ class Entity extends React.Component {
 
     // Drag and drop state
     const isDragging = this.props.draggedEntity === entity;
-    const insertionPosition =
-      this.props.insertionInfo && this.props.insertionInfo.entity === entity
-        ? this.props.insertionInfo.position
+    const insertion =
+      this.props.insertionInfo?.host === entity
+        ? this.props.insertionInfo
         : null;
     const isHoveredDropTarget =
+      !!insertion &&
       this.props.hoveredDropTarget === entity &&
-      this.props.canBeDropTarget(
-        entity,
-        this.props.draggedEntity,
-        insertionPosition
-      );
+      this.props.isDropLegal(insertion, this.props.draggedEntity);
+    const dropEdge = isHoveredDropTarget ? insertion.edge : null;
+    // A drop into a group draws its own line from the level's indent; any
+    // other drop is drawn by the row's border.
+    const dropLine =
+      isHoveredDropTarget && insertion.chevron ? (
+        <DropLine edge={insertion.edge} indentPx={insertion.indentPx} />
+      ) : null;
 
     // Check if entity can be dragged. Suspended while the row's label is in
     // inline-rename mode so drag-start can't swallow text selection there.
@@ -344,9 +403,10 @@ class Entity extends React.Component {
       option: true,
       // Drag and drop classes
       dragging: isDragging,
-      'drop-before': isHoveredDropTarget && insertionPosition === 'before',
-      'drop-after': isHoveredDropTarget && insertionPosition === 'after',
-      'drop-child': isHoveredDropTarget && insertionPosition === 'child'
+      'drop-before': dropEdge === 'top',
+      'drop-after': dropEdge === 'bottom',
+      'drop-child': isHoveredDropTarget && insertion.position === 'child',
+      'drop-level': !!dropLine
     });
 
     return (
@@ -372,6 +432,7 @@ class Entity extends React.Component {
           {this.props.isMoving && (
             <span className="entityLoadSheen is-pending" aria-hidden="true" />
           )}
+          {dropLine}
           <span>
             <span
               style={{
