@@ -5,10 +5,10 @@
 //
 // The stock control draws and measures its handles at the origin of the
 // object it is attached to, and a group's origin can be far from its members.
-// So it is attached to a proxy instead: an object at the group's center that
+// So it is attached to an anchor instead: an object at the group's center that
 // carries the group's world heading (not its pitch or roll, so local space
 // follows the heading and the Y ring stays vertical). A drag moves or turns
-// the proxy, and each change is mapped onto the group: a move by the same
+// the anchor, and each change is mapped onto the group: a move by the same
 // displacement, a turn by the same angle about world Y with the group's
 // origin orbiting its center. Members are never written.
 //
@@ -80,19 +80,20 @@ class GroupStockGesture {
     this.axis = null;
     // The control's handle under the pointer, as last announced.
     this.hoveredAxis = null;
-    // Set from a drag's first promotion until its end: the proxy then keeps
+    // Set from a drag's first promotion until its end: the anchor then keeps
     // the pose the control gives it.
-    this.gesture = null;
-    this.proxy = null;
-    this.proxyParent = null;
+    this.drag = null;
+    this.handleAnchor = null;
+    this.anchorParent = null;
     this.posStart = new THREE.Vector3();
-    this.pivotParent = new THREE.Vector3();
+    this.centerInParent = new THREE.Vector3();
     this.originWorldStart = new THREE.Vector3();
-    this.proxyStartPosition = new THREE.Vector3();
-    this.proxyStartQuaternion = new THREE.Quaternion();
+    this.anchorStartPosition = new THREE.Vector3();
+    this.anchorStartQuaternion = new THREE.Quaternion();
     this.parentInverse = new THREE.Matrix4();
 
-    controls.addEventListener('objectChange', () => this.followProxy());
+    this.onObjectChange = () => this.followAnchor();
+    controls.addEventListener('objectChange', this.onObjectChange);
 
     this.press = new ClaimedPress({
       canvas,
@@ -132,7 +133,7 @@ class GroupStockGesture {
   /** Show the handles for `mode` ('translate' or 'rotate') on `groupEl`. */
   attach(groupEl, mode) {
     this.detach();
-    this.ensureProxy();
+    this.ensureAnchor();
     this.el = groupEl;
     this.object = groupEl.object3D;
     this.axis = mode === 'rotate' ? 'rotate' : 'move';
@@ -143,9 +144,9 @@ class GroupStockGesture {
     controls.showY = true;
     controls.showZ = mode !== 'rotate';
     // Drawn (and laid out every render) only while attached.
-    this.sceneHelpers.add(this.proxyParent);
+    this.sceneHelpers.add(this.anchorParent);
     this.sceneHelpers.add(controls.getHelper());
-    controls.attach(this.proxy);
+    controls.attach(this.handleAnchor);
     this.press.arm();
     return this;
   }
@@ -157,7 +158,7 @@ class GroupStockGesture {
     this.press.disarm();
     this.controls.detach();
     this.sceneHelpers.remove(this.controls.getHelper());
-    this.sceneHelpers.remove(this.proxyParent);
+    this.sceneHelpers.remove(this.anchorParent);
     this.el = undefined;
     this.object = undefined;
     this.axis = null;
@@ -175,40 +176,41 @@ class GroupStockGesture {
 
   dispose() {
     this.detach();
+    this.controls.removeEventListener('objectChange', this.onObjectChange);
     this.press.dispose();
   }
 
-  ensureProxy() {
-    if (this.proxy) return;
-    this.proxyParent = new THREE.Group();
-    this.proxyParent.name = 'group-stock-gesture-proxy';
-    const proxy = new THREE.Object3D();
-    proxy.raycast = noRaycast;
-    const gesture = this;
-    const updateMatrixWorld = proxy.updateMatrixWorld;
+  ensureAnchor() {
+    if (this.handleAnchor) return;
+    this.anchorParent = new THREE.Group();
+    this.anchorParent.name = 'group-stock-gesture-anchor';
+    const anchor = new THREE.Object3D();
+    anchor.raycast = noRaycast;
+    const self = this;
+    const updateMatrixWorld = anchor.updateMatrixWorld;
     // Re-derived on every layout of the stock control (it lays its attached
     // object out first, at render and when a press is promoted), so the
     // handles stand at the group's current center and a drag starts from the
     // current pose. Not a frame-window step: the control's own hover and
     // press tests can run between frames.
-    proxy.updateMatrixWorld = function (force) {
-      if (!gesture.gesture && gesture.object) gesture.placeProxy();
+    anchor.updateMatrixWorld = function (force) {
+      if (!self.drag && self.object) self.placeAnchor();
       return updateMatrixWorld.call(this, force);
     };
-    this.proxyParent.add(proxy);
-    this.proxy = proxy;
+    this.anchorParent.add(anchor);
+    this.handleAnchor = anchor;
   }
 
-  /** The proxy at the group's center, turned to its world heading. */
-  placeProxy() {
+  /** The anchor at the group's center, turned to its world heading. */
+  placeAnchor() {
     const t = tmp();
     const object = this.object;
     object.updateWorldMatrix(true, false);
     getGroupCenter(this.el, t.center).applyMatrix4(object.matrixWorld);
-    this.proxy.position.copy(t.center);
+    this.handleAnchor.position.copy(t.center);
     object.matrixWorld.decompose(t.position, t.quaternion, t.scale);
     const heading = t.euler.setFromQuaternion(t.quaternion, 'YXZ').y;
-    this.proxy.quaternion.setFromAxisAngle(t.up, heading);
+    this.handleAnchor.quaternion.setFromAxisAngle(t.up, heading);
   }
 
   /** The control's normalised pointer for a client point. */
@@ -287,9 +289,9 @@ class GroupStockGesture {
     this.posStart.copy(object.position);
     this.originWorldStart.setFromMatrixPosition(object.matrixWorld);
     this.parentInverse.copy(object.parent.matrixWorld).invert();
-    getGroupCenter(el, this.pivotParent).applyMatrix4(object.matrix);
+    getGroupCenter(el, this.centerInParent).applyMatrix4(object.matrix);
     const rotation = object.rotation;
-    const gesture = {
+    const drag = {
       el,
       pointerType: press.pointerType,
       x0: rotation.x,
@@ -303,31 +305,39 @@ class GroupStockGesture {
     // camera before it measures the press against its plane.
     controls.pointerHover(press.token.pointer);
     controls.getHelper().updateMatrixWorld(true);
+    // pointerDown starts a drag even when the ray misses the control's plane,
+    // keeping the last drag's start point; a start it did not write is a
+    // miss, and this press then moves nothing.
+    controls.pointStart.set(NaN, NaN, NaN);
     controls.pointerDown(press.token.pointer);
     if (!controls.dragging) return;
+    if (Number.isNaN(controls.pointStart.x)) {
+      controls.pointerUp(null);
+      return;
+    }
     // The pose the control measures its drag from, read back from it, so a
-    // stale proxy cannot add its difference to the first move.
-    this.proxyStartPosition.copy(controls.worldPositionStart);
-    this.proxyStartQuaternion.copy(controls.worldQuaternionStart);
-    this.gesture = gesture;
+    // stale anchor cannot add its difference to the first move.
+    this.anchorStartPosition.copy(controls.worldPositionStart);
+    this.anchorStartQuaternion.copy(controls.worldQuaternionStart);
+    this.drag = drag;
     this.dispatchEvent({ type: 'mouseDown' });
     this.track(event);
   }
 
   /** Feed the control a pointer sample of the drag. */
   track(event) {
-    if (!this.gesture) return;
+    if (!this.drag) return;
     // Always -1: the control moves only for a button of -1, whatever the
     // event's own button (a release sample carries 0).
     const pointer = this.pointerAt(event, -1);
     if (pointer) this.controls.pointerMove(pointer);
   }
 
-  /** The control moved or turned the proxy: move or turn the group as much. */
-  followProxy() {
-    const gesture = this.gesture;
-    if (!gesture) return;
-    if (!gesture.el.isConnected) {
+  /** The control moved or turned the anchor: move or turn the group as much. */
+  followAnchor() {
+    const drag = this.drag;
+    if (!drag) return;
+    if (!drag.el.isConnected) {
       this.press.cancel('disconnected');
       return;
     }
@@ -336,8 +346,8 @@ class GroupStockGesture {
     const q = (v) => quantise(v, POSITION_DECIMALS);
     if (this.axis === 'move') {
       t.position
-        .copy(this.proxy.position)
-        .sub(this.proxyStartPosition)
+        .copy(this.handleAnchor.position)
+        .sub(this.anchorStartPosition)
         .add(this.originWorldStart)
         .applyMatrix4(this.parentInverse);
       object.position.set(q(t.position.x), q(t.position.y), q(t.position.z));
@@ -346,22 +356,22 @@ class GroupStockGesture {
       // yaw the commit writes, so a turn released at its start angle writes
       // the start position exactly.
       t.delta
-        .copy(this.proxy.quaternion)
-        .multiply(t.quaternion.copy(this.proxyStartQuaternion).invert());
+        .copy(this.handleAnchor.quaternion)
+        .multiply(t.quaternion.copy(this.anchorStartQuaternion).invert());
       const turn = 2 * Math.atan2(t.delta.y, t.delta.w);
-      const yaw = quantise(radToDeg(gesture.y0) + radToDeg(turn), YAW_DECIMALS);
+      const yaw = quantise(radToDeg(drag.y0) + radToDeg(turn), YAW_DECIMALS);
       // The Euler, not the quaternion: pitch and roll keep the snapshot's
       // own radians, so they read back as the same degrees.
-      object.rotation.set(gesture.x0, degToRad(yaw), gesture.z0, 'YXZ');
-      t.euler.set(gesture.x0, degToRad(gesture.y0Rounded), gesture.z0, 'YXZ');
+      object.rotation.set(drag.x0, degToRad(yaw), drag.z0, 'YXZ');
+      t.euler.set(drag.x0, degToRad(drag.y0Rounded), drag.z0, 'YXZ');
       t.qStart.setFromEuler(t.euler);
-      t.euler.set(gesture.x0, degToRad(yaw), gesture.z0, 'YXZ');
+      t.euler.set(drag.x0, degToRad(yaw), drag.z0, 'YXZ');
       t.qNow.setFromEuler(t.euler);
       positionForRotationAboutCenter(
         this.posStart,
         t.qStart,
         t.qNow,
-        this.pivotParent,
+        this.centerInParent,
         t.position
       );
       object.position.set(q(t.position.x), q(t.position.y), q(t.position.z));
@@ -374,19 +384,19 @@ class GroupStockGesture {
    * the drag's last sample.
    */
   onRelease(event) {
-    if (!this.gesture) return;
+    if (!this.drag) return;
     this.track(event);
-    if (!this.gesture) return; // the last sample found the group gone
+    if (!this.drag) return; // the last sample found the group gone
     this.controls.pointerUp({ button: 0 });
     this.finish(true, event);
   }
 
   onCancelDrag() {
-    const gesture = this.gesture;
-    if (!gesture) return;
-    if (gesture.el.isConnected) {
+    const drag = this.drag;
+    if (!drag) return;
+    if (drag.el.isConnected) {
       this.object.position.copy(this.posStart);
-      this.object.rotation.set(gesture.x0, gesture.y0, gesture.z0, 'YXZ');
+      this.object.rotation.set(drag.x0, drag.y0, drag.z0, 'YXZ');
       this.dispatchEvent({ type: 'objectChange' });
     }
     this.controls.pointerUp(null);
@@ -395,33 +405,33 @@ class GroupStockGesture {
 
   /** The one way out of a drag, kept (`commit`) or not. */
   finish(commit, event) {
-    const gesture = this.gesture;
-    if (!gesture) return;
-    this.gesture = null;
+    const drag = this.drag;
+    if (!drag) return;
+    this.drag = null;
     this.dispatchEvent({ type: 'mouseUp' });
-    if (commit && gesture.el.isConnected) {
-      const after = formatGesturePose(gesture.el);
+    if (commit && drag.el.isConnected) {
+      const after = formatGesturePose(drag.el);
       this.dispatchEvent({
         type: 'commitDrag',
-        entity: gesture.el,
+        entity: drag.el,
         name: this.axis === 'rotate' ? 'rotate' : 'move',
         changes: [
           {
             component: 'position',
             value: after.position,
-            oldValue: gesture.before.position
+            oldValue: drag.before.position
           },
           {
             component: 'rotation',
             value: after.rotation,
-            oldValue: gesture.before.rotation
+            oldValue: drag.before.rotation
           }
         ]
       });
     }
     // After the commit, whose wiring holds the hover until the pointer moves.
     // A touch lifts off the handle; a mouse may still be on one.
-    if (gesture.pointerType !== 'mouse' && gesture.pointerType !== 'pen') {
+    if (drag.pointerType !== 'mouse' && drag.pointerType !== 'pen') {
       this.announceHover(null);
       return;
     }

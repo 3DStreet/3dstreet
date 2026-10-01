@@ -402,7 +402,7 @@ describe('the easy gizmo on a group', () => {
 
     for (const mode of ['translate', 'rotate']) {
       advanced(mode);
-      expect(stock.object).toBe(stockGesture().proxy);
+      expect(stock.object).toBe(stockGesture().handleAnchor);
       expect(stock.mode).toBe(mode);
       expect(stock.worldPosition.distanceTo(center)).toBeLessThan(1e-6);
       expect(axes(stock)).toEqual(
@@ -433,13 +433,13 @@ describe('the easy gizmo on a group', () => {
     expect(axes(item)).toEqual([true, true, true]);
     expect(stock.object).toBeUndefined();
     select(g);
-    expect(stock.object).toBe(stockGesture().proxy);
+    expect(stock.object).toBe(stockGesture().handleAnchor);
     expect(axes(stock)).toEqual([false, true, false]);
     expect(item.object).toBeUndefined();
     select(plain);
     expect(item.object).toBe(plain.object3D);
     expect(axes(item)).toEqual([true, true, true]);
-    expect(item.object).not.toBe(stockGesture().proxy);
+    expect(item.object).not.toBe(stockGesture().handleAnchor);
 
     // Every setting reaches both controls.
     Events.emit('transformspacechanged', 'local');
@@ -458,6 +458,16 @@ describe('the easy gizmo on a group', () => {
     }
     expect(stock.space).toBe('local');
     expect(stock.camera).toBe(second);
+
+    // Plan View hands back the perspective camera before its own tween: both
+    // controls take it there too.
+    const perspective = new THREE.PerspectiveCamera(50, 1.5, 0.1, 500);
+    h.inspector.cameras = { perspective };
+    h.inspector.controls.handlePlanViewRequest = vi.fn();
+    Events.emit('cameratoggle', { camera: second, value: 'orthotop' });
+    expect(h.inspector.controls.handlePlanViewRequest).toHaveBeenCalledTimes(1);
+    expect(item.camera).toBe(perspective);
+    expect(stock.camera).toBe(perspective);
   });
 
   it('moves at a constant height with no ground probe or landing targets, while an item follows a kerb', () => {
@@ -1646,6 +1656,47 @@ describe('a group in the Advanced move and rotate modes', () => {
     expect(history()).toBe(before);
   });
 
+  it("moves nothing for a press whose ray misses the drag plane, then drags as usual from the next press (fails if a drag starts from the last drag's start point)", () => {
+    const g = posable(group(h.streetContainer), { position: [1, 0, -2] });
+    posable(solid(g, [-1, 0, -1], [1, 1, 1]));
+    aimCamera([1, 12, 12], [1, 0, -2]);
+    select(g);
+    advanced('translate');
+    const before = history();
+    // A drag first, so the control holds a start point from it.
+    let at = stockHandlePoint('X');
+    press(at);
+    move(along(at, 3));
+    move(along(at, 40));
+    release(along(at, 40));
+    expect(history()).toBe(before + 1);
+    h.frame();
+    h.frame();
+    const moved = copy(g.object3D.position);
+
+    // A grazing ray: the press misses the control's plane, later samples hit.
+    at = stockHandlePoint('X');
+    const plane = groupStock()._plane;
+    plane.raycast = () => {};
+    press(at);
+    move(along(at, 3));
+    delete plane.raycast;
+    move(along(at, 60));
+    release(along(at, 60));
+    expect(copy(g.object3D.position)).toEqual(moved);
+    expect(history()).toBe(before + 1);
+
+    h.frame();
+    h.frame();
+    at = stockHandlePoint('X');
+    press(at);
+    move(along(at, 3));
+    move(along(at, 40));
+    release(along(at, 40));
+    expect(history()).toBe(before + 2);
+    expect(g.object3D.position.x).not.toBe(moved.x);
+  });
+
   // A pitched and rolled group, turned so its origin is far from its center.
   function pitchedGroup(position = [0, 0, 0]) {
     const g = posable(group(h.streetContainer), {
@@ -1762,7 +1813,7 @@ describe('a group in the Advanced move and rotate modes', () => {
     expect(history()).toBe(before);
   });
 
-  it('moves a turned group along its heading in local space and along world X in world space; a touch press after the camera moved with no frame since moves from where it lands (fails on a proxy without the heading, or on a press measured against the plane as last drawn)', () => {
+  it('moves a turned group along its heading in local space and along world X in world space; a touch press after the camera moved with no frame since moves from where it lands (fails on an anchor without the heading, or on a press measured against the plane as last drawn)', () => {
     const g = posable(group(h.streetContainer), { rotation: [0, 30, 0] });
     posable(solid(g, [-1, 0, -1], [1, 1, 1]));
     aimCamera([0, 12, 12], [0, 0, 0]);
@@ -1848,7 +1899,7 @@ describe('a group in the Advanced move and rotate modes', () => {
 
       // Out 3 px and exactly back: a drag, which opens nothing.
       select(g);
-      expect(stock.object).toBe(stockGesture().proxy);
+      expect(stock.object).toBe(stockGesture().handleAnchor);
       at = stockHandlePoint('X', { overBoxOf: g });
       press(at);
       move(offset(at, 3));
