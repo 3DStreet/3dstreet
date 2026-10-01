@@ -274,6 +274,21 @@ function groupStandPoint(groupEl) {
 }
 
 /**
+ * Where an item added with no position of its own goes (an upload from the
+ * Assets panel, a File menu import): with `ticket` naming a group that can
+ * still take it, that group's stand point, read now, so a group moved while
+ * the file was read is followed; otherwise null, and the route keeps its own
+ * default. Never the group's origin, which can be far from its members.
+ */
+export function defaultPlacementPoint(ticket) {
+  if (!ticket) return null;
+  const groupEl = resolvePlacement(ticket);
+  if (!groupEl) return null;
+  const { x, y, z } = groupStandPoint(groupEl);
+  return { x, y, z };
+}
+
+/**
  * Where an item placed "in view" goes (a card click, or placing an asset from
  * the library): the ground at the middle of the view. With a
  * group open and a view that does not meet the ground, the group's stand

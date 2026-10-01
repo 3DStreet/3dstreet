@@ -50,6 +50,7 @@ import Events from '@/editor/lib/Events.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 import {
   beginPlacement,
+  defaultPlacementPoint,
   executePlacedCreate,
   placeDefinition
 } from '@/editor/lib/groups/groupPlacement.js';
@@ -232,7 +233,11 @@ async function createPlaceholderEntity(file, position, kind, ticket) {
     };
   }
 
-  // Checked here, after the reads above, just before the item is created.
+  // Checked here, after the reads above, just before the item is created:
+  // the group's pose now, not when the file was picked.
+  if (position == null) {
+    definition.components.position = defaultPlacementPoint(ticket) ?? '0 0 0';
+  }
   const placed = placeDefinition(definition, ticket);
   if (placed.refusal) {
     notifyRefusal(null, placed.refusal);
@@ -310,6 +315,9 @@ export function placeCloudAsset(asset, position, ticket = beginPlacement()) {
         height: plane.height
       }
     };
+  }
+  if (position == null) {
+    definition.components.position = defaultPlacementPoint(ticket) ?? '0 0 0';
   }
   executePlacedCreate(definition, { ticket });
 }

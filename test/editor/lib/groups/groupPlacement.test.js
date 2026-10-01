@@ -17,6 +17,7 @@ import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   committedWorldPosition,
   entityIn,
+  memberWithBox,
   mountPlacementScene
 } from './_placementHarness.js';
 import { expectMatrixClose, worldOf } from './_entityElement.js';
@@ -217,6 +218,31 @@ describe('an upload that is still being read when the scope changes', () => {
     finishAnalysis();
     await vi.waitFor(() => expect(scene.creates()).toHaveLength(1));
     expect(scene.creates()[0][1].parentEl).toBe(outer);
+    useCurrentUploadStore.getState().clear();
+    uploading.catch(() => {});
+  });
+
+  it('with no position of its own, goes to the stand point of the group where it is when the model has been read, after the group was moved meanwhile (fails if the point is taken before the read)', async () => {
+    delete auth.currentUser;
+    const group = entityIn(scene.root, {
+      id: 'a',
+      cls: 'user-group',
+      rotation: '0 25 0'
+    });
+    memberWithBox(group, [6, 1, 6], [8, 2, 9]);
+    scene.openGroups('a');
+    const uploading = uploadAndPlaceAsset(gltf());
+    await vi.waitFor(() => expect(finishAnalysis).toBeTypeOf('function'));
+    group.setAttribute('position', '10 0 -4');
+    finishAnalysis();
+    await vi.waitFor(() => expect(scene.creates()).toHaveLength(1));
+    group.object3D.updateWorldMatrix(true, false);
+    const stand = new THREE.Vector3(7, 1, 7.5).applyMatrix4(
+      group.object3D.matrixWorld
+    );
+    expect(
+      committedWorldPosition(scene.root, scene.creates()[0]).distanceTo(stand)
+    ).toBeLessThan(1e-6);
     useCurrentUploadStore.getState().clear();
     uploading.catch(() => {});
   });

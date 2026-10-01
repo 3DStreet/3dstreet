@@ -9,6 +9,7 @@ import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
   captureFileInputs,
   committedWorldPosition,
+  entityIn,
   memberWithBox,
   mountPlacementScene
 } from '../lib/groups/_placementHarness.js';
@@ -155,6 +156,145 @@ describe('adding assets from the library, a link and the File menu while a group
     );
     const [[, plain]] = scene.creates();
     expect(plain.parentEl).toBeUndefined();
+  });
+});
+
+describe('an upload or import with no position of its own while a group is open', () => {
+  let inputs;
+  let file = 0;
+  const nextFile = () => new File(['s'], `f${++file}.spz`);
+
+  beforeEach(() => {
+    inputs = captureFileInputs();
+    // Read by other menu items as the menu renders.
+    globalThis.STREET.utils = {
+      getCurrentSceneId: () => null,
+      getAuthorId: () => null
+    };
+    withIntl(<AssetsPanel />);
+    withIntl(<AppMenu currentUser={null} />);
+  });
+
+  const uploadFromPanel = () => upload(() => given.panel.onUpload(nextFile()));
+  const chooseImport = () => fireEvent.click(screen.getByText('Import...'));
+  const pickImportedFile = () =>
+    upload(() =>
+      inputs[inputs.length - 1].onchange({ target: { files: [nextFile()] } })
+    );
+  const lastCreate = () => scene.creates()[scene.creates().length - 1];
+  const committed = () => committedWorldPosition(scene.root, lastCreate());
+  const worldOfLocal = (groupEl, x, y, z) => {
+    groupEl.object3D.updateWorldMatrix(true, false);
+    return new THREE.Vector3(x, y, z).applyMatrix4(
+      groupEl.object3D.matrixWorld
+    );
+  };
+  const origin = (groupEl) =>
+    new THREE.Vector3().setFromMatrixPosition(groupEl.object3D.matrixWorld);
+
+  it('goes to the center of the open group, on the bottom of its members, from the Upload button and from File › Import, not to the scene origin (fails if it lands at the world origin)', async () => {
+    const { inner } = scene.scopeGroups();
+    // Members well away from the group origin, bottom at y = 1 in its frame.
+    memberWithBox(inner, [6, 1, 6], [8, 2, 9], { id: 'member' });
+    scene.openGroups('outer', 'inner');
+    const stand = worldOfLocal(inner, 7, 1, 7.5);
+
+    await uploadFromPanel();
+    expect(lastCreate()[1].parentEl).toBe(inner);
+    expect(committed().distanceTo(stand)).toBeLessThan(1e-6);
+    expect(committed().distanceTo(origin(inner))).toBeGreaterThan(5);
+    expect(committed().length()).toBeGreaterThan(5);
+
+    chooseImport();
+    await pickImportedFile();
+    expect(lastCreate()[1].parentEl).toBe(inner);
+    expect(committed().distanceTo(stand)).toBeLessThan(1e-6);
+  });
+
+  it('goes to the stored center of an empty open group, and without one to its origin, where its marker is (fails if the stored center is ignored, or an empty group falls back to the world origin)', async () => {
+    const outer = entityIn(scene.root, {
+      id: 'outer',
+      cls: 'user-group',
+      rotation: '0 30 0'
+    });
+    const empty = entityIn(outer, {
+      id: 'empty',
+      cls: 'user-group',
+      position: '12 0 -7'
+    });
+    scene.openGroups('outer', 'empty');
+
+    empty.components['group-center'] = {
+      data: { pinned: true, pin: { x: 3, y: 0, z: 4 } }
+    };
+    await uploadFromPanel();
+    expect(lastCreate()[1].parentEl).toBe(empty);
+    expect(committed().distanceTo(worldOfLocal(empty, 3, 0, 4))).toBeLessThan(
+      1e-6
+    );
+
+    delete empty.components['group-center'];
+    await uploadFromPanel();
+    expect(committed().distanceTo(origin(empty))).toBeLessThan(1e-6);
+    expect(committed().length()).toBeCloseTo(Math.hypot(12, 7), 6);
+  });
+
+  it('goes where the group is when the imported file arrives, after the group was moved (fails if the point is taken when Import is chosen)', async () => {
+    const { inner } = scene.scopeGroups();
+    memberWithBox(inner, [6, 1, 6], [8, 2, 9], { id: 'member' });
+    scene.openGroups('outer', 'inner');
+    const before = worldOfLocal(inner, 7, 1, 7.5);
+
+    chooseImport();
+    inner.setAttribute('position', '60 0 -20');
+    await pickImportedFile();
+    const after = worldOfLocal(inner, 7, 1, 7.5);
+    expect(after.distanceTo(before)).toBeGreaterThan(9);
+    expect(committed().distanceTo(after)).toBeLessThan(1e-6);
+  });
+
+  it('with no group open, goes to the scene origin at the top level, as always (fails if the group default reaches outside an open group)', async () => {
+    const { inner } = scene.scopeGroups();
+    memberWithBox(inner, [6, 1, 6], [8, 2, 9], { id: 'member' });
+
+    await uploadFromPanel();
+    chooseImport();
+    await pickImportedFile();
+    expect(scene.creates()).toHaveLength(2);
+    for (const [, payload] of scene.creates()) {
+      expect(payload.components.position).toBe('0 0 0');
+      expect(payload.parentEl).toBeUndefined();
+    }
+  });
+
+  it('follows every group around the open one: a scaled group inside a turned one (fails if only the transform of the open group itself is used)', async () => {
+    const outer = entityIn(scene.root, {
+      id: 'outer',
+      cls: 'user-group',
+      position: '-10 0 5',
+      rotation: '0 30 0'
+    });
+    const inner = entityIn(outer, {
+      id: 'inner',
+      cls: 'user-group',
+      position: '20 0 -8',
+      scale: '2 2 2'
+    });
+    memberWithBox(inner, [6, 1, 6], [8, 2, 9], { id: 'member' });
+    scene.openGroups('outer', 'inner');
+
+    await uploadFromPanel();
+    const [, payload] = lastCreate();
+    expect(payload.parentEl).toBe(inner);
+    expect(committed().distanceTo(worldOfLocal(inner, 7, 1, 7.5))).toBeLessThan(
+      1e-6
+    );
+    // Recomposed under the group, the item sits at the stand point in its frame.
+    expect(payload.components.position).toMatchObject({
+      x: expect.closeTo(7, 6),
+      y: expect.closeTo(1, 6),
+      z: expect.closeTo(7.5, 6)
+    });
   });
 });
 
