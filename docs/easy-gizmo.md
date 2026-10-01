@@ -5,6 +5,16 @@ rotation and explicit landing buttons. Its implementation lives in
 `src/editor/lib/gizmos/`. The viewport routes selection and camera changes;
 the controller owns gesture state, presentation and ground queries.
 
+## Visitor Build (viewer)
+
+During a Visitor Build session ([visitor-build.md](visitor-build.md)) the
+viewport attaches this gizmo, never the stock one, to the visitor's selected
+object with `viewerSession` set: it runs with the editor closed, holds the
+object's height (no ground following), and withdraws the vertical handle and
+the landing targets so objects stay on their build area's shape.
+`rotateEnabled = false` withdraws the rotate arc when the area's Allow rotate
+is off. Both flags are reset when the session ends.
+
 ## Vertical adjustment and visual feedback
 
 Drag the yellow double-headed arrow above the movement pad to raise or lower

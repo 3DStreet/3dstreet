@@ -8,11 +8,15 @@ import {
   faStop,
   faRotateRight,
   faFlagCheckered,
-  faTriangleExclamation
+  faTriangleExclamation,
+  faArrowUpRightFromSquare
 } from '@fortawesome/free-solid-svg-icons';
+import posthog from 'posthog-js';
 import useStore from '@/store';
 import { useAuthContext } from '@/editor/contexts';
-import { useHasPlayable } from '@/editor/hooks';
+import { useHasPlayable, useHasBuildArea } from '@/editor/hooks';
+import { openSceneInNewEditor } from '@/editor/lib/sceneHandoff';
+import { getCurrentCameraState } from '@/editor/lib/cameraUtils.js';
 import { getUserProfile } from '@shared/utils/username';
 import { ProfileButton } from '@shared/auth/components';
 import { AppSwitcher } from '@shared/navigation/components';
@@ -20,6 +24,7 @@ import { SceneEditTitle } from '../elements/SceneEditTitle';
 import { Button } from '../elements/Button';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { ViewerSnapshot } from '../elements/ViewerSnapshot/ViewerSnapshot';
+import { HandoffPrompt } from '../elements/HandoffPrompt';
 import { ToolTip } from '../elements/PrimaryToolbar/PrimaryToolbar';
 import primaryStyles from '../elements/PrimaryToolbar/PrimaryToolbar.module.scss';
 import styles from './Toolbar.module.scss';
@@ -158,6 +163,15 @@ function Toolbar() {
   const { currentUser, isLoading: isAuthLoading } = useAuthContext() || {};
   const setModal = useStore((s) => s.setModal);
   const hasPlayable = useHasPlayable();
+  const hasBuildArea = useHasBuildArea();
+  // ?embed=true (docs/visitor-build.md): an <iframe> on another site gets
+  // the scene and its play controls only — no app switcher, byline or
+  // Edit action. A build scene's Open in 3DStreet stays: it is the
+  // visitor's way to keep their work.
+  const isEmbed = useStore((s) => s.isEmbed);
+  // Open in 3DStreet's link when its new tab was blocked (HandoffPrompt).
+  const [handoffUrl, setHandoffUrl] = useState(null);
+  const closeHandoffPrompt = useCallback(() => setHandoffUrl(null), []);
   const controlMode = useControlMode();
   // First-entry call-to-action: until Play has run once for this scene
   // load, the idle Start is a large centered button instead of the small
@@ -296,9 +310,19 @@ function Toolbar() {
       if (useStore.getState().modal) return;
       const a = document.activeElement;
       if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
-      e.preventDefault();
       const playMode = getPlayModeSystem();
       const hotspotSystem = AFRAME.scenes[0]?.systems?.['focus-hotspot'];
+      // ?embed=true hides Edit, so its keyboard path is closed too: an
+      // idle embed has no level left to back out to, and opening the
+      // editor (or the sign-in modal) inside a host's <iframe> is wrong.
+      if (
+        useStore.getState().isEmbed &&
+        !hotspotSystem?.focusedEl &&
+        !playMode?.isPlaying
+      ) {
+        return;
+      }
+      e.preventDefault();
       if (hotspotSystem?.focusedEl) {
         // A focused hotspot is one level deeper than playing: Escape backs
         // out to the overview before it ever stops the session (focus is
@@ -326,27 +350,29 @@ function Toolbar() {
           global classes), minus the Save cloud icon and with a wider
           title allowance. The title is always read-only in the viewer —
           renaming is an editor-only action, even for the owner. */}
-      <div id="scenegraph" className="scenegraph">
-        <div className="scenegraph-panel hide viewer-header">
-          <div id="left-panel-header">
-            <div className="left-panel-header-row">
-              <AppSwitcher />
-              <div className="scene-title clickable truncate">
-                <SceneEditTitle readOnly />
+      {!isEmbed && (
+        <div id="scenegraph" className="scenegraph">
+          <div className="scenegraph-panel hide viewer-header">
+            <div id="left-panel-header">
+              <div className="left-panel-header-row">
+                <AppSwitcher />
+                <div className="scene-title clickable truncate">
+                  <SceneEditTitle readOnly />
+                </div>
+                {authorUsername && (
+                  <span className="viewer-byline">
+                    <FormattedMessage
+                      id="viewer.byAuthor"
+                      defaultMessage="by {username}"
+                      values={{ username: authorUsername }}
+                    />
+                  </span>
+                )}
               </div>
-              {authorUsername && (
-                <span className="viewer-byline">
-                  <FormattedMessage
-                    id="viewer.byAuthor"
-                    defaultMessage="by {username}"
-                    values={{ username: authorUsername }}
-                  />
-                </span>
-              )}
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Shuttle controls, centered like the editor's PrimaryToolbar.
           Shown to anyone viewing a scene with something playable — owner
@@ -479,57 +505,115 @@ function Toolbar() {
             non-blocking toast; no modal, no pause. The richer
             Capture & Render flow stays an editor action. */}
             <ViewerSnapshot />
-            <div className={primaryStyles.divider} />
+            {/* Visitor Build (docs/visitor-build.md): take the scene, the
+            visitor's objects included, into a fresh editor tab as an
+            unsaved draft via the JSON-in-hash loader. Save there signs
+            them in and saves it as their own scene. */}
+            {hasBuildArea && (
+              <ToolTip
+                content={intl.formatMessage({
+                  id: 'viewer.openInEditorTitle',
+                  defaultMessage:
+                    'Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it'
+                })}
+              >
+                <Button
+                  variant="toolbtn"
+                  onClick={() => {
+                    posthog.capture('visitor_build_open_in_editor', {
+                      scene_id: STREET.utils.getCurrentSceneId(),
+                      placed_count: useStore.getState().buildPlacedCount,
+                      is_embed: isEmbed
+                    });
+                    setHandoffUrl(null);
+                    openSceneInNewEditor({
+                      getCameraState: getCurrentCameraState
+                    })
+                      .then(({ url, opened }) => {
+                        // Popup blocked: offer the link behind a fresh
+                        // click instead of losing the design.
+                        if (!opened) setHandoffUrl(url);
+                      })
+                      .catch((err) => {
+                        console.error('Open in 3DStreet failed:', err);
+                        STREET.notify?.errorMessage(
+                          intl.formatMessage({
+                            id: 'viewer.openInEditorFailed',
+                            defaultMessage:
+                              'Could not open the scene in a new tab. Please try again.'
+                          })
+                        );
+                      });
+                  }}
+                  leadingIcon={
+                    <AwesomeIcon icon={faArrowUpRightFromSquare} size={14} />
+                  }
+                >
+                  <FormattedMessage
+                    id="viewer.openInEditor"
+                    defaultMessage="Open in 3DStreet"
+                  />
+                </Button>
+              </ToolTip>
+            )}
+            {!isEmbed && <div className={primaryStyles.divider} />}
             {/* No "View only" label: the absence of edit controls plus an
             Edit / Sign in to Edit action already says this isn't edit
             mode; copy semantics surface via the unsaved-copy toast. */}
-            <ToolTip
-              content={
-                needsAuthToEdit
-                  ? intl.formatMessage({
-                      id: 'viewer.signInToEditTitle',
-                      defaultMessage:
-                        'Sign in to open the editor — saving will create your own copy'
-                    })
-                  : isAuthor
+            {!isEmbed && (
+              <ToolTip
+                content={
+                  needsAuthToEdit
                     ? intl.formatMessage({
-                        id: 'viewer.editTitle',
-                        defaultMessage: 'Open the editor'
-                      })
-                    : intl.formatMessage({
-                        id: 'viewer.editCopyTitle',
+                        id: 'viewer.signInToEditTitle',
                         defaultMessage:
-                          'Open the editor — saving will create your own copy'
+                          'Sign in to open the editor — saving will create your own copy'
                       })
-              }
-            >
-              <Button
-                onClick={handleEnterEditor}
-                variant="toolbtn"
-                disabled={authPending}
+                    : isAuthor
+                      ? intl.formatMessage({
+                          id: 'viewer.editTitle',
+                          defaultMessage: 'Open the editor'
+                        })
+                      : intl.formatMessage({
+                          id: 'viewer.editCopyTitle',
+                          defaultMessage:
+                            'Open the editor — saving will create your own copy'
+                        })
+                }
               >
-                {needsAuthToEdit ? (
-                  <FormattedMessage
-                    id="viewer.signInToEdit"
-                    defaultMessage="Sign in to Edit"
-                  />
-                ) : (
-                  <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
-                )}
-              </Button>
-            </ToolTip>
+                <Button
+                  onClick={handleEnterEditor}
+                  variant="toolbtn"
+                  disabled={authPending}
+                >
+                  {needsAuthToEdit ? (
+                    <FormattedMessage
+                      id="viewer.signInToEdit"
+                      defaultMessage="Sign in to Edit"
+                    />
+                  ) : (
+                    <FormattedMessage id="toolbar.edit" defaultMessage="Edit" />
+                  )}
+                </Button>
+              </ToolTip>
+            )}
           </Tooltip.Provider>
         </div>
-        <ProfileButton
-          currentUser={currentUser}
-          isLoading={isAuthLoading}
-          onClick={() => {
-            if (isAuthLoading) return;
-            setModal(currentUser ? 'profile' : 'signin');
-          }}
-          tooltipSide="bottom"
-        />
+        {!isEmbed && (
+          <ProfileButton
+            currentUser={currentUser}
+            isLoading={isAuthLoading}
+            onClick={() => {
+              if (isAuthLoading) return;
+              setModal(currentUser ? 'profile' : 'signin');
+            }}
+            tooltipSide="bottom"
+          />
+        )}
       </div>
+      {handoffUrl && (
+        <HandoffPrompt url={handoffUrl} onClose={closeHandoffPrompt} />
+      )}
     </>
   );
 }

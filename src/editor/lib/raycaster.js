@@ -87,12 +87,31 @@ export function initRaycaster(inspector) {
     return undefined;
   }
 
+  // Viewer build session (build-area, docs/visitor-build.md): the only
+  // selectable things are the visitor's own objects, so a click resolves
+  // to the nearest `data-viewer-added` ancestor of the hit or to nothing.
+  // No cascade: the shape under them, the street, the author's layers are
+  // all off limits while playing.
+  function resolveVisitorSelection(intersectedEl) {
+    let node = intersectedEl;
+    while (node && node.isEntity) {
+      if (node.hasAttribute && node.hasAttribute('data-viewer-added')) {
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }
+
   function getIntersectedEl() {
     const batched = getBatchedIntersectedEl();
     const intersectedEl =
       batched !== undefined
         ? batched
         : mouseCursor.components.cursor.intersectedEl;
+    if (!useStore.getState().isInspectorEnabled) {
+      return resolveVisitorSelection(intersectedEl);
+    }
     // Figma-style cascading selection (epic #1720): resolve one step down
     // the intersected entity's ancestor chain per click — street, then
     // segment, then child — see cascadingSelection.js. Hover previews the
