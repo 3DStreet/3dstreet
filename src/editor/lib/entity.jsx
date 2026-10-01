@@ -8,7 +8,6 @@ import { faBullseye } from '@fortawesome/free-solid-svg-icons';
 import { captureFocusPose } from './focusPose.js';
 import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 import { reseededGeneratorAttributes } from '../../tested/generator-seeds.js';
-import { isSystemItem } from './groups/groupModel.js';
 import { innermostOpenGroup } from './groups/groupPlacement.js';
 import {
   GeospatialIcon,
@@ -1086,14 +1085,14 @@ export function ensureViewerStartAtCurrentView({ select = false } = {}) {
       'data-layer-name': 'Starting View'
     }
   };
-  if (groupOpen && isSystemItem(definition)) definition.keepSelection = true;
-  // entitycreate selects the new entity once it has loaded, unless told to
-  // keep the selection; when called from set-thumbnail, put the author's
-  // selection back afterwards.
+  if (groupOpen) definition.noSelectEntity = true;
+  // entitycreate selects the new entity once it has loaded, unless told not
+  // to; when called from set-thumbnail, put the author's selection back
+  // afterwards.
   const previous = AFRAME.INSPECTOR.selectedEntity;
   // execute(cmdName, payload, optionalName, callback)
   return AFRAME.INSPECTOR.execute('entitycreate', definition, undefined, () => {
-    if (!select && !definition.keepSelection) {
+    if (!select && !definition.noSelectEntity) {
       AFRAME.INSPECTOR.selectEntity(previous || null);
     }
   });

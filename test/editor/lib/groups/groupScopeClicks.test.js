@@ -337,7 +337,7 @@ it('stays open, with the member still selected, when the Starting View is made o
   expect(h.openIds()).toEqual(['A']);
 
   h.inspector.execute('entitycreate', {
-    keepSelection: true,
+    noSelectEntity: true,
     components: {
       position: { x: 0, y: 1.6, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },

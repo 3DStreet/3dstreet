@@ -97,9 +97,9 @@ export class EntityCreateCommand extends Command {
     let definition = this.definition;
     const callback = (entity) => {
       entity.pause();
-      // `keepSelection`: the caller asks for the selection to stay as it is
-      // (an item the editor made for the user while a group is open).
-      if (!this.definition.keepSelection) this.editor.selectEntity(entity);
+      // `noSelectEntity`, as on an entityupdate: leave the selection as it
+      // is. It stays on the definition, so a redo keeps it too.
+      if (!this.definition.noSelectEntity) this.editor.selectEntity(entity);
       this.callback?.(entity);
       nextCommandCallback?.(entity);
     };
