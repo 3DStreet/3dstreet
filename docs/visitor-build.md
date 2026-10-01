@@ -26,9 +26,9 @@ Visitor Build is a play-mode capability and follows every rule there.
    - **Enabled**, **Max objects** (0 = unlimited), **Allow rotate**
    - **Palette**: a filterable, grouped checkbox list over the catalog
      mixins. Only these objects appear in the visitor's dock.
-   The cube badge on the shape's layers-list row selects the shape and
-   opens this section (it does not move the camera, unlike the hotspot
-   badge).
+     The cube badge on the shape's layers-list row selects the shape and
+     opens this section (it does not move the camera, unlike the hotspot
+     badge).
 3. Optionally set the **Starting View** (View › Set as Starting View) and
    its `freeLook: false` for a fixed 45° vantage, so the visitor cannot
    orbit away from the corner.
