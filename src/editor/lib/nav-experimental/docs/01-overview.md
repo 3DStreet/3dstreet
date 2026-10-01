@@ -134,7 +134,8 @@ door depending where you start), a **generic object** (frame it at its
 size), or **empty space** (no-op). Content inside a closed user group
 is the exception: the double-click selects and opens the group, and the
 camera stays put (see the repository's `docs/groups.md`). The hover
-highlight is fixed to preview exactly what a click will select.
+highlight is fixed to preview exactly what a click will select, except a
+click that leaves an open group (see the same file).
 
 ## The cross-cutting invariant: stay out of solid geometry
 

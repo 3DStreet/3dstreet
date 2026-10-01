@@ -3,7 +3,8 @@
 //
 // The open groups are a stack of ids, outermost first. It is state of the
 // editor session only: never stored on an entity, so nothing about it is saved
-// and a group recreated by a move (same id) stays open.
+// and a group recreated by a move (same id) keeps its place while the move
+// settles.
 //
 // The layer panel and the canvas both select through the same event, so the
 // scope follows the selection rather than where a click came from: selecting

@@ -681,18 +681,20 @@ export function Viewport(inspector) {
     if (selectionBox.visible && selectionBox.object) selectionBox.update();
   });
 
-  // The scene's own hover highlight, extracted so the easy gizmo's or the
-  // group stock control's controls can suppress it while the cursor is on one
-  // of them — a landing square often sits out on open ground, and lighting up
-  // the street segment beneath it while the user aims at it is exactly wrong.
+  // The scene's own hover highlight, extracted so the easy gizmo's controls or
+  // the group's stock control's handles can suppress it while the cursor is
+  // on one of them — a landing square often sits out on open ground, and
+  // lighting up the street segment beneath it while the user aims at it is
+  // exactly wrong.
   // On a group's stock handle, a click is the control's and never selects
   // what lies beneath, so a red preview of that would be false.
   let lastHoveredEl = null;
-  // The cursor is on one of the easy gizmo's controls, or on a group stock
-  // control's handle (their axisHoverChange). The router never attaches both.
+  // The cursor is on one of the easy gizmo's controls, or on a handle of the
+  // group's stock control (their axisHoverChange). The router never attaches
+  // both.
   let gizmoControlHovered = false;
-  // An easy-gizmo gesture has just committed and the pointer has not moved
-  // since. A drag-to-detach commit (#2011) removes the dragged clone and
+  // A gesture control's gesture has just committed and the pointer has not
+  // moved since. A drag-to-detach commit (#2011) removes the dragged clone and
   // selects the entity created in its place, which re-attaches the gizmo to
   // it; until the next pointer move the new gizmo does not know the cursor is
   // still on the control the user released, so a raycaster poll in that gap
@@ -772,8 +774,8 @@ export function Viewport(inspector) {
     groupHoverBox.setFromObject(el.object3D);
   }
 
-  // A press held on the easy gizmo's handle over the selected closed group's
-  // box: releasing it without moving opens the group, so the magenta box shows,
+  // A press held on a group's handle over the selected closed group's box:
+  // releasing it without moving opens the group, so the magenta box shows,
   // a little stronger, until the press ends, for touch as much as for mouse.
   const GROUP_HOVER_FILL = groupHoverBox.boxFill.material.opacity;
   const GROUP_PRESSED_FILL = 0.4;
@@ -1082,8 +1084,8 @@ export function Viewport(inspector) {
         heldGroup = null;
       }
     });
-    // A press held on a group's handle (see groupGizmoPolicy): the magenta box
-    // while it would open the group, and the click it turns out to be.
+    // A press held on a group's handle: the magenta box while it would open
+    // the group, and the click it turns out to be.
     emitter.addEventListener('handlePress', (evt) => {
       const hits = mouseCursor.groupHitsAt(evt.clientX, evt.clientY);
       const opens = inspector.groupScope.handleClickOpens(hits);

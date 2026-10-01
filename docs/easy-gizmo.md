@@ -93,9 +93,10 @@ pointercancel, blur or Escape as usual. Treating the loss as a cancel restored
 the press pose on release, which users saw as the object snapping back.
 
 The protocol has a second owner. `ClaimedPress` (`gizmos/claimedPress.js`)
-carries it as a unit, without the parts only the easy gizmo needs, for a control that
-cannot listen for itself: a group's stock control in the Advanced modes
-([groups](groups.md#handles)). A change to the protocol here belongs there too.
+carries it as a unit, without the parts only the easy gizmo needs, for a
+control that cannot listen for itself: a group's stock control in the Advanced
+modes ([groups](groups.md#handles)). A change to the protocol here belongs
+there too.
 
 Translation records pointer movement and evaluates it once per scene frame.
 Release queues the final coordinate for the next frame token, so finishing a drag
@@ -106,12 +107,12 @@ the press snapshot instead of committing that queued movement.
 
 `attach(el, policy)` takes an optional policy for an entity the item rules do
 not fit; without one nothing changes. User groups are the one caller: the
-viewport passes a policy for every group in easy mode. A policy
-supplies the pivot the handles stand at and a turn holds still, and the box
-whose bottom they stand on, read at every layout rather than measured from
-meshes. It can switch off ground behaviour (a move keeps its height, with no
-column probe and no landing targets), keep geometry edits inside the entity
-from cancelling a gesture, and defer presses.
+viewport passes a policy for every group in easy mode. A policy supplies the
+pivot the handles stand at and a turn holds still, and the box whose bottom
+they stand on, read at every layout rather than measured from meshes. It can
+switch off ground behaviour (a move keeps its height, with no column probe and
+no landing targets), keep geometry edits inside the entity from cancelling a
+gesture, and defer presses.
 
 A deferred press is claimed and suppressed as usual, and its control shows as
 active at once, but nothing moves until the pointer has been 2 CSS pixels or

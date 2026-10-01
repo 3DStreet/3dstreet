@@ -117,20 +117,20 @@ the bottom of the member box, a move keeps the group's height, and a turn is
 about the center.
 
 In Advanced move and rotate a group gets a stock transform control of its own
-(`groupStockGesture.js`), a second instance with no canvas listeners. The
-stock control stands at the origin of what it is attached to, so it is
-attached to a proxy at the group's center that carries the group's heading;
-each change of the proxy is mapped onto the group. Move shows every axis;
-rotate shows only the vertical ring, and turns about the center. Its press is
-owned by `gizmos/claimedPress.js`, the easy gizmo's press protocol as a unit. A
-drag is one undo step, and Escape, blur or a cancelled pointer put the group
-back exactly. Scale mode shows a placeholder on the center marker, a wire cube
-with nothing to drag: a group scales only uniformly, in the properties panel.
+(`groupStockGesture.js`), a second instance with no canvas listeners. The stock
+control stands at the origin of what it is attached to, so it is attached to an
+anchor object at the group's center that carries the group's heading; each
+change of the anchor is mapped onto the group. Move shows every axis; rotate
+shows only the vertical ring, and turns about the center. Its press is owned by
+`gizmos/claimedPress.js`, the easy gizmo's press protocol as a unit. A drag is
+one undo step, and Escape, blur or a cancelled pointer put the group back
+exactly. Scale mode shows a placeholder on the center marker, a wire cube with
+nothing to drag: a group scales only uniformly, in the properties panel.
 
-A press on a group's handle is held until the pointer has moved 2 CSS
-pixels. Released sooner, it is a click: over the selected closed group's
-box it opens the group, and anywhere else it does nothing. An open group is
-never selected, so it has no handles.
+A press on a group's handle is held until the pointer has moved 2 CSS pixels.
+Released sooner, it is a click: over the selected closed group's box it opens
+the group, and anywhere else it does nothing. An open group is never selected,
+so it has no handles.
 
 ## Showing the open group
 

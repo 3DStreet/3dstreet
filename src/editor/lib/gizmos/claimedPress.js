@@ -5,16 +5,17 @@
  * that cannot listen for itself.
  *
  * What it carries over from the easy gizmo, each piece for the reason given
- * there:
+ * there (the method names are this file's; the easy gizmo's counterparts
+ * carry a leading underscore):
  * - Window capture listeners, armed only while the owner is attached
- *   (_addListeners/_removeListeners): the A-Frame cursor listens on the
+ *   (arm/disarm): the A-Frame cursor listens on the
  *   canvas, where stopPropagation() cannot reach a listener already
  *   registered, so only an ancestor's capture listener runs first.
  * - The claim: a primary left press on the canvas, with the editor open, that
  *   `hitTest` accepts, is cancelled and stopped. A cancelled pointerdown sends
  *   no compatibility mousedown or mouseup; the press's mousedown and
- *   touchstart are suppressed anyway (_onSuppressClaimed), and so is the
- *   trailing canvas click (_onSuppressLatched), which would otherwise select
+ *   touchstart are suppressed anyway (onSuppressClaimed), and so is the
+ *   trailing canvas click (onSuppressLatched), which would otherwise select
  *   whatever lies under the control. The double-click is not suppressed.
  * - The busy guard: while a press is held or dragging, every other
  *   pointerdown is suppressed and ignored, so a second touch reaches nothing.
@@ -22,15 +23,14 @@
  *   pointer has been 2 px from where it went down, on a move or on the
  *   release sample. A still release is a click, reported with the click count
  *   of the click event that trails it (pointer events carry none), or at once
- *   for touch, which has no trailing click (_reportClick).
+ *   for touch, which has no trailing click (reportClick).
  * - Cancels: Escape (its keyup is stopped), window blur and the owned
  *   pointercancel. Every key the editor's keymap would take is suppressed
- *   while a press is held (_suppressKey).
+ *   while a press is held (suppressKey).
  * - Lost pointer capture does not cancel: Chrome drops capture mid-drag on
- *   macOS trackpads, and cancelling there was the easy gizmo's snap-back bug.
- *   It is re-acquired on the next move with a button down (_onLostCapture,
- *   _reacquireCapture). A drag that leaves the canvas while it still holds
- *   capture ends as a release (_onCanvasLeave).
+ *   macOS trackpads. It is re-acquired on the next move with a button down
+ *   (onLostCapture, reacquireCapture). A drag that leaves the canvas while it
+ *   still holds capture ends as a release (onCanvasLeave).
  * - Pointer capture is set when a press becomes a drag and released when the
  *   drag ends, released before the owner hears of the end, so an Escape with
  *   the button still down frees the canvas at once.
