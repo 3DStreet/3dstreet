@@ -84,7 +84,7 @@ function nestedScene() {
 }
 
 describe('the selection and open-group rules', () => {
-  it('walks every rule of the table: select, open, select inside, reselect the scope, leave one level, close', () => {
+  it('walks every rule of the table: select, open with nothing selected, select inside, clear inside, leave one level selecting the group left, close', () => {
     const { A, B, C, tree, outside } = nestedScene();
 
     h.aimDown(...TREE);
@@ -93,75 +93,108 @@ describe('the selection and open-group rules', () => {
     expect(selected()).toBe(A);
     expect(h.openIds()).toEqual([]);
     h.click();
-    // Closed, selected: its box opens it and keeps it selected.
-    expect(selected()).toBe(A);
+    // Closed, selected: its box opens it, and an open group is not selected.
+    expect(selected()).toBe(null);
     expect(h.openIds()).toEqual(['A']);
     h.click();
     // Parent open, child group closed: the child is selected, closed.
     expect(selected()).toBe(B);
     expect(h.openIds()).toEqual(['A']);
     h.click();
+    expect(selected()).toBe(null);
     expect(h.openIds()).toEqual(['A', 'B']);
     h.click();
     expect(selected()).toBe(C);
     h.click();
+    expect(selected()).toBe(null);
     expect(h.openIds()).toEqual(['A', 'B', 'C']);
     h.click();
     // Open: an immediate ordinary member is selected, the scope kept.
     expect(selected()).toBe(tree);
     expect(h.openIds()).toEqual(['A', 'B', 'C']);
 
-    // Member selected, empty space inside the scope: the scope is reselected.
+    // Member selected, empty space inside the scope: nothing is selected and
+    // the scope is kept (the open group itself is never reselected).
     h.aimDown(...INSIDE_C_EMPTY);
     h.click();
-    expect(selected()).toBe(C);
+    expect(selected()).toBe(null);
     expect(h.openIds()).toEqual(['A', 'B', 'C']);
 
-    // Nested: a click outside the box leaves one level and selects nothing
-    // else, even with an item under the cursor.
+    // Nested: a click outside the box leaves one level and selects the group
+    // left, closed, and nothing else, even with an item under the cursor.
     h.aimDown(...A1);
     h.click();
-    expect(selected()).toBe(B);
+    expect(selected()).toBe(C);
     expect(h.openIds()).toEqual(['A', 'B']);
+    // Escape leaves one level the same way, the outermost one included.
+    h.escape();
+    expect(selected()).toBe(B);
+    expect(h.openIds()).toEqual(['A']);
     h.escape();
     expect(selected()).toBe(A);
-    expect(h.openIds()).toEqual(['A']);
+    expect(h.openIds()).toEqual([]);
+    // With nothing open, Escape clears the selection as usual.
+    h.escape();
+    expect(selected()).toBe(null);
 
-    // Outermost: empty space outside closes every group and clears selection.
+    // Outermost: empty space outside leaves the group and selects it, closed.
+    h.aimDown(...TREE);
+    h.click();
+    h.click();
+    expect(h.openIds()).toEqual(['A']);
     h.aimDown(...GROUND);
     h.click();
-    expect(selected()).toBe(null);
+    expect(selected()).toBe(A);
     expect(h.openIds()).toEqual([]);
 
     // Outermost: an outside item closes every group and is selected as usual.
     h.aimDown(...TREE);
     h.click();
-    h.click();
+    expect(selected()).toBe(null);
     expect(h.openIds()).toEqual(['A']);
     h.aimDown(...OUT);
     h.click();
     expect(selected()).toBe(outside);
     expect(h.openIds()).toEqual([]);
-
-    // Outermost: Escape closes every group and clears selection.
-    h.inspector.selectEntity(tree);
-    expect(h.openIds()).toEqual(['A', 'B', 'C']);
-    h.escape();
-    h.escape();
-    expect(h.openIds()).toEqual(['A']);
-    expect(selected()).toBe(A);
-    h.escape();
-    expect(selected()).toBe(null);
-    expect(h.openIds()).toEqual([]);
   });
 
-  it('leaves only the innermost level on an outside click three levels deep', () => {
-    const { B, tree } = nestedScene();
+  it('steps out of an open empty group through its marker and selects it, also behind a nearer outside object, and previews that on the marker (fails if the marker is taken for empty space inside, or the nearest hit decides)', () => {
+    const A = group(h.streetContainer, { id: 'A' });
+    solid(A, [0, 0, 0], [1, 1, 1], { id: 'a1' });
+    solid(A, [4, 0, 4], [5, 1, 5], { id: 'a2' });
+    const E = group(A, { id: 'E', position: [2.5, 0.5, 2.5] });
+    h.frame();
+    h.inspector.selectEntity(E);
+    h.aimDown(2.5, 2.5);
+    h.click();
+    expect(h.openIds()).toEqual(['A', 'E']);
+    expect(selected()).toBe(null);
+    h.poll();
+    expect(h.groupScope.affordances.hoveredMarkerGroup).toBe(E);
+    h.click();
+    expect(selected()).toBe(E);
+    expect(h.openIds()).toEqual(['A']);
+
+    // Again with an outside object above the marker, outside A's box.
+    solid(h.streetContainer, [2, 3, 2], [3, 4, 3], { id: 'over' });
+    h.frame();
+    h.groupScope.open(E);
+    expect(h.openIds()).toEqual(['A', 'E']);
+    expect(selected()).toBe(null);
+    h.poll();
+    expect(h.groupScope.affordances.hoveredMarkerGroup).toBe(E);
+    h.click();
+    expect(selected()).toBe(E);
+    expect(h.openIds()).toEqual(['A']);
+  });
+
+  it('leaves only the innermost level on an outside click three levels deep, selecting the group left', () => {
+    const { C, tree } = nestedScene();
     h.inspector.selectEntity(tree);
     expect(h.openIds()).toEqual(['A', 'B', 'C']);
     h.aimDown(...OUT);
     h.click();
-    expect(selected()).toBe(B);
+    expect(selected()).toBe(C);
     expect(h.openIds()).toEqual(['A', 'B']);
   });
 
@@ -171,7 +204,7 @@ describe('the selection and open-group rules', () => {
     h.aimDown(...TREE);
     h.click();
     expect(h.openIds()).toEqual(['A']);
-    expect(selected()).toBe(A);
+    expect(selected()).toBe(null);
   });
 
   describe('one physical click, resolved once', () => {
@@ -194,7 +227,7 @@ describe('the selection and open-group rules', () => {
       'takes one step per click with %s, for groups and for ordinary items (a double resolution opens and selects inside in one click)',
       (_, cursorFirst) => {
         remount(cursorFirst);
-        const { A, B, outside } = nestedScene();
+        const { B, outside } = nestedScene();
         h.aimDown(...TREE);
         const steps = [];
         for (let i = 0; i < 4; i++) {
@@ -203,17 +236,17 @@ describe('the selection and open-group rules', () => {
         }
         expect(steps).toEqual([
           ['A', ''],
-          ['A', 'A'],
+          [null, 'A'],
           ['B', 'A'],
-          ['B', 'AB']
+          [null, 'AB']
         ]);
-        expect(selected()).toBe(B);
 
-        // One level out per outside click, then ordinary selection.
+        // One level out per outside click, selecting the group left, then
+        // ordinary selection.
         h.aimDown(...OUT);
         h.click();
         expect(h.openIds()).toEqual(['A']);
-        expect(selected()).toBe(A);
+        expect(selected()).toBe(B);
         h.click();
         expect(h.openIds()).toEqual([]);
         expect(selected()).toBe(outside);
@@ -235,7 +268,7 @@ describe('the selection and open-group rules', () => {
       expect(selected()).toBe(A);
       h.tap();
       expect(h.openIds()).toEqual(['A']);
-      expect(selected()).toBe(A);
+      expect(selected()).toBe(null);
       h.tap();
       expect(selected()).toBe(B);
       expect(h.openIds()).toEqual(['A']);
@@ -247,26 +280,38 @@ describe('the selection and open-group rules', () => {
     // Floating above a1, outside A's box (which is 1 m tall).
     solid(h.streetContainer, [0, 3, 0], [1, 4, 1], { id: 'over' });
     h.frame();
-    h.inspector.selectEntity(a1);
-    h.inspector.selectEntity(h.sceneEl.querySelector('#A'));
+    h.groupScope.open(h.sceneEl.querySelector('#A'));
     expect(h.openIds()).toEqual(['A']);
     h.aimDown(...A1);
     h.click();
     expect(selected()).toBe(a1);
   });
 
-  it('follows a layer-panel selection: a descendant opens every group around it, a group stays closed, outside closes', () => {
-    const { B, tree, outside } = nestedScene();
+  it('follows a layer-panel selection: a descendant opens every group around it, a group is selected closed even when it was open, with its handles back, and outside closes', () => {
+    const { A, B, tree, outside } = nestedScene();
     h.inspector.selectEntity(tree);
     expect(h.openIds()).toEqual(['A', 'B', 'C']);
     h.inspector.selectEntity(outside);
     expect(h.openIds()).toEqual([]);
     h.inspector.selectEntity(B);
     expect(h.openIds()).toEqual(['A']);
-    // A selected group that is already open stays open.
-    h.inspector.selectEntity(tree);
-    h.inspector.selectEntity(B);
+    // An open group selected from the panel closes: an open group is never
+    // itself selected.
+    h.groupScope.open(B);
     expect(h.openIds()).toEqual(['A', 'B']);
+    expect(selected()).toBe(null);
+    expect(h.inspector.easyGizmoControls.el).toBeUndefined();
+    h.inspector.selectEntity(B);
+    expect(selected()).toBe(B);
+    expect(h.openIds()).toEqual(['A']);
+    expect(h.inspector.easyGizmoControls.el).toBe(B);
+    // Selecting the outer group, or an outside item, closes everything.
+    h.groupScope.open(B);
+    h.inspector.selectEntity(A);
+    expect(h.openIds()).toEqual([]);
+    h.groupScope.open(B);
+    h.inspector.selectEntity(outside);
+    expect(h.openIds()).toEqual([]);
   });
 
   it('keeps the scope when an item created inside it is selected, and when the selection is cleared', () => {
@@ -296,14 +341,20 @@ describe('nested drilling and exit', () => {
     return { A, B, tree };
   }
 
-  it('drills with separate clicks, and just as well at double-click speed, without moving the camera', () => {
-    const { A, tree } = drillScene();
+  it('drills with separate clicks, and just as well at double-click speed, without moving the camera, and Escape leaves one level at a time selecting the group left', () => {
+    // Under street-level navigation a double-click teleports whatever is
+    // selected, so only the drilling latch keeps the camera still here.
+    flags.streetLevel = true;
+    const { A, B, tree } = drillScene();
     for (let i = 0; i < 5; i++) h.click();
     expect(selected()).toBe(tree);
     expect(h.openIds()).toEqual(['A', 'B']);
     h.escape();
-    expect(selected()).toBe(A);
+    expect(selected()).toBe(B);
     expect(h.openIds()).toEqual(['A']);
+    h.escape();
+    expect(selected()).toBe(A);
+    expect(h.openIds()).toEqual([]);
     h.escape();
     expect(selected()).toBe(null);
     expect(h.openIds()).toEqual([]);
@@ -312,16 +363,16 @@ describe('nested drilling and exit', () => {
     // dblclick after every second one.
     for (let detail = 1; detail <= 5; detail++) {
       h.click({ detail });
+      if (detail === 2) {
+        expect(selected()).toBe(null);
+        expect(h.openIds()).toEqual(['A']);
+      }
       if (detail === 2 || detail === 4) h.dblclick();
     }
     expect(selected()).toBe(tree);
     expect(h.openIds()).toEqual(['A', 'B']);
     expect(focused).toEqual([]);
     expect(teleported).toEqual([]);
-    h.escape();
-    expect(selected()).toBe(A);
-    h.escape();
-    expect(selected()).toBe(null);
   });
 });
 
@@ -337,13 +388,16 @@ describe('the double-click that enters a group', () => {
     return { G, member, other };
   }
 
-  it('does not frame after a select-and-open double-click', () => {
-    const { G } = scene();
+  it('does not move the camera after a select-and-open double-click (fails if opening does not latch the double-click)', () => {
+    // Nothing is selected after the open, so there is nothing to frame; under
+    // street-level navigation the double-click would teleport.
+    flags.streetLevel = true;
+    scene();
     h.click({ detail: 1 });
     h.click({ detail: 2 });
     h.dblclick();
     expect(h.openIds()).toEqual(['G']);
-    expect(selected()).toBe(G);
+    expect(selected()).toBe(null);
     expect(focused).toEqual([]);
     expect(teleported).toEqual([]);
   });
@@ -412,12 +466,16 @@ describe('the double-click that enters a group', () => {
   });
 
   it('forgets the entering click when the window loses focus', () => {
+    // Under street-level navigation, so the double-click has something to do
+    // with nothing selected after the open: it teleports.
+    flags.streetLevel = true;
     const { G } = scene();
     h.inspector.selectEntity(G);
     h.click();
+    expect(selected()).toBe(null);
     window.dispatchEvent(new Event('blur'));
     h.dblclick();
-    expect(focused).toEqual([G.object3D]);
+    expect(teleported).toHaveLength(1);
   });
 
   it('under street-level navigation opens a closed group instead of teleporting, and teleports inside it', () => {
@@ -431,7 +489,7 @@ describe('the double-click that enters a group', () => {
     h.click({ detail: 2 });
     h.dblclick();
     expect(h.openIds()).toEqual(['G']);
-    expect(selected()).toBe(G);
+    expect(selected()).toBe(null);
     expect(teleported).toEqual([]);
 
     h.click({ detail: 1 });

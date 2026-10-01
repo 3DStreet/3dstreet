@@ -190,6 +190,14 @@ export function initRaycaster(inspector) {
     return groupHits(intersections, pointRaycaster.ray);
   }
 
+  // The OSM street-upgrade offer (#1930) under the cursor, for a hover or an
+  // empty-space click. None while a group is open: the streets are not part of
+  // any group, so inside or outside the open one there is nothing to offer.
+  function osmOfferAtCursor() {
+    if (inspector.groupScope.openElements().length > 0) return null;
+    return probeOsmWayAtCursor(mouseCursor);
+  }
+
   // Poll the raycaster's closest intersection each check and fire hover events when the
   // RESOLVED entity changes. Cursor-based mouseenter/mouseleave compare `el` references
   // and miss transitions within a BatchedMesh (both hits have the same batchRootEl).
@@ -201,15 +209,14 @@ export function initRaycaster(inspector) {
   raycaster.checkIntersections = function () {
     origCheckIntersections();
     let resolved;
-    // A click outside a nested open group only leaves it, so hovering there
-    // previews nothing, not even an OSM street.
-    let exitsOneLevel = false;
+    // A click that steps out of an open group only leaves it, so hovering
+    // there previews nothing (and no OSM street is offered while a group is
+    // open).
     if (groupRulesResolveClicks()) {
       const hits = groupHits();
       const result = inspector.groupScope.decide(hits);
       inspector.groupScope.noteHover(result, hits);
       resolved = hoverTargetOf(result);
-      exitsOneLevel = result.action === 'exit';
     } else {
       inspector.groupScope.clearHover();
       resolved = getIntersectedEl();
@@ -221,9 +228,7 @@ export function initRaycaster(inspector) {
       lastHoveredEl = resolved;
       lastHoverOpens = opens;
     }
-    updateOsmHover(
-      resolved || exitsOneLevel ? null : probeOsmWayAtCursor(mouseCursor)
-    );
+    updateOsmHover(resolved ? null : osmOfferAtCursor());
   };
 
   // What a click on the same spot does can change without the cursor moving:
@@ -331,9 +336,7 @@ export function initRaycaster(inspector) {
       if (result.el) captureNavDiscovery('select');
       useStore
         .getState()
-        .setOsmWayCandidate(
-          result.el ? null : probeOsmWayAtCursor(mouseCursor)
-        );
+        .setOsmWayCandidate(result.el ? null : osmOfferAtCursor());
     }
     controller.applyClick(result, count);
   }
@@ -382,9 +385,7 @@ export function initRaycaster(inspector) {
       // selects an entity clears any pending offer.
       useStore
         .getState()
-        .setOsmWayCandidate(
-          intersectedEl ? null : probeOsmWayAtCursor(mouseCursor)
-        );
+        .setOsmWayCandidate(intersectedEl ? null : osmOfferAtCursor());
       inspector.selectEntity(intersectedEl);
       // Force the cursor component to trigger again an intersection to show hover box on the original intersected el inside the street-segment.
       mouseCursor.components.cursor.clearCurrentIntersection(false);
@@ -456,7 +457,7 @@ export function initRaycaster(inspector) {
       return;
     }
     pressResolved = true;
-    useStore.getState().setOsmWayCandidate(probeOsmWayAtCursor(mouseCursor));
+    useStore.getState().setOsmWayCandidate(osmOfferAtCursor());
     if (inspector.selectedEntity) {
       inspector.selectEntity(null);
     }

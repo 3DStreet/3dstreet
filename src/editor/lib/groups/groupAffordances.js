@@ -313,7 +313,8 @@ export class GroupAffordances {
     if (innermost && !isHiddenInHierarchy(innermost)) {
       const distance = this.groupVolumeDistance(innermost, ray, camera);
       if (distance !== null) {
-        out.push({ el: innermost, distance, kind: 'scope' });
+        const viaMarker = getGroupBounds(innermost) === null;
+        out.push({ el: innermost, distance, kind: 'scope', viaMarker });
       }
     }
     return out;

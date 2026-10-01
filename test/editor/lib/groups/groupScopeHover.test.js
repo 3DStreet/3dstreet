@@ -258,8 +258,12 @@ describe('the box drawn for a group', () => {
     h.click();
     expect(h.openIds()).toEqual(['loading']);
 
-    // Unselected, with members: no marker and nothing to pick.
+    // Unselected, with members: no marker and nothing to pick. The first
+    // click there leaves the open group (selecting it), the second clears.
     h.aimDown(60, 0);
+    h.click();
+    expect(h.openIds()).toEqual([]);
+    expect(selected()).toBe(loading);
     h.click();
     expect(selected()).toBe(null);
     h.frame();
@@ -294,7 +298,7 @@ describe('hovering groups', () => {
     expect(h.hoverBox.boxFill.material.opacity).toBe(0.3);
   });
 
-  it('previews what a click does inside and outside an open group, and offers no OSM street where a click only leaves a level', () => {
+  it('previews what a click does inside and outside an open group, and offers no OSM street while it is open', () => {
     const osm = stubOsmStreets();
     const A = group(h.streetContainer, { id: 'A' });
     const a1 = solid(A, [0, 0, 0], [1, 1, 1], { id: 'a1' });
@@ -306,8 +310,7 @@ describe('hovering groups', () => {
     });
     h.frame();
 
-    h.inspector.selectEntity(a1);
-    h.inspector.selectEntity(A);
+    h.groupScope.open(A);
     expect(h.openIds()).toEqual(['A']);
     // A nearer outside object does not take the hover from a member.
     h.aimDown(0.5, 0.5);
@@ -315,17 +318,20 @@ describe('hovering groups', () => {
     expect(lastEntered()).toBe(a1);
     expect(h.hoverBox.object).toBe(a1.object3D);
 
-    // Empty space inside: the scope group itself.
+    // Empty space inside: a click there selects nothing, so nothing is
+    // previewed, and no OSM street is offered while the group is open.
     h.inspector.selectEntity(a1);
     h.aimDown(2, 2);
     h.poll();
-    expect(h.hoverBox.visible).toBe(true);
-    expect(h.hoverBox.object).toBe(A.object3D);
+    expect(h.hoverBox.visible).toBe(false);
+    expect(osm.highlightWayAt).not.toHaveBeenCalled();
 
-    // Outside the outermost scope over the ground: an OSM street is offered.
+    // Outside the outermost scope over the ground: a click there only leaves
+    // the group, so again nothing is previewed or offered.
     h.aimDown(40, 40);
     h.poll();
-    expect(osm.highlightWayAt).toHaveBeenCalledTimes(1);
+    expect(h.hoverBox.visible).toBe(false);
+    expect(osm.highlightWayAt).not.toHaveBeenCalled();
 
     // Outside a nested scope, over an item: nothing is previewed.
     h.inspector.selectEntity(tree);
@@ -335,6 +341,50 @@ describe('hovering groups', () => {
     h.poll();
     expect(entered).toEqual([]);
     expect(h.hoverBox.visible).toBe(false);
+    expect(osm.highlightWayAt).not.toHaveBeenCalled();
+  });
+
+  it('offers no OSM street upgrade while any group is open, inside it or outside, and offers it again once none is (fails if only hover or only the click is held back, or if it is held back while a group is merely selected)', () => {
+    const osm = stubOsmStreets();
+    const A = group(h.streetContainer, { id: 'A' });
+    solid(A, [0, 0, 0], [1, 1, 1], { id: 'a1' });
+    const B = group(A, { id: 'B' });
+    solid(B, [4, 0, 4], [5, 1, 5], { id: 'tree' });
+    h.frame();
+    const candidate = () => useStore.getState().osmWayCandidate;
+
+    // Empty space inside the open group: no hover preview, no chip.
+    h.groupScope.open(A);
+    h.aimDown(2, 2);
+    h.poll();
+    h.click();
+    expect(selected()).toBe(null);
+    expect(h.openIds()).toEqual(['A']);
+    expect(osm.highlightWayAt).not.toHaveBeenCalled();
+    expect(candidate()).toBe(null);
+
+    // Empty space outside a nested open group: the click only leaves it.
+    h.groupScope.open(B);
+    h.aimDown(40, 40);
+    h.poll();
+    h.click();
+    expect(selected()).toBe(B);
+    expect(h.openIds()).toEqual(['A']);
+    expect(osm.highlightWayAt).not.toHaveBeenCalled();
+    expect(candidate()).toBe(null);
+    // And outside the outermost one.
+    h.click();
+    expect(selected()).toBe(A);
+    expect(h.openIds()).toEqual([]);
+    expect(osm.highlightWayAt).not.toHaveBeenCalled();
+    expect(candidate()).toBe(null);
+
+    // No group open (A selected, closed): the offer is back.
+    h.poll();
+    expect(osm.highlightWayAt).toHaveBeenCalledTimes(1);
+    h.click();
+    expect(selected()).toBe(null);
+    expect(candidate()?.wayId).toBe('way-1');
     expect(osm.highlightWayAt).toHaveBeenCalledTimes(1);
   });
 
@@ -379,7 +429,7 @@ describe('a closed group is entered one level at a time', () => {
 });
 
 describe('ordinary click side effects with a group selected', () => {
-  it('offers an OSM street on empty ground, counts a selection once, and still offers one when the click closes the open group', () => {
+  it('offers an OSM street on empty ground, counts a selection once, and offers one again on the click after the one that leaves the open group', () => {
     stubOsmStreets();
     const G = group(h.streetContainer, { id: 'G' });
     solid(G, [0, 0, 0], [1, 1, 1], { id: 'member' });
@@ -406,9 +456,15 @@ describe('ordinary click side effects with a group selected', () => {
     h.aimDown(0.5, 0.5);
     h.click();
     expect(h.openIds()).toEqual(['G']);
+    // Empty ground: the click leaves the group, selecting it, and offers
+    // nothing; the next click there deselects and offers the street.
     h.aimDown(40, 40);
     h.click();
     expect(h.openIds()).toEqual([]);
+    expect(selected()).toBe(G);
+    expect(candidate()).toBe(null);
+    h.click();
+    expect(selected()).toBe(null);
     expect(candidate()?.wayId).toBe('way-1');
   });
 });

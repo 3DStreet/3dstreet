@@ -6,11 +6,13 @@
 // and a group recreated by a move (same id) stays open.
 //
 // The layer panel and the canvas both select through the same event, so the
-// scope is derived from the selection rather than from where a click came
-// from: selecting anything opens the groups that contain it, and a selected
-// group stays open only if it already was. Opening a group, leaving one level
-// and closing everything are the explicit transitions. Removal, hiding, scene
-// replacement and leaving the editor prune the stack; they never add to it.
+// scope follows the selection rather than where a click came from: selecting
+// anything opens exactly the groups that contain it. An open group is never
+// itself selected (inside it the user works on its members), so selecting a
+// group closes it. Opening a group (which clears the selection), leaving one
+// level (which selects the group left) and closing everything are the explicit
+// transitions. Removal, hiding, scene replacement and leaving the editor prune
+// the stack; they never add to it.
 //
 // Published read-only as `inspector.groupScope`.
 
@@ -220,24 +222,29 @@ export class GroupScopeController {
     }
   }
 
-  /** Open `groupEl` (and the groups around it) for editing. */
+  /**
+   * Open `groupEl` (and the groups around it) for editing, with nothing
+   * selected: an open group is never itself selected.
+   */
   open(groupEl) {
     if (!isUserGroup(groupEl) || isHiddenInHierarchy(groupEl)) return;
     this.setStack([
       ...ensureEnclosingGroupIds(groupEl),
       ensureGroupId(groupEl)
     ]);
+    // Through this controller, so a drilling double-click stays latched.
+    this.select(null);
   }
 
-  /** Close the innermost open group and select the one around it. */
+  /**
+   * Close the innermost open group and select it, closed, so it can be moved
+   * or turned; the groups around it stay open.
+   */
   exitOneLevel() {
-    if (this.stack.length < 2) {
-      this.close(null);
-      return;
-    }
-    const parentId = this.stack[this.stack.length - 2];
+    if (this.stack.length === 0) return;
+    const left = document.getElementById(this.stack[this.stack.length - 1]);
     this.setStack(this.stack.slice(0, -1));
-    this.select(document.getElementById(parentId));
+    this.select(left);
   }
 
   /** Close every open group, then select `el` (or nothing). */
@@ -256,24 +263,15 @@ export class GroupScopeController {
 
   // ------------------------------------------------------------ reconciling
 
-  // Selecting something opens the groups around it; a selected group stays
-  // open only if it already was. A null selection (a tool switch, undoing a
-  // create) leaves the scope as it is.
+  // Selecting something opens exactly the groups around it, so a selected
+  // group is closed even if it was open. A null selection (opening a group, a
+  // tool switch, undoing a create) leaves the scope as it is.
   followSelection() {
     if (!this.ownSelections) this.drillLatch = false;
     const selected = this.selected();
     // A move replaces the element: the new one is selected once it has loaded.
     if (!selected || !selected.isConnected) return;
-    const ids = ensureEnclosingGroupIds(selected);
-    if (
-      isUserGroup(selected) &&
-      !isHiddenInHierarchy(selected) &&
-      selected.id &&
-      this.stack.includes(selected.id)
-    ) {
-      ids.push(selected.id);
-    }
-    this.setStack(ids);
+    this.setStack(ensureEnclosingGroupIds(selected));
   }
 
   // Drop every open group that is gone or hidden, and every group inside it.
@@ -366,24 +364,16 @@ export class GroupScopeController {
   /**
    * A still click on the selected group's transform handle, resolved at the
    * press point (`hits`, as for a canvas click). Over the group's box it opens
-   * the group. On the handles of an open, selected group it falls through to
-   * the click rules inside that group: the member beneath, or the group again
-   * on empty space. Anything else does nothing; in particular a handle is
-   * never a way out of a group, nor a way to select what lies under a closed
-   * one.
+   * the group. Anything else does nothing: a handle is never a way out of a
+   * group, nor a way to select what lies under a closed one. (An open group
+   * is never selected, so it has no handles.)
    */
   applyHandleClick(hits, count) {
     if (count === 1) this.drillLatch = false;
     const groupToOpen = this.handleClickOpens(hits);
     if (groupToOpen) {
       this.applyClick({ action: 'open', group: groupToOpen }, count);
-      return;
     }
-    const openGroups = this.openElements();
-    const selected = this.selected();
-    if (!selected || selected !== openGroups[openGroups.length - 1]) return;
-    const result = this.decide(hits);
-    if (result.action === 'select') this.applyClick(result, count);
   }
 
   /**
@@ -399,6 +389,12 @@ export class GroupScopeController {
   /** Record what hovering `hits` previews: an open, and a marker's emphasis. */
   noteHover(result, hits) {
     this.hoverOpens = result.action === 'open' ? result.group : null;
+    // A click on an open empty group's marker steps out of it: the marker
+    // shows it, though the rest of an exit previews nothing.
+    if (result.viaMarker) {
+      this.affordances.setHoveredMarker(result.group);
+      return;
+    }
     const nearest = hits.find((hit) => hit.kind !== 'scope');
     const target = hoverTargetOf(result);
     this.affordances.setHoveredMarker(

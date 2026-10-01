@@ -36,13 +36,9 @@ const WIDTH = 1200;
 const HEIGHT = 800;
 
 let h;
-let canvas;
-let controls;
 
 beforeEach(() => {
   h = mountEditor({ gizmo: true });
-  canvas = h.inspector.container;
-  controls = h.inspector.easyGizmoControls;
 });
 
 afterEach(() => {
@@ -316,21 +312,15 @@ describe('the scrim of an open group', () => {
     expect(writes).toHaveBeenCalledTimes(1);
   });
 
-  it('follows the open group as it is dragged, in the frame it moves', () => {
+  it('follows the open group as it moves, in the frame it moves (fails if the scrim or outline keeps an earlier pose)', () => {
     const { g } = yawedGroup();
     openGroup(g);
     h.frame();
-    const start = handlePoint('move');
-    press(start);
-    move(offset(start, 3));
-    expect(controls.isDragging).toBe(true);
-    const x0 = g.object3D.position.x;
-    let dx = 3;
     let checked = 0;
-    while (g.object3D.position.x - x0 < 5) {
-      dx += 20;
-      expect(dx).toBeLessThan(1200);
-      move(offset(start, dx));
+    for (let step = 0; step < 5; step++) {
+      // Moved with no event: an open group is not selected, so nothing that
+      // moves it need announce the move to the scope.
+      g.object3D.position.x += 1.25;
       h.frame(() => {
         // What this frame draws: the scrim and outline where the group is now.
         const matrix = g.object3D.matrixWorld;
@@ -339,9 +329,7 @@ describe('the scrim of an open group', () => {
         checked++;
       });
     }
-    release(offset(start, dx));
-    expect(g.object3D.position.x - x0).toBeGreaterThanOrEqual(5);
-    expect(checked).toBeGreaterThan(0);
+    expect(checked).toBe(5);
   });
 
   it('leaves the whole canvas uncovered with the camera inside the box, and a valid outline when the box reaches behind the camera or off the canvas', () => {
@@ -571,70 +559,3 @@ describe('entering a group', () => {
     expect(enabled).toEqual([[SCOPE_MARKS.fadeEnabled, generationB]]);
   });
 });
-
-// ------------------------------------------------------------------ pointer
-
-// A single click: count 1 on mousedown, mouseup and click. Chrome's pointer
-// events carry 0 (see groupGizmo.test.js).
-function send(type, at) {
-  const pointer = type.startsWith('pointer');
-  const released = type === 'pointerup' || type === 'mouseup';
-  const event = new MouseEvent(type, {
-    clientX: at.x,
-    clientY: at.y,
-    button: 0,
-    buttons: released || type === 'click' ? 0 : 1,
-    detail: pointer ? 0 : 1,
-    bubbles: true,
-    cancelable: true
-  });
-  if (pointer) {
-    Object.defineProperties(event, {
-      pointerType: { value: 'mouse' },
-      pointerId: { value: 1 },
-      isPrimary: { value: true }
-    });
-  }
-  canvas.dispatchEvent(event);
-  return event;
-}
-
-// A mouse press as the browser delivers it: a cancelled pointerdown (a gizmo
-// claiming the press) suppresses the compatibility mousedown and mouseup,
-// and the click still follows (Pointer Events, "PREVENT MOUSE EVENT flag").
-let mouseSuppressed = false;
-function press(at) {
-  mouseSuppressed = send('pointerdown', at).defaultPrevented;
-  if (!mouseSuppressed) send('mousedown', at);
-}
-
-function move(at) {
-  send('pointermove', at);
-}
-
-function release(at) {
-  send('pointerup', at);
-  if (!mouseSuppressed) send('mouseup', at);
-  send('click', at);
-  mouseSuppressed = false;
-}
-
-const offset = (at, dx, dy = 0) => ({ x: at.x + dx, y: at.y + dy });
-
-// A whole-pixel screen point on the gizmo's `axis` control.
-function handlePoint(axis) {
-  const centre = screenOf(
-    controls.moveGroup.getWorldPosition(new THREE.Vector3())
-  );
-  for (let r = 0; r <= 240; r += 1) {
-    for (let deg = 0; deg < 360; deg += r === 0 ? 360 : 5) {
-      const at = {
-        x: Math.round(centre.x + r * Math.cos(deg * DEG)),
-        y: Math.round(centre.y + r * Math.sin(deg * DEG))
-      };
-      controls.updateMouse({ clientX: at.x, clientY: at.y });
-      if (controls.pickAxis() === axis) return at;
-    }
-  }
-  throw new Error(`no point on the ${axis} control`);
-}

@@ -764,7 +764,7 @@ describe('the easy gizmo on a group', () => {
 });
 
 describe('a press on a group handle', () => {
-  it('opens the selected group on a two-second press that moves at most 0.8 px, with no history, by timestamps and by the clock', () => {
+  it('opens the selected group on a two-second press that moves at most 0.8 px, leaving nothing selected and no handles, with no history, by timestamps and by the clock', () => {
     vi.useFakeTimers({ toFake: ['performance', 'Date', 'setTimeout'] });
     const { g } = farGroup();
     select(g);
@@ -778,7 +778,8 @@ describe('a press on a group handle', () => {
     move(offset(at, 0.8, 0), { timeStamp: t0 + 2000 });
     release(offset(at, 0.8, 0), { timeStamp: t0 + 2000 });
     expect(h.openIds()).toEqual([g.id]);
-    expect(h.inspector.selectedEntity).toBe(g);
+    expect(h.inspector.selectedEntity).toBe(null);
+    expect(controls.el).toBeUndefined();
     expect(history()).toBe(before);
     expect(g.getAttribute('position')).toEqual({ x: 0, y: 0, z: 0 });
   });
@@ -802,7 +803,7 @@ describe('a press on a group handle', () => {
     // to resolve it again with (which would now select the member inside).
     clickAt(at);
     expect(h.openIds()).toEqual([g.id]);
-    expect(h.inspector.selectedEntity).toBe(g);
+    expect(h.inspector.selectedEntity).toBe(null);
     expect(h.inspector.selectedEntity).not.toBe(member);
   });
 
@@ -898,32 +899,6 @@ describe('a press on a group handle', () => {
     release(offset(at, 2));
   });
 
-  it('on an open, selected group falls through to the member beneath, once, and still drags from 2 px', () => {
-    const { g, member } = farGroup();
-    select(g);
-    h.groupScope.open(g);
-    h.frame();
-    expect(controls.el).toBe(g);
-    const selections = [];
-    Events.on('objectselect', (object) => selections.push(object));
-    const at = handlePoint('move');
-    clickAt(at);
-    expect(h.inspector.selectedEntity).toBe(member);
-    expect(selections).toEqual([member.object3D]);
-    expect(h.openIds()).toEqual([g.id]);
-
-    select(g);
-    const before = history();
-    const from = handlePoint('move');
-    press(from);
-    move(offset(from, 30));
-    release(offset(from, 30));
-    h.frame();
-    h.frame();
-    expect(history()).toBe(before + 1);
-    expect(h.inspector.selectedEntity).toBe(g);
-  });
-
   it('on a selected closed group inside an open one: opens it over its box, and does nothing off it over a sibling', () => {
     aimCamera([0, 10, 12], [0, 0, 0]);
     const a = posable(group(h.streetContainer));
@@ -951,15 +926,24 @@ describe('a press on a group handle', () => {
 
     clickAt(handlePoint('move', { overBoxOf: b }));
     expect(h.openIds()).toEqual([a.id, b.id]);
-    expect(h.inspector.selectedEntity).toBe(b);
+    expect(h.inspector.selectedEntity).toBe(null);
   });
 
-  it('does not frame after an open and a select-member made by two quick clicks on the pad', () => {
+  it('does not frame after an open on the pad and a select-member by the quick second click, which lands on the canvas', () => {
+    // Opening deselects the group, so its handles go and the second press
+    // reaches the canvas, where the cursor ray decides it.
+    const aimCursorAt = (at) => {
+      const ray = rayThrough(at);
+      h.aim(ray.origin.toArray(), ray.direction.toArray());
+      h.poll();
+    };
     const { g, member } = farGroup();
     select(g);
     const at = handlePoint('move', { overBoxOf: g });
     clickAt(at, { detail: 1 });
     expect(h.openIds()).toEqual([g.id]);
+    expect(h.inspector.selectedEntity).toBe(null);
+    aimCursorAt(at);
     clickAt(at, { detail: 2 });
     expect(h.inspector.selectedEntity).toBe(member);
     send('dblclick', at, { detail: 2 });
@@ -968,11 +952,12 @@ describe('a press on a group handle', () => {
 
     flags.streetLevel = true;
     select(g);
-    h.groupScope.close(g);
-    h.frame();
+    expect(h.openIds()).toEqual([]);
     const again = handlePoint('move', { overBoxOf: g });
     clickAt(again, { detail: 1 });
+    aimCursorAt(again);
     clickAt(again, { detail: 2 });
+    expect(h.inspector.selectedEntity).toBe(member);
     send('dblclick', again, { detail: 2 });
     expect(teleported).toEqual([]);
   });
@@ -988,7 +973,7 @@ describe('a press on a group handle', () => {
     expect(h.openIds()).toEqual([]);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(h.openIds()).toEqual([g.id]);
-    expect(h.inspector.selectedEntity).toBe(g);
+    expect(h.inspector.selectedEntity).toBe(null);
   });
 
   it('frames as usual on a double-click on a handle that entered nothing', () => {
@@ -1035,6 +1020,7 @@ describe('Escape and lost presses on a group handle', () => {
     expect(h.inspector.selectedEntity).toBe(inner);
     escape();
     expect(h.openIds()).toEqual([]);
+    expect(h.inspector.selectedEntity).toBe(outer);
   });
 
   it('lets go of a held press on Escape without leaving a level, and the release then opens nothing', () => {
@@ -1048,6 +1034,7 @@ describe('Escape and lost presses on a group handle', () => {
     expect(h.openIds()).toEqual([outer.id]);
     escape();
     expect(h.openIds()).toEqual([]);
+    expect(h.inspector.selectedEntity).toBe(outer);
   });
 
   it.each([
