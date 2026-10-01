@@ -8,7 +8,7 @@ import {
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.js';
 import { getCurrentCameraState } from '@/editor/lib/cameraUtils.js';
-import { scenePath } from '@/tested/scene-url-utils.js';
+import { scenePath, clearedSceneUrl } from '@/tested/scene-url-utils.js';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@shared/services/firebase';
 
@@ -134,6 +134,11 @@ export function fileJSON(event) {
     const data = JSON.parse(reader.result);
     // Pass the data and memory (which now contains snapshots)
     createElementsForScenesFromJSON(data.data, data.memory);
+    // An imported file is a new, unsaved scene. Drop any /scenes/UUID left in
+    // the URL by the previously open scene: getCurrentSceneId() falls back to
+    // it once the metadata is cleared, which made the import look like that
+    // (non-authored) cloud scene, so a title rename never saved it (#1973).
+    window.history.replaceState(null, '', clearedSceneUrl(window.location));
 
     // Reset the file input value so it can be selected again
     // This fixes the issue where selecting a file a second time doesn't work
