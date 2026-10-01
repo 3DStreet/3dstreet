@@ -135,6 +135,7 @@
   "buildArea.deleteTitle": "Remover o objeto selecionado (Delete)",
   "buildArea.dockTitle": "Arraste um objeto para a área destacada ou toque para posicioná-lo",
   "buildArea.enabled": "Ativado",
+  "buildArea.experimentalWarning": "⚠️ Experimental: as áreas de construção são novas e podem mudar. Teste sua cena com Iniciar antes de compartilhá-la.",
   "buildArea.hintIdle": "Clique em um objeto que você posicionou para movê-lo.",
   "buildArea.hintSelected": "Arraste as setas para movê-lo.",
   "buildArea.maxObjects": "Máx. de objetos",
@@ -801,9 +802,11 @@
   "shapeSidebar.direction": "Direção",
   "shapeSidebar.length": "Comprimento {label}",
   "shapeSidebar.reverse": "Inverter",
+  "shapeSidebar.sectionTitle": "Forma",
   "shapeSidebar.segments": "Segmentos",
   "shapeSidebar.showAllSegments": "Mostrar todos os {count} segmentos",
   "shapeSidebar.showFewerSegments": "Mostrar menos segmentos",
+  "shapeSidebar.styleTitle": "Estilo",
   "shapeSidebar.tipInsert": "Clique no comprimento de um lado para adicionar um vértice a esse lado",
   "shapeSidebar.tipShift": "Segure Shift enquanto arrasta um vértice para levantá-lo ou abaixá-lo",
   "shapeSidebar.tipStyle": "Edite a cor, a espessura e o preenchimento da linha abaixo",
@@ -916,8 +919,5 @@
   "viewerStart.removeConfirm": "Remover a vista inicial? Os visitantes abrirão a cena na vista padrão.",
   "viewerStart.setToCurrentView": "Definir para a vista atual",
   "viewerStart.setToCurrentViewTitle": "Mover este ponto de início para a posição e direção atuais da câmera do editor",
-  "viewerStart.tip": "💡 Os visitantes abrem a cena a partir desta vista e Iniciar voa para cá. Definir uma miniatura da cena também a move para a vista capturada. O marcador só fica visível durante a edição; você continua editando de onde parou.",
-  "buildArea.experimentalWarning": "⚠️ Experimental: as áreas de construção são novas e podem mudar. Teste sua cena com Iniciar antes de compartilhá-la.",
-  "shapeSidebar.sectionTitle": "Forma",
-  "shapeSidebar.styleTitle": "Estilo"
+  "viewerStart.tip": "💡 Os visitantes abrem a cena a partir desta vista e Iniciar voa para cá. Definir uma miniatura da cena também a move para a vista capturada. O marcador só fica visível durante a edição; você continua editando de onde parou."
 }
