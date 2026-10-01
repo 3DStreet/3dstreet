@@ -40,14 +40,19 @@ export const SUBSTEP_METRES = STEP_METRES / FOLLOW_TAN;
  * Interior probes a single frame may cast. The gizmo's peak per-frame ray count
  * must not exceed the largest the product already ships on the same scenes and
  * the same pruned target list, which is the WASD flight frame's 13; this budget
- * plus the one endpoint probe every frame casts anyway comes to exactly that.
+ * plus the endpoint look-ahead every multi-sample frame casts first, plus the
+ * endpoint probe that closes the sampled chain, comes to exactly that.
  *
- * A frame demanding more is declared discontinuous and casts NO interior probe
- * at all — with no early stop the outcome is fixed before the first ray, so
- * spending the budget on it would buy nothing. Holding height can withhold a
- * step; it can never invent a leap.
+ * The look-ahead settles most frames on its own (#2059): a destination level
+ * with the remembered support is continuous on that one ray at any pointer
+ * speed, and only a rise or drop of more than a step samples the interior. A
+ * frame demanding more than the budget is declared discontinuous unless that
+ * one ray settled it, and casts NO interior probe at all — with no early stop
+ * the outcome is fixed before the first ray, so spending the budget on it
+ * would buy nothing. Holding height can withhold a step; it can never invent
+ * a leap.
  */
-export const PATH_PROBE_BUDGET = 12;
+export const PATH_PROBE_BUDGET = 11;
 
 // --- the column probe ----------------------------------------------------
 
