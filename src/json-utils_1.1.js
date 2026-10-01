@@ -22,6 +22,7 @@ import {
 } from './tested/street-segment-utils';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
+import { isProjectPassHash } from './tested/project-pass-link.js';
 import {
   getSceneIdFromPathname,
   getSceneIdFromHash,
@@ -942,6 +943,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
       // fetchJSON('asset:….json') below and errors with "Could not fetch scene"
       // / "Could not connect to server."
       if (streetURL.startsWith('asset:')) {
+        return;
+      }
+      // `#project-pass` opens the one-time Project Pass checkout (#1922,
+      // store.firstModal → EditorProjectPassModal), not a scene.
+      if (isProjectPassHash(window.location.hash)) {
         return;
       }
       // Deflated scene JSON (Visitor Build's "Open in 3DStreet" handoff,

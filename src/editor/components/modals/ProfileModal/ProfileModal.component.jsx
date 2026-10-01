@@ -23,10 +23,14 @@ import {
   generateAndSaveUsername
 } from '@shared/utils/username';
 import { commonMessages } from '@/editor/i18n/commonMessages';
+import { formatDate } from '@shared/utils/format';
 
 const ProfileModal = () => {
   const intl = useIntl();
   const { currentUser, setCurrentUser, tokenProfile } = useAuthContext();
+  // Pro only through a one-time pass (#1922): no subscription, no team.
+  const isPassOnly =
+    !!currentUser?.isProPass && !currentUser?.plan && !currentUser?.isProTeam;
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const startCheckout = useStore((state) => state.startCheckout);
@@ -282,12 +286,21 @@ const ProfileModal = () => {
                                 },
                                 { domain: currentUser?.teamDomain }
                               )
-                            : intl.formatMessage({
-                                id: 'profileModal.planPro',
-                                defaultMessage: 'Plan: Pro'
-                              })}
+                            : isPassOnly
+                              ? intl.formatMessage(
+                                  {
+                                    id: 'profileModal.planProPass',
+                                    defaultMessage: 'Plan: Pro until {date}'
+                                  },
+                                  { date: formatDate(currentUser?.proUntil) }
+                                )
+                              : intl.formatMessage({
+                                  id: 'profileModal.planPro',
+                                  defaultMessage: 'Plan: Pro'
+                                })}
                       </span>
-                      {!currentUser?.isProTeam && (
+                      {/* A one-time pass (#1922) has no subscription to manage. */}
+                      {!currentUser?.isProTeam && !isPassOnly && (
                         <Button
                           variant="ghost"
                           onClick={manageSubscription}

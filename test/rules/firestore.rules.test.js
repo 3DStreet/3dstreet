@@ -304,3 +304,70 @@ describe('firestore.rules — users/{uid}/assets/{assetId} create + update (visi
     await assertFails(updateDoc(assetRef(ownerDb()), { visibility: 'bogus' }));
   });
 });
+
+// One-time Pro pass (#1922): tokenProfile.proUntil grants Pro, so a client
+// must never be able to write it — not by update (denied wholesale) and not
+// by smuggling it into the initial self-created profile.
+describe('firestore.rules — tokenProfile/{uid} (pass fields)', () => {
+  const tokenProfileRef = (db) => doc(db, 'tokenProfile', UID);
+  const CLIENT_DEFAULT_PROFILE = {
+    userId: UID,
+    geoToken: 3,
+    genToken: 5,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    lastMonthlyRefill: null
+  };
+
+  beforeAll(async () => {
+    testEnv = await initializeTestEnvironment({
+      projectId: 'demo-3dstreet-rules',
+      firestore: {
+        rules: readFileSync(
+          resolve(__dirname, '../../public/firestore.rules'),
+          'utf8'
+        ),
+        host: '127.0.0.1',
+        port: 8080
+      }
+    });
+  });
+
+  afterAll(async () => {
+    await testEnv?.cleanup();
+  });
+
+  beforeEach(async () => {
+    await testEnv.clearFirestore();
+  });
+
+  it('owner can create the default profile (getTokenProfile shape)', async () => {
+    await assertSucceeds(
+      setDoc(tokenProfileRef(ownerDb()), CLIENT_DEFAULT_PROFILE)
+    );
+  });
+
+  it('rejects a self-created profile carrying proUntil', async () => {
+    await assertFails(
+      setDoc(tokenProfileRef(ownerDb()), {
+        ...CLIENT_DEFAULT_PROFILE,
+        proUntil: new Date('2099-01-01')
+      })
+    );
+  });
+
+  it('rejects a client update setting proUntil', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(tokenProfileRef(ctx.firestore()), {
+        userId: UID,
+        geoToken: 3,
+        genToken: 5
+      });
+    });
+    await assertFails(
+      updateDoc(tokenProfileRef(ownerDb()), {
+        proUntil: new Date('2099-01-01')
+      })
+    );
+  });
+});

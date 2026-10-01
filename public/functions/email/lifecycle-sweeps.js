@@ -6,9 +6,9 @@
  * every hour is safe by construction.
  *
  * Trigger data, written by the instrumentation in index.js / geoid-height.js:
- *   checkoutSessions/{sessionId} — { userId, email, priceId, status:
- *       'open'|'complete'|'expired', createdAt } from createStripeSession /
- *       stripeWebhook
+ *   checkoutSessions/{sessionId} — { userId, email, priceId, mode, product,
+ *       source, status: 'open'|'complete'|'expired', createdAt } from
+ *       createStripeSession / stripeWebhook
  *   userSignals/{uid}            — { lastPaymentModalAt } (client, narrow
  *       rules-validated write), { lastCheckoutStartedAt } (server)
  *   emailLog/{uid}               — emails.welcome.lastSentAt doubles as the
@@ -79,6 +79,11 @@ const sweepCheckoutAbandoned = async (
     // 'expired'). Status is filtered in code, not the query, to stay on
     // single-field indexes.
     if (session.status === 'complete' || !session.userId) continue;
+    // The abandoned-checkout copy sells the Pro subscription (monthly token
+    // allowance), which misdescribes a one-time pass (#1922). Pass sessions
+    // carry product 'pro-pass-*' (createStripeSession); skip them until a
+    // pass-specific follow-up exists.
+    if (typeof session.product === 'string' && session.product.startsWith('pro-pass-')) continue;
     t.candidates++;
     const result = await sendLifecycleEmail({
       db,
