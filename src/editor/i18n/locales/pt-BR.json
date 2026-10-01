@@ -917,7 +917,7 @@
   "viewerStart.setToCurrentView": "Definir para a vista atual",
   "viewerStart.setToCurrentViewTitle": "Mover este ponto de início para a posição e direção atuais da câmera do editor",
   "viewerStart.tip": "💡 Os visitantes abrem a cena a partir desta vista e Iniciar voa para cá. Definir uma miniatura da cena também a move para a vista capturada. O marcador só fica visível durante a edição; você continua editando de onde parou.",
-  "buildArea.experimentalWarning": "⚠️ Experimental: a Construção por Visitantes é nova e pode mudar. Teste sua cena com Iniciar antes de compartilhá-la.",
+  "buildArea.experimentalWarning": "⚠️ Experimental: as áreas de construção são novas e podem mudar. Teste sua cena com Iniciar antes de compartilhá-la.",
   "shapeSidebar.sectionTitle": "Forma",
   "shapeSidebar.styleTitle": "Estilo"
 }

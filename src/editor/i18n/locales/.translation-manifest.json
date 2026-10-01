@@ -918,7 +918,7 @@
     "actionBar.transformMenu.translate": "Advanced move",
     "actionBar.transformTool": "Move tools (m) - Choose how to move and rotate the selected object",
     "help.shortcut.cycleMoveTools": "Cycle move tools",
-    "buildArea.experimentalWarning": "⚠️ Experimental: Visitor Build is new and may change. Test your scene with Start before sharing it.",
+    "buildArea.experimentalWarning": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it.",
     "shapeSidebar.sectionTitle": "Shape",
     "shapeSidebar.styleTitle": "Style"
   },
@@ -1841,7 +1841,7 @@
     "actionBar.transformMenu.translate": "Advanced move",
     "actionBar.transformTool": "Move tools (m) - Choose how to move and rotate the selected object",
     "help.shortcut.cycleMoveTools": "Cycle move tools",
-    "buildArea.experimentalWarning": "⚠️ Experimental: Visitor Build is new and may change. Test your scene with Start before sharing it.",
+    "buildArea.experimentalWarning": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it.",
     "shapeSidebar.sectionTitle": "Shape",
     "shapeSidebar.styleTitle": "Style"
   },
@@ -2764,7 +2764,7 @@
     "actionBar.transformMenu.translate": "Advanced move",
     "actionBar.transformTool": "Move tools (m) - Choose how to move and rotate the selected object",
     "help.shortcut.cycleMoveTools": "Cycle move tools",
-    "buildArea.experimentalWarning": "⚠️ Experimental: Visitor Build is new and may change. Test your scene with Start before sharing it.",
+    "buildArea.experimentalWarning": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it.",
     "shapeSidebar.sectionTitle": "Shape",
     "shapeSidebar.styleTitle": "Style"
   }

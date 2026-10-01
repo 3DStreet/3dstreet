@@ -408,7 +408,7 @@
     "defaultMessage": "Enabled"
   },
   "buildArea.experimentalWarning": {
-    "defaultMessage": "⚠️ Experimental: Visitor Build is new and may change. Test your scene with Start before sharing it."
+    "defaultMessage": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it."
   },
   "buildArea.hintIdle": {
     "defaultMessage": "Click an object you placed to move it."

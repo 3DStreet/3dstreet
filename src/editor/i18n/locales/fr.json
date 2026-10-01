@@ -917,7 +917,7 @@
   "viewerStart.setToCurrentView": "Définir sur la vue actuelle",
   "viewerStart.setToCurrentViewTitle": "Déplacer ce point de départ à la position et l'orientation actuelles de la caméra de l'éditeur",
   "viewerStart.tip": "💡 Les visiteurs ouvrent la scène depuis cette vue et Démarrer y amène la caméra. Définir une vignette de la scène la déplace aussi vers la vue capturée. Le repère n'est visible qu'en édition ; vous continuez d'éditer là où vous vous étiez arrêté.",
-  "buildArea.experimentalWarning": "⚠️ Expérimental : la Construction par les visiteurs est nouvelle et peut évoluer. Testez votre scène avec Démarrer avant de la partager.",
+  "buildArea.experimentalWarning": "⚠️ Expérimental : les zones de construction sont nouvelles et peuvent évoluer. Testez votre scène avec Démarrer avant de la partager.",
   "shapeSidebar.sectionTitle": "Forme",
   "shapeSidebar.styleTitle": "Style"
 }

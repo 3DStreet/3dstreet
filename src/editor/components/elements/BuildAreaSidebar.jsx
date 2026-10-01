@@ -79,7 +79,7 @@ export const BuildAreaSectionControls = ({ entity }) => {
         <div className="tip">
           <FormattedMessage
             id="buildArea.experimentalWarning"
-            defaultMessage="⚠️ Experimental: Visitor Build is new and may change. Test your scene with Start before sharing it."
+            defaultMessage="⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it."
           />
         </div>
       </div>
