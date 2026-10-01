@@ -54,6 +54,9 @@ export default class Component extends React.Component {
     // schema-driven property rows (e.g. the shape section's direction and
     // curve-style controls).
     children: PropTypes.node,
+    // Optional header title replacing the friendly component name (e.g. the
+    // shape component's section reads "Style").
+    title: PropTypes.string,
     // Optional icon rendered in the header before the title, so a role
     // component's bar matches its scene-graph badge.
     icon: PropTypes.node,
@@ -192,7 +195,9 @@ export default class Component extends React.Component {
             {this.props.icon && (
               <span className="componentIcon">{this.props.icon}</span>
             )}
-            <span>{getFriendlyComponentName(componentName)}</span>
+            <span>
+              {this.props.title || getFriendlyComponentName(componentName)}
+            </span>
           </span>
           <div className="componentHeaderActions">
             <a

@@ -21,10 +21,14 @@ Visitor Build is a play-mode capability and follows every rule there.
    on.
 2. In the shape's properties panel, **Add Component › Build Area**. The
    Build Area section appears as a featured component bar (cube icon,
-   collapse, remove) with:
+   collapse, remove) after the shape's Shape, Style and Transform
+   sections, led by an "Experimental" warning, with:
    - **Enabled**, **Max objects** (0 = unlimited), **Allow rotate**
    - **Palette**: a filterable, grouped checkbox list over the catalog
      mixins. Only these objects appear in the visitor's dock.
+   The cube badge on the shape's layers-list row selects the shape and
+   opens this section (it does not move the camera, unlike the hotspot
+   badge).
 3. Optionally set the **Starting View** (View › Set as Starting View) and
    its `freeLook: false` for a fixed 45° vantage, so the visitor cannot
    orbit away from the corner.

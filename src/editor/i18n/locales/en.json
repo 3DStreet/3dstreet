@@ -407,6 +407,9 @@
   "buildArea.enabled": {
     "defaultMessage": "Enabled"
   },
+  "buildArea.experimentalWarning": {
+    "defaultMessage": "⚠️ Experimental: Visitor Build is new and may change. Test your scene with Start before sharing it."
+  },
   "buildArea.hintIdle": {
     "defaultMessage": "Click an object you placed to move it."
   },
@@ -1131,7 +1134,7 @@
     "defaultMessage": "You're already a Pro member — try that action again to continue."
   },
   "entity.badge.buildArea": {
-    "defaultMessage": "Build area: visitors can place objects on this shape while playing. Click to fly the camera to it."
+    "defaultMessage": "Build area: visitors can place objects on this shape while playing. Click to open its settings."
   },
   "entity.badge.focusHotspot": {
     "defaultMessage": "Focus hotspot: clickable in view mode. Click to fly the camera to it."
@@ -2405,6 +2408,9 @@
   "shapeSidebar.reverse": {
     "defaultMessage": "Reverse"
   },
+  "shapeSidebar.sectionTitle": {
+    "defaultMessage": "Shape"
+  },
   "shapeSidebar.segments": {
     "defaultMessage": "Segments"
   },
@@ -2413,6 +2419,9 @@
   },
   "shapeSidebar.showFewerSegments": {
     "defaultMessage": "Show fewer segments"
+  },
+  "shapeSidebar.styleTitle": {
+    "defaultMessage": "Style"
   },
   "shapeSidebar.tipInsert": {
     "defaultMessage": "Click a side's length to add a vertex to that side"

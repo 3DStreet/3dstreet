@@ -24,6 +24,7 @@ import {
   setShapeStyle
 } from '../../lib/shapeStyle.js';
 import { Button } from './Button';
+import Collapsible from '../Collapsible';
 import { Chevron24Down } from '@shared/icons';
 
 const MAX_LABELLED_VERTICES = 12;
@@ -480,139 +481,157 @@ const ShapeSidebar = ({ entity }) => {
     ? formatArea(polygonAreaXZ(vertices), unitsPreference)
     : null;
 
+  // The "Shape" section (#2069): the drawing itself — measurements, then
+  // direction and curve style — ahead of the Style (the shape component's
+  // fill/line rows), Transform and role sections.
   return (
-    <div className="shape-sidebar">
-      <div className="details">
-        {closed && (
+    <div className="shape-sidebar details">
+      <Collapsible sectionKey="shape-geometry">
+        <div className="componentHeader collapsible-header">
+          <span className="componentTitle">
+            <span>
+              {intl.formatMessage({
+                id: 'shapeSidebar.sectionTitle',
+                defaultMessage: 'Shape'
+              })}
+            </span>
+          </span>
+        </div>
+        <div className="collapsible-content">
+          {closed && (
+            <div className="propertyRow">
+              <div className="fakePropertyRowLabel">
+                {intl.formatMessage({
+                  id: 'shapeSidebar.area',
+                  defaultMessage: 'Area'
+                })}
+              </div>
+              <div className="fakePropertyRowValue">
+                <span className="text-lg font-bold text-green-600">
+                  {areaValue}
+                </span>
+              </div>
+            </div>
+          )}
           <div className="propertyRow">
             <div className="fakePropertyRowLabel">
               {intl.formatMessage({
-                id: 'shapeSidebar.area',
-                defaultMessage: 'Area'
+                id: 'shapeSidebar.segments',
+                defaultMessage: 'Segments'
               })}
             </div>
             <div className="fakePropertyRowValue">
               <span className="text-lg font-bold text-green-600">
-                {areaValue}
+                {segments.length}
               </span>
             </div>
           </div>
-        )}
-        <div className="propertyRow">
-          <div className="fakePropertyRowLabel">
-            {intl.formatMessage({
-              id: 'shapeSidebar.segments',
-              defaultMessage: 'Segments'
-            })}
-          </div>
-          <div className="fakePropertyRowValue">
-            <span className="text-lg font-bold text-green-600">
-              {segments.length}
-            </span>
-          </div>
-        </div>
-        <div className={`segmentRows${segmentsCollapsed ? ' collapsed' : ''}`}>
-          {visibleSegments.map((s) => (
-            <div className="propertyRow segmentRow" key={`seg-${s.label}`}>
-              <div className="fakePropertyRowLabel">
-                {intl.formatMessage(
-                  {
-                    id: 'shapeSidebar.length',
-                    defaultMessage: 'Length {label}'
-                  },
-                  { label: s.label }
-                )}
-              </div>
-              <div className="fakePropertyRowValue">
-                <div>
-                  <div>{s.value}</div>
-                  {s.angle && (
-                    <div className="segmentAngle">
-                      {intl.formatMessage(
-                        {
-                          id: 'shapeSidebar.cornerAngle',
-                          defaultMessage: '∠ {value}'
-                        },
-                        { value: s.angle }
-                      )}
-                    </div>
+          <div
+            className={`segmentRows${segmentsCollapsed ? ' collapsed' : ''}`}
+          >
+            {visibleSegments.map((s) => (
+              <div className="propertyRow segmentRow" key={`seg-${s.label}`}>
+                <div className="fakePropertyRowLabel">
+                  {intl.formatMessage(
+                    {
+                      id: 'shapeSidebar.length',
+                      defaultMessage: 'Length {label}'
+                    },
+                    { label: s.label }
                   )}
                 </div>
+                <div className="fakePropertyRowValue">
+                  <div>
+                    <div>{s.value}</div>
+                    {s.angle && (
+                      <div className="segmentAngle">
+                        {intl.formatMessage(
+                          {
+                            id: 'shapeSidebar.cornerAngle',
+                            defaultMessage: '∠ {value}'
+                          },
+                          { value: s.angle }
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-          {segments.length > SEGMENT_ROWS_COLLAPSED && (
-            // Inside segmentRows so the collapsed state can overlay it on the
-            // fade (position: absolute anchors to the row container).
-            <div
-              className={`segmentRowsToggle${segmentsCollapsed ? '' : ' expanded'}`}
-            >
-              <Button
-                variant="toolbtn"
-                onClick={() => setShowAllSegments((v) => !v)}
+            ))}
+            {segments.length > SEGMENT_ROWS_COLLAPSED && (
+              // Inside segmentRows so the collapsed state can overlay it on the
+              // fade (position: absolute anchors to the row container).
+              <div
+                className={`segmentRowsToggle${segmentsCollapsed ? '' : ' expanded'}`}
               >
-                {segmentsCollapsed
-                  ? intl.formatMessage(
-                      {
-                        id: 'shapeSidebar.showAllSegments',
-                        defaultMessage: 'Show all {count} segments'
-                      },
-                      { count: segments.length }
-                    )
-                  : intl.formatMessage({
-                      id: 'shapeSidebar.showFewerSegments',
-                      defaultMessage: 'Show fewer segments'
-                    })}
-                <Chevron24Down />
-              </Button>
+                <Button
+                  variant="toolbtn"
+                  onClick={() => setShowAllSegments((v) => !v)}
+                >
+                  {segmentsCollapsed
+                    ? intl.formatMessage(
+                        {
+                          id: 'shapeSidebar.showAllSegments',
+                          defaultMessage: 'Show all {count} segments'
+                        },
+                        { count: segments.length }
+                      )
+                    : intl.formatMessage({
+                        id: 'shapeSidebar.showFewerSegments',
+                        defaultMessage: 'Show fewer segments'
+                      })}
+                  <Chevron24Down />
+                </Button>
+              </div>
+            )}
+          </div>
+          <ShapeSectionControls entity={entity} />
+          <div className="propertyRow">
+            <div className="rounded bg-blue-50 p-2 text-gray-600">
+              <div className="mb-1 font-semibold uppercase">
+                💡{' '}
+                {intl.formatMessage({
+                  id: 'shapeSidebar.tipsTitle',
+                  defaultMessage: 'Shape Drawing Tips'
+                })}
+              </div>
+              <ul className="space-y-1">
+                <li>
+                  •{' '}
+                  {intl.formatMessage({
+                    id: 'shapeSidebar.tipVertex',
+                    defaultMessage:
+                      'Click a blue vertex dot to move it or delete it'
+                  })}
+                </li>
+                <li>
+                  •{' '}
+                  {intl.formatMessage({
+                    id: 'shapeSidebar.tipShift',
+                    defaultMessage:
+                      'Hold Shift while dragging a vertex to raise or lower it'
+                  })}
+                </li>
+                <li>
+                  •{' '}
+                  {intl.formatMessage({
+                    id: 'shapeSidebar.tipInsert',
+                    defaultMessage:
+                      "Click a side's length to add a vertex to that side"
+                  })}
+                </li>
+                <li>
+                  •{' '}
+                  {intl.formatMessage({
+                    id: 'shapeSidebar.tipStyle',
+                    defaultMessage: 'Edit line color, width and fill below'
+                  })}
+                </li>
+              </ul>
             </div>
-          )}
-        </div>
-        <div className="propertyRow">
-          <div className="rounded bg-blue-50 p-2 text-gray-600">
-            <div className="mb-1 font-semibold uppercase">
-              💡{' '}
-              {intl.formatMessage({
-                id: 'shapeSidebar.tipsTitle',
-                defaultMessage: 'Shape Drawing Tips'
-              })}
-            </div>
-            <ul className="space-y-1">
-              <li>
-                •{' '}
-                {intl.formatMessage({
-                  id: 'shapeSidebar.tipVertex',
-                  defaultMessage:
-                    'Click a blue vertex dot to move it or delete it'
-                })}
-              </li>
-              <li>
-                •{' '}
-                {intl.formatMessage({
-                  id: 'shapeSidebar.tipShift',
-                  defaultMessage:
-                    'Hold Shift while dragging a vertex to raise or lower it'
-                })}
-              </li>
-              <li>
-                •{' '}
-                {intl.formatMessage({
-                  id: 'shapeSidebar.tipInsert',
-                  defaultMessage:
-                    "Click a side's length to add a vertex to that side"
-                })}
-              </li>
-              <li>
-                •{' '}
-                {intl.formatMessage({
-                  id: 'shapeSidebar.tipStyle',
-                  defaultMessage: 'Edit line color, width and fill below'
-                })}
-              </li>
-            </ul>
           </div>
         </div>
-      </div>
+      </Collapsible>
     </div>
   );
 };
@@ -621,15 +640,15 @@ ShapeSidebar.propTypes = {
   entity: PropTypes.object.isRequired
 };
 
-// Curated rows shown at the top of the featured "shape" component section
-// (FeaturedComponents passes this as the section's lead-in, above the
-// schema-driven closed/fill/line rows): Reverse direction, plus curve style
-// and — for arcs — corner radius. curveType/filletRadius are shape props (a
+// Curated rows at the foot of the Shape section, after the measurements
+// (#2069): Reverse direction, plus curve style and — for arcs — corner
+// radius. The featured "shape" component section (titled Style) keeps only
+// the schema-driven closed/fill/line rows. curveType/filletRadius are shape props (a
 // curve is a property of the drawing, street or no street — any street
 // following this shape as its path reads them from here); their raw fields are
 // hidden from the schema rows in favour of these controls. Values are read
 // straight off the component; the tick only forces a re-render.
-export const ShapeSectionControls = ({ entity }) => {
+const ShapeSectionControls = ({ entity }) => {
   const intl = useIntl();
   const [, setCurveTick] = useState(0);
   const shapeData = entity.components?.shape?.data;

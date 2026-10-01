@@ -4,7 +4,6 @@ import Component from './Component';
 import PropertyRow from './PropertyRow';
 import MaterialControls from './MaterialControls';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
-import { ShapeSectionControls } from './ShapeSidebar';
 import { FocusHotspotSectionControls } from './FocusHotspotSidebar';
 import { BuildAreaSectionControls } from './BuildAreaSidebar';
 import { ViewerStartSectionControls } from './ViewerStartSidebar';
@@ -89,11 +88,12 @@ function getHiddenProps(name, component) {
   if (name === 'geo-flatten') {
     return ['mode'];
   }
-  // The shape section's first-class rows are closed + fill/line appearance
-  // (which the alphabetical row sort already orders as closed, fillColor,
-  // fillOpacity, lineColor, lineWidth). curveType/filletRadius are replaced by
-  // the curated ShapeSectionControls at the top of the section; selectInside is
-  // an escape valve. All stay reachable under Advanced Components.
+  // The shape component's section is titled Style (#2069): its first-class
+  // rows are closed + fill/line appearance (which the alphabetical row sort
+  // already orders as closed, fillColor, fillOpacity, lineColor, lineWidth).
+  // curveType/filletRadius are curated controls in the Shape section above
+  // (ShapeSidebar); selectInside is an escape valve. All stay reachable under
+  // Advanced Components.
   if (name === 'shape') {
     return ['selectInside', 'curveType', 'filletRadius'];
   }
@@ -111,7 +111,6 @@ function getHiddenProps(name, component) {
 }
 
 function getSectionChildren(name, entity) {
-  if (name === 'shape') return <ShapeSectionControls entity={entity} />;
   if (name === 'focus-hotspot') {
     return <FocusHotspotSectionControls entity={entity} />;
   }
@@ -160,14 +159,23 @@ const ROLE_SECTIONS = {
   }
 };
 
+// Section titles that differ from the component's own name.
+const SECTION_TITLES = defineMessages({
+  shape: { id: 'shapeSidebar.styleTitle', defaultMessage: 'Style' }
+});
+
 // Renders the first-class "featured" controls (geometry, material, and any
 // street-generated-* generator) expanded at the top of the properties sidebar,
 // above Advanced Components. Geometry and generators reuse the generic
 // schema-driven Component widget; material gets a curated panel (MaterialControls).
-const FeaturedComponents = ({ entity }) => {
+const FeaturedComponents = ({ entity, only, exclude }) => {
   const intl = useIntl();
   const components = entity ? entity.components : {};
-  const featured = getFeaturedComponentNames(entity);
+  // `only`/`exclude` let a caller split the featured sections around the
+  // Transform section (a shape's Style leads it, its roles follow).
+  const featured = getFeaturedComponentNames(entity).filter(
+    (name) => (!only || only.includes(name)) && !exclude?.includes(name)
+  );
 
   if (featured.length === 0) {
     return null;
@@ -186,6 +194,11 @@ const FeaturedComponents = ({ entity }) => {
               component={components[name]}
               entity={entity}
               name={name}
+              title={
+                SECTION_TITLES[name]
+                  ? intl.formatMessage(SECTION_TITLES[name])
+                  : undefined
+              }
               hideProperties={getHiddenProps(name, components[name])}
               propertyRenderers={PROPERTY_RENDERERS[name]}
               icon={
@@ -210,7 +223,9 @@ const FeaturedComponents = ({ entity }) => {
 
 FeaturedComponents.propTypes = {
   // entity can be null (e.g. no selection) — the component renders nothing.
-  entity: PropTypes.object
+  entity: PropTypes.object,
+  only: PropTypes.arrayOf(PropTypes.string),
+  exclude: PropTypes.arrayOf(PropTypes.string)
 };
 
 export default FeaturedComponents;

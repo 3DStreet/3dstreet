@@ -898,7 +898,7 @@
     "buildArea.tip": "💡 Visitors drag these objects onto this shape while playing. Press Start to try it; Stop clears what was placed. Nothing a visitor builds is saved to your scene: they keep their work with Open in 3DStreet.",
     "buildArea.undo": "Undo",
     "buildArea.undoTitle": "Undo (Ctrl/Cmd+Z)",
-    "entity.badge.buildArea": "Build area: visitors can place objects on this shape while playing. Click to fly the camera to it.",
+    "entity.badge.buildArea": "Build area: visitors can place objects on this shape while playing. Click to open its settings.",
     "viewer.openInEditor": "Open in 3DStreet",
     "viewer.openInEditorTitle": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it",
     "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again.",
@@ -910,10 +910,6 @@
     "viewer.handoffPrompt.copyFailed": "Could not copy the link. Please try Open instead.",
     "viewer.handoffPrompt.open": "Open in 3DStreet",
     "viewer.handoffPrompt.title": "Your design is ready",
-    "advancedComponents.warning": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk.",
-    "sidebar.geolocSwitchToPosition": "Click to show position instead.",
-    "sidebar.positionSwitchToGeoloc": "Click to show geolocated position (lat/lon) instead.",
-    "sidebar.transform": "Transform",
     "actionBar.easyTool.move": "Move",
     "actionBar.easyTool.place": "Place",
     "actionBar.easyTool.rotate": "Rotate",
@@ -921,7 +917,10 @@
     "actionBar.transformMenu.rotate": "Advanced rotate",
     "actionBar.transformMenu.translate": "Advanced move",
     "actionBar.transformTool": "Move tools (m) - Choose how to move and rotate the selected object",
-    "help.shortcut.cycleMoveTools": "Cycle move tools"
+    "help.shortcut.cycleMoveTools": "Cycle move tools",
+    "buildArea.experimentalWarning": "⚠️ Experimental: Visitor Build is new and may change. Test your scene with Start before sharing it.",
+    "shapeSidebar.sectionTitle": "Shape",
+    "shapeSidebar.styleTitle": "Style"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1822,7 +1821,7 @@
     "buildArea.tip": "💡 Visitors drag these objects onto this shape while playing. Press Start to try it; Stop clears what was placed. Nothing a visitor builds is saved to your scene: they keep their work with Open in 3DStreet.",
     "buildArea.undo": "Undo",
     "buildArea.undoTitle": "Undo (Ctrl/Cmd+Z)",
-    "entity.badge.buildArea": "Build area: visitors can place objects on this shape while playing. Click to fly the camera to it.",
+    "entity.badge.buildArea": "Build area: visitors can place objects on this shape while playing. Click to open its settings.",
     "viewer.openInEditor": "Open in 3DStreet",
     "viewer.openInEditorTitle": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it",
     "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again.",
@@ -1834,10 +1833,6 @@
     "viewer.handoffPrompt.copyFailed": "Could not copy the link. Please try Open instead.",
     "viewer.handoffPrompt.open": "Open in 3DStreet",
     "viewer.handoffPrompt.title": "Your design is ready",
-    "advancedComponents.warning": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk.",
-    "sidebar.geolocSwitchToPosition": "Click to show position instead.",
-    "sidebar.positionSwitchToGeoloc": "Click to show geolocated position (lat/lon) instead.",
-    "sidebar.transform": "Transform",
     "actionBar.easyTool.move": "Move",
     "actionBar.easyTool.place": "Place",
     "actionBar.easyTool.rotate": "Rotate",
@@ -1845,7 +1840,10 @@
     "actionBar.transformMenu.rotate": "Advanced rotate",
     "actionBar.transformMenu.translate": "Advanced move",
     "actionBar.transformTool": "Move tools (m) - Choose how to move and rotate the selected object",
-    "help.shortcut.cycleMoveTools": "Cycle move tools"
+    "help.shortcut.cycleMoveTools": "Cycle move tools",
+    "buildArea.experimentalWarning": "⚠️ Experimental: Visitor Build is new and may change. Test your scene with Start before sharing it.",
+    "shapeSidebar.sectionTitle": "Shape",
+    "shapeSidebar.styleTitle": "Style"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2746,7 +2744,7 @@
     "buildArea.tip": "💡 Visitors drag these objects onto this shape while playing. Press Start to try it; Stop clears what was placed. Nothing a visitor builds is saved to your scene: they keep their work with Open in 3DStreet.",
     "buildArea.undo": "Undo",
     "buildArea.undoTitle": "Undo (Ctrl/Cmd+Z)",
-    "entity.badge.buildArea": "Build area: visitors can place objects on this shape while playing. Click to fly the camera to it.",
+    "entity.badge.buildArea": "Build area: visitors can place objects on this shape while playing. Click to open its settings.",
     "viewer.openInEditor": "Open in 3DStreet",
     "viewer.openInEditorTitle": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it",
     "viewer.openInEditorFailed": "Could not open the scene in a new tab. Please try again.",
@@ -2758,10 +2756,6 @@
     "viewer.handoffPrompt.copyFailed": "Could not copy the link. Please try Open instead.",
     "viewer.handoffPrompt.open": "Open in 3DStreet",
     "viewer.handoffPrompt.title": "Your design is ready",
-    "advancedComponents.warning": "Warning: editing raw component data may cause unexpected scene damage that you cannot undo. Save a copy of your scene if you want to tinker with these at your own risk.",
-    "sidebar.geolocSwitchToPosition": "Click to show position instead.",
-    "sidebar.positionSwitchToGeoloc": "Click to show geolocated position (lat/lon) instead.",
-    "sidebar.transform": "Transform",
     "actionBar.easyTool.move": "Move",
     "actionBar.easyTool.place": "Place",
     "actionBar.easyTool.rotate": "Rotate",
@@ -2769,6 +2763,9 @@
     "actionBar.transformMenu.rotate": "Advanced rotate",
     "actionBar.transformMenu.translate": "Advanced move",
     "actionBar.transformTool": "Move tools (m) - Choose how to move and rotate the selected object",
-    "help.shortcut.cycleMoveTools": "Cycle move tools"
+    "help.shortcut.cycleMoveTools": "Cycle move tools",
+    "buildArea.experimentalWarning": "⚠️ Experimental: Visitor Build is new and may change. Test your scene with Start before sharing it.",
+    "shapeSidebar.sectionTitle": "Shape",
+    "shapeSidebar.styleTitle": "Style"
   }
 }

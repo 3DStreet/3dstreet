@@ -75,6 +75,14 @@ export const BuildAreaSectionControls = ({ entity }) => {
 
   return (
     <>
+      <div className="roleSectionBody">
+        <div className="tip">
+          <FormattedMessage
+            id="buildArea.experimentalWarning"
+            defaultMessage="⚠️ Experimental: Visitor Build is new and may change. Test your scene with Start before sharing it."
+          />
+        </div>
+      </div>
       {PRIMARY_FIELDS.map((f) =>
         component.schema[f.name] ? (
           <PropertyRow

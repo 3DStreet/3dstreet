@@ -82,15 +82,14 @@ export default class ComponentsContainer extends React.Component {
 
   render() {
     const { entity } = this.props;
-    // A shape's featured section (direction, curve style, fill/line) is the
-    // main thing being edited, so it leads and the transform rows follow;
-    // everything else keeps transform first.
-    const featuredFirst = !!entity.getAttribute('shape');
-    const featured = <FeaturedComponents entity={entity} />;
+    // A shape reads Shape (ShapeSidebar, above this container), Style (the
+    // shape component's fill/line section), Transform, then its roles — Build
+    // Area, Flatten Terrain (#2069). Everything else keeps transform first.
+    const isShape = !!entity.getAttribute('shape');
 
     return (
       <div className="components">
-        {featuredFirst && featured}
+        {isShape && <FeaturedComponents entity={entity} only={['shape']} />}
         {entity.hasAttribute('data-no-transform') ? (
           <div className="sidepanelContent">
             <br />
@@ -109,7 +108,10 @@ export default class ComponentsContainer extends React.Component {
             <MixinMetadata entity={entity} />
           </div>
         )}
-        {!featuredFirst && featured}
+        <FeaturedComponents
+          entity={entity}
+          exclude={isShape ? ['shape'] : undefined}
+        />
         <PanelFooter
           entity={entity}
           addComponents={this.getApprovedComponents()}

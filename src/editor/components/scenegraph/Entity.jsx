@@ -9,6 +9,7 @@ import { AwesomeIcon } from '../elements/AwesomeIcon';
 import EntityContextMenu from './EntityContextMenu';
 import EntityLabel from './EntityLabel';
 import EntityLoadSheen from './EntityLoadSheen';
+import { revealSection } from '../../lib/panelPrefs';
 import {
   faCaretDown,
   faCaretRight,
@@ -38,7 +39,7 @@ const BADGE_TITLES = defineMessages({
   'build-area': {
     id: 'entity.badge.buildArea',
     defaultMessage:
-      'Build area: visitors can place objects on this shape while playing. Click to fly the camera to it.'
+      'Build area: visitors can place objects on this shape while playing. Click to open its settings.'
   }
 });
 
@@ -80,10 +81,18 @@ class Entity extends React.Component {
 
   onDoubleClick = () => Events.emit('objectfocus', this.props.entity.object3D);
 
-  // Badge click: focus the camera on this layer right away (the badge lives
-  // inside the clickable row, so don't also toggle selection).
-  focusFromBadge = (event) => {
+  // Badge click (the badge lives inside the clickable row, so the row's own
+  // click is stopped). A hotspot badge focuses the camera on the layer; a
+  // build-area badge selects it and opens its Build Area section in the
+  // properties panel instead (#2069). The reveal waits a frame so the panel
+  // has re-rendered for the new selection.
+  onBadgeClick = (event, badgeKey) => {
     event.stopPropagation();
+    if (badgeKey === 'build-area') {
+      if (!this.props.isSelected) this.props.selectEntity(this.props.entity);
+      requestAnimationFrame(() => revealSection('build-area'));
+      return;
+    }
     Events.emit('objectfocus', this.props.entity.object3D);
   };
 
@@ -307,7 +316,7 @@ class Entity extends React.Component {
     );
 
     // Role badges (hotspot target): always visible in the badge bar, in a
-    // fixed slot left of the eye; clicking one focuses the layer.
+    // fixed slot left of the eye (see onBadgeClick for what a click does).
     const badges = getEntityBadges(entity);
     const badgesNode = badges.length ? (
       <span className="entityBadges">
@@ -317,7 +326,7 @@ class Entity extends React.Component {
             type="button"
             className="entityBadge"
             title={intl.formatMessage(BADGE_TITLES[badge.key])}
-            onClick={this.focusFromBadge}
+            onClick={(event) => this.onBadgeClick(event, badge.key)}
             onDoubleClick={(event) => event.stopPropagation()}
           >
             <AwesomeIcon icon={badge.icon} size={12} />

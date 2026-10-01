@@ -5,7 +5,9 @@ import {
   isSectionCollapsed,
   setSectionCollapsed,
   onCollapseAll,
-  broadcastCollapseAll
+  broadcastCollapseAll,
+  onRevealSection,
+  consumePendingReveal
 } from '../lib/panelPrefs';
 
 export default class Collapsible extends React.Component {
@@ -29,6 +31,7 @@ export default class Collapsible extends React.Component {
 
   constructor(props) {
     super(props);
+    this.rootRef = React.createRef();
     this.state = {
       collapsed: props.sectionKey
         ? isSectionCollapsed(props.sectionKey, props.collapsed)
@@ -39,11 +42,29 @@ export default class Collapsible extends React.Component {
   componentDidMount() {
     if (this.props.sectionKey) {
       this.offCollapseAll = onCollapseAll(this.onCollapseAll);
+      this.offReveal = onRevealSection(this.onReveal);
+      if (consumePendingReveal(this.props.sectionKey)) this.reveal();
     }
   }
 
   componentWillUnmount() {
     this.offCollapseAll?.();
+    this.offReveal?.();
+  }
+
+  onReveal = (sectionKey) => {
+    if (sectionKey !== this.props.sectionKey) return;
+    consumePendingReveal(sectionKey);
+    this.reveal();
+  };
+
+  reveal() {
+    this.setState({ collapsed: false }, () => {
+      this.rootRef.current?.scrollIntoView?.({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    });
   }
 
   componentDidUpdate(prevProps) {
@@ -100,7 +121,7 @@ export default class Collapsible extends React.Component {
     });
 
     return (
-      <div id={this.props.id} className={rootClasses}>
+      <div id={this.props.id} className={rootClasses} ref={this.rootRef}>
         <div className="static" onClick={this.toggleVisibility}>
           <div className="collapse-button" />
           {this.props.children[0]}

@@ -376,7 +376,7 @@
   "driveControls.tipStart": "Pulsa Iniciar y conduce con WASD / flechas",
   "driveControls.tipsHeading": "💡 Consejos de conducción",
   "editorUpgradeModal.alreadyPro": "Ya eres miembro Pro: vuelve a intentar esa acción para continuar.",
-  "entity.badge.buildArea": "Área de construcción: los visitantes pueden colocar objetos sobre esta forma mientras reproducen la escena. Haz clic para llevar la cámara hasta ella.",
+  "entity.badge.buildArea": "Área de construcción: los visitantes pueden colocar objetos en esta forma mientras reproducen la escena. Haz clic para abrir su configuración.",
   "entity.badge.focusHotspot": "Punto de interés: clicable en el modo de vista. Haz clic para llevar la cámara hasta él.",
   "entity.cloneEntity": "Clonar entidad",
   "entity.dragToReorder": "Arrastra para reordenar",
@@ -916,5 +916,8 @@
   "viewerStart.removeConfirm": "¿Quitar la vista inicial? Los visitantes abrirán la escena en la vista predeterminada.",
   "viewerStart.setToCurrentView": "Fijar a la vista actual",
   "viewerStart.setToCurrentViewTitle": "Mover este punto de inicio a la posición y dirección actuales de la cámara del editor",
-  "viewerStart.tip": "💡 Los visitantes abren la escena desde esta vista e Iniciar vuela hasta aquí. Fijar una miniatura de la escena también la mueve a la vista capturada. El marcador solo es visible al editar; tú sigues editando desde donde lo dejaste."
+  "viewerStart.tip": "💡 Los visitantes abren la escena desde esta vista e Iniciar vuela hasta aquí. Fijar una miniatura de la escena también la mueve a la vista capturada. El marcador solo es visible al editar; tú sigues editando desde donde lo dejaste.",
+  "buildArea.experimentalWarning": "⚠️ Experimental: Construcción para visitantes es nueva y puede cambiar. Prueba tu escena con Iniciar antes de compartirla.",
+  "shapeSidebar.sectionTitle": "Forma",
+  "shapeSidebar.styleTitle": "Estilo"
 }
