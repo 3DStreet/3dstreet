@@ -51,8 +51,9 @@ and edited in isolation. The code is in `src/editor/lib/groups/`; the
 every tick has run (including a gizmo drag) and three has updated every
 `matrixWorld`, so this is the place for work that must see the frame's final
 transforms and land before the frame is drawn. `FRAME_ORDER` in the same file
-names where each piece of the groups code runs: the bounds, then the center
-markers, the outline and scrim, and the fading of the outside; after the
+names where each piece of the groups code runs: the bounds, then the
+selection and hover boxes of a group that moved or turned as a whole, the
+center markers, the outline and scrim, and the fading of the outside; after the
 render, the fading is undone before the step of opening a group that waits for
 that render.
 
@@ -68,27 +69,41 @@ scope controller `inspector.groupScope` (`openStack`; `openElements()` gives
 the elements). The stack is session state only and is never saved.
 
 - **Clicks.** A click on a member of a closed group selects the group. A click
-  on the selected group's box or center marker opens it. Inside an open group,
-  a click reaches its members only, even behind a nearer outside object; empty
-  space inside its box selects the group. A click outside a nested open group
-  leaves one level; outside the outermost one, it closes every group and
-  selects what was clicked. Escape leaves one level.
+  on the selected group's box or center marker opens it and clears the
+  selection: an open group is never itself selected, because inside it the
+  user works on its members. Inside an open group, a click reaches its members
+  only, even behind a nearer outside object; empty space inside its box clears
+  the selection. An open empty group's only inside is its marker, and a click
+  there leaves the group and selects it. A click outside a nested open group
+  leaves one level and selects the group it left. Outside the outermost one,
+  empty space does the same, and an item closes the group and is selected.
+  Escape leaves one level, selecting the group it left.
   `resolveCanvasClick` in `groupScope.js` decides; the controller applies.
 - **Selection.** The scope follows the selection wherever it comes from:
-  selecting an item opens the groups around it, and a selected group stays
-  open only if it was already open. A null selection (a tool switch, undoing a
-  create) leaves the scope as it is.
+  selecting an item opens the groups around it, and selecting a group closes
+  it. A null selection (opening a group, a tool switch, undoing a create)
+  leaves the scope as it is.
 - **Pruning.** Deleting or hiding an open group closes it and every group
   inside it. Loading a scene and leaving the editor close every group; on
   return, a selection inside a group becomes that group's outermost group,
-  selected and closed. A group being moved keeps its place in the stack.
+  selected and closed. A group being moved stays in the stack while the move
+  settles; the move then selects it, which closes it.
 - **Pick targets.** The selected group's box, the markers and the open group's
   volume are ray/box tests, not scene objects, so camera navigation and
   placement never land on them.
 - **Double-click.** The clicks of a double-click that select or open a group
   are the whole gesture: the camera does not move.
 - **Hover** previews what a click would select. A dark magenta (#808) box
-  means the click would open the selected group.
+  means the click would open the selected group; it stays on the group's
+  current box while the group moves or turns. A click that leaves a group
+  previews nothing, though it selects that group: the group's outline already
+  marks it. The one exception is an open empty group's marker, which is
+  emphasised. While the cursor is on a group's Advanced move or rotate handle,
+  no red hover is shown: a click there belongs to the handle and never selects
+  what lies beneath.
+- **OSM streets.** While any group is open, the editor offers no OSM street
+  upgrade, neither on hover nor on a click; the offer returns once no group is
+  open. OSM streets are not part of any group.
 - **Touch.** The A-Frame cursor acts on a tap only when it hits an entity. On a
   touch device, taps on empty space, on the empty inside of a group's box and
   on an empty group's marker do nothing; the layer panel does those jobs, and
@@ -96,15 +111,26 @@ the elements). The stack is session state only and is never saved.
 
 ## Handles
 
-A group gets the easy gizmo in every transform mode, with an attach policy
+In easy mode a group gets the easy gizmo, with an attach policy
 (`docs/easy-gizmo.md`, "Attach policies"): the handles stand at the center on
 the bottom of the member box, a move keeps the group's height, and a turn is
 about the center.
 
-A press on a group's handle is held until the pointer has moved 2 CSS pixels.
-Released sooner, it is a click: over the selected closed group's box it opens
-the group; on the handles of an open, selected group it acts as a click inside
-that group. A handle click never leaves a group.
+In Advanced move and rotate a group gets a stock transform control of its own
+(`groupStockGesture.js`), a second instance with no canvas listeners. The
+stock control stands at the origin of what it is attached to, so it is
+attached to a proxy at the group's center that carries the group's heading;
+each change of the proxy is mapped onto the group. Move shows every axis;
+rotate shows only the vertical ring, and turns about the center. Its press is
+owned by `gizmos/claimedPress.js`, the easy gizmo's press protocol as a unit. A
+drag is one undo step, and Escape, blur or a cancelled pointer put the group
+back exactly. Scale mode shows a placeholder on the center marker, a wire cube
+with nothing to drag: a group scales only uniformly, in the properties panel.
+
+A press on a group's handle is held until the pointer has moved 2 CSS
+pixels. Released sooner, it is a click: over the selected closed group's
+box it opens the group, and anywhere else it does nothing. An open group is
+never selected, so it has no handles.
 
 ## Showing the open group
 
@@ -192,8 +218,13 @@ real `BatchedMesh`.
   group has gone, or can no longer take the item, the placement is refused with
   an explanation; it never falls back to the top level.
 - A placement "in view" that finds no ground uses the group's stand point (the
-  center, on the bottom of its members), never its origin. A route with no
-  position of its own keeps its usual location, expressed in the group.
+  center, on the bottom of its members; an empty group's center itself),
+  never its origin. So does a route with no position of its own (the Assets
+  panel's Upload button, File › Import), reading the stand point when the item
+  is committed.
+- Items the editor makes for the user rather than ones the user adds
+  (`isSystemItem`: the Starting View) get no notice, and creating or moving
+  one leaves the selection, and so the open group, as it was.
 - **New group** with a group open makes the new group inside it, with its
   origin at that group's center.
 - **Paste.** An item copied from inside a group, or pasted into an open group,
@@ -212,6 +243,13 @@ under the new parent with the same id.
   was and the user is told; its components have already been removed, so its
   model may not show until the scene is saved and reloaded.
 - A row whose move is still settling cannot be dragged.
+- **Drop levels.** Where groups end, one gap between two rows can mean several
+  places: after the last member, after its group, after the group around that.
+  The pointer's horizontal position picks one, each level owning the band
+  that starts at its own indent (`dropLevels.js`), and the drop line starts at
+  that indent, with a chevron marking a drop inside a group. A top-level drop
+  keeps the full-width line. Gaps with no user group involved keep the hovered
+  row's own zones.
 - Because a move replaces the element, code that holds an entity across an
   await must look it up again by id, as the upload flow does; a pending upload
   survives a move. An upload that finishes after its item was deleted tells the

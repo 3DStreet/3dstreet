@@ -94,4 +94,4 @@ scenes (pref also in panelPrefs). Scene graph rows: expand arrow left of the
 name, and a right-justified overlay bar carries passive role badges plus the
 hover-revealed visibility eye (slashed eye stays visible when hidden).
 
-**Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
+**Layer Reordering:** Drag-and-drop reordering of layers in the SceneGraph, within a parent and between the top level and user groups; where groups end, the pointer's x picks the level (`docs/groups.md`). Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
