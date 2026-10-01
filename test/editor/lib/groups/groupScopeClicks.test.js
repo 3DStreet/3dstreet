@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as THREE from 'three';
 import Events from '@/editor/lib/Events.js';
 import useStore from '@/store';
 import { captureNavDiscovery } from '@/editor/lib/navAnalytics.js';
@@ -328,6 +329,65 @@ describe('the selection and open-group rules', () => {
     expect(selected()).toBe(a1);
     expect(h.openIds()).toEqual(['A']);
   });
+});
+it('stays open, with the member still selected, when the Starting View is made or moved for the user (fails if the create command selects an item it was told to keep the selection for)', () => {
+  const { A, a1 } = nestedScene();
+  h.inspector.config.defaultParent = '#street-container';
+  h.inspector.selectEntity(a1);
+  expect(h.openIds()).toEqual(['A']);
+
+  h.inspector.execute('entitycreate', {
+    keepSelection: true,
+    components: {
+      position: { x: 0, y: 1.6, z: 0 },
+      rotation: { x: 0, y: 0, z: 0 },
+      'viewer-start': { fov: 80 },
+      'data-layer-name': 'Starting View'
+    }
+  });
+  const startingView = h.streetContainer.lastElementChild;
+  expect(startingView.getAttribute('data-layer-name')).toBe('Starting View');
+  // What A-Frame gives an entity before it reports itself loaded.
+  startingView.pause = () => {};
+  startingView.components = {};
+  startingView.object3D = new THREE.Group();
+  startingView.dispatchEvent(new Event('loaded'));
+  expect(selected()).toBe(a1);
+  expect(h.openIds()).toEqual(['A']);
+
+  h.inspector.execute('multi', [
+    [
+      'entityupdate',
+      {
+        entity: startingView,
+        component: 'position',
+        value: { x: 1, y: 1.6, z: 0 },
+        noSelectEntity: true
+      }
+    ],
+    [
+      'entityupdate',
+      {
+        entity: startingView,
+        component: 'rotation',
+        value: { x: 0, y: 90, z: 0 },
+        noSelectEntity: true
+      }
+    ],
+    [
+      'entityupdate',
+      {
+        entity: startingView,
+        component: 'viewer-start',
+        property: 'fov',
+        value: 70,
+        noSelectEntity: true
+      }
+    ]
+  ]);
+  expect(selected()).toBe(a1);
+  expect(h.openIds()).toEqual(['A']);
+  expect(A.isConnected).toBe(true);
 });
 
 describe('nested drilling and exit', () => {

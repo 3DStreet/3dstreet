@@ -320,15 +320,16 @@ function outsideGroupNotice(entity, groupable) {
 /**
  * Tell the user when a command added an item outside the open group, and why.
  * Called by the create and paste commands on their first run, with
- * `groupable` from the item's data (isGroupableItem): the entity itself is
- * not initialised yet. `requireParent` placements were put where they belong
- * and are never reported.
+ * `groupable` and `system` from the item's data (isGroupableItem,
+ * isSystemItem): the entity itself is not initialised yet. `requireParent`
+ * placements were put where they belong, and items the editor made for the
+ * user were never theirs to place, so neither is reported.
  */
 export function notePlacedOutsideOpenGroup(
   entity,
-  { requireParent, groupable } = {}
+  { requireParent, groupable, system } = {}
 ) {
-  if (requireParent || !entity?.isConnected) return;
+  if (requireParent || system || !entity?.isConnected) return;
   const groupEl = innermostOpenGroup();
   if (!groupEl || groupEl.contains(entity)) return;
   const text = groupMessage(outsideGroupNotice(entity, groupable));

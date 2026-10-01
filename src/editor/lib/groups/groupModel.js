@@ -98,6 +98,21 @@ export function isGroupableItem(data) {
   return !KEEPS_ITS_PARENT_CLASSES.some((name) => classes.includes(name));
 }
 
+// Items the editor creates on the user's behalf rather than ones the user
+// adds: while a group is open, creating one tells the user nothing about
+// groups and leaves the selection, and so the open group, as it was.
+const SYSTEM_ITEM_COMPONENTS = ['viewer-start'];
+
+/**
+ * Is the item described by `data` (an `entitycreate` definition, or entity
+ * data) one the editor makes for the user, such as the Starting View? Read
+ * from its data, like isGroupableItem, so it answers before the item exists.
+ */
+export function isSystemItem(data) {
+  const components = data?.components || {};
+  return SYSTEM_ITEM_COMPONENTS.some((name) => name in components);
+}
+
 /** The user groups enclosing `el`, outermost first, excluding `el` itself. */
 export function userGroupAncestors(el) {
   const groups = [];

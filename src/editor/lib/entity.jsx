@@ -8,6 +8,8 @@ import { faBullseye } from '@fortawesome/free-solid-svg-icons';
 import { captureFocusPose } from './focusPose.js';
 import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 import { reseededGeneratorAttributes } from '../../tested/generator-seeds.js';
+import { isSystemItem } from './groups/groupModel.js';
+import { innermostOpenGroup } from './groups/groupPlacement.js';
 import {
   GeospatialIcon,
   ManagedStreetIcon,
@@ -1023,13 +1025,29 @@ function viewerStartValuesFromCamera(parent) {
  */
 export function setViewerStartToCurrentView(entity, { notify = true } = {}) {
   const values = viewerStartValuesFromCamera(entity.object3D.parent);
+  // An update selects its entity when another is selected, which would close
+  // an open group around that selection; the Starting View is not the user's
+  // to select there (nor when the move is undone).
+  const noSelectEntity = innermostOpenGroup() !== null;
   // One undo step for the whole pose.
   AFRAME.INSPECTOR.execute('multi', [
-    ['entityupdate', { entity, component: 'position', value: values.position }],
-    ['entityupdate', { entity, component: 'rotation', value: values.rotation }],
     [
       'entityupdate',
-      { entity, component: 'viewer-start', property: 'fov', value: values.fov }
+      { entity, component: 'position', value: values.position, noSelectEntity }
+    ],
+    [
+      'entityupdate',
+      { entity, component: 'rotation', value: values.rotation, noSelectEntity }
+    ],
+    [
+      'entityupdate',
+      {
+        entity,
+        component: 'viewer-start',
+        property: 'fov',
+        value: values.fov,
+        noSelectEntity
+      }
     ]
   ]);
   if (notify) {
@@ -1046,13 +1064,16 @@ export function getViewerStartEntity() {
  * Move the scene's Starting View (viewer-start) to the current editor
  * view, creating it if the scene has none. Two callers: "set thumbnail"
  * (so the thumbnail view and the start pose are one thing) and View › Set
- * as Starting View. Returns the entity.
+ * as Starting View. Returns the entity. `select` is ignored while a group is
+ * open: the Starting View is a system item, and selecting it would close the
+ * group the user is working in.
  */
 export function ensureViewerStartAtCurrentView({ select = false } = {}) {
+  const groupOpen = innermostOpenGroup() !== null;
   const existing = getViewerStartEntity();
   if (existing) {
     setViewerStartToCurrentView(existing, { notify: false });
-    if (select) AFRAME.INSPECTOR.selectEntity(existing);
+    if (select && !groupOpen) AFRAME.INSPECTOR.selectEntity(existing);
     return existing;
   }
   const parent = document.querySelector(AFRAME.INSPECTOR.config.defaultParent);
@@ -1065,12 +1086,16 @@ export function ensureViewerStartAtCurrentView({ select = false } = {}) {
       'data-layer-name': 'Starting View'
     }
   };
-  // entitycreate selects the new entity once it has loaded; when called
-  // from set-thumbnail, put the author's selection back afterwards.
+  if (groupOpen && isSystemItem(definition)) definition.keepSelection = true;
+  // entitycreate selects the new entity once it has loaded, unless told to
+  // keep the selection; when called from set-thumbnail, put the author's
+  // selection back afterwards.
   const previous = AFRAME.INSPECTOR.selectedEntity;
   // execute(cmdName, payload, optionalName, callback)
   return AFRAME.INSPECTOR.execute('entitycreate', definition, undefined, () => {
-    if (!select) AFRAME.INSPECTOR.selectEntity(previous || null);
+    if (!select && !definition.keepSelection) {
+      AFRAME.INSPECTOR.selectEntity(previous || null);
+    }
   });
 }
 

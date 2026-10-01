@@ -1,7 +1,7 @@
 import Events from '../Events';
 import { Command } from '../command.js';
 import { createEntity, createUniqueId } from '../entity.jsx';
-import { isGroupableItem } from '../groups/groupModel.js';
+import { isGroupableItem, isSystemItem } from '../groups/groupModel.js';
 import {
   beginPlacement,
   notePlacedOutsideOpenGroup,
@@ -97,7 +97,9 @@ export class EntityCreateCommand extends Command {
     let definition = this.definition;
     const callback = (entity) => {
       entity.pause();
-      this.editor.selectEntity(entity);
+      // `keepSelection`: the caller asks for the selection to stay as it is
+      // (an item the editor made for the user while a group is open).
+      if (!this.definition.keepSelection) this.editor.selectEntity(entity);
       this.callback?.(entity);
       nextCommandCallback?.(entity);
     };
@@ -119,7 +121,8 @@ export class EntityCreateCommand extends Command {
     if (firstRun) {
       notePlacedOutsideOpenGroup(entity, {
         requireParent: this.definition.requireParent,
-        groupable: isGroupableItem(this.definition)
+        groupable: isGroupableItem(this.definition),
+        system: isSystemItem(this.definition)
       });
     }
     return entity;

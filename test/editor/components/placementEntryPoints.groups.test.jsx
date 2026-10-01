@@ -157,3 +157,44 @@ describe('adding assets from the library, a link and the File menu while a group
     expect(plain.parentEl).toBeUndefined();
   });
 });
+
+describe('View › Set as Starting View', () => {
+  it('with a group open, makes and then moves the Starting View with the member kept selected and no group notice; with none open, selects it (fails if the menu, the create or the move selects it)', () => {
+    const { inner } = scene.scopeGroups();
+    const member = memberWithBox(inner, [6, 1, 6], [8, 2, 9], {
+      id: 'member'
+    });
+    // Read by other menu items as the menu renders.
+    globalThis.STREET.utils = {
+      getCurrentSceneId: () => null,
+      getAuthorId: () => null
+    };
+    // Updates of the Starting View's own properties read A-Frame's
+    // component registry, which this scene does not register.
+    globalThis.AFRAME.components = {};
+    const selectSpy = vi.spyOn(scene.inspector, 'selectEntity');
+    const startingView = () => document.querySelector('[viewer-start]');
+    const selectedStartingView = () =>
+      selectSpy.mock.calls.some(([el]) => el && el === startingView());
+    withIntl(<AppMenu currentUser={null} />);
+
+    scene.openGroups('outer', 'inner');
+    scene.inspector.selectedEntity = member;
+    fireEvent.click(screen.getByText('Set as Starting View'));
+    expect(startingView()).not.toBe(null);
+    expect(selectedStartingView()).toBe(false);
+    expect(scene.inspector.selectedEntity).toBe(member);
+    fireEvent.click(screen.getByText('Set as Starting View'));
+    expect(selectedStartingView()).toBe(false);
+    expect(scene.inspector.selectedEntity).toBe(member);
+    expect(scene.notify.successMessage).toHaveBeenCalledTimes(2);
+    expect(scene.notify.successMessage).toHaveBeenCalledWith(
+      'Starting View set to current camera view'
+    );
+    expect(scene.notify.infoMessage).not.toHaveBeenCalled();
+
+    scene.closeGroups();
+    fireEvent.click(screen.getByText('Set as Starting View'));
+    expect(scene.inspector.selectedEntity).toBe(startingView());
+  });
+});

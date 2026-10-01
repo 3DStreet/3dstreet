@@ -240,6 +240,16 @@ export function initRaycaster(inspector) {
     lastHoveredEl = null;
   }
   Events.on('groupscopechanged', rearmHover);
+  // An OSM street offer already showing when a group opens (it opened from
+  // the layer panel, say) is withdrawn with it: none is offered while a group
+  // is open.
+  Events.on('groupscopechanged', ({ openStack }) => {
+    if (openStack.length === 0) return;
+    if (useStore.getState().osmWayCandidate) {
+      useStore.getState().setOsmWayCandidate(null);
+    }
+    updateOsmHover(null);
+  });
   Events.on('objectselect', () => {
     if (isUserGroup(inspector.selectedEntity)) rearmHover();
   });

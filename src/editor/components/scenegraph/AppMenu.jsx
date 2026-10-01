@@ -747,7 +747,8 @@ const AppMenu = ({ currentUser }) => {
               onClick={() => {
                 // The scene's Starting View (viewer-start): where visitors
                 // open the scene and where Start flies. Creates it on first
-                // use, moves it after, and selects it either way.
+                // use, moves it after, and selects it either way unless a
+                // group is open.
                 ensureViewerStartAtCurrentView({ select: true });
                 STREET.notify.successMessage(
                   'Starting View set to current camera view'

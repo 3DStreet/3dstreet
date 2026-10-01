@@ -11,6 +11,7 @@ import { isGroupableItem } from '@/editor/lib/groups/groupModel.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { dispatchToolCall } from '@/editor/lib/commands/registry.js';
+import { ensureViewerStartAtCurrentView } from '@/editor/lib/entity.jsx';
 import { createReplayEntityFromManifest } from '@/editor/components/elements/AddLayerPanel/createLayerFunctions.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
@@ -359,6 +360,56 @@ describe('the notice for an item added outside the open group', () => {
     expect(
       noticesFor(create({ parentEl: other, components: { shape: '' } }))
     ).toEqual([groupMessage('placedOutsideGroup')]);
+  });
+});
+
+describe('the Starting View, which the editor makes for the user', () => {
+  let member;
+  let selectSpy;
+  const startingView = () => document.querySelector('[viewer-start]');
+  const selectedStartingView = () =>
+    selectSpy.mock.calls.some(([el]) => el && el === startingView());
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    tick();
+    // Updates of the Starting View's own properties read A-Frame's
+    // component registry, which this scene does not register.
+    globalThis.AFRAME.components = {};
+    const { inner } = scene.scopeGroups();
+    member = entityIn(inner, { id: 'member' });
+    scene.openGroups('outer', 'inner');
+    selectSpy = vi.spyOn(scene.inspector, 'selectEntity');
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('is made with a group open without a placement notice and without being selected, so the selection stays on the member (fails on a notice, or if creating it selects it)', () => {
+    scene.inspector.selectedEntity = member;
+    ensureViewerStartAtCurrentView();
+    expect(startingView()).not.toBe(null);
+    expect(startingView().parentNode).toBe(scene.root);
+    expect(scene.notify.infoMessage).not.toHaveBeenCalled();
+    expect(selectedStartingView()).toBe(false);
+    expect(scene.inspector.selectedEntity).toBe(member);
+  });
+
+  it('for a thumbnail, is never selected with a group open, with or without a selection, made or moved (fails if creating or moving it selects it)', () => {
+    // Nothing selected.
+    ensureViewerStartAtCurrentView();
+    expect(selectedStartingView()).toBe(false);
+    expect(scene.inspector.selectedEntity).toBe(null);
+    // Moved, with a member selected.
+    scene.inspector.selectedEntity = member;
+    ensureViewerStartAtCurrentView();
+    expect(selectedStartingView()).toBe(false);
+    expect(scene.inspector.selectedEntity).toBe(member);
+    // Made again, with a member selected.
+    startingView().remove();
+    ensureViewerStartAtCurrentView();
+    expect(startingView()).not.toBe(null);
+    expect(selectedStartingView()).toBe(false);
+    expect(scene.inspector.selectedEntity).toBe(member);
+    expect(scene.notify.infoMessage).not.toHaveBeenCalled();
   });
 });
 

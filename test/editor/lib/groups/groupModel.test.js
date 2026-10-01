@@ -4,6 +4,7 @@ import {
   canReparent,
   isGroupableItem,
   isHiddenInHierarchy,
+  isSystemItem,
   isUserGroup,
   userGroupAncestors
 } from '@/editor/lib/groups/groupModel.js';
@@ -168,6 +169,33 @@ describe('an item and its data', () => {
     ).toBe(false);
     expect(isGroupableItem({ class: 'other scene-backdrop' })).toBe(false);
     expect(isGroupableItem({ class: 'other' })).toBe(true);
+  });
+});
+
+describe('items the editor makes for the user', () => {
+  it('are the Starting View only, by what the item is: not a user-placed item, a drawn shape or a street the user imports (fails on a broader or name-based rule)', () => {
+    expect(
+      isSystemItem({
+        components: {
+          position: '0 1.6 0',
+          'viewer-start': { fov: 80 },
+          'data-layer-name': 'Starting View'
+        }
+      })
+    ).toBe(true);
+    expect(
+      isSystemItem({ mixin: 'tree3', components: { position: '1 0 2' } })
+    ).toBe(false);
+    // Kept out of groups like the Starting View, but drawn by the user.
+    expect(isSystemItem({ components: { shape: '' } })).toBe(false);
+    expect(
+      isSystemItem({
+        components: {
+          'streetmix-loader': 'streetmixStreetURL: https://example.com/s/1',
+          'data-layer-name': 'Starting View'
+        }
+      })
+    ).toBe(false);
   });
 });
 

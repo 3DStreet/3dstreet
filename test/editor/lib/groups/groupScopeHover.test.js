@@ -388,6 +388,43 @@ describe('hovering groups', () => {
     expect(osm.highlightWayAt).toHaveBeenCalledTimes(1);
   });
 
+  it('withdraws an OSM street offer already showing when a group opens, from the layer panel or by a click on the selected group, and offers it again once none is open (fails if the chip or the hover highlight outlives the opening)', () => {
+    const osm = stubOsmStreets();
+    const A = group(h.streetContainer, { id: 'A' });
+    const a1 = solid(A, [0, 0, 0], [1, 1, 1], { id: 'a1' });
+    h.frame();
+    const candidate = () => useStore.getState().osmWayCandidate;
+    const offerOnEmptyGround = () => {
+      h.aimDown(40, 40);
+      h.poll();
+      h.click();
+      expect(candidate()?.wayId).toBe('way-1');
+      osm.clearHighlight.mockClear();
+    };
+
+    // Opened by selecting a member in the layer panel.
+    offerOnEmptyGround();
+    expect(selected()).toBe(null);
+    h.inspector.selectEntity(a1);
+    expect(h.openIds()).toEqual(['A']);
+    expect(candidate()).toBe(null);
+    expect(osm.clearHighlight).toHaveBeenCalledWith('hover');
+
+    // Back to no group open: the offer returns.
+    h.inspector.selectEntity(null);
+    h.groupScope.close(null);
+    offerOnEmptyGround();
+
+    // Opened by a click on the group selected from the layer panel, which
+    // leaves the offer up.
+    h.inspector.selectEntity(A);
+    expect(candidate()?.wayId).toBe('way-1');
+    h.aimDown(0.5, 0.5);
+    h.click();
+    expect(h.openIds()).toEqual(['A']);
+    expect(candidate()).toBe(null);
+  });
+
   it('under street-level navigation previews the group, not the raw member, for a closed group', () => {
     flags.streetLevel = true;
     const G = group(h.streetContainer, { id: 'G' });
