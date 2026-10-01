@@ -135,6 +135,7 @@
   "buildArea.deleteTitle": "Retirer l'objet sélectionné (Suppr)",
   "buildArea.dockTitle": "Glissez un objet sur la zone surlignée, ou touchez-le pour le placer",
   "buildArea.enabled": "Activé",
+  "buildArea.experimentalWarning": "⚠️ Expérimental : les zones de construction sont nouvelles et peuvent évoluer. Testez votre scène avec Démarrer avant de la partager.",
   "buildArea.hintIdle": "Cliquez sur un objet que vous avez placé pour le déplacer.",
   "buildArea.hintSelected": "Faites glisser les flèches pour le déplacer.",
   "buildArea.maxObjects": "Nombre max. d'objets",
@@ -801,9 +802,11 @@
   "shapeSidebar.direction": "Direction",
   "shapeSidebar.length": "Longueur {label}",
   "shapeSidebar.reverse": "Inverser",
+  "shapeSidebar.sectionTitle": "Forme",
   "shapeSidebar.segments": "Segments",
   "shapeSidebar.showAllSegments": "Afficher les {count} segments",
   "shapeSidebar.showFewerSegments": "Afficher moins de segments",
+  "shapeSidebar.styleTitle": "Style",
   "shapeSidebar.tipInsert": "Cliquez sur la longueur d'un côté pour ajouter un sommet à ce côté",
   "shapeSidebar.tipShift": "Maintenez Maj en faisant glisser un sommet pour le monter ou le descendre",
   "shapeSidebar.tipStyle": "Modifiez la couleur, l'épaisseur et le remplissage de la ligne ci-dessous",
@@ -916,8 +919,5 @@
   "viewerStart.removeConfirm": "Retirer la vue de départ ? Les visiteurs ouvriront la scène sur la vue par défaut.",
   "viewerStart.setToCurrentView": "Définir sur la vue actuelle",
   "viewerStart.setToCurrentViewTitle": "Déplacer ce point de départ à la position et l'orientation actuelles de la caméra de l'éditeur",
-  "viewerStart.tip": "💡 Les visiteurs ouvrent la scène depuis cette vue et Démarrer y amène la caméra. Définir une vignette de la scène la déplace aussi vers la vue capturée. Le repère n'est visible qu'en édition ; vous continuez d'éditer là où vous vous étiez arrêté.",
-  "buildArea.experimentalWarning": "⚠️ Expérimental : les zones de construction sont nouvelles et peuvent évoluer. Testez votre scène avec Démarrer avant de la partager.",
-  "shapeSidebar.sectionTitle": "Forme",
-  "shapeSidebar.styleTitle": "Style"
+  "viewerStart.tip": "💡 Les visiteurs ouvrent la scène depuis cette vue et Démarrer y amène la caméra. Définir une vignette de la scène la déplace aussi vers la vue capturée. Le repère n'est visible qu'en édition ; vous continuez d'éditer là où vous vous étiez arrêté."
 }
