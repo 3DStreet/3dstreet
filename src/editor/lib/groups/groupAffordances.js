@@ -142,6 +142,35 @@ function isShownGroup(el) {
   return isUserGroup(el) && el.isConnected && !isHiddenInHierarchy(el);
 }
 
+// Scale mode's stand-in for handles on the selected group: a wire cube drawn
+// exactly over the marker's pick cube, so a click anywhere on it opens the
+// group as the marker always does. Group scale is set in the properties
+// panel; the cube offers no handle and takes no press.
+let sharedPlaceholderParts = null;
+function buildScalePlaceholder() {
+  if (!sharedPlaceholderParts) {
+    const side = 2 * MARKER_PICK_RADII;
+    sharedPlaceholderParts = {
+      edges: new THREE.EdgesGeometry(new THREE.BoxGeometry(side, side, side)),
+      material: new THREE.LineBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: MARKER_OPACITY,
+        depthTest: false
+      })
+    };
+  }
+  const cube = new THREE.LineSegments(
+    sharedPlaceholderParts.edges,
+    sharedPlaceholderParts.material
+  );
+  cube.name = 'group-scale-placeholder';
+  cube.raycast = noRaycast;
+  cube.renderOrder = MARKER_RENDER_ORDER;
+  cube.visible = false;
+  return cube;
+}
+
 function buildMarker() {
   const parts = markerParts();
   const marker = new THREE.Group();
@@ -175,6 +204,10 @@ export class GroupAffordances {
     this.dirty = true;
     this.hoveredMarkerGroup = null;
     this.markerScratch = [];
+    // The group whose marker carries the scale-mode placeholder, and the
+    // placeholder (built on first use).
+    this.scalePlaceholderGroup = null;
+    this.scalePlaceholder = null;
 
     this.markDirty = () => {
       this.dirty = true;
@@ -194,6 +227,7 @@ export class GroupAffordances {
     Events.off('historychanged', this.markDirty);
     for (const marker of this.markers.values()) marker.removeFromParent();
     this.markers.clear();
+    this.scalePlaceholder?.removeFromParent();
   }
 
   /** Pixel height of the canvas the markers are sized for. */
@@ -330,6 +364,33 @@ export class GroupAffordances {
     this.hoveredMarkerGroup = groupEl || null;
   }
 
+  /**
+   * Show scale mode's placeholder on `groupEl`'s marker (the selected group's,
+   * which the marker pass places and sizes every frame), or hide it (null).
+   */
+  setScalePlaceholder(groupEl) {
+    this.scalePlaceholderGroup = groupEl || null;
+    if (!this.scalePlaceholderGroup && this.scalePlaceholder) {
+      this.scalePlaceholder.visible = false;
+      this.scalePlaceholder.removeFromParent();
+    }
+  }
+
+  /** Hang the placeholder on its group's marker, if that marker is shown. */
+  updateScalePlaceholder() {
+    const groupEl = this.scalePlaceholderGroup;
+    const marker = groupEl ? this.markers.get(groupEl) : null;
+    if (!marker || !marker.visible) {
+      if (this.scalePlaceholder) this.scalePlaceholder.visible = false;
+      return;
+    }
+    if (!this.scalePlaceholder) this.scalePlaceholder = buildScalePlaceholder();
+    const placeholder = this.scalePlaceholder;
+    if (placeholder.parent !== marker) marker.add(placeholder);
+    placeholder.visible = true;
+    placeholder.updateMatrixWorld(true);
+  }
+
   /** Editor-frame pass: place, size and show the markers for this frame. */
   updateMarkers(context) {
     this.rebuildIfDirty();
@@ -337,7 +398,10 @@ export class GroupAffordances {
     for (const [groupEl, marker] of this.markers) {
       if (!wanted.includes(groupEl)) marker.visible = false;
     }
-    if (wanted.length === 0) return;
+    if (wanted.length === 0) {
+      this.updateScalePlaceholder();
+      return;
+    }
     const parts = markerParts();
     const camera = context?.camera || this.inspector.camera;
     const t = tmp();
@@ -358,5 +422,6 @@ export class GroupAffordances {
       marker.visible = true;
       marker.updateMatrixWorld(true);
     }
+    this.updateScalePlaceholder();
   }
 }

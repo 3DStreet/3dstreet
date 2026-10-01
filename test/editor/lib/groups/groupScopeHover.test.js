@@ -5,7 +5,7 @@ import useStore from '@/store';
 import { captureNavDiscovery } from '@/editor/lib/navAnalytics.js';
 import { getGroupBounds } from '@/editor/lib/groups/groupBounds.js';
 import { rayHitsGroupBox } from '@/editor/lib/groups/groupTransformMath.js';
-import { group, item, mountEditor, solid } from './_editorHarness.js';
+import { group, item, mountEditor, posable, solid } from './_editorHarness.js';
 
 const flags = vi.hoisted(() => ({ streetLevel: false }));
 
@@ -534,5 +534,99 @@ describe('center markers', () => {
       control.raycast(raycaster, controlHits);
       expect(controlHits.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('a group selected in scale mode', () => {
+  it('carries a placeholder on its marker that follows its center in the frame it moves, takes no press and is not a surface, opens the group on a click, and is drawn as the marker pick cube (fails on a scale handle, a placeholder posed once, or one drawn at another size)', () => {
+    h.dispose();
+    document.body.replaceChildren();
+    h = mountEditor({ gizmo: true });
+    const canvas = h.inspector.container;
+    const g = posable(group(h.streetContainer));
+    const member = posable(solid(g, [10, 0.5, 20], [14, 2, 24]));
+    h.camera.position.set(12, 14, 38);
+    h.camera.lookAt(12, 0, 22);
+    h.camera.updateMatrixWorld(true);
+    h.inspector.selectEntity(g);
+    Events.emit('transformmodechange', 'scale');
+    h.frame();
+    h.frame();
+    const affordances = h.inspector.groupScope.affordances;
+    const placeholder = affordances.scalePlaceholder;
+    const marker = affordances.markers.get(g);
+    const world = (object) => object.getWorldPosition(new THREE.Vector3());
+    expect(placeholder.visible).toBe(true);
+    expect(
+      world(placeholder).distanceTo(new THREE.Vector3(12, 1.25, 22))
+    ).toBeLessThan(1e-9);
+
+    // A member moved with nothing announced: the center moves, and the
+    // placeholder with it, in that frame.
+    member.object3D.position.x += 2;
+    let placed;
+    let markerAt;
+    h.frame(() => {
+      placed = world(placeholder);
+      markerAt = world(marker);
+    });
+    expect(markerAt.distanceTo(new THREE.Vector3(14, 1.25, 22))).toBeLessThan(
+      1e-9
+    );
+    expect(placed.distanceTo(markerAt)).toBeLessThan(1e-9);
+
+    // Exactly the marker's pick cube: two marker radii either side.
+    const size = new THREE.Box3()
+      .setFromObject(placeholder)
+      .getSize(new THREE.Vector3());
+    const half = affordances.markerRadius(h.camera, markerAt) * 2;
+    expect(size.x / 2).toBeCloseTo(half, 6);
+    expect(size.y / 2).toBeCloseTo(half, 6);
+    expect(size.z / 2).toBeCloseTo(half, 6);
+
+    // Not a surface.
+    const raycaster = new THREE.Raycaster(
+      markerAt.clone().add(new THREE.Vector3(0, 20, 0)),
+      new THREE.Vector3(0, -1, 0)
+    );
+    expect(raycaster.intersectObject(placeholder, true)).toEqual([]);
+
+    // A 10 px drag that starts on it moves and scales nothing.
+    const p = markerAt.clone().project(h.camera);
+    const at = { x: (p.x + 1) * 600, y: (1 - p.y) * 400 };
+    const before = h.inspector.history.undos.length;
+    const pose = g.object3D.matrix.clone();
+    const send = (type, x, button = 0) => {
+      const event = new MouseEvent(type, {
+        clientX: x,
+        clientY: at.y,
+        button,
+        buttons: type.endsWith('up') ? 0 : 1,
+        bubbles: true,
+        cancelable: true
+      });
+      if (type.startsWith('pointer')) {
+        Object.defineProperties(event, {
+          pointerType: { value: 'mouse' },
+          pointerId: { value: 1 },
+          isPrimary: { value: true }
+        });
+      }
+      canvas.dispatchEvent(event);
+    };
+    send('pointerdown', at.x);
+    send('mousedown', at.x);
+    for (let dx = 2; dx <= 10; dx += 2) send('pointermove', at.x + dx, -1);
+    send('pointerup', at.x + 10);
+    send('mouseup', at.x + 10);
+    h.frame();
+    expect(h.inspector.history.undos.length).toBe(before);
+    expect(g.object3D.matrix.equals(pose)).toBe(true);
+    expect(h.openIds()).toEqual([]);
+
+    // A still click on it opens the group, as on the marker.
+    h.aimDown(markerAt.x, markerAt.z);
+    h.click();
+    expect(h.openIds()).toEqual([g.id]);
   });
 });

@@ -26,6 +26,7 @@ import {
 import { positionForRotationAboutCenter } from './groups/groupTransformMath.js';
 import { isSelectedClosedGroup } from './groups/groupScope.js';
 import { installGroupScope } from './groups/groupScopeController.js';
+import { createGroupStockGesture } from './groups/groupStockGesture.js';
 import { DEFAULT_TRANSFORM_MODE } from './transformModes.js';
 import { computeRibbonOutline } from '@/tested/street-path-utils.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
@@ -680,12 +681,15 @@ export function Viewport(inspector) {
     if (selectionBox.visible && selectionBox.object) selectionBox.update();
   });
 
-  // The scene's own hover highlight, extracted so the easy gizmo can suppress
-  // it while the cursor is on one of its controls — a landing square often sits
-  // out on open ground, and lighting up the street segment beneath it while the
-  // user aims at it is exactly wrong.
+  // The scene's own hover highlight, extracted so the easy gizmo's or the
+  // group stock control's controls can suppress it while the cursor is on one
+  // of them — a landing square often sits out on open ground, and lighting up
+  // the street segment beneath it while the user aims at it is exactly wrong.
+  // On a group's stock handle, a click is the control's and never selects
+  // what lies beneath, so a red preview of that would be false.
   let lastHoveredEl = null;
-  // The cursor is on one of the easy gizmo's controls (its axisHoverChange).
+  // The cursor is on one of the easy gizmo's controls, or on a group stock
+  // control's handle (their axisHoverChange). The router never attaches both.
   let gizmoControlHovered = false;
   // An easy-gizmo gesture has just committed and the pointer has not moved
   // since. A drag-to-detach commit (#2011) removes the dragged clone and
@@ -832,7 +836,13 @@ export function Viewport(inspector) {
 
   const camera = inspector.camera;
   const transformControls = new TransformControls(camera, inspector.container);
-  transformControls.size = 0.75;
+  // A second stock control, for user groups in the Advanced move and rotate
+  // modes. It has no canvas listeners of its own: groupStockGesture owns its
+  // presses and drives it (see there). Every setting the item control takes
+  // is given to both.
+  const groupTransformControls = new TransformControls(camera, null);
+  const stockControls = [transformControls, groupTransformControls];
+  stockControls.forEach((stock) => (stock.size = 0.75));
 
   // A second helper, alongside the transform controls: vertex handles for the selected
   // shape. It reads the inspector camera fresh each frame rather than being
@@ -1049,20 +1059,23 @@ export function Viewport(inspector) {
     });
   });
 
-  function wireEasyGizmo(commandName) {
+  // The wiring for a control that owns its gestures and commits each one
+  // whole: the easy gizmo, and a group's stock control (groupStockGesture).
+  // Both speak the same events.
+  function wireGestureControl(emitter, commandName) {
     // A group's box is held for the length of a gesture on it: the handles
     // and the center stay where the gesture started, and nothing re-measures
     // the members while they move together.
     let heldGroup = null;
-    easyGizmoControls.addEventListener('mouseDown', () => {
+    emitter.addEventListener('mouseDown', () => {
       controls.enabled = false;
       hoverBox.visible = false;
-      if (isUserGroup(easyGizmoControls.el)) {
-        heldGroup = easyGizmoControls.el;
+      if (isUserGroup(emitter.el)) {
+        heldGroup = emitter.el;
         holdGroupBounds(heldGroup);
       }
     });
-    easyGizmoControls.addEventListener('mouseUp', () => {
+    emitter.addEventListener('mouseUp', () => {
       controls.enabled = true;
       if (heldGroup) {
         releaseGroupBounds(heldGroup);
@@ -1071,20 +1084,20 @@ export function Viewport(inspector) {
     });
     // A press held on a group's handle (see groupGizmoPolicy): the magenta box
     // while it would open the group, and the click it turns out to be.
-    easyGizmoControls.addEventListener('handlePress', (evt) => {
+    emitter.addEventListener('handlePress', (evt) => {
       const hits = mouseCursor.groupHitsAt(evt.clientX, evt.clientY);
       const opens = inspector.groupScope.handleClickOpens(hits);
       if (opens) showPressedGroup(opens);
     });
-    easyGizmoControls.addEventListener('handlePressEnd', clearPressedGroup);
-    easyGizmoControls.addEventListener('handleClick', (evt) => {
+    emitter.addEventListener('handlePressEnd', clearPressedGroup);
+    emitter.addEventListener('handleClick', (evt) => {
       inspector.groupScope.applyHandleClick(
         mouseCursor.groupHitsAt(evt.clientX, evt.clientY),
         evt.detail
       );
     });
-    easyGizmoControls.addEventListener('objectChange', () => {
-      const object = easyGizmoControls.object;
+    emitter.addEventListener('objectChange', () => {
+      const object = emitter.object;
       if (!object) return;
       // Batched models and descendants render outside the entity hierarchy.
       syncBatchedSubtree(object.el);
@@ -1095,8 +1108,8 @@ export function Viewport(inspector) {
       // release. Only for the selected entity, because a detach caused by a
       // new selection restores the old one after the selection has moved on,
       // and its panel is being replaced.
-      if (easyGizmoControls.el !== inspector.selectedEntity) return;
-      const rotating = easyGizmoControls.axis === 'rotate';
+      if (emitter.el !== inspector.selectedEntity) return;
+      const rotating = emitter.axis === 'rotate';
       const d = THREE.MathUtils.radToDeg;
       Events.emit('entityupdate', {
         entity: object.el,
@@ -1120,7 +1133,7 @@ export function Viewport(inspector) {
     // being cleared once on mouseDown: hovering a control and moving away
     // without pressing is the commonest interaction with it, and the selection
     // raycaster re-arms the box on its next poll.
-    easyGizmoControls.addEventListener('axisHoverChange', (evt) => {
+    emitter.addEventListener('axisHoverChange', (evt) => {
       gizmoControlHovered = !!evt.axis;
       if (gizmoControlHovered) {
         hoverBox.visible = false;
@@ -1132,7 +1145,7 @@ export function Viewport(inspector) {
       // left a control. Re-applying here drew the last raycaster target (the
       // segment under the handle) at the moment a detach selected the entity
       // it created (#2054); the next pointer move or raycaster poll re-arms.
-      if (!easyGizmoControls.el) return;
+      if (!emitter.el) return;
       if (lastHoveredEl) applyHoverHighlight(lastHoveredEl);
     });
     // Dispatched as 'multi' even for a single change, and always with a name.
@@ -1141,7 +1154,7 @@ export function Viewport(inspector) {
     // two separate drags of the same object into one undo entry; a multi
     // command opts out of that. It also defaults its own label to "Multiple
     // changes", so every gesture supplies its own.
-    easyGizmoControls.addEventListener('commitDrag', (evt) => {
+    emitter.addEventListener('commitDrag', (evt) => {
       holdHoverUntilPointerMove();
       const changed = evt.changes.filter((c) => c.value !== c.oldValue);
       if (changed.length === 0) return;
@@ -1171,9 +1184,21 @@ export function Viewport(inspector) {
   easyGizmoControls.registry.add(
     installEasyGizmoOutline(sceneEl, easyGizmoControls)
   );
-  wireEasyGizmo(easyGizmoCommandName);
+  wireGestureControl(easyGizmoControls, easyGizmoCommandName);
   sceneHelpers.add(easyGizmoControls);
   inspector.easyGizmoControls = easyGizmoControls;
+
+  // A group's stock control. Its drawing is added to the helper scene when it
+  // attaches (so after the item control's, added above) and removed when it
+  // detaches.
+  const groupStockGesture = createGroupStockGesture({
+    controls: groupTransformControls,
+    canvas: inspector.container,
+    sceneHelpers,
+    isEditorOpen: () => !!inspector.opened
+  });
+  wireGestureControl(groupStockGesture, easyGizmoCommandName);
+  inspector.groupStockGesture = groupStockGesture;
 
   // How the easy gizmo handles a user group (see EasyGizmoControls.attach).
   // A group has no base of its own: its handles stand at its center on the
@@ -1216,6 +1241,9 @@ export function Viewport(inspector) {
     // out again so its handles are drawn under the members this frame.
     if (easyGizmoControls.el === groupEl) {
       easyGizmoControls.updateMatrixWorld(true);
+    }
+    if (groupStockGesture.el === groupEl) {
+      groupTransformControls.getHelper().updateMatrixWorld(true);
     }
   });
 
@@ -1331,7 +1359,7 @@ export function Viewport(inspector) {
       if (perspective) {
         sceneEl.camera = perspective;
         inspector.camera = perspective;
-        transformControls.camera = perspective;
+        stockControls.forEach((stock) => (stock.camera = perspective));
         streetNodeControls.camera = perspective;
         segmentWidthControls.camera = perspective;
         easyGizmoControls.camera = perspective;
@@ -1342,7 +1370,7 @@ export function Viewport(inspector) {
       }
     }
     controls.setCamera(data.camera);
-    transformControls.camera = data.camera;
+    stockControls.forEach((stock) => (stock.camera = data.camera));
     streetNodeControls.camera = data.camera;
     segmentWidthControls.camera = data.camera;
     easyGizmoControls.camera = data.camera;
@@ -1351,7 +1379,7 @@ export function Viewport(inspector) {
 
   function enableControls() {
     mouseCursor.enable();
-    transformControls.enabled = true;
+    stockControls.forEach((stock) => (stock.enabled = true));
     streetNodeControls.enabled = true;
     segmentWidthControls.enabled = true;
     easyGizmoControls.enabled = true;
@@ -1368,8 +1396,10 @@ export function Viewport(inspector) {
     streetNodeControls.detach();
     segmentWidthControls.detach();
     // Called on EVERY selection, including ones the easy gizmo never attached
-    // to, so its detach is idempotent.
+    // to, so its detach is idempotent; so are the group's.
     easyGizmoControls.detach();
+    groupStockGesture.detach();
+    inspector.groupScope.affordances.setScalePlaceholder(null);
   }
 
   // Which handles the stock gizmo offers for the current mode and selection.
@@ -1441,12 +1471,18 @@ export function Viewport(inspector) {
       segmentWidthControls.attach(el);
       return;
     }
-    // A user group gets the easy gizmo in every transform mode (the stock
-    // gizmo's per-axis moves and free rotation do not apply to a group, which
-    // only yaws and scales uniformly), and no handles while it is hidden.
+    // A user group gets no handles while it is hidden. Otherwise: the easy
+    // gizmo in easy mode; in Advanced move and rotate, its own stock control
+    // at its center, rotating about Y only; in scale mode, which a group only
+    // does uniformly (in the properties panel), a placeholder on its marker.
     if (isUserGroup(el)) {
-      if (!isHiddenInHierarchy(el)) {
+      if (isHiddenInHierarchy(el)) return;
+      if (transformMode === 'easy') {
         easyGizmoControls.attach(el, groupGizmoPolicy);
+      } else if (transformMode === 'scale') {
+        inspector.groupScope.affordances.setScalePlaceholder(el);
+      } else {
+        groupStockGesture.attach(el, transformMode);
       }
       return;
     }
@@ -1470,7 +1506,10 @@ export function Viewport(inspector) {
     const el = inspector.selectedEntity;
     if (!isUserGroup(el)) return;
     // The handles belong on a shown group and not on a hidden one.
-    const attached = easyGizmoControls.el === el;
+    const attached =
+      easyGizmoControls.el === el ||
+      groupStockGesture.el === el ||
+      inspector.groupScope.affordances.scalePlaceholderGroup === el;
     const hidden = isHiddenInHierarchy(el);
     if (attached ? hidden : !hidden) attachControlsForSelection();
   }
@@ -1497,7 +1536,7 @@ export function Viewport(inspector) {
     ) {
       mode = 'translate';
     }
-    transformControls.setMode(mode);
+    stockControls.forEach((stock) => stock.setMode(mode));
     applyStockGizmoAxes(inspector.selectedEntity);
 
     // If there's a selected entity, reattach the appropriate controls
@@ -1507,15 +1546,15 @@ export function Viewport(inspector) {
   });
 
   Events.on('translationsnapchanged', (dist) => {
-    transformControls.setTranslationSnap(dist);
+    stockControls.forEach((stock) => stock.setTranslationSnap(dist));
   });
 
   Events.on('rotationsnapchanged', (dist) => {
-    transformControls.setRotationSnap(dist);
+    stockControls.forEach((stock) => stock.setRotationSnap(dist));
   });
 
   Events.on('transformspacechanged', (space) => {
-    transformControls.setSpace(space);
+    stockControls.forEach((stock) => stock.setSpace(space));
   });
 
   // Torn down and re-armed on every selection change, so the listener never
@@ -1714,7 +1753,10 @@ export function Viewport(inspector) {
         // Features that need a scene-driven camera (drive mode, WebXR)
         // borrow the rig via mode-manager and give it back.
         mouseCursor.disable();
-        transformControls.enabled = false;
+        // A group drag in progress is put back: nothing is kept from a
+        // gesture the editor closed under.
+        groupStockGesture.cancel('editorclosed');
+        stockControls.forEach((stock) => (stock.enabled = false));
         streetNodeControls.enabled = false;
         segmentWidthControls.enabled = false;
         controls.enabled = true;

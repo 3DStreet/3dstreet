@@ -43,12 +43,14 @@ import {
   deriveLocalBoxOf,
   easeInOutCubic,
   flatArcLift,
+  formatGesturePose,
   elevationAngleDegrees,
   latchByHysteresis,
   lerp,
   offsetConvexPolygon,
   chevronLayout,
   lastVisiblePointOnSegment,
+  quantise,
   squareSideMetres
 } from './easyGizmoMath.js';
 import {
@@ -250,10 +252,6 @@ function aimArrowhead(head, dir, normal) {
 
 /** Shared no-op raycast for surfaces that depict rather than accept. */
 function neverPicked() {}
-
-function quantise(value, decimals) {
-  return Number(value.toFixed(decimals));
-}
 
 class EasyGizmoControls extends GizmoPointerControls {
   constructor(camera, domElement, sceneEl) {
@@ -2751,25 +2749,9 @@ class EasyGizmoControls extends GizmoPointerControls {
 
   // --- the drag ---------------------------------------------------------
 
-  /**
-   * Both sides of the unchanged-value comparison come from THIS formatter, at
-   * the same quantisation. The stock gizmo snapshots the live, unrounded
-   * transform, and copying that shape is exactly the build in which a gesture
-   * released where it started still writes an undo entry — the snapshot and the
-   * value it is compared against would have been through different roundings.
-   *
-   * Pitch and roll are written as read: the gizmo never edits them, and
-   * rounding them would change an axis the user did not touch (and turn a
-   * yaw of an entity that may only yaw into a refused pitch edit).
-   */
+  /** The commit's before- and after-values (see formatGesturePose). */
   _formatPose(el) {
-    const pos = el.getAttribute('position');
-    const rot = el.getAttribute('rotation');
-    const p = (v) => quantise(v, POSITION_DECIMALS);
-    return {
-      position: `${p(pos.x)} ${p(pos.y)} ${p(pos.z)}`,
-      rotation: `${rot.x} ${quantise(rot.y, YAW_DECIMALS)} ${rot.z}`
-    };
+    return formatGesturePose(el);
   }
 
   startDrag(axis, event) {

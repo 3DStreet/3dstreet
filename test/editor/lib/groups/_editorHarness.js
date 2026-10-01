@@ -372,6 +372,7 @@ export function mountEditor({ gizmo = false, cursorFirst = false } = {}) {
     dispose() {
       inspector.groupScope.dispose();
       inspector.easyGizmoControls.dispose();
+      inspector.groupStockGesture.dispose();
       inspector.shapeVertexControls.dispose();
       inspector.streetNodeControls.dispose();
       inspector.segmentWidthControls.dispose();

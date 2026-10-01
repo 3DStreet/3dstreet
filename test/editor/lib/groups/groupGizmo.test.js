@@ -12,6 +12,7 @@ import {
   OPACITY_ACTION,
   OPACITY_HOVER
 } from '@/editor/lib/gizmos/easyGizmoConstants.js';
+import { formatGesturePose } from '@/editor/lib/gizmos/easyGizmoMath.js';
 import { group, item, mountEditor, posable, solid } from './_editorHarness.js';
 
 const flags = vi.hoisted(() => ({ streetLevel: false }));
@@ -133,20 +134,24 @@ const offset = (at, dx, dy = 0) => ({ x: at.x + dx, y: at.y + dy });
 // pointerdown 0 > pointerup 0 > click 1 > pointerdown 0 > pointerup 0 >
 // click 2 > dblclick 2), so a gizmo that read the count off a pointer event
 // would see 0 here too.
+// A move carries button -1 (no button changed), as the browser sends it; the
+// stock transform control moves only for that.
 function send(type, at, options = {}) {
   const {
     pointerType = 'mouse',
+    pointerId = 1,
+    isPrimary = true,
     detail = 1,
     timeStamp,
     coalesced,
     target = canvas
   } = options;
-  const pointer = type.startsWith('pointer');
+  const pointer = type.startsWith('pointer') || type === 'lostpointercapture';
   const released = type === 'pointerup' || type === 'mouseup';
   const event = new MouseEvent(type, {
     clientX: at.x,
     clientY: at.y,
-    button: 0,
+    button: type === 'pointermove' ? -1 : 0,
     buttons: released || type === 'click' ? 0 : 1,
     detail: pointer ? 0 : detail,
     bubbles: true,
@@ -155,8 +160,8 @@ function send(type, at, options = {}) {
   if (pointer) {
     Object.defineProperties(event, {
       pointerType: { value: pointerType },
-      pointerId: { value: 1 },
-      isPrimary: { value: true }
+      pointerId: { value: pointerId },
+      isPrimary: { value: isPrimary }
     });
   }
   if (timeStamp !== undefined) {
@@ -176,11 +181,23 @@ const isMouse = (options) => (options.pointerType || 'mouse') === 'mouse';
 // the compatibility mousedown carrying the click count, unless something
 // cancelled the pointerdown, as a gizmo claiming the press does: that
 // suppresses the compatibility mousedown and mouseup of the press, and the
-// click still follows (Pointer Events, "PREVENT MOUSE EVENT flag").
+// click still follows (Pointer Events, "PREVENT MOUSE EVENT flag"). A touch
+// sends touchstart after its pointerdown and touchend after its pointerup,
+// and no mouse events or click: the A-Frame cursor cancels the touch.
 let mouseSuppressed = false;
+function touch(type, options) {
+  (options.target || canvas).dispatchEvent(
+    new TouchEvent(type, { bubbles: true, cancelable: true })
+  );
+}
+
 function press(at, options = {}) {
   mouseSuppressed = send('pointerdown', at, options).defaultPrevented;
-  if (isMouse(options) && !mouseSuppressed) send('mousedown', at, options);
+  if (isMouse(options)) {
+    if (!mouseSuppressed) send('mousedown', at, options);
+  } else if (options.pointerType === 'touch') {
+    touch('touchstart', options);
+  }
 }
 
 function move(at, options = {}) {
@@ -192,6 +209,8 @@ function release(at, options = {}) {
   if (isMouse(options)) {
     if (!mouseSuppressed) send('mouseup', at, options);
     send('click', at, options);
+  } else if (options.pointerType === 'touch') {
+    touch('touchend', options);
   }
   mouseSuppressed = false;
 }
@@ -372,23 +391,73 @@ describe('the easy gizmo on a group', () => {
     expect(pad.y).toBeCloseTo(2.5, 6);
   });
 
-  it('offers it in every transform mode, and the stock gizmo only to items', () => {
+  it('gives a group its own stock control at its center in Advanced move and rotate, Y ring alone, a placeholder in scale and the easy gizmo in easy; items keep theirs (fails on handles at the origin, or a setting given to one control only)', () => {
     const { g } = farGroup();
-    const stock = h.inspector.sceneHelpers.children.find(
-      (child) => child.isTransformControlsRoot
-    ).controls;
+    const stock = groupStock();
+    const item = itemStock();
+    expect(stock).not.toBe(item);
+    const center = new THREE.Vector3(12, 1.25, 22);
     select(g);
-    for (const mode of ['translate', 'rotate', 'scale']) {
-      Events.emit('transformmodechange', mode);
-      expect(controls.el).toBe(g);
-      expect(stock.object).toBeUndefined();
+    const axes = (control) => [control.showX, control.showY, control.showZ];
+
+    for (const mode of ['translate', 'rotate']) {
+      advanced(mode);
+      expect(stock.object).toBe(stockGesture().proxy);
+      expect(stock.mode).toBe(mode);
+      expect(stock.worldPosition.distanceTo(center)).toBeLessThan(1e-6);
+      expect(axes(stock)).toEqual(
+        mode === 'rotate' ? [false, true, false] : [true, true, true]
+      );
+      expect(item.object).toBeUndefined();
+      expect(controls.el).toBeUndefined();
     }
+
+    advanced('scale');
+    expect(stock.object).toBeUndefined();
+    expect(item.object).toBeUndefined();
+    const placeholder = h.inspector.groupScope.affordances.scalePlaceholder;
+    expect(placeholder.visible).toBe(true);
+    expect(worldOf(placeholder).distanceTo(center)).toBeLessThan(1e-6);
+
+    advanced('easy');
+    expect(controls.el).toBe(g);
+    expect(stock.object).toBeUndefined();
+    expect(placeholder.visible).toBe(false);
+
+    // Into rotate with an item selected, then the group selected: the group's
+    // axes are set on that route too, and the item's never come from them.
     const plain = posable(solid(h.streetContainer, [0, 0, 0], [1, 1, 1]));
     select(plain);
-    Events.emit('transformmodechange', 'rotate');
-    expect(stock.object).toBe(plain.object3D);
-    expect([stock.showX, stock.showY, stock.showZ]).toEqual([true, true, true]);
-    expect(controls.el).toBeUndefined();
+    advanced('rotate');
+    expect(item.object).toBe(plain.object3D);
+    expect(axes(item)).toEqual([true, true, true]);
+    expect(stock.object).toBeUndefined();
+    select(g);
+    expect(stock.object).toBe(stockGesture().proxy);
+    expect(axes(stock)).toEqual([false, true, false]);
+    expect(item.object).toBeUndefined();
+    select(plain);
+    expect(item.object).toBe(plain.object3D);
+    expect(axes(item)).toEqual([true, true, true]);
+    expect(item.object).not.toBe(stockGesture().proxy);
+
+    // Every setting reaches both controls.
+    Events.emit('transformspacechanged', 'local');
+    Events.emit('translationsnapchanged', 0.25);
+    Events.emit('rotationsnapchanged', Math.PI / 12);
+    const second = new THREE.PerspectiveCamera(50, 1.5, 0.1, 500);
+    Events.emit('cameratoggle', { camera: second, value: 'perspective' });
+    for (const key of [
+      'space',
+      'translationSnap',
+      'rotationSnap',
+      'camera',
+      'size'
+    ]) {
+      expect(stock[key]).toBe(item[key]);
+    }
+    expect(stock.space).toBe('local');
+    expect(stock.camera).toBe(second);
   });
 
   it('moves at a constant height with no ground probe or landing targets, while an item follows a kerb', () => {
@@ -1408,5 +1477,793 @@ describe('camera focus on a group', () => {
     const plain = posable(solid(h.streetContainer, [0, 0, 0], [1, 1, 1]));
     Events.emit('objectfocus', plain.object3D);
     expect(focus.calls.at(-1)).toEqual([plain.object3D]);
+  });
+});
+
+// ------------------------------------------------------------ Advanced modes
+
+const stockGesture = () => h.inspector.groupStockGesture;
+const groupStock = () => stockGesture().controls;
+const itemStock = () =>
+  h.inspector.sceneHelpers.children.find(
+    (child) => child.isTransformControlsRoot
+  ).controls;
+
+function advanced(mode) {
+  Events.emit('transformmodechange', mode);
+  h.frame();
+  h.frame();
+}
+
+// The stock control's normalised pointer at a client point (the canvas is
+// 1200 x 800 at the page's corner).
+const ndc = (at) => ({ x: at.x / 600 - 1, y: 1 - at.y / 400, button: 0 });
+
+/** Where the group's stock control stands on screen, as last laid out. */
+function stockCentre() {
+  return screenOf(groupStock().worldPosition.clone());
+}
+
+/**
+ * A screen point on the group stock control's `axis` handle, over
+ * `groupEl`'s box or off it as asked, at least `from` pixels from its center
+ * (the selected group's marker covers the middle), searched outwards in
+ * rings, as the control picks (against its handles as last laid out, along
+ * the current camera's ray). Leaves the control's hover as it was. Throws if
+ * there is none.
+ */
+function stockHandlePoint(
+  axis,
+  { overBoxOf = null, offBoxOf = null, from = 2 } = {}
+) {
+  const stock = groupStock();
+  const hovered = stock.axis;
+  const centre = stockCentre();
+  try {
+    for (let r = from; r <= 300; r += 2) {
+      for (let deg = 0; deg < 360; deg += 4) {
+        const at = {
+          x: Math.round(centre.x + r * Math.cos(deg * DEG)),
+          y: Math.round(centre.y + r * Math.sin(deg * DEG))
+        };
+        stock.pointerHover(ndc(at));
+        if (stock.axis !== axis) continue;
+        if (overBoxOf && !onBoxOf(overBoxOf, at)) continue;
+        if (offBoxOf && onBoxOf(offBoxOf, at)) continue;
+        return { ...at, centre };
+      }
+    }
+  } finally {
+    stock.axis = hovered;
+  }
+  throw new Error(`no point on the stock ${axis} handle as asked`);
+}
+
+/**
+ * `px` pixels on from `at`, away from the control's center as it stood when
+ * `at` was found (along an arrow).
+ */
+function along(at, px, centre = at.centre) {
+  const dx = at.x - centre.x;
+  const dy = at.y - centre.y;
+  const length = Math.hypot(dx, dy);
+  return { x: at.x + (dx / length) * px, y: at.y + (dy / length) * px };
+}
+
+/** `px` pixels on from `at`, across the line to that center (around a ring). */
+function across(at, px, centre = at.centre) {
+  const dx = at.x - centre.x;
+  const dy = at.y - centre.y;
+  const length = Math.hypot(dx, dy);
+  return { x: at.x - (dy / length) * px, y: at.y + (dx / length) * px };
+}
+
+function aimCursorAt(at) {
+  const ray = rayThrough(at);
+  h.aim(ray.origin.toArray(), ray.direction.toArray());
+  h.poll();
+}
+
+const copy = (v) => ({ x: v.x, y: v.y, z: v.z });
+
+function worldOrigin(el) {
+  el.object3D.updateMatrixWorld(true);
+  return new THREE.Vector3().setFromMatrixPosition(el.object3D.matrixWorld);
+}
+
+describe('a group in the Advanced move and rotate modes', () => {
+  it('commits a move with a long pause in it as one undo step, which undoes exactly, and moves for a release far from the press with no move between (fails if each change is recorded, or the release sample is dropped)', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const g = posable(group(h.streetContainer), {
+      position: [1.234, 0.5, -2.345]
+    });
+    posable(solid(g, [-1, 0, -1], [1, 1, 1]));
+    aimCamera([1.234, 12, 12], [1.234, 0.5, -2.345]);
+    select(g);
+    advanced('translate');
+    const calls = spyExecute();
+    const before = history();
+
+    let at = stockHandlePoint('X');
+    press(at);
+    move(along(at, 3));
+    move(along(at, 60));
+    h.frame();
+    vi.setSystemTime(Date.now() + 700);
+    move(along(at, 120));
+    h.frame();
+    release(along(at, 120));
+    expect(history()).toBe(before + 1);
+    expect(calls.map((c) => c.args[0])).toEqual(['multi']);
+    expect(g.object3D.position.x).not.toBe(1.234);
+    expect(g.object3D.position.y).toBe(0.5);
+    expect(g.object3D.position.z).toBe(-2.345);
+
+    h.inspector.history.undo();
+    expect(copy(g.getAttribute('position'))).toEqual({
+      x: 1.234,
+      y: 0.5,
+      z: -2.345
+    });
+    h.frame();
+    h.frame();
+
+    at = stockHandlePoint('X');
+    press(at);
+    release(along(at, 40));
+    expect(history()).toBe(before + 1);
+    expect(calls.map((c) => c.args[0])).toEqual(['multi', 'multi']);
+    expect(g.object3D.position.x).not.toBe(1.234);
+
+    // The release is a sample of its own: released further on than the last
+    // move, the group goes further.
+    h.frame();
+    h.frame();
+    at = stockHandlePoint('X');
+    press(at);
+    move(along(at, 3));
+    move(along(at, 30));
+    const lastMoved = g.object3D.position.x;
+    release(along(at, 90));
+    expect(Math.abs(g.object3D.position.x - lastMoved)).toBeGreaterThan(0.01);
+  });
+
+  it('records nothing for a move dragged out and back to its press point, whatever the unrounded position (fails if the before-value is not formatted as the commit is)', () => {
+    const g = posable(group(h.streetContainer), {
+      position: [1.23456, 0, -2.98765]
+    });
+    posable(solid(g, [-1, 0, -1], [1, 1, 1]));
+    aimCamera([1.23, 12, 12], [1.23, 0, -3]);
+    select(g);
+    advanced('translate');
+    const before = history();
+    const at = stockHandlePoint('X');
+    press(at);
+    move(along(at, 3));
+    move(along(at, 30));
+    move(at);
+    release(at);
+    expect(history()).toBe(before);
+  });
+
+  // A pitched and rolled group, turned so its origin is far from its center.
+  function pitchedGroup(position = [0, 0, 0]) {
+    const g = posable(group(h.streetContainer), {
+      position,
+      rotation: [10.123456, 20.123456, -0.000789]
+    });
+    const member = posable(solid(g, [10, 0.5, 20], [14, 2, 24]));
+    const centerLocal = new THREE.Vector3(12, 1.25, 22);
+    g.object3D.updateMatrixWorld(true);
+    const center = centerLocal.clone().applyMatrix4(g.object3D.matrixWorld);
+    aimCamera([center.x, center.y + 14, center.z + 16], center.toArray());
+    return { g, member, centerLocal, center };
+  }
+
+  function centerNow(g, centerLocal) {
+    g.object3D.updateMatrixWorld(true);
+    return centerLocal.clone().applyMatrix4(g.object3D.matrixWorld);
+  }
+
+  it('turns a pitched group about its center on the Y ring, keeping pitch and roll exactly, in one undo step that restores its pose (fails if it turns about the origin, or writes through the quaternion)', () => {
+    const { g, member, centerLocal, center } = pitchedGroup();
+    select(g);
+    advanced('rotate');
+    const calls = spyExecute();
+    const before = history();
+    const pose = formatGesturePose(g);
+    const memberPose = {
+      position: copy(member.getAttribute('position')),
+      rotation: copy(member.getAttribute('rotation'))
+    };
+    // The two costs of turning from the rounded start yaw: the center is
+    // displaced by the yaw rounded away, and positions are written to the
+    // millimetre.
+    const r = new THREE.Vector3()
+      .setFromMatrixPosition(g.object3D.matrixWorld)
+      .distanceTo(center);
+    const y0 = 20.123456;
+    const bound =
+      (r * Math.abs(y0 - 20.12) * Math.PI) / 180 + Math.sqrt(3) * 5e-4 + 1e-9;
+
+    const at = stockHandlePoint('Y');
+    press(at);
+    move(across(at, 3));
+    let turned = 0;
+    for (let step = 1; step <= 80 && turned < 85; step++) {
+      move(across(at, 3 + step * 10));
+      h.frame();
+      expect(centerNow(g, centerLocal).distanceTo(center)).toBeLessThan(bound);
+      turned = Math.abs(g.getAttribute('rotation').y - y0);
+    }
+    expect(turned).toBeGreaterThanOrEqual(85);
+    release(across(at, 3 + 80 * 10));
+    expect(centerNow(g, centerLocal).distanceTo(center)).toBeLessThan(bound);
+    expect(history()).toBe(before + 1);
+    expect(calls.map((c) => c.args[0])).toEqual(['multi']);
+    const rotation = calls[0].args[1]
+      .map(([, c]) => c)
+      .find((c) => c.component === 'rotation');
+    const [x, , z] = rotation.value.split(' ');
+    const [x0, , z0] = pose.rotation.split(' ');
+    expect([x, z]).toEqual([x0, z0]);
+    expect(copy(member.getAttribute('position'))).toEqual(memberPose.position);
+    expect(copy(member.getAttribute('rotation'))).toEqual(memberPose.rotation);
+
+    // Undo writes back the formatted start pose, as the easy gizmo's does.
+    h.inspector.history.undo();
+    const probe = posable(item(h.streetContainer));
+    probe.setAttribute('position', pose.position);
+    probe.setAttribute('rotation', pose.rotation);
+    expect(copy(g.getAttribute('position'))).toEqual(
+      copy(probe.getAttribute('position'))
+    );
+    expect(copy(g.getAttribute('rotation'))).toEqual(
+      copy(probe.getAttribute('rotation'))
+    );
+    expect(g.getAttribute('rotation').y).toBeCloseTo(20.12, 9);
+  });
+
+  it('records nothing for a turn taken back to its start angle (fails if the origin orbits from the unrounded yaw)', () => {
+    const position = [0.4, 0, -0.3];
+    const { g } = pitchedGroup(position);
+    select(g);
+    advanced('rotate');
+    // Orbiting from the unrounded start yaw to the rounded one moves the
+    // origin by more than the millimetre a position is written to here, so
+    // this fixture can tell the two apart.
+    const object = g.object3D;
+    const posStart = object.position.clone();
+    const pivot = new THREE.Vector3(12, 1.25, 22).applyMatrix4(object.matrix);
+    const qStart = object.quaternion.clone();
+    const qRounded = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(object.rotation.x, 20.12 * DEG, object.rotation.z, 'YXZ')
+    );
+    const rawRelease = positionForRotationAboutCenter(
+      posStart,
+      qStart,
+      qRounded,
+      pivot,
+      new THREE.Vector3()
+    );
+    expect(toString3(rawRelease)).not.toBe(toString3(posStart));
+
+    const before = history();
+    const at = stockHandlePoint('Y');
+    press(at);
+    move(across(at, 3));
+    move(across(at, 80));
+    h.frame();
+    expect(Math.abs(g.getAttribute('rotation').y - 20.123456)).toBeGreaterThan(
+      10
+    );
+    move(at);
+    release(at);
+    expect(history()).toBe(before);
+  });
+
+  it('moves a turned group along its heading in local space and along world X in world space; a touch press after the camera moved with no frame since moves from where it lands (fails on a proxy without the heading, or on a press measured against the plane as last drawn)', () => {
+    const g = posable(group(h.streetContainer), { rotation: [0, 30, 0] });
+    posable(solid(g, [-1, 0, -1], [1, 1, 1]));
+    aimCamera([0, 12, 12], [0, 0, 0]);
+    select(g);
+    advanced('translate');
+    const headingX = new THREE.Vector3(1, 0, 0).applyAxisAngle(
+      new THREE.Vector3(0, 1, 0),
+      30 * DEG
+    );
+    const drag = (pointerType = 'mouse') => {
+      const start = worldOrigin(g);
+      const at = stockHandlePoint('X');
+      press(at, { pointerType });
+      move(along(at, 3), { pointerType });
+      move(along(at, 100), { pointerType });
+      release(along(at, 100), { pointerType });
+      h.frame();
+      h.frame();
+      return worldOrigin(g).sub(start);
+    };
+
+    Events.emit('transformspacechanged', 'local');
+    h.frame();
+    let moved = drag();
+    expect(moved.length()).toBeGreaterThan(0.1);
+    expect(Math.abs(moved.normalize().dot(headingX))).toBeGreaterThanOrEqual(
+      0.999
+    );
+
+    Events.emit('transformspacechanged', 'world');
+    h.frame();
+    moved = drag();
+    expect(moved.length()).toBeGreaterThan(0.1);
+    expect(Math.abs(moved.normalize().x)).toBeGreaterThanOrEqual(0.999);
+
+    // The camera moves, and no frame lays the control out again before a
+    // touch lands on the X arrow with no hover first.
+    aimCamera([4, 9, 13], [0, 0, 0]);
+    const at = stockHandlePoint('X');
+    const to = along(at, 40);
+    const start = worldOrigin(g);
+    press(at, { pointerType: 'touch' });
+    move(to, { pointerType: 'touch' });
+    const first = worldOrigin(g).sub(start);
+    h.frame();
+    move(to, { pointerType: 'touch' });
+    const after = worldOrigin(g).sub(start);
+    release(to, { pointerType: 'touch' });
+    expect(first.length()).toBeGreaterThan(0);
+    expect(after.distanceTo(first)).toBeLessThan(1e-6);
+  });
+
+  it.each([false, true])(
+    'opens the group on a long still press of an arrow over its box, drags from 2 px or a coalesced sample, and lets no second touch through (cursor listening first: %s; fails if the press is not claimed, only press and release are compared, or a second pointer reaches the canvas)',
+    (cursorFirst) => {
+      h.dispose();
+      document.body.replaceChildren();
+      h = mountEditor({ gizmo: true, cursorFirst });
+      canvas = h.inspector.container;
+      controls = h.inspector.easyGizmoControls;
+      vi.useFakeTimers({ toFake: ['performance', 'Date', 'setTimeout'] });
+      const { g, member } = farGroup();
+      select(g);
+      advanced('translate');
+      const stock = groupStock();
+      const before = history();
+      const selections = [];
+      Events.on('objectselect', (object) => selections.push(object));
+
+      let at = stockHandlePoint('X', { overBoxOf: g });
+      const t0 = performance.now();
+      press(at, { timeStamp: t0 });
+      vi.advanceTimersByTime(1000);
+      move(offset(at, 0.5, 0.6), { timeStamp: t0 + 1000 });
+      vi.advanceTimersByTime(1000);
+      move(offset(at, 0.8, 0), { timeStamp: t0 + 2000 });
+      release(offset(at, 0.8, 0), { timeStamp: t0 + 2000 });
+      expect(h.openIds()).toEqual([g.id]);
+      expect(h.inspector.selectedEntity).toBe(null);
+      expect(history()).toBe(before);
+      expect(copy(g.getAttribute('position'))).toEqual({ x: 0, y: 0, z: 0 });
+      expect(selections).toEqual([null]);
+
+      // Out 3 px and exactly back: a drag, which opens nothing.
+      select(g);
+      expect(stock.object).toBe(stockGesture().proxy);
+      at = stockHandlePoint('X', { overBoxOf: g });
+      press(at);
+      move(offset(at, 3));
+      expect(stock.dragging).toBe(true);
+      move(at);
+      release(at);
+      expect(h.openIds()).toEqual([]);
+      expect(history()).toBe(before);
+
+      // A sample coalesced into a 0 px move went 2 px out.
+      press(at);
+      move(at, { coalesced: [[at.x + 1.5, at.y + 1.5]] });
+      expect(stock.dragging).toBe(true);
+      release(at);
+      expect(h.openIds()).toEqual([]);
+
+      // A second finger lands on a member while the first is held.
+      const memberAt = screenOf(new THREE.Vector3(13, 2, 23));
+      aimCursorAt(memberAt);
+      expect(h.raycaster.intersections[0]?.object.el).toBe(member);
+      const first = { pointerType: 'touch' };
+      const second = { pointerType: 'touch', pointerId: 2, isPrimary: false };
+      press(at, first);
+      press(memberAt, second);
+      release(memberAt, second);
+      expect(h.inspector.selectedEntity).toBe(g);
+      release(at, first);
+      expect(h.openIds()).toEqual([g.id]);
+      expect(h.inspector.selectedEntity).toBe(null);
+    }
+  );
+
+  it('hides the red hover while the cursor is on a group handle, also after a click or a drag on it, and brings it back off the handle (fails if the cursor is not tracked on the handle, or the hover is let go at the end of a gesture)', () => {
+    aimCamera([0, 10, 12], [0, 0, 0]);
+    const g = posable(group(h.streetContainer));
+    posable(solid(g, [-0.15, 0, -0.15], [0.15, 0.3, 0.15]));
+    select(g);
+    advanced('translate');
+    // Clear of the selected group's marker, a pick target of its own.
+    const at = stockHandlePoint('X', { offBoxOf: g, from: 30 });
+    const under = planePoint(at, 0);
+    const other = posable(
+      solid(
+        h.streetContainer,
+        [under.x - 0.05, -0.05, under.z - 0.05],
+        [under.x + 0.05, 0, under.z + 0.05]
+      )
+    );
+    h.frame();
+    move(at);
+    aimCursorAt(at);
+    expect(h.raycaster.intersections[0]?.object.el).toBe(other);
+    expect(h.hoverBox.visible).toBe(false);
+
+    // Off the handle, the red hover previews the entity beneath.
+    const away = { x: at.x, y: at.y - 200 };
+    move(away);
+    expect(groupStock().axis).toBe(null);
+    expect(h.hoverBox.visible).toBe(true);
+    expect(h.hoverBox.object).toBe(other.object3D);
+    move(at);
+    expect(h.hoverBox.visible).toBe(false);
+
+    clickAt(at);
+    expect(h.inspector.selectedEntity).toBe(g);
+    expect(h.openIds()).toEqual([]);
+    expect(h.hoverBox.visible).toBe(false);
+
+    // A drag released with the cursor still on the arrow it moved.
+    const before = history();
+    press(at);
+    move(along(at, 3));
+    h.frame();
+    move(along(at, 20));
+    h.frame();
+    release(along(at, 20));
+    expect(history()).toBe(before + 1);
+    expect(groupStock().axis).toBe('X');
+    expect(h.hoverBox.visible).toBe(false);
+
+    // A drag released with the cursor off the handle: the red hover waits
+    // for the pointer to move, as after any gesture.
+    h.frame();
+    h.frame();
+    const again = stockHandlePoint('X', { offBoxOf: g, from: 30 });
+    // The pointer moves off the handle (red hover back) and onto it again.
+    move({ x: again.x, y: again.y - 200 });
+    expect(h.hoverBox.visible).toBe(true);
+    move(again);
+    expect(h.hoverBox.visible).toBe(false);
+    press(again);
+    move(along(again, 3));
+    h.frame();
+    release({ x: again.x, y: again.y - 200 });
+    expect(history()).toBe(before + 2);
+    expect(groupStock().axis).toBe(null);
+    expect(h.hoverBox.visible).toBe(false);
+  });
+
+  // A drag on the X arrow, promoted and held 700 ms.
+  function heldDrag(g) {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const at = stockHandlePoint('X');
+    press(at);
+    move(along(at, 3));
+    move(along(at, 60));
+    h.frame();
+    vi.setSystemTime(Date.now() + 700);
+    move(along(at, 90));
+    expect(groupStock().dragging).toBe(true);
+    expect(g.object3D.position.x).not.toBe(0);
+    return at;
+  }
+
+  it.each([
+    ['Escape', () => escape()],
+    ['window blur', () => window.dispatchEvent(new Event('blur'))],
+    ['pointercancel', (at) => send('pointercancel', at)],
+    ['another selection', (at, other) => h.inspector.selectEntity(other)],
+    [
+      'the editor closing',
+      () => useStore.getState().setIsInspectorEnabled(false)
+    ],
+    [
+      'the group being deleted',
+      (at, other, g) => h.inspector.execute('entityremove', g)
+    ]
+  ])(
+    'puts a held group drag back exactly on %s, with no command, and leaves the editor working (fails with no cancel, or a cancel that leaves keys swallowed or the camera off)',
+    (cause, lose) => {
+      const { g, member } = farGroup();
+      const other = posable(solid(h.streetContainer, [30, 0, 30], [31, 1, 31]));
+      select(g);
+      advanced('translate');
+      const start = {
+        position: g.object3D.position.clone(),
+        rotation: g.object3D.rotation.clone()
+      };
+      const calls = spyExecute();
+      const capture = vi.spyOn(canvas, 'releasePointerCapture');
+      const deleting = cause === 'the group being deleted';
+
+      const at = heldDrag(g);
+      lose(at, other, g);
+      // The capture is let go at once, before the button is.
+      expect(capture).toHaveBeenCalledWith(1);
+      release(along(at, 90));
+
+      expect(
+        calls.filter((c) => c.args[0] !== 'entityremove').map((c) => c.args)
+      ).toEqual([]);
+      expect(groupStock().dragging).toBe(false);
+      expect(h.inspector.controls.enabled).toBe(true);
+      if (cause === 'the editor closing') {
+        useStore.getState().setIsInspectorEnabled(true);
+      }
+      const tools = [];
+      Events.on('toolchange', (tool) => tools.push(tool));
+      const key = new KeyboardEvent('keyup', { key: 'h', bubbles: true });
+      Object.defineProperty(key, 'keyCode', { value: 72 });
+      document.body.dispatchEvent(key);
+      expect(tools).toEqual(['hand']);
+      if (deleting) {
+        expect(g.isConnected).toBe(false);
+        return;
+      }
+
+      expect(g.object3D.position.equals(start.position)).toBe(true);
+      expect(g.object3D.rotation.equals(start.rotation)).toBe(true);
+      // The box is measured again: the bounds are not held.
+      const box = getGroupBounds(g).clone();
+      member.object3D.position.x += 1;
+      h.frame();
+      expect(getGroupBounds(g).equals(box)).toBe(false);
+      member.object3D.position.x -= 1;
+      if (h.inspector.selectedEntity !== g) select(g);
+      h.frame();
+
+      const next = stockHandlePoint('X');
+      press(next);
+      move(along(next, 3));
+      expect(groupStock().dragging).toBe(true);
+      release(along(next, 3));
+    }
+  );
+
+  it('lets go of a held group drag on Escape without leaving a level; the next Escape leaves one', () => {
+    const { g: outer } = farGroup();
+    const inner = posable(group(outer));
+    posable(solid(inner, [11, 0.5, 21], [13, 1.5, 23]));
+    select(outer);
+    h.groupScope.open(outer);
+    select(inner);
+    advanced('translate');
+    const pose = inner.object3D.position.clone();
+    const at = stockHandlePoint('X');
+    press(at);
+    move(along(at, 3));
+    move(along(at, 60));
+    expect(inner.object3D.position.equals(pose)).toBe(false);
+    escape();
+    expect(inner.object3D.position.equals(pose)).toBe(true);
+    expect(h.openIds()).toEqual([outer.id]);
+    expect(h.inspector.selectedEntity).toBe(inner);
+    release(along(at, 60));
+    escape();
+    expect(h.openIds()).toEqual([]);
+    expect(h.inspector.selectedEntity).toBe(outer);
+  });
+
+  it.each([
+    [
+      'on a release off the canvas',
+      (at) => release(at, { target: document.body })
+    ],
+    [
+      'on the release after capture was lost mid-drag',
+      (at) => {
+        send('lostpointercapture', at);
+        move(offset(at, 10));
+        release(offset(at, 10));
+      }
+    ],
+    [
+      'when the cursor leaves the canvas holding capture',
+      (at) =>
+        canvas.dispatchEvent(
+          new MouseEvent('mouseleave', { clientX: at.x, clientY: at.y })
+        )
+    ]
+  ])(
+    'ends a group drag as one undo step %s, and keys reach the editor after (fails if only a canvas release ends it, lost capture cancels it, or leaving the canvas does not end it)',
+    (_, end) => {
+      const { g } = farGroup();
+      select(g);
+      advanced('translate');
+      const before = history();
+      const at = stockHandlePoint('X');
+      press(at);
+      move(along(at, 3));
+      move(along(at, 60));
+      end(along(at, 60));
+      expect(groupStock().dragging).toBe(false);
+      expect(history()).toBe(before + 1);
+      const tools = [];
+      Events.on('toolchange', (tool) => tools.push(tool));
+      const key = new KeyboardEvent('keyup', { key: 'h', bubbles: true });
+      Object.defineProperty(key, 'keyCode', { value: 72 });
+      document.body.dispatchEvent(key);
+      expect(tools).toEqual(['hand']);
+    }
+  );
+
+  it('shows the magenta box over an arrow on its box: on mouse hover, stronger on the press, gone at 3 px; on a touch only from the press, and a still tap opens once (fails if the press shows only on hover, or a touch reaches the cursor)', () => {
+    const { g, member } = farGroup();
+    select(g);
+    advanced('translate');
+    const stock = groupStock();
+    const at = stockHandlePoint('X', { overBoxOf: g });
+
+    move(at);
+    expect(stock.axis).toBe('X');
+    aimCursorAt(at);
+    expect(h.groupHoverBox.visible).toBe(true);
+    expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.3);
+    press(at);
+    expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.4);
+    // The press is over; the hover over the box stays.
+    move(offset(at, 3));
+    expect(h.groupHoverBox.visible).toBe(true);
+    expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.3);
+    release(offset(at, 3));
+    h.frame();
+    h.frame();
+
+    // Touch: no hover before the press.
+    const touchAt = stockHandlePoint('X', { overBoxOf: g });
+    h.aimDown(-100, -100);
+    h.poll();
+    expect(h.groupHoverBox.visible).toBe(false);
+    const finger = { pointerType: 'touch' };
+    press(touchAt, finger);
+    expect(h.groupHoverBox.visible).toBe(true);
+    expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.4);
+    move(offset(touchAt, 3), finger);
+    expect(h.groupHoverBox.visible).toBe(false);
+    release(offset(touchAt, 3), finger);
+    h.frame();
+    h.frame();
+
+    // A still tap, with the cursor's ray on a member beneath.
+    const tapAt = stockHandlePoint('X', { overBoxOf: g });
+    aimCursorAt(tapAt);
+    expect(h.raycaster.intersections[0]?.object.el).toBe(member);
+    const changes = [];
+    Events.on('groupscopechanged', () => changes.push(h.openIds()));
+    clickAt(tapAt, finger);
+    expect(changes).toEqual([[g.id]]);
+    expect(h.inspector.selectedEntity).toBe(null);
+  });
+
+  it('does not frame after an open on an arrow and a select-member by the quick second click on the canvas (fails if the handle click does not mark the double-click as entering)', () => {
+    const { g, member } = farGroup();
+    select(g);
+    advanced('translate');
+    let at = stockHandlePoint('X', { overBoxOf: g });
+    clickAt(at, { detail: 1 });
+    expect(h.openIds()).toEqual([g.id]);
+    aimCursorAt(at);
+    clickAt(at, { detail: 2 });
+    expect(h.inspector.selectedEntity).toBe(member);
+    send('dblclick', at, { detail: 2 });
+    expect(focused).toEqual([]);
+
+    flags.streetLevel = true;
+    select(g);
+    expect(h.openIds()).toEqual([]);
+    at = stockHandlePoint('X', { overBoxOf: g });
+    clickAt(at, { detail: 1 });
+    expect(h.openIds()).toEqual([g.id]);
+    aimCursorAt(at);
+    clickAt(at, { detail: 2 });
+    expect(h.inspector.selectedEntity).toBe(member);
+    send('dblclick', at, { detail: 2 });
+    expect(teleported).toEqual([]);
+    expect(focused).toEqual([]);
+  });
+
+  it('leaves an ordinary item its stock gestures after group gestures: a drag with a pause records per change, Escape deselects without putting it back, and a still click on its arrow selects what is beneath (fails if the group press is still armed, or item drags go through it)', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const { g } = farGroup();
+    select(g);
+    advanced('translate');
+    // A group drag kept, and one cancelled.
+    let at = stockHandlePoint('X');
+    press(at);
+    move(along(at, 3));
+    move(along(at, 40));
+    release(along(at, 40));
+    h.frame();
+    at = stockHandlePoint('X');
+    press(at);
+    move(along(at, 3));
+    move(along(at, 40));
+    escape();
+    release(along(at, 40));
+
+    aimCamera([0, 10, 12], [0, 0, 0]);
+    const box = posable(
+      solid(h.streetContainer, [-0.3, 0, -0.3], [0.3, 1, 0.3])
+    );
+    select(box);
+    const item = itemStock();
+    expect(item.object).toBe(box.object3D);
+    const itemArrow = () => {
+      const centre = screenOf(item.worldPosition.clone());
+      for (let r = 2; r <= 300; r += 2) {
+        for (let deg = 0; deg < 360; deg += 4) {
+          const p = {
+            x: Math.round(centre.x + r * Math.cos(deg * DEG)),
+            y: Math.round(centre.y + r * Math.sin(deg * DEG))
+          };
+          item.pointerHover(ndc(p));
+          const onItem =
+            new THREE.Raycaster(
+              rayThrough(p).origin,
+              rayThrough(p).direction
+            ).intersectObject(box.object3D, true).length > 0;
+          if (item.axis === 'X' && !onItem) {
+            item.axis = null;
+            return { p, centre };
+          }
+        }
+      }
+      throw new Error('no point on the item X arrow');
+    };
+
+    // Two moves 700 ms apart: two entity updates, as on base.
+    const before = history();
+    let { p, centre } = itemArrow();
+    press(p);
+    move(along(p, 20, centre));
+    vi.setSystemTime(Date.now() + 700);
+    move(along(p, 40, centre));
+    release(along(p, 40, centre));
+    expect(history()).toBe(before + 2);
+
+    // Escape mid-drag deselects and leaves the item where it is.
+    h.frame();
+    ({ p, centre } = itemArrow());
+    press(p);
+    move(along(p, 30, centre));
+    const moved = box.object3D.position.clone();
+    escape();
+    expect(h.inspector.selectedEntity).toBe(null);
+    expect(box.object3D.position.equals(moved)).toBe(true);
+    release(along(p, 30, centre));
+    select(box);
+    h.frame();
+    expect(item.dragging).toBe(false);
+
+    // A still click on its arrow, with another entity under the cursor ray.
+    ({ p, centre } = itemArrow());
+    const under = planePoint(p, 0);
+    const other = posable(
+      solid(
+        h.streetContainer,
+        [under.x - 0.05, -0.05, under.z - 0.05],
+        [under.x + 0.05, 0, under.z + 0.05]
+      )
+    );
+    h.frame();
+    aimCursorAt(p);
+    expect(h.raycaster.intersections[0]?.object.el).toBe(other);
+    clickAt(p);
+    expect(h.inspector.selectedEntity).toBe(other);
   });
 });
