@@ -195,7 +195,8 @@ properties, no reload:
    LOD budget on its own (`HUGE_SCAN_*`). Reported by the component from
    `PagedSplats.getRadMeta()` before any chunk is queued.
 4. **On-demand rendering** (Spark maintainers' recommendation; needs Spark
-   ≥ 2.3.0, which fixed `onDirty` for streamed chunks). Spark's sort, LoD
+   ≥ 2.3.1: 2.3.0 fixed `onDirty` for streamed chunks, and its published
+   builds were broken, fixed in 2.3.1). Spark's sort, LoD
    traversal and chunk uploads all run from `SparkRenderer.onBeforeRender`,
    so an A-Frame scene that redraws every frame re-sorts and re-draws
    millions of splats 60 times a second while nothing changes. The
