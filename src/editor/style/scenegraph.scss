@@ -214,6 +214,8 @@
       flex-grow: 0;
       height: 40px;
       justify-content: center;
+      // The left padding and the row border below: ROW_CONTENT_INSET_PX in
+      // dropLevels.js.
       padding: 0 6px 0 4px;
       box-sizing: border-box;
 
@@ -281,6 +283,7 @@
       opacity: 0.5;
     }
 
+    // See ROW_CONTENT_INSET_PX in dropLevels.js.
     border: 2px solid transparent;
 
     &.drop-before {

@@ -184,13 +184,19 @@ function readImageDimensions(blob) {
   });
 }
 
+// Where an item with no position of its own goes, read when called: the
+// stand point of the group the ticket names, else the scene origin.
+function defaultPosition(ticket) {
+  return defaultPlacementPoint(ticket) ?? '0 0 0';
+}
+
 // Resolves to { entity: null } when the placement is refused.
 async function createPlaceholderEntity(file, position, kind, ticket) {
   const blobUrl = URL.createObjectURL(file);
   const kindLabel =
     kind === 'glb' ? 'glTF Model' : kind === 'splat' ? 'Splat' : 'Image';
   const baseComponents = {
-    position: position ?? '0 0 0',
+    position,
     'data-layer-name': `${kindLabel} • ${file.name}`,
     // Marks the entity as carrying a transient blob: URL so the scene
     // serializer skips it. Removed (via entityupdate) on upload success.
@@ -236,7 +242,7 @@ async function createPlaceholderEntity(file, position, kind, ticket) {
   // Checked here, after the reads above, just before the item is created:
   // the group's pose now, not when the file was picked.
   if (position == null) {
-    definition.components.position = defaultPlacementPoint(ticket) ?? '0 0 0';
+    definition.components.position = defaultPosition(ticket);
   }
   const placed = placeDefinition(definition, ticket);
   if (placed.refusal) {
@@ -281,7 +287,7 @@ export function placeCloudAsset(asset, position, ticket = beginPlacement()) {
   const isSplat = asset.type === 'splat';
   const servedUrl = getServedUrl(asset);
   const baseComponents = {
-    position: position ?? '0 0 0',
+    position,
     'data-layer-name': asset.name || asset.assetId,
     'data-asset-id': asset.assetId,
     'data-asset-owner-uid': asset.ownerUid
@@ -317,7 +323,7 @@ export function placeCloudAsset(asset, position, ticket = beginPlacement()) {
     };
   }
   if (position == null) {
-    definition.components.position = defaultPlacementPoint(ticket) ?? '0 0 0';
+    definition.components.position = defaultPosition(ticket);
   }
   executePlacedCreate(definition, { ticket });
 }

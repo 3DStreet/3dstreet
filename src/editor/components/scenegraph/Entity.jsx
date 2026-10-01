@@ -10,6 +10,7 @@ import EntityContextMenu from './EntityContextMenu';
 import EntityLabel from './EntityLabel';
 import EntityLoadSheen from './EntityLoadSheen';
 import { isContainer, isUserGroup } from '../../lib/groups/groupModel.js';
+import { LEVEL_INDENT_PX } from './dropLevels.js';
 import {
   faCaretDown,
   faCaretRight,
@@ -94,7 +95,7 @@ class Entity extends React.Component {
     setHoveredDropTarget: PropTypes.func,
     // The drop the pointer means: `ref` and `position` say where it lands;
     // `host` (the row or the strip drawing the line) and `edge` say where it
-    // is drawn, with `chevron` and `indentPx` for a line inside a group.
+    // is drawn, with `insideGroup` and `indentPx` for a line inside a group.
     insertionInfo: PropTypes.object,
     setInsertionInfo: PropTypes.func,
     // The listed rows ({entity, depth}) just above and below this one, whose
@@ -180,8 +181,16 @@ class Entity extends React.Component {
         edge === 'top'
           ? [this.props.aboveRow, row]
           : [row, this.props.belowRow];
-      const level = this.props.resolveGroupGap(above, below, clientX, rowLeft);
-      if (level !== undefined) return level && { ...level, host: entity, edge };
+      const groupDrop = this.props.resolveGroupGap(
+        above,
+        below,
+        clientX,
+        rowLeft
+      );
+      // undefined: no group level here; null: none allowed.
+      if (groupDrop !== undefined) {
+        return groupDrop && { ...groupDrop, host: entity, edge };
+      }
     }
 
     // Drops that would leave the dragged row where it already is.
@@ -268,7 +277,7 @@ class Entity extends React.Component {
     // A drop into a group draws its own line from the level's indent; any
     // other drop is drawn by the row's border.
     const dropLine =
-      isHoveredDropTarget && insertion.chevron ? (
+      isHoveredDropTarget && insertion.insideGroup ? (
         <DropLine edge={insertion.edge} indentPx={insertion.indentPx} />
       ) : null;
 
@@ -436,7 +445,7 @@ class Entity extends React.Component {
           <span>
             <span
               style={{
-                width: `${30 * (this.props.depth - 1)}px`
+                width: `${LEVEL_INDENT_PX * (this.props.depth - 1)}px`
               }}
             />
             {dragHandle}

@@ -9,7 +9,7 @@ import { isUserGroup } from '../../lib/groups/groupModel.js';
 export const LEVEL_INDENT_PX = 30;
 // From a row's border-box left edge to its depth-1 content: the 2 px border
 // plus the 4 px left padding of `.entity.option`.
-export const ROW_CONTENT_INSET_PX = 6;
+const ROW_CONTENT_INSET_PX = 6;
 const ROW_LEFT_BORDER_PX = 2;
 
 /** The level whose horizontal band `clientX` is in (1 = top level). */

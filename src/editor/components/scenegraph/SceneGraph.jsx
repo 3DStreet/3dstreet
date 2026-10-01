@@ -324,13 +324,13 @@ class SceneGraph extends React.Component {
       levelAtX(clientX, hostLeft)
     );
     if (!chosen) return null;
-    const chevron = isUserGroup(chosen.parent);
+    const insideGroup = isUserGroup(chosen.parent);
     return {
       ref: chosen.ref,
       position: chosen.position,
       level: chosen.level,
-      chevron,
-      indentPx: chevron ? lineIndentPx(chosen.level, { strip }) : null
+      insideGroup,
+      indentPx: insideGroup ? lineIndentPx(chosen.level, { strip }) : null
     };
   };
 
@@ -345,7 +345,7 @@ class SceneGraph extends React.Component {
   onDragOverEnd = (e) => {
     const draggedEntity = this.state.draggedEntity;
     if (!draggedEntity) return;
-    const level = this.resolveGroupGap(
+    const groupDrop = this.resolveGroupGap(
       this.lastListedRow(),
       null,
       e.clientX,
@@ -353,13 +353,13 @@ class SceneGraph extends React.Component {
       { strip: true }
     );
     const insertion =
-      level === undefined
+      groupDrop === undefined
         ? this.canDropAtEnd(draggedEntity) && {
             ref: null,
             position: 'end',
             level: null
           }
-        : level;
+        : groupDrop;
     if (!insertion) {
       if (this.state.insertionInfo?.host === DROP_STRIP) {
         this.setState({ insertionInfo: null });
@@ -740,13 +740,13 @@ class SceneGraph extends React.Component {
       <div
         className={classNames('layers-drop-end', {
           'drop-after': !!insertion,
-          'drop-level': !!insertion?.chevron
+          'drop-level': !!insertion?.insideGroup
         })}
         onDragOver={this.onDragOverEnd}
         onDragLeave={this.onDragLeaveEnd}
         onDrop={this.onDropEnd}
       >
-        {insertion?.chevron && (
+        {insertion?.insideGroup && (
           <DropLine edge="top" indentPx={insertion.indentPx} />
         )}
       </div>
