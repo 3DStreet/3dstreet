@@ -446,6 +446,46 @@ describe('drop levels at a gap where groups end', () => {
     }
   });
 
+  it('never offers a level that would leave the dragged row where it is, and takes the nearest level that moves it (fails if a no-op drop is offered at a group gap)', async () => {
+    await nestedScene();
+    // Bench over its own lower zone at the inner level: "after itself" is
+    // no move, so the nearest level that is one, the end of A.
+    startDrag('Bench');
+    expect(dragOver(row('Bench'), 0.85, atLevel(3))).toBe(true);
+    expect(await dropAndUndo(row('Bench'))).toEqual({
+      parentEl: 'a',
+      indexInParent: 1
+    });
+    // Tree over Bench's upper zone: "before Bench" is where Tree already is,
+    // and the gap has no other level.
+    startDrag('Tree');
+    expect(dragOver(row('Bench'), 0.15, atLevel(3))).toBe(false);
+    fireEvent.dragEnd(row('Tree'));
+  });
+
+  it('offers nothing under an expanded street header to the row right after the street in a group (fails if "after the street" is offered to the row already there)', async () => {
+    const a = makeEntity(root, { id: 'a', name: 'Group A', cls: 'user-group' });
+    const street = makeEntity(a, {
+      id: 'st',
+      name: 'Main Street',
+      attrs: { 'managed-street': '' }
+    });
+    makeEntity(street, {
+      id: 's1',
+      name: 'Lane 1',
+      attrs: { 'street-segment': '' }
+    });
+    makeEntity(a, { id: 'm', name: 'Model' });
+    await renderPanel();
+    await expand('Group A');
+    await expand('Main Street');
+
+    startDrag('Model');
+    expect(dragOver(row('Main Street'), 0.6, atLevel(2))).toBe(false);
+    expect(dragOver(row('Lane 1'), 0.4, atLevel(2))).toBe(false);
+    fireEvent.dragEnd(row('Model'));
+  });
+
   it('offers a shape that may not change parent only its own top level at the end of a group, drawn full width, wherever the pointer is (fails if illegal levels are offered or drawn)', async () => {
     makeEntity(root, {
       id: 'shape',

@@ -362,6 +362,13 @@ describe('hovering groups', () => {
     expect(h.openIds()).toEqual(['A']);
     expect(osm.highlightWayAt).not.toHaveBeenCalled();
     expect(candidate()).toBe(null);
+    // The same click with the cursor paused (a tool that takes the canvas,
+    // the shape tool's route): not resolved by the group rules, still no chip.
+    h.cursorEl.isPlaying = false;
+    h.click();
+    expect(candidate()).toBe(null);
+    expect(h.openIds()).toEqual(['A']);
+    h.cursorEl.isPlaying = true;
 
     // Empty space outside a nested open group: the click only leaves it.
     h.groupScope.open(B);
