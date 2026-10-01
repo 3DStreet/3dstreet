@@ -336,5 +336,12 @@ describe('View › Set as Starting View', () => {
     scene.closeGroups();
     fireEvent.click(screen.getByText('Set as Starting View'));
     expect(scene.inspector.selectedEntity).toBe(startingView());
+
+    // Made afresh with none open, the new Starting View is selected too.
+    startingView().remove();
+    scene.inspector.selectedEntity = member;
+    fireEvent.click(screen.getByText('Set as Starting View'));
+    expect(startingView()).not.toBe(null);
+    expect(scene.inspector.selectedEntity).toBe(startingView());
   });
 });

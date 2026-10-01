@@ -310,9 +310,12 @@ class GroupStockGesture {
     // miss, and this press then moves nothing.
     controls.pointStart.set(NaN, NaN, NaN);
     controls.pointerDown(press.token.pointer);
-    if (!controls.dragging) return;
-    if (Number.isNaN(controls.pointStart.x)) {
-      controls.pointerUp(null);
+    if (!controls.dragging || Number.isNaN(controls.pointStart.x)) {
+      if (controls.dragging) controls.pointerUp(null);
+      // As at the end of a drag: a touch has lifted off the handle.
+      if (press.pointerType !== 'mouse' && press.pointerType !== 'pen') {
+        this.announceHover(null);
+      }
       return;
     }
     // The pose the control measures its drag from, read back from it, so a

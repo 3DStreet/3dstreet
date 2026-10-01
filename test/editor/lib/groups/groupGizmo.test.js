@@ -1697,6 +1697,78 @@ describe('a group in the Advanced move and rotate modes', () => {
     expect(g.object3D.position.x).not.toBe(moved.x);
   });
 
+  it("moves nothing for a press that misses the drag plane after a cancelled drag (fails if a miss is told by the control's start position, which a cancel leaves where the group stands)", () => {
+    const g = posable(group(h.streetContainer), { position: [1, 0, -2] });
+    posable(solid(g, [-1, 0, -1], [1, 1, 1]));
+    aimCamera([1, 12, 12], [1, 0, -2]);
+    select(g);
+    advanced('translate');
+    const before = history();
+    const start = copy(g.object3D.position);
+    // A drag cancelled before release: the group is back where it was, and
+    // the control still holds the start point that drag found.
+    let at = stockHandlePoint('X');
+    press(at);
+    move(along(at, 3));
+    move(along(at, 40));
+    escape();
+    release(along(at, 40));
+    expect(copy(g.object3D.position)).toEqual(start);
+    expect(history()).toBe(before);
+    h.frame();
+    h.frame();
+
+    // A grazing ray: the press misses the control's plane, later samples hit.
+    at = stockHandlePoint('X', { from: 40 });
+    const plane = groupStock()._plane;
+    plane.raycast = () => {};
+    press(at);
+    move(along(at, 3));
+    delete plane.raycast;
+    move(along(at, 4));
+    release(along(at, 4));
+    expect(copy(g.object3D.position)).toEqual(start);
+    expect(history()).toBe(before);
+  });
+
+  it('lets the red hover back after a touch press that misses the drag plane (fails if the touched handle stays marked hovered)', () => {
+    aimCamera([0, 10, 12], [0, 0, 0]);
+    const g = posable(group(h.streetContainer));
+    posable(solid(g, [-0.15, 0, -0.15], [0.15, 0.3, 0.15]));
+    select(g);
+    advanced('translate');
+    // Clear of the selected group's marker, a pick target of its own.
+    const at = stockHandlePoint('X', { offBoxOf: g, from: 30 });
+    const under = planePoint(at, 0);
+    const other = posable(
+      solid(
+        h.streetContainer,
+        [under.x - 0.05, -0.05, under.z - 0.05],
+        [under.x + 0.05, 0, under.z + 0.05]
+      )
+    );
+    h.frame();
+    aimCursorAt(at);
+    expect(h.hoverBox.visible).toBe(true);
+    expect(h.hoverBox.object).toBe(other.object3D);
+
+    const start = copy(g.object3D.position);
+    const before = history();
+    const plane = groupStock()._plane;
+    plane.raycast = () => {};
+    const touch = { pointerType: 'touch' };
+    press(at, touch);
+    expect(h.hoverBox.visible).toBe(false);
+    move(along(at, 3), touch);
+    delete plane.raycast;
+    move(along(at, 20), touch);
+    release(along(at, 20), touch);
+    expect(copy(g.object3D.position)).toEqual(start);
+    expect(history()).toBe(before);
+    expect(h.hoverBox.visible).toBe(true);
+    expect(h.hoverBox.object).toBe(other.object3D);
+  });
+
   // A pitched and rolled group, turned so its origin is far from its center.
   function pitchedGroup(position = [0, 0, 0]) {
     const g = posable(group(h.streetContainer), {

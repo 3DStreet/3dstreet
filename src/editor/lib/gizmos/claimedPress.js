@@ -6,11 +6,12 @@
  *
  * What it carries over from the easy gizmo, each piece for the reason given
  * there (the method names are this file's; the easy gizmo's counterparts
- * carry a leading underscore):
+ * carry a leading underscore, except where named):
  * - Window capture listeners, armed only while the owner is attached
- *   (arm/disarm): the A-Frame cursor listens on the
- *   canvas, where stopPropagation() cannot reach a listener already
- *   registered, so only an ancestor's capture listener runs first.
+ *   (arm/disarm; the easy gizmo's _addListeners/_removeListeners): the
+ *   A-Frame cursor listens on the canvas, where stopPropagation() cannot
+ *   reach a listener already registered, so only an ancestor's capture
+ *   listener runs first.
  * - The claim: a primary left press on the canvas, with the editor open, that
  *   `hitTest` accepts, is cancelled and stopped. A cancelled pointerdown sends
  *   no compatibility mousedown or mouseup; the press's mousedown and
