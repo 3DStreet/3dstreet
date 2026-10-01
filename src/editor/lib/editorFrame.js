@@ -25,6 +25,8 @@ const installed = new WeakMap();
  *
  * Before the render:
  * - `groupBounds`: re-measure the boxes of the groups that are drawn.
+ * - `groupHelpers`: re-pose the selection and hover boxes of a group that
+ *   moved or turned as a whole.
  * - `groupMarkers`: place the center markers at this frame's centers.
  * - `openGroupOutline`: pose the open group's outline and scrim around this
  *   frame's box.
@@ -37,6 +39,7 @@ const installed = new WeakMap();
  */
 export const FRAME_ORDER = Object.freeze({
   groupBounds: 20,
+  groupHelpers: 25,
   groupMarkers: 30,
   openGroupOutline: 40,
   outsideFade: 50,

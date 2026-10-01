@@ -5,7 +5,11 @@ import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
 import { EasyGizmoControls } from './gizmos/EasyGizmoControls.js';
 import { installEasyGizmoOutline } from './gizmos/easyGizmoOutline.js';
 import { easyGizmoCommandName } from './gizmos/easyGizmoMessages.js';
-import { installEditorFrame } from './editorFrame.js';
+import {
+  FRAME_ORDER,
+  PER_ITEM_PASS_MAX_THROWS,
+  installEditorFrame
+} from './editorFrame.js';
 import {
   getGroupBounds,
   getGroupCenter,
@@ -515,6 +519,7 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
     const box = getGroupBounds(this.object.el);
     if (!box) {
       this.setPartsVisible(false);
+      this.recordGroupPose();
       return;
     }
     this.object.getWorldScale(auxScale);
@@ -532,6 +537,21 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
     this.object.getWorldPosition(this.position);
     this.updateMatrix();
     this.updateConformingHighlight();
+    this.recordGroupPose();
+  }
+
+  // The group's world matrix this box was last drawn for. Recorded only once
+  // an update has finished, so an update that throws is tried again.
+  recordGroupPose() {
+    this.groupPose ??= new THREE.Matrix4();
+    this.groupPose.copy(this.object.matrixWorld);
+  }
+
+  // Has the group this box is drawn for moved or turned since it was drawn?
+  // Its bounds are in its own axes, so a whole-group move leaves them as they
+  // were and only its world matrix tells.
+  groupPoseChanged() {
+    return !this.groupPose || !this.groupPose.equals(this.object.matrixWorld);
   }
 
   // Everything this helper draws: the box, its fill, and the curved-street
@@ -1198,6 +1218,37 @@ export function Viewport(inspector) {
       easyGizmoControls.updateMatrixWorld(true);
     }
   });
+
+  // A group moved or turned as a whole keeps its bounds, so the handler above
+  // never hears of it, and no hover event comes either while the cursor stays
+  // on the same group. Each box drawn for a group follows the group's world
+  // matrix instead, in the frame it changes. After the bounds pass, so a
+  // resize and a move in one frame are drawn together.
+  const groupBoxHelpers = [selectionBox, hoverBox, groupHoverBox];
+  const failingGroupBoxHelpers = new Set();
+  editorFrame.register(
+    () => {
+      for (const helper of groupBoxHelpers) {
+        if (!helper.visible || !isUserGroup(helper.object?.el)) continue;
+        if (!helper.groupPoseChanged()) continue;
+        try {
+          helper.update();
+          helper.updateMatrixWorld(true);
+          failingGroupBoxHelpers.delete(helper);
+        } catch (error) {
+          // Keep its last pose this frame and try again next frame.
+          if (!failingGroupBoxHelpers.has(helper)) {
+            failingGroupBoxHelpers.add(helper);
+            console.error('[viewport] re-posing a group box failed', error);
+          }
+        }
+      }
+    },
+    {
+      order: FRAME_ORDER.groupHelpers,
+      maxConsecutiveThrows: PER_ITEM_PASS_MAX_THROWS
+    }
+  );
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;

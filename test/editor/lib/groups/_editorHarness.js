@@ -395,6 +395,61 @@ export function group(parent, options = {}) {
   return item(parent, { ...options, cls: 'user-group' });
 }
 
+const { degToRad, radToDeg } = THREE.MathUtils;
+
+function vec3(value) {
+  if (typeof value !== 'string') return value;
+  const [x, y, z] = value.trim().split(/\s+/).map(Number);
+  return { x, y, z };
+}
+
+/**
+ * Give `el` A-Frame's transform attributes: setting position, rotation or
+ * scale (an {x, y, z} object or an "x y z" string) drives its object3D, with
+ * rotation in degrees and order YXZ, and reading one returns what A-Frame's
+ * entity returns (a-entity.js getAttribute): the object3D's own position and
+ * scale vectors, and its rotation in degrees in one object reused per entity.
+ * So a read is live: copy it to keep it.
+ */
+export function posable(
+  el,
+  { position = [0, 0, 0], rotation = [0, 0, 0], scale = [1, 1, 1] } = {}
+) {
+  const get = el.getAttribute;
+  const set = el.setAttribute;
+  const object = el.object3D;
+  object.rotation.order = 'YXZ';
+  const rotationRead = { x: 0, y: 0, z: 0 };
+  el.getAttribute = (name) => {
+    if (name === 'position') return object.position;
+    if (name === 'scale') return object.scale;
+    if (name === 'rotation') {
+      rotationRead.x = radToDeg(object.rotation.x);
+      rotationRead.y = radToDeg(object.rotation.y);
+      rotationRead.z = radToDeg(object.rotation.z);
+      return rotationRead;
+    }
+    return get(name);
+  };
+  el.setAttribute = (name, value) => {
+    const result = set(name, value);
+    if (name === 'position' || name === 'rotation' || name === 'scale') {
+      const { x, y, z } = vec3(value);
+      if (name === 'position') object.position.set(x, y, z);
+      if (name === 'rotation') {
+        object.rotation.set(degToRad(x), degToRad(y), degToRad(z), 'YXZ');
+      }
+      if (name === 'scale') object.scale.set(x, y, z);
+    }
+    return result;
+  };
+  const vec = ([x, y, z]) => ({ x, y, z });
+  el.setAttribute('position', vec(position));
+  el.setAttribute('rotation', vec(rotation));
+  el.setAttribute('scale', vec(scale));
+  return el;
+}
+
 /** An entity with a box mesh from `min` to `max` in its own frame. */
 export function solid(parent, min, max, options = {}) {
   const el = item(parent, options);

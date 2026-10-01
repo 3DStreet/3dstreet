@@ -12,7 +12,7 @@ import {
   OPACITY_ACTION,
   OPACITY_HOVER
 } from '@/editor/lib/gizmos/easyGizmoConstants.js';
-import { group, item, mountEditor, solid } from './_editorHarness.js';
+import { group, item, mountEditor, posable, solid } from './_editorHarness.js';
 
 const flags = vi.hoisted(() => ({ streetLevel: false }));
 const focus = vi.hoisted(() => ({ calls: [] }));
@@ -79,30 +79,6 @@ afterEach(() => {
 });
 
 // ------------------------------------------------------------------ scene
-
-// An entity whose transform attributes drive its object3D as A-Frame's do
-// (rotation order YXZ) and read back exactly what was written.
-function posable(
-  el,
-  { position = [0, 0, 0], rotation = [0, 0, 0], scale = [1, 1, 1] } = {}
-) {
-  const set = el.setAttribute;
-  el.setAttribute = (name, value) => {
-    const result = set(name, value);
-    const v = el.getAttribute(name);
-    if (name === 'position') el.object3D.position.set(v.x, v.y, v.z);
-    if (name === 'rotation') {
-      el.object3D.rotation.set(v.x * DEG, v.y * DEG, v.z * DEG, 'YXZ');
-    }
-    if (name === 'scale') el.object3D.scale.set(v.x, v.y, v.z);
-    return result;
-  };
-  const vec = ([x, y, z]) => ({ x, y, z });
-  el.setAttribute('position', vec(position));
-  el.setAttribute('rotation', vec(rotation));
-  el.setAttribute('scale', vec(scale));
-  return el;
-}
 
 function aimCamera(position, target) {
   h.camera.position.set(...position);
@@ -664,6 +640,9 @@ describe('the easy gizmo on a group', () => {
     select(g);
     lookAtGizmo();
     const calls = spyExecute();
+    // Read back as A-Frame does, through radians: not exactly the degrees
+    // written, so compare with the reading before the gestures.
+    const start = { ...g.getAttribute('rotation') };
 
     const drag = (at, to) => {
       press(at);
@@ -681,9 +660,9 @@ describe('the easy gizmo on a group', () => {
     expect(calls.map((c) => c.args[0])).toEqual(['multi', 'multi']);
     expect(calls.map((c) => c.result)).toEqual([undefined, undefined]);
     const rotation = g.getAttribute('rotation');
-    expect(rotation.x).toBe(10.123456);
-    expect(rotation.z).toBe(-0.000789);
-    expect(rotation.y).not.toBe(30);
+    expect(rotation.x).toBe(start.x);
+    expect(rotation.z).toBe(start.z);
+    expect(rotation.y).not.toBe(start.y);
 
     const yawed = { ...rotation };
     const position = { ...g.getAttribute('position') };
@@ -769,7 +748,7 @@ describe('the easy gizmo on a group', () => {
     h.frame();
     expect(history()).toBe(before + 1);
     expect(g.object3D.position.y).toBe(1.5);
-    const moved = g.getAttribute('position');
+    const moved = { ...g.getAttribute('position') };
     expect(moved.x).not.toBe(3);
 
     from = handlePoint('rotate');
@@ -1184,6 +1163,171 @@ describe('the magenta box during a press', () => {
     expect(h.hoverBox.visible).toBe(true);
     expect(h.hoverBox.object).toBe(plain.object3D);
     expect(h.hoverBox.material.color.getHex()).toBe(0xff0000);
+  });
+});
+
+describe('the boxes drawn around a group that moves or turns as a whole', () => {
+  // A whole-group move leaves its bounds (measured in its own axes) unchanged,
+  // so only the group's world pose says where its boxes belong.
+  function expectOnGroup(helper, groupEl) {
+    expect(helper.visible).toBe(true);
+    expect(helper.object).toBe(groupEl.object3D);
+    const helperPosition = new THREE.Vector3();
+    const helperQuaternion = new THREE.Quaternion();
+    const groupPosition = new THREE.Vector3();
+    const groupQuaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    helper.matrixWorld.decompose(helperPosition, helperQuaternion, scale);
+    groupEl.object3D.matrixWorld.decompose(
+      groupPosition,
+      groupQuaternion,
+      scale
+    );
+    expect(helperPosition.distanceTo(groupPosition)).toBeLessThan(1e-9);
+    // q and -q are the same turn.
+    expect(Math.abs(helperQuaternion.dot(groupQuaternion))).toBeCloseTo(1, 9);
+  }
+
+  function expectSameBox(helper, other) {
+    expect([...helper.geometry.attributes.position.array]).toEqual([
+      ...other.geometry.attributes.position.array
+    ]);
+  }
+
+  // The magenta box shown, by hover, over the selected closed group's box.
+  function hoverToOpen(g) {
+    h.aimDown(12, 22);
+    h.poll();
+    expect(h.groupHoverBox.visible).toBe(true);
+    expect(h.groupHoverBox.object).toBe(g.object3D);
+  }
+
+  it('keeps the magenta box on the group in every frame of a pad drag, after release and after an undo (fails if it keeps the pose hover began with)', () => {
+    const { g } = farGroup();
+    select(g);
+    hoverToOpen(g);
+    const followed = () => {
+      expectOnGroup(h.groupHoverBox, g);
+      expectSameBox(h.groupHoverBox, h.selectionBox);
+    };
+
+    const at = pad();
+    press(at);
+    move(offset(at, 0, 3));
+    for (let i = 1; i <= 4; i++) {
+      move(offset(at, i * 50, 3));
+      h.frame(followed);
+    }
+    release(offset(at, 200, 3));
+    h.frame(followed);
+    // It really moved, by metres.
+    expect(g.object3D.position.length()).toBeGreaterThan(5);
+
+    h.inspector.history.undo();
+    h.frame(followed);
+    expect(g.object3D.position.toArray()).toEqual([0, 0, 0]);
+  });
+
+  it('turns the magenta box with the group on the rotate arc, in the frame it turns (fails on a re-pose that copies the position only)', () => {
+    const { g } = farGroup();
+    select(g);
+    hoverToOpen(g);
+    const followed = () => {
+      expectOnGroup(h.groupHoverBox, g);
+      expectSameBox(h.groupHoverBox, h.selectionBox);
+    };
+
+    const center = new THREE.Vector3(12, 0.5, 22);
+    const at = handlePoint('rotate');
+    const grab = planePoint(at, 0.5).sub(center);
+    const radius = Math.hypot(grab.x, grab.z);
+    const towards = (degrees) => {
+      const angle = Math.atan2(grab.x, grab.z) + degrees * DEG;
+      return screenOf(
+        new THREE.Vector3(
+          center.x + radius * Math.sin(angle),
+          0.5,
+          center.z + radius * Math.cos(angle)
+        )
+      );
+    };
+    press(at);
+    move(offset(at, 0, 3));
+    for (const degrees of [30, 60, 90]) {
+      move(towards(degrees));
+      h.frame(followed);
+    }
+    release(towards(90));
+    h.frame(followed);
+    expect(g.getAttribute('rotation').y).toBeCloseTo(90, 1);
+  });
+
+  it('keeps the red hover on an unselected group that a redo moves, in the frame it moves (fails if only the magenta box follows)', () => {
+    const { g } = farGroup();
+    h.frame();
+    // A move made while nothing is selected, undone, so a redo can make it
+    // again without selecting anything.
+    h.inspector.execute('entityupdate', {
+      entity: g,
+      component: 'position',
+      value: '5 0 0',
+      oldValue: '0 0 0'
+    });
+    h.inspector.history.undo();
+    h.frame();
+    h.aimDown(12, 22);
+    h.poll();
+    expect(h.inspector.selectedEntity).toBe(null);
+    expect(h.hoverBox.visible).toBe(true);
+    expect(h.hoverBox.object).toBe(g.object3D);
+
+    h.inspector.history.redo();
+    h.frame(() => expectOnGroup(h.hoverBox, g));
+    expect(g.object3D.position.toArray()).toEqual([5, 0, 0]);
+  });
+
+  it('redraws a group box only in frames the group moved (fails if every frame redraws it)', () => {
+    const { g } = farGroup();
+    select(g);
+    hoverToOpen(g);
+    const update = vi.spyOn(Object.getPrototypeOf(h.selectionBox), 'update');
+
+    // Moved with no event: the frame that draws it redraws both boxes.
+    g.object3D.position.x += 1;
+    h.frame(() => {
+      expectOnGroup(h.selectionBox, g);
+      expectOnGroup(h.groupHoverBox, g);
+    });
+    expect(update).toHaveBeenCalled();
+
+    update.mockClear();
+    for (let i = 0; i < 5; i++) h.frame();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('re-poses the other boxes in a frame one of them fails to, and that one in the next frame (fails if one failure stops the rest, or for good)', () => {
+    const { g } = farGroup();
+    select(g);
+    hoverToOpen(g);
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // The selection box is redrawn first, and throws this frame only. The
+    // group moves in that frame alone, by a write nothing announces.
+    h.selectionBox.update = () => {
+      throw new Error('measuring failed');
+    };
+    g.object3D.position.x += 2;
+    h.frame(() => {
+      expectOnGroup(h.groupHoverBox, g);
+    });
+    expect(errors).toHaveBeenCalledTimes(1);
+    delete h.selectionBox.update;
+
+    h.frame(() => {
+      expectOnGroup(h.selectionBox, g);
+      expectOnGroup(h.groupHoverBox, g);
+    });
+    expect(errors).toHaveBeenCalledTimes(1);
   });
 });
 
