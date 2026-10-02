@@ -1001,3 +1001,147 @@ describe('one drop line per gap', () => {
     }
   });
 });
+
+describe('the drop line goes away', () => {
+  const strip = () => placeInList(document.querySelector('.layers-drop-end'));
+
+  // The pointer leaving `target` for somewhere outside it (rows are 200 px
+  // wide and 40 px tall).
+  function dragLeaveOut(target) {
+    const event = createEvent.dragLeave(target, {
+      dataTransfer: dataTransfer()
+    });
+    Object.defineProperty(event, 'clientY', { value: ROW_HEIGHT + 20 });
+    Object.defineProperty(event, 'clientX', { value: 0 });
+    fireEvent(target, event);
+  }
+
+  async function threeRows() {
+    makeEntity(root, { id: 'a', name: 'Alpha' });
+    makeEntity(root, { id: 'b', name: 'Bravo' });
+    makeEntity(root, { id: 'c', name: 'Charlie' });
+    await renderPanel();
+  }
+
+  // Each way a line is shown: over the lower half of a row, and over the
+  // strip after the last row.
+  const shows = {
+    row: () => {
+      expect(dragOver(row('Bravo'), 0.85)).toBe(true);
+      return row('Bravo');
+    },
+    strip: () => {
+      expect(dragOver(strip(), 0.5)).toBe(true);
+      return strip();
+    }
+  };
+
+  it.each(['row', 'strip'])(
+    'removes the line when the pointer leaves the %s (fails if leaving keeps the line)',
+    async (host) => {
+      await threeRows();
+      startDrag('Alpha');
+      const target = shows[host]();
+      expect(dropLine()).toBeTruthy();
+
+      dragLeaveOut(target);
+      expect(dropLine()).toBeUndefined();
+    }
+  );
+
+  it.each(['row', 'strip'])(
+    'removes the line when the drop lands on the %s (fails if a drop keeps the line)',
+    async (host) => {
+      await threeRows();
+      startDrag('Alpha');
+      const target = shows[host]();
+      expect(dropLine()).toBeTruthy();
+
+      drop(target);
+      expect(reparents()).toHaveLength(1);
+      expect(dropLine()).toBeUndefined();
+      // Nor does it return when the next drag starts, before the pointer
+      // has been over anything.
+      await finishMove('a');
+      startDrag('Charlie');
+      expect(dropLine()).toBeUndefined();
+    }
+  );
+
+  it.each(['row', 'strip'])(
+    'removes the line when the drag ends without a drop, over the %s (Escape, or a release outside the panel; fails if the end of a drag keeps the line)',
+    async (host) => {
+      await threeRows();
+      startDrag('Alpha');
+      shows[host]();
+      expect(dropLine()).toBeTruthy();
+
+      fireEvent.dragEnd(row('Alpha'));
+      expect(dropLine()).toBeUndefined();
+      expect(reparents()).toHaveLength(0);
+    }
+  );
+
+  it('removes the line when the pointer moves within a row into a zone that is not offered (fails if an illegal zone keeps the previous line)', async () => {
+    await threeRows();
+    startDrag('Alpha');
+    // Below Bravo is a move; above Bravo is where Alpha already is.
+    expect(dragOver(row('Bravo'), 0.85)).toBe(true);
+    expect(dropLine()).toBeTruthy();
+
+    expect(dragOver(row('Bravo'), 0.15)).toBe(false);
+    expect(dropLine()).toBeUndefined();
+  });
+
+  it('removes the line when the strip stops being a legal drop (fails if an illegal strip keeps the previous line)', async () => {
+    await threeRows();
+    startDrag('Alpha');
+    expect(dragOver(strip(), 0.5)).toBe(true);
+    expect(dropLine()).toBeTruthy();
+
+    // Alpha becomes the last row, so a drop at the end would move nothing.
+    sceneEl.querySelector('#b').remove();
+    sceneEl.querySelector('#c').remove();
+    expect(dragOver(strip(), 0.5)).toBe(false);
+    expect(dropLine()).toBeUndefined();
+  });
+});
+
+describe('when the line is drawn', () => {
+  async function threeRows() {
+    makeEntity(root, { id: 'a', name: 'Alpha' });
+    makeEntity(root, { id: 'b', name: 'Bravo' });
+    makeEntity(root, { id: 'c', name: 'Charlie' });
+    await renderPanel();
+  }
+
+  it('draws no line between rows for a drop into a group, which highlights the group row (fails if a child drop is given a line)', async () => {
+    makeEntity(root, { id: 'x', name: 'Loose' });
+    makeEntity(root, { id: 'g', name: 'Group A', cls: 'user-group' });
+    await renderPanel();
+
+    startDrag('Loose');
+    expect(dragOver(row('Group A'), 0.5)).toBe(true);
+    expect(dropLine()).toBeUndefined();
+    expect(row('Group A').classList.contains('drop-child')).toBe(true);
+  });
+
+  it('removes a line whose drop stops being legal while the drag is held (fails if the line is drawn without checking the drop is still allowed)', async () => {
+    await threeRows();
+    startDrag('Charlie');
+    expect(dragOver(row('Bravo'), 0.15)).toBe(true);
+    expect(dropLine()).toBeTruthy();
+
+    // The target row becomes one nothing may be dropped beside, and the list
+    // rebuilds, as when the scene changes under a held drag.
+    const bravo = sceneEl.querySelector('#b');
+    bravo.id = 'cameraRig';
+    act(() => {
+      document.dispatchEvent(
+        new CustomEvent('child-attached', { detail: { el: bravo } })
+      );
+    });
+    await settle();
+    expect(dropLine()).toBeUndefined();
+  });
+});
