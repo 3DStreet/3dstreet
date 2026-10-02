@@ -43,6 +43,7 @@ const { PRO_PASSES } = require('../public/functions/pro-pass.js');
 const {
   generatePassCode,
   normalizePassCode,
+  appBaseForProject,
   redeemLink,
   buildInvitationText
 } = require('../public/functions/pass-code-utils.js');
@@ -66,6 +67,9 @@ admin.initializeApp({ projectId });
 const db = admin.firestore();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+// Links point at the app for --project (3dstreet.app for production,
+// https://<project>.web.app otherwise), so dev codes open the dev app.
+const appBase = appBaseForProject(projectId);
 const ANNUAL_TERM_DAYS = 365;
 
 const KNOWN_FLAGS = [
@@ -143,10 +147,17 @@ async function mint() {
         `  ${maxUses} uses · ${days} days + ${tokens} tokens each · redeemable for ${redeemByDays} days`
       );
       console.log(`  From: ${fromName || '(anonymous)'}`);
-      console.log(`  Link: ${redeemLink(code)}`);
+      console.log(`  Link: ${redeemLink(code, appBase)}`);
       console.log('\n--- Invitation text for the buyer to forward ---\n');
       console.log(
-        buildInvitationText({ code, fromName, days, tokens, redeemByMs })
+        buildInvitationText({
+          code,
+          fromName,
+          days,
+          tokens,
+          redeemByMs,
+          baseUrl: appBase
+        })
       );
       return;
     } catch (err) {

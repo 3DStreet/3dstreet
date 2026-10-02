@@ -159,3 +159,8 @@ the past.
   per recipient. Needs a send path keyed on an email address rather than a
   uid, since recipients may not have accounts yet.
 - **More lifecycle emails:** expiry reminder, pass ended.
+- **A 3-month Max pass** (a second SKU) would need a separate `maxUntil` date
+  next to `proUntil` (Max = MAX claim OR `maxUntil > now`, and it also counts
+  as Pro), honored in asset quota, plan labels and the token grant, plus a
+  `PRO_PASSES` entry and a mint flag to pick it; it's additive, with no
+  migration.

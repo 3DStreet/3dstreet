@@ -72,11 +72,20 @@ const checkPassCodeRedeemable = (codeData, nowMs = Date.now()) => {
   return null;
 };
 
-const redeemLink = (code) => `https://3dstreet.app/#redeem?code=${code}`;
+// Production app URL; other Firebase projects (e.g. dev-3dstreet) serve the
+// app at their default <project>.web.app hosting domain.
+const PROD_PROJECT_ID = 'dstreet-305604';
+const appBaseForProject = (projectId) =>
+  !projectId || projectId === PROD_PROJECT_ID
+    ? 'https://3dstreet.app'
+    : `https://${projectId}.web.app`;
+
+const redeemLink = (code, baseUrl = 'https://3dstreet.app') =>
+  `${baseUrl}/#redeem?code=${code}`;
 
 // Ready-to-forward invitation for the buyer to paste into their own email
 // (English; the buyer can edit it). Names the giver when fromName is set.
-const buildInvitationText = ({ code, fromName, days, tokens, redeemByMs }) => {
+const buildInvitationText = ({ code, fromName, days, tokens, redeemByMs, baseUrl }) => {
   const duration = days % 30 === 0 ? `${days / 30} months` : `${days} days`;
   const deadline =
     Number.isFinite(redeemByMs)
@@ -90,7 +99,7 @@ ${giver} a 3DStreet Project Pass: ${duration} of 3DStreet Pro, plus ${tokens} AI
 3DStreet is a browser-based tool for designing and sharing 3D street scenes. Pro includes watermark-free snapshots and HD renders, unlimited geospatial maps, glTF export, and more storage for your own 3D models, scans and images.
 
 To claim it, open this link and sign in (or create a free account):
-${redeemLink(code)}
+${redeemLink(code, baseUrl)}
 
 Or enter this code: ${code}
 
@@ -104,6 +113,7 @@ module.exports = {
   generatePassCode,
   passRedemptionId,
   checkPassCodeRedeemable,
+  appBaseForProject,
   redeemLink,
   buildInvitationText
 };

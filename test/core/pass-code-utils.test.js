@@ -12,6 +12,7 @@ const {
   generatePassCode,
   passRedemptionId,
   checkPassCodeRedeemable,
+  appBaseForProject,
   buildInvitationText
 } = require('../../public/functions/pass-code-utils.js');
 
@@ -156,5 +157,28 @@ describe('buildInvitationText', () => {
       /^Subject: .*\n\nYou've been sent a 3DStreet Project Pass: 45 days/
     );
     assert.ok(!/null|undefined/.test(text));
+  });
+});
+
+describe('appBaseForProject', () => {
+  it('maps production to 3dstreet.app and other projects to web.app', () => {
+    assert.strictEqual(
+      appBaseForProject('dstreet-305604'),
+      'https://3dstreet.app'
+    );
+    assert.strictEqual(appBaseForProject(undefined), 'https://3dstreet.app');
+    assert.strictEqual(
+      appBaseForProject('dev-3dstreet'),
+      'https://dev-3dstreet.web.app'
+    );
+    const text = buildInvitationText({
+      code: 'X-ABCD2345',
+      days: 90,
+      tokens: 300,
+      baseUrl: appBaseForProject('dev-3dstreet')
+    });
+    assert.ok(
+      text.includes('https://dev-3dstreet.web.app/#redeem?code=X-ABCD2345')
+    );
   });
 });
