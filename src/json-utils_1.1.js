@@ -22,7 +22,7 @@ import {
 } from './tested/street-segment-utils';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
-import { isProjectPassHash, isRedeemHash } from './tested/project-pass-link.js';
+import { isRedeemHash } from './tested/project-pass-link.js';
 import {
   getSceneIdFromPathname,
   getSceneIdFromHash,
@@ -945,13 +945,9 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (streetURL.startsWith('asset:')) {
         return;
       }
-      // `#project-pass` opens the one-time Project Pass checkout and
-      // `#redeem?code=` the pass-code redemption (#1922, store.firstModal),
-      // not a scene.
-      if (
-        isProjectPassHash(window.location.hash) ||
-        isRedeemHash(window.location.hash)
-      ) {
+      // `#redeem?code=` opens the Project Pass code redemption (#1922,
+      // store.firstModal → EditorRedeemPassModal), not a scene.
+      if (isRedeemHash(window.location.hash)) {
         return;
       }
       // Deflated scene JSON (Visitor Build's "Open in 3DStreet" handoff,

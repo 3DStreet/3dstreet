@@ -8,14 +8,13 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
-const { isUserProInternal, grantPurchasedTokens, grantProPassForCheckout } = require('./token-management.js');
+const { isUserProInternal, grantPurchasedTokens } = require('./token-management.js');
 const { TOKEN_PACK_PRICE_SECRETS, findTokenPackByPriceIds } = require('./token-packs.js');
-const { PRO_PASS_PRICE_SECRETS, findProPassByPriceId, summarizePassItems } = require('./pro-pass.js');
 const { sendLifecycleEmail } = require('./email/lifecycle-email.js');
 const EMAIL_TEMPLATES = require('./email/templates.js');
 
 const createStripeSession = functions
-  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'ALLOWED_PRO_TEAM_DOMAINS', ...TOKEN_PACK_PRICE_SECRETS, ...PRO_PASS_PRICE_SECRETS] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'ALLOWED_PRO_TEAM_DOMAINS', ...TOKEN_PACK_PRICE_SECRETS] })
   .https
   .onCall(async (data, context) => {
     const Stripe = require('stripe');
@@ -42,12 +41,6 @@ const createStripeSession = functions
       .map((item) => item && item.price)
       .filter(Boolean);
     const requestedTokenPack = findTokenPackByPriceIds(requestedPriceIds);
-    // One-time Pro pass (#1922): the reverse audience of packs — free users
-    // are the main buyers, and active subscribers may buy one too (it never
-    // touches their plan claim). No paid gate; mode is still server-derived.
-    const requestedProPass =
-      requestedPriceIds.map(findProPassByPriceId).find(Boolean) || null;
-    const isOneTimePurchase = !!(requestedTokenPack || requestedProPass);
     if (requestedTokenPack) {
       const isPaidUser = await isUserProInternal(userId);
       if (!isPaidUser) {
@@ -56,21 +49,17 @@ const createStripeSession = functions
           'Token packs require a Pro or Max plan. Upgrade to purchase additional tokens.'
         );
       }
-    }
-    if (isOneTimePurchase) {
-      // Packs and passes are one-time purchases — never let a client open
-      // one as a subscription, or attach subscription-only options.
+      // Packs are one-time purchases — never let a client open one as a subscription.
       data.mode = 'payment';
-      delete data.subscription_data;
     } else if (data.mode === 'payment') {
-      // Token packs and passes are the only one-time products. Rejecting any other
+      // Token packs are the only one-time product. Rejecting any other
       // payment-mode request means `mode` stays server-derived — a client
       // can't hand-craft mode:'payment' to slip past the duplicate-
       // subscription check below or open a checkout the webhook won't know
       // how to fulfill.
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'One-time payment checkout is only available for token packs and passes.'
+        'One-time payment checkout is only available for token packs.'
       );
     }
 
@@ -84,12 +73,11 @@ const createStripeSession = functions
     });
 
     // Check if customer already has active subscriptions (prevent duplicates).
-    // Skipped for one-time purchases: pack buyers are usually active
-    // subscribers, and a subscriber may also buy a pass — an existing
-    // subscription is no reason to block either. Keyed on the server-side
-    // product match, not client-supplied mode (which was rejected above
-    // unless a pack or pass was matched).
-    if (stripeCustomerId && !isOneTimePurchase) {
+    // Skipped for token pack purchases: pack buyers are usually active
+    // subscribers, and an existing subscription is no reason to block a pack.
+    // Keyed on the server-side pack match, not client-supplied mode (which
+    // was rejected above unless a pack was matched).
+    if (stripeCustomerId && !requestedTokenPack) {
       try {
         const subscriptions = await stripe.subscriptions.list({
           customer: stripeCustomerId,
@@ -122,28 +110,12 @@ const createStripeSession = functions
       // New customer - pre-fill their email
       data.customer_email = userEmail;
     }
-    // Payment-mode sessions only create a Stripe Customer when asked. Pass
-    // buyers are mostly first-time customers; creating one lets the webhook
-    // backfill userProfile.stripeCustomerId, so later checkouts, the
-    // duplicate-subscription check and support lookups all find them.
-    if (isOneTimePurchase && !stripeCustomerId) {
-      data.customer_creation = 'always';
-    }
 
     // Set metadata.userId with the authenticated user's ID for security
     if (!data.metadata) {
       data.metadata = {};
     }
     data.metadata.userId = userId;
-    // Server-derived product tag (the client may also pass `source`, e.g.
-    // 'winback', for channel attribution). Lets Stripe, checkoutSessions and
-    // the webhook logs tell a pass from a pack from a subscription.
-    const product = requestedProPass
-      ? `pro-pass-${requestedProPass.id}`
-      : requestedTokenPack
-        ? `token-pack-${requestedTokenPack.id}`
-        : 'subscription';
-    data.metadata.product = product;
 
     if (data.subscription_data) {
       if (!data.subscription_data.metadata) {
@@ -170,8 +142,6 @@ const createStripeSession = functions
         email: userEmail || null,
         priceId: data.line_items?.[0]?.price ?? null,
         mode: data.mode || null,
-        product,
-        source: typeof data.metadata.source === 'string' ? data.metadata.source : null,
         status: 'open',
         createdAt: now
       });
@@ -393,7 +363,7 @@ const handleInvoicePaymentFailed = async (invoice) => {
 // see the dormant note on handleInvoicePaymentFailed.)
 // Unrecognized events are acked and ignored, so enabling extra events is safe.
 const stripeWebhook = functions
-  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_CHECKOUT', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID', 'POSTMARK_API_KEY', ...TOKEN_PACK_PRICE_SECRETS, ...PRO_PASS_PRICE_SECRETS] })
+  .runWith({ secrets: ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET_CHECKOUT', 'STRIPE_YEARLY_PRICE_ID', 'STRIPE_MONTHLY_PRICE_ID', 'STRIPE_MAX_YEARLY_PRICE_ID', 'STRIPE_MAX_MONTHLY_PRICE_ID', 'POSTMARK_API_KEY', ...TOKEN_PACK_PRICE_SECRETS] })
   .https
   .onRequest(async (req, res) => {
     const Stripe = require('stripe');
@@ -444,10 +414,6 @@ const stripeWebhook = functions
     // subscriber's plan claim to PRO because they bought a token pack.
     const lineItems = sessionWithLineItems.line_items?.data || [];
     if (checkoutSession.mode === 'payment') {
-      // One-time Pro pass (#1922), matched before packs. Sums every pass
-      // line item; null when the session holds none.
-      const passSummary = summarizePassItems(lineItems);
-
       // Aggregate EVERY pack line item — a multi-pack session grants the sum.
       const packItems = lineItems
         .map((item) => ({
@@ -456,13 +422,13 @@ const stripeWebhook = functions
         }))
         .filter(({ pack }) => pack);
 
-      if (!passSummary && packItems.length === 0) {
-        // Paid, but we can't map the price to a pass or pack (secrets unset
-        // or drifted). Non-2xx makes Stripe retry for days — once the secrets
-        // are fixed, the retry grants the purchase. Never fall through to the
+      if (packItems.length === 0) {
+        // Paid, but we can't map the price to a pack (secrets unset or
+        // drifted). Non-2xx makes Stripe retry for days — once the secrets
+        // are fixed, the retry grants the tokens. Never fall through to the
         // subscription branch.
         console.error(
-          `payment-mode checkout matched no pass or token pack: session=${checkoutSession.id} ` +
+          `payment-mode checkout matched no token pack: session=${checkoutSession.id} ` +
           `userId=${checkoutSession.metadata?.userId} ` +
           `seen=[${lineItems.map((item) => item.price?.id).filter(Boolean).join(',')}]`
         );
@@ -470,42 +436,27 @@ const stripeWebhook = functions
       }
 
       // Pack buyers usually have a userProfile with stripeCustomerId already,
-      // but a domain-team Pro user's first purchase can be a pack, and a pass
-      // buyer's first purchase is usually the pass — backfill so billing-
-      // portal and support lookups work for them, same as the subscription
-      // path. A free user may already have a userProfile (username etc.)
-      // without a customer id: stamp it there instead of adding a second doc.
+      // but a domain-team Pro user's first purchase can be a pack — backfill
+      // so billing-portal lookups work for them, same as the subscription path.
       if (checkoutSession.metadata?.userId && checkoutSession.customer) {
         const profileSnapshot = await admin.firestore().collection('userProfile')
           .where('userId', '==', checkoutSession.metadata.userId).get();
-        const hasCustomerId = profileSnapshot.docs.some((doc) => doc.data().stripeCustomerId);
         if (profileSnapshot.empty) {
           await admin.firestore().collection('userProfile').doc().set({
             userId: checkoutSession.metadata.userId,
             stripeCustomerId: checkoutSession.customer
           });
-        } else if (!hasCustomerId) {
-          await profileSnapshot.docs[0].ref.set(
-            { stripeCustomerId: checkoutSession.customer },
-            { merge: true }
-          );
         }
       }
 
-      // Each grant is idempotent per session on its own tokenLog row, so a
-      // retry after a partial failure re-applies only what's missing.
-      // false = not durably recorded (e.g. missing metadata.userId) — retry
-      // rather than silently dropping a purchase the user paid for.
-      if (passSummary) {
-        const passGranted = await grantProPassForCheckout({ checkoutSession, summary: passSummary });
-        if (!passGranted) return res.sendStatus(500);
-      }
-      if (packItems.length > 0) {
-        const granted = await grantPurchasedTokens({
-          checkoutSession,
-          items: packItems
-        });
-        if (!granted) return res.sendStatus(500);
+      const granted = await grantPurchasedTokens({
+        checkoutSession,
+        items: packItems
+      });
+      if (!granted) {
+        // Grant not durably recorded (e.g. missing metadata.userId) — retry
+        // rather than silently dropping tokens the user paid for.
+        return res.sendStatus(500);
       }
       await markCheckoutSessionStatus(checkoutSession.id, 'complete');
       return res.sendStatus(200);

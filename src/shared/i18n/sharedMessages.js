@@ -291,79 +291,13 @@ const SHARED_MESSAGES = {
     'pt-BR': '{tokens} tokens já estão na sua conta.',
     fr: '{tokens} jetons ont été ajoutés à votre compte.'
   },
-  // ProjectPassModal — one-time time-boxed Pro pass (#1922), opened by the
-  // #project-pass deep link. `projectPassName` is the product's display name:
-  // rename the pass here only.
+  // Project Pass (#1922) — one-time time-boxed Pro. `projectPassName` is the
+  // product's display name: rename the pass here only.
   projectPassName: {
     en: 'Project Pass',
     es: 'Pase de Proyecto',
     'pt-BR': 'Passe de Projeto',
     fr: 'Pass Projet'
-  },
-  projectPassSubtitle: {
-    en: '{months} months of 3DStreet Pro for one payment. No subscription, no auto-renewal.',
-    es: '{months} meses de 3DStreet Pro con un solo pago. Sin suscripción ni renovación automática.',
-    'pt-BR':
-      '{months} meses de 3DStreet Pro com um único pagamento. Sem assinatura e sem renovação automática.',
-    fr: '{months} mois de 3DStreet Pro en un seul paiement. Sans abonnement ni renouvellement automatique.'
-  },
-  projectPassFeatPro: {
-    en: 'All Pro features for {days} days',
-    es: 'Todas las funciones Pro durante {days} días',
-    'pt-BR': 'Todos os recursos Pro por {days} dias',
-    fr: 'Toutes les fonctionnalités Pro pendant {days} jours'
-  },
-  projectPassFeatTokens: {
-    en: '{tokens} AI tokens up front, yours to keep',
-    es: '{tokens} tokens de IA por adelantado, sin vencimiento',
-    'pt-BR': '{tokens} tokens de IA antecipados, que não expiram',
-    fr: "{tokens} jetons IA d'emblée, qui n'expirent pas"
-  },
-  projectPassFeatExports: {
-    en: 'Watermark-free downloads, unlimited geospatial maps and custom model uploads',
-    es: 'Descargas sin marca de agua, mapas geoespaciales ilimitados y carga de modelos personalizados',
-    'pt-BR':
-      "Downloads sem marca d'água, mapas geoespaciais ilimitados e upload de modelos personalizados",
-    fr: 'Téléchargements sans filigrane, cartes géospatiales illimitées et import de modèles personnalisés'
-  },
-  projectPassFeatKeep: {
-    en: 'When it ends you return to the free plan. Your scenes and files stay.',
-    es: 'Al terminar vuelves al plan gratuito. Tus escenas y archivos se conservan.',
-    'pt-BR':
-      'Quando terminar, você volta ao plano gratuito. Suas cenas e arquivos continuam salvos.',
-    fr: 'À la fin, vous revenez au forfait gratuit. Vos scènes et fichiers sont conservés.'
-  },
-  projectPassSignInPrompt: {
-    en: 'Sign in or create a free account to buy the pass.',
-    es: 'Inicia sesión o crea una cuenta gratuita para comprar el pase.',
-    'pt-BR': 'Entre ou crie uma conta gratuita para comprar o passe.',
-    fr: 'Connectez-vous ou créez un compte gratuit pour acheter le pass.'
-  },
-  projectPassActiveUntil: {
-    en: 'Your pass is active until {date}. Buying another adds {days} days.',
-    es: 'Tu pase está activo hasta el {date}. Si compras otro, se suman {days} días.',
-    'pt-BR':
-      'Seu passe está ativo até {date}. Comprar outro adiciona {days} dias.',
-    fr: "Votre pass est actif jusqu'au {date}. En acheter un autre ajoute {days} jours."
-  },
-  projectPassSubscriberNote: {
-    en: 'You already have a subscription. The pass does not change it. If you cancel the subscription, Pro continues until the pass ends.',
-    es: 'Ya tienes una suscripción y el pase no la modifica. Si la cancelas, Pro sigue activo hasta que termine el pase.',
-    'pt-BR':
-      'Você já tem uma assinatura e o passe não a altera. Se você cancelar a assinatura, o Pro continua até o fim do passe.',
-    fr: "Vous avez déjà un abonnement, et le pass ne le modifie pas. Si vous résiliez l'abonnement, Pro reste actif jusqu'à la fin du pass."
-  },
-  projectPassBuyCta: {
-    en: 'Buy {name}',
-    es: 'Comprar {name}',
-    'pt-BR': 'Comprar {name}',
-    fr: 'Acheter {name}'
-  },
-  projectPassUnavailable: {
-    en: 'The pass is not available yet on this deployment. Please check back soon.',
-    es: 'El pase aún no está disponible en esta versión. Vuelve pronto.',
-    'pt-BR': 'O passe ainda não está disponível nesta versão. Volte em breve.',
-    fr: "Le pass n'est pas encore disponible sur ce déploiement. Revenez bientôt."
   },
   projectPassSuccessTitle: {
     en: 'Pro is unlocked!',

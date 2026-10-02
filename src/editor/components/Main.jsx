@@ -16,7 +16,6 @@ import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import EditorUpgradeModal from './EditorUpgradeModal.jsx';
 import EditorBuyTokensModal from './EditorBuyTokensModal.jsx';
-import EditorProjectPassModal from './EditorProjectPassModal.jsx';
 import EditorRedeemPassModal from './EditorRedeemPassModal.jsx';
 import { AddLayerPanel } from './elements/AddLayerPanel';
 import { NewModal } from './modals/NewModal';
@@ -231,7 +230,6 @@ export default function Main() {
       <SignInModal />
       <EditorUpgradeModal />
       <EditorBuyTokensModal />
-      <EditorProjectPassModal />
       <EditorRedeemPassModal />
       <ScenesModal />
       <ProfileModal />

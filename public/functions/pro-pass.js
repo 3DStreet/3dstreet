@@ -1,8 +1,8 @@
 /**
  * One-time time-boxed Pro passes (#1922) — definitions + pure entitlement math.
  *
- * A pass is a one-time Stripe payment (no subscription object, no renewal)
- * that grants Pro-tier access for a fixed number of days plus an up-front
+ * A pass is a one-time purchase (no subscription object, no renewal) that
+ * grants Pro-tier access for a fixed number of days plus an up-front
  * gen-token lump sum. The only new account state is `proUntil`, stored on
  * tokenProfile/{uid} (NOT in auth custom claims — the Stripe webhooks call
  * setCustomUserClaims({ plan }), which replaces the whole claims object and
@@ -17,6 +17,12 @@
  * Pass holders get NO monthly token top-up: the refill in
  * token-management.js keys off the subscription plan claim (and team domain)
  * only. The pass's lump sum replaces the drip.
+ *
+ * How a pass is delivered today: sold by hand (Stripe invoice or Payment
+ * Link), then a pass code is minted (scripts/mint-pass-codes.js) and
+ * redeemed through pass-codes.js → grantPass. Self-serve checkout
+ * (#project-pass, matching the price in stripe.js) is a follow-up; the
+ * price-matching helpers below are for it and are not wired in yet.
  *
  * Update a pass here, in the client mirror (src/shared/components/
  * UpgradeModal/pricing.js PRO_PASSES), and in the Stripe dashboard
@@ -35,12 +41,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // A second pass SKU (e.g. a team/client variant with different days and
 // tokens) is a config-only change: add an entry + its secret.
 //
-// DEPLOY REQUIREMENT: every priceIdEnv below is declared in the runWith() of
-// createStripeSession and stripeWebhook (stripe.js), so `firebase deploy`
-// FAILS until it exists in Secret Manager. Create it (an empty value is fine
-// before the Stripe price exists) with:
+// `priceIdEnv` is not read by any deployed function yet. When the self-serve
+// checkout follow-up declares it in runWith() (createStripeSession,
+// stripeWebhook), `firebase deploy` will FAIL until the secret exists:
 //   firebase functions:secrets:set STRIPE_PROJECT_PASS_PRICE_ID
-// The client-side price ID lives separately in config/.env.* (dotenv-webpack).
 const PRO_PASSES = [
   {
     id: 'project',
@@ -129,9 +133,9 @@ const summarizePassItems = (lineItems) => {
 };
 
 // The pure core of grantPass (token-management.js), evaluated inside its
-// Firestore transaction. `alreadyGranted` is whether this checkout session's
-// tokenLog row exists: when it does the grant is a no-op (returns null), which
-// is what makes Stripe webhook retries safe. Otherwise returns the balances
+// Firestore transaction. `alreadyGranted` is whether this grant's tokenLog
+// row (keyed on its idempotency key) exists: when it does the grant is a
+// no-op (returns null), which is what makes retries safe. Otherwise returns the balances
 // and proUntil to write. `summary` is { days, tokens }.
 const planProPassGrant = ({ alreadyGranted, tokenProfile, summary, nowMs }) => {
   if (alreadyGranted) return null;

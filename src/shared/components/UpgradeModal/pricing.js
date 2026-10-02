@@ -91,8 +91,9 @@ export const TOKEN_PACKS = [
   { id: 'power', name: 'Power', tokens: 500, price: 50 }
 ];
 
-// One-time time-boxed Pro passes (#1922) — shown only via the #project-pass
-// deep link (ProjectPassModal), deliberately NOT in the UpgradeModal tier grid.
+// One-time time-boxed Pro passes (#1922) — delivered via pass codes
+// (#redeem, RedeemPassModal) for now; deliberately NOT in the UpgradeModal
+// tier grid.
 // A pass is a single payment for `days` of Pro plus a `tokens` lump sum up
 // front; no renewal and no monthly token top-up. Mirrors the server copy in
 // public/functions/pro-pass.js (separate deployment, can't share imports);

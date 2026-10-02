@@ -1,24 +1,28 @@
 # Project Pass — one-time time-boxed Pro (#1922)
 
-A **Project Pass** is a single Stripe payment (no subscription, no renewal)
-that grants Pro-tier access for a fixed window plus an up-front gen-token
-grant. Offer today: **$30 → 90 days of Pro + 300 tokens**.
+A **Project Pass** is a one-time purchase (no subscription, no renewal) that
+grants Pro-tier access for a fixed window plus an up-front gen-token grant.
+Offer today: **$30 → 90 days of Pro + 300 tokens**.
+
+**How it is sold today:** by hand. The buyer pays through a Stripe invoice
+or Payment Link. You then mint a pass code (one use for one person, N uses
+for an organization) and email the redeem link. Self-serve checkout at
+`#project-pass` is a follow-up (see the end of this page); no checkout or
+Stripe webhook code handles passes yet.
 
 ## Where things live
 
 | Concern | Location |
 |---|---|
-| Pass config (days, tokens, price secret) + pure entitlement math | `public/functions/pro-pass.js` (`PRO_PASSES`) |
+| Pass config (days, tokens) + pure entitlement math | `public/functions/pro-pass.js` (`PRO_PASSES`) |
 | Client mirror (display only) | `src/shared/components/UpgradeModal/pricing.js` (`PRO_PASSES`) — guarded by `test/shared/pricing-sync.test.js` |
 | Display name | shared message `projectPassName` (`src/shared/i18n/sharedMessages.js`) |
 | Fulfilment | `grantPass(uid, { days, tokens, idempotencyKey, source })` in `public/functions/token-management.js` |
-| Checkout gating | `createStripeSession` (`public/functions/stripe.js`) |
-| Webhook | `stripeWebhook` → `grantProPassForCheckout` |
-| Entry point | `#project-pass` → `store.firstModal()` → `EditorProjectPassModal` → shared `ProjectPassModal` |
 | Codes | `#redeem?code=` → `RedeemPassModal` → `redeemPassCode` (`public/functions/pass-codes.js`, pure helpers in `pass-code-utils.js`); minted by `scripts/mint-pass-codes.js` |
 
-Adding a second pass SKU (e.g. a team variant) is config-only: add a
-`PRO_PASSES` entry (server + client) and its price secret.
+Adding a second pass variant (e.g. a team pass with different days and
+tokens) is config-only: add a `PRO_PASSES` entry (server + client), or mint
+a code with `--days` / `--tokens`.
 
 ## Entitlement
 
@@ -50,26 +54,8 @@ subscription claim and team domain only. The 300-token lump sum replaces it.
 `utilities/user-audit.js` never sees pass holders — they have neither a plan
 claim nor a subscription — so it neither reports nor "fixes" them.
 
-## Purchase flow
-
-1. `#project-pass` (optional `?src=<tag>` or `&src=<tag>` for attribution)
-   opens the modal. Signed-out visitors sign in first and land back in it.
-2. `createStripeSession` matches the pass price server-side, forces
-   `mode: 'payment'`, skips the duplicate-subscription block (subscribers may
-   buy a pass), sets `customer_creation: 'always'` for first-time customers,
-   and tags `metadata.product = 'pro-pass-project'` (+ the client `source`).
-   An unknown price with `mode: 'payment'` is still rejected, and token packs
-   still require Pro.
-3. `checkout.session.completed` → the payment branch matches the pass
-   **before** token packs, backfills `userProfile.stripeCustomerId`, and calls
-   `grantPass` with the checkout session id as the idempotency key. Any
-   failure returns non-2xx so Stripe retries; it never falls through to the
-   subscription branch.
-4. The modal polls `checkUserProStatus` until `proUntil` moves, then updates
-   the auth context so every Pro gate flips without a reload.
-
 Stacking: `proUntil = max(now, proUntil) + days`. Deleting a subscription
-clears only `plan`, so a subscriber who also bought a pass keeps Pro until
+clears only `plan`, so a subscriber who also has a pass keeps Pro until
 `proUntil`.
 
 ## `grantPass` — the one fulfilment path
@@ -80,18 +66,18 @@ grantPass(uid, { days, tokens, idempotencyKey, source, details, sessionId })
 
 One transaction: credit `tokens`, extend `proUntil`, write the audit row
 `tokenLog/pass-<idempotencyKey>`. A repeat call with the same key is a no-op
-(`{ granted: true, alreadyGranted: true }`). Paid checkout uses the Stripe
-session id as the key; a future pass-code redemption would use the
-redemption id.
+(`{ granted: true, alreadyGranted: true }`). Code redemption uses the
+redemption id as the key; the self-serve checkout follow-up will use the
+Stripe checkout session id.
 
-## Pass codes (gifting passes)
+## Pass codes
 
 An organization (a foundation, a class, a workshop) pays once for N passes
-and gets **one shared code capped at N uses**. Recipients don't need a shared
-email domain, unlike Pro Team. Each recipient's days start when **they**
-redeem, not when the buyer paid.
+and gets **one shared code capped at N uses**; an individual buyer gets a
+one-use code. Recipients don't need a shared email domain, unlike Pro Team.
+Each recipient's days start when **they** redeem, not when the buyer paid.
 
-- **Sold by hand for now.** Invoice through Stripe, then mint the code:
+- **Minting** (after the invoice or Payment Link is paid):
   ```bash
   node scripts/mint-pass-codes.js --project=<project> --uses=10 \
     --org="Example Foundation" --prefix=FOUNDATION [--days=90] [--tokens=300] \
@@ -115,47 +101,40 @@ redeem, not when the buyer paid.
   - `passRedemptions/{CODE_uid}` has one row per redemption
 - **Format:** `PREFIX-XXXXXXXX`. The 8 random characters come from an
   alphabet with no 0/O/1/I/L.
-- **Later:** a self-serve "buy for others" checkout, where the webhook mints
-  a code instead of granting the buyer. Build it only once hand sales show
-  demand.
+- **Analytics:** `modal_opened` (`modal: 'redeem-pass'`),
+  `pass_code_redeemed` and `pass_code_redeem_failed`.
 
 ## Support
 
 Look up `tokenProfile/{uid}`:
 
 - `proUntil` is the pass expiry
-- `proPassSessionIds` lists the checkout sessions that paid for it
 - `proPassLastGrantedAt` is when the latest grant was applied
 
-Full audit rows are `tokenLog/pass-<sessionId>` for a purchase, or
-`tokenLog/pass-<CODE>_<uid>` for a redeemed code: tokens and days granted,
-proUntil before and after, amount, and `checkoutSource`. Open checkouts are in
-`checkoutSessions` (`product`, `source`).
+The audit row for a redeemed code is `tokenLog/pass-<CODE>_<uid>`: tokens
+and days granted, proUntil before and after, and the code. The redemption
+itself is `passRedemptions/<CODE>_<uid>`.
 
 To comp or extend a pass by hand, edit `proUntil`. To end one early, set it in
 the past.
 
-## Analytics
-
-The pass uses the existing checkout event family (`modal_opened`,
-`checkout_started`, `checkout_session_created`, `payment_completed`,
-`checkout_canceled`) with `plan: 'pro-pass-project'`, plus
-`product: 'pro-pass'` and `source` where the modal emits the event itself.
-
-Abandoned pass checkouts are excluded from the subscription-oriented
-abandoned-checkout email (`lifecycle-sweeps.js`).
-
 ## Deploy checklist
 
-1. Create the Stripe price: $30 USD, one-time.
-2. Create the server secret **before** deploying functions. `firebase deploy`
-   fails while a secret declared in `runWith` is missing.
-   ```bash
-   firebase functions:secrets:set STRIPE_PROJECT_PASS_PRICE_ID   # paste price_…
-   ```
-   Do this for staging too, with the staging price.
-3. Set the client price in `config/.env.production` and
-   `config/.env.development` (`STRIPE_PROJECT_PASS_PRICE_ID = "price_…"`).
-   While it is empty, the modal reports that the pass is unavailable.
-4. Deploy the Firestore rules (tightened `tokenProfile` create), the
-   functions, and hosting.
+1. Deploy the Firestore rules (tightened `tokenProfile` create; closed
+   `passCodes` / `passRedemptions`), the functions (`redeemPassCode` is new)
+   and hosting. No new secrets are needed.
+2. Mint a test code on staging and redeem it with two accounts. Check that a
+   third account is refused on a two-use code.
+
+## Follow-ups
+
+- **Self-serve checkout (`#project-pass`).** A $30 one-time Stripe price;
+  `createStripeSession` recognizes it and the webhook calls `grantPass` with
+  the checkout session id. It was built and then held back from the first
+  release so that `stripe.js` (the live subscription and token-pack path) is
+  untouched; restore it by reverting the "Hold back self-serve Project Pass
+  checkout" commit. It needs the `STRIPE_PROJECT_PASS_PRICE_ID` secret and
+  config/.env values before deploy.
+- **"Buy for others" checkout**, where the webhook mints a code instead of
+  granting the buyer. Only once hand sales show demand.
+- **Lifecycle emails:** pass confirmation, expiry reminder, pass ended.
