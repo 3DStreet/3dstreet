@@ -42,6 +42,10 @@ const {
 // fal (image → 3D mesh) poll adapter — the sweep is one of its two finalizers.
 const { fetchFalPrediction } = require('../fal-3d.js');
 const { enqueueRadTask } = require('../rad-dispatch.js');
+const {
+  enqueueProgressiveTask,
+  PROGRESSIVE_JOB_KIND
+} = require('../progressive-dispatch.js');
 const { withJobHealth } = require('./job-health.js');
 
 const TEN_MIN_MS = 10 * 60 * 1000;
@@ -272,6 +276,12 @@ async function reconcile({ dryRun }) {
       // real re-enqueue just overwrites the same -lod.rad. tokenCost is 0, so
       // failJob's refund is a no-op.
       if (job.provider === 'cloudrun') {
+        // Two kinds share the cloudrun shape: splat-rad (rad-converter, source
+        // in plyPath) and glb-progressive (needle-uploader, source in
+        // storagePath). Re-enqueue goes to the kind's own service.
+        const progressive = job.kind === PROGRESSIVE_JOB_KIND;
+        const sourcePath = progressive ? job.storagePath : job.plyPath;
+        const label = progressive ? 'Progressive GLB processing' : 'RAD conversion';
         const sinceDispatch = ageMs(job.dispatchedAt || job.createdAt);
         sample.sinceDispatchMin = Math.round(sinceDispatch / 60000);
         // Honor the worker's heartbeat: a job it reported 'running' recently is
@@ -285,14 +295,14 @@ async function reconcile({ dryRun }) {
           sample.action = 'gave-up-cloudrun';
           summary.gaveUp++;
           if (!dryRun) {
-            await failJob(db, uid, jobRef, job, 'RAD conversion did not complete in time.');
+            await failJob(db, uid, jobRef, job, `${label} did not complete in time.`);
           }
-        } else if (!job.plyPath) {
+        } else if (!sourcePath) {
           // Nothing to retry with — treat as dead immediately.
-          sample.action = 'gave-up-cloudrun-no-plyPath';
+          sample.action = 'gave-up-cloudrun-no-source';
           summary.gaveUp++;
           if (!dryRun) {
-            await failJob(db, uid, jobRef, job, 'RAD job missing plyPath.');
+            await failJob(db, uid, jobRef, job, `${label} job missing its source path.`);
           }
         } else if (activelyRunning) {
           // Worker is converting right now — don't spawn a duplicate.
@@ -302,12 +312,21 @@ async function reconcile({ dryRun }) {
           sample.action = 're-enqueued-cloudrun';
           summary.reEnqueued++;
           if (!dryRun) {
-            await enqueueRadTask({
-              uid,
-              assetId: job.assetId,
-              plyPath: job.plyPath,
-              jobId: jobRef.id
-            });
+            if (progressive) {
+              await enqueueProgressiveTask({
+                uid,
+                assetId: job.assetId,
+                storagePath: sourcePath,
+                jobId: jobRef.id
+              });
+            } else {
+              await enqueueRadTask({
+                uid,
+                assetId: job.assetId,
+                plyPath: sourcePath,
+                jobId: jobRef.id
+              });
+            }
             // Reset the dispatch clock so the next sweep measures from THIS
             // re-enqueue, not the original — no duplicate-per-sweep spiral.
             await jobRef.update({

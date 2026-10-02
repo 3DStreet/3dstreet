@@ -18,7 +18,8 @@ import {
   formatBytes,
   formatDate,
   getOptimizationDisplay,
-  getServedUrl
+  getServedUrl,
+  isProgressiveVariant
 } from '../utils.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
 import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
@@ -37,6 +38,10 @@ const JOB_STATUS_MESSAGE = {
   running: 'meshJobRunning',
   saving: 'meshJobSaving'
 };
+const NON_TERMINAL_JOB_STATUSES = ['queued', 'running', 'saving'];
+// generationJobs kind of the Needle progressive-streaming job (#1990); must
+// match PROGRESSIVE_JOB_KIND in public/functions/progressive-dispatch.js.
+const PROGRESSIVE_JOB_KIND = 'glb-progressive';
 
 // Stages reported by reoptimizeAsset(), mapped to their shared-message ids
 // so the button can say what it is doing in the user's language.
@@ -171,6 +176,10 @@ const MeshDetailsModal = ({
   );
   // Outcome of the "Remove optimized" action; local because it is instant.
   const [removeStatus, setRemoveStatus] = useState(null);
+  // "Make streamable" (#1990): the request itself is a quick callable; the
+  // processing runs server-side and reports through the asset's job doc.
+  const [progressiveRequesting, setProgressiveRequesting] = useState(false);
+  const [progressiveStatus, setProgressiveStatus] = useState(null);
   // "Copy to my library" (non-owners). Registry-backed like reoptimize: the
   // copy outlives the modal, and a reopened modal must show where it got to.
   const copyRun = useSyncExternalStore(subscribeCopyRuns, () =>
@@ -294,6 +303,69 @@ const MeshDetailsModal = ({
 
   const iframeRef = useRef(null);
   const isOwner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
+
+  // Live status for an in-flight progressive job (#1990). The job list above
+  // is a one-shot read, so subscribe to the active job doc until it ends;
+  // on success re-read the asset doc so the Size/Optimization rows flip to
+  // the streaming variant without closing the modal.
+  const activeProgressiveJobId =
+    assetJobs.find(
+      (j) =>
+        j.kind === PROGRESSIVE_JOB_KIND &&
+        NON_TERMINAL_JOB_STATUSES.includes(j.status)
+    )?.id ?? null;
+  useEffect(() => {
+    if (!activeProgressiveJobId || !isOwner) return;
+    let cancelled = false;
+    const unsubscribe = assetsService.watchAssetJob(
+      ownerUid,
+      activeProgressiveJobId,
+      (job) => {
+        if (cancelled || !job) return;
+        setAssetJobs((prev) => prev.map((j) => (j.id === job.id ? job : j)));
+        if (NON_TERMINAL_JOB_STATUSES.includes(job.status)) return;
+        if (job.status === 'succeeded') {
+          assetsService
+            .getAsset(assetId, ownerUid)
+            .then((fresh) => {
+              if (cancelled || !fresh) return;
+              setData(fresh);
+              assetsService.events.dispatchEvent(
+                new CustomEvent('assetUpdated', {
+                  detail: {
+                    assetId,
+                    userId: ownerUid,
+                    updates: {
+                      optimizedSourceUrl: fresh.optimizedSourceUrl,
+                      optimizedSourceSize: fresh.optimizedSourceSize,
+                      optimizationMetadata: fresh.optimizationMetadata
+                    }
+                  }
+                })
+              );
+              setProgressiveStatus({ text: t('progressiveDone') });
+            })
+            .catch((err) =>
+              console.warn('[MeshDetailsModal] asset re-read failed', err)
+            );
+        } else if (job.status === 'skipped') {
+          setProgressiveStatus({
+            error: true,
+            text: t('progressiveSkipped', { reason: job.skipReason || '' })
+          });
+        } else {
+          setProgressiveStatus({
+            error: true,
+            text: t('progressiveJobFailed', { error: job.error || '' })
+          });
+        }
+      }
+    );
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [activeProgressiveJobId, isOwner, ownerUid, assetId, t]);
 
   // Synchronous fallback for when the user closes before the viewer's better
   // auto-framed capture fires: read whatever the iframe canvas currently shows
@@ -544,7 +616,49 @@ const MeshDetailsModal = ({
   const onReoptimize = () => {
     if (!isOwner || !data || reoptimizeRun?.stage) return;
     setRemoveStatus(null);
+    setProgressiveStatus(null);
     startReoptimizeRun(data, { ownerUid });
+  };
+
+  // Ask the backend for a Needle Cloud progressive-streaming variant (#1990).
+  // Owner-only, one live job per asset (the callable dedupes). The outcome
+  // arrives through the job doc subscription above.
+  const onMakeStreamable = async () => {
+    if (!isOwner || !data || progressiveRequesting || reoptimizeRun?.stage) {
+      return;
+    }
+    setProgressiveRequesting(true);
+    setRemoveStatus(null);
+    setProgressiveStatus(null);
+    try {
+      const { jobId } = await assetsService.requestProgressiveVariant(assetId);
+      setAssetJobs((prev) =>
+        prev.some((j) => j.id === jobId)
+          ? prev
+          : [
+              {
+                id: jobId,
+                kind: PROGRESSIVE_JOB_KIND,
+                status: 'queued',
+                assetId
+              },
+              ...prev
+            ]
+      );
+      setProgressiveStatus({ text: t('progressiveRequested') });
+    } catch (err) {
+      console.error('[MeshDetailsModal] make streamable failed', err);
+      const reason = err?.details?.reason;
+      setProgressiveStatus({
+        error: true,
+        text:
+          reason === 'private'
+            ? t('progressivePrivate')
+            : err?.message || t('progressiveRequestFailed')
+      });
+    } finally {
+      setProgressiveRequesting(false);
+    }
   };
 
   // When a run for the asset on screen finishes, reflect the new variant
@@ -581,6 +695,7 @@ const MeshDetailsModal = ({
   const noWinIsFailure =
     !!noWinResult && REOPTIMIZE_PIPELINE_FAILURES.has(noWinResult.reason);
   const reoptimizeStatusText = (() => {
+    if (progressiveStatus) return progressiveStatus.text;
     if (removeStatus) return removeStatus.text;
     if (!reoptimizeRun) return null;
     if (reoptimizeRun.stage) {
@@ -601,9 +716,11 @@ const MeshDetailsModal = ({
       saved: formatBytes(Math.max(0, result.bytesBefore - result.bytesAfter))
     });
   })();
-  const reoptimizeStatusIsError = removeStatus
-    ? !!removeStatus.error
-    : reoptimizeRun?.error !== undefined || noWinIsFailure;
+  const reoptimizeStatusIsError = progressiveStatus
+    ? !!progressiveStatus.error
+    : removeStatus
+      ? !!removeStatus.error
+      : reoptimizeRun?.error !== undefined || noWinIsFailure;
 
   // Reverse a lossy optimization: drop the optimized fields from the doc so
   // everything serves the untouched original again. The optimized object is
@@ -614,6 +731,7 @@ const MeshDetailsModal = ({
       const { removeOptimizedVariant } = await import('@shared/asset-upload');
       await removeOptimizedVariant(data, { ownerUid });
       clearReoptimizeRun(assetId);
+      setProgressiveStatus(null);
       setData((prev) => {
         if (!prev) return prev;
         const next = { ...prev };
@@ -684,6 +802,26 @@ const MeshDetailsModal = ({
     );
   };
 
+  // "Make streamable" (#1990): server-side Needle Cloud processing into a
+  // progressive-LOD GLB served from Needle's CDN. Owner + GLB only, hidden
+  // once the asset streams or while any optimization job is in flight.
+  const progressiveButton = () => {
+    const isGlb = !!data && data.type !== 'splat';
+    if (!isOwner || loading || !isGlb || data?.deleted) return null;
+    if (isProgressiveVariant(data) || activeProgressiveJobId) return null;
+    return (
+      <button
+        type="button"
+        onClick={onMakeStreamable}
+        disabled={progressiveRequesting || !!reoptimizeRun?.stage}
+        className={styles.retryOptimizeBtn}
+        title={t('progressiveHint')}
+      >
+        {t('progressiveStart')}
+      </button>
+    );
+  };
+
   // Sibling of the button above, only offered while a variant is served.
   const removeOptimizedButton = () => {
     if (!isOwner || loading || !data?.optimizedSourceUrl || data?.deleted) {
@@ -743,19 +881,25 @@ const MeshDetailsModal = ({
   const activeOptimizeJob = assetJobs.find((j) =>
     ['queued', 'running', 'saving'].includes(j.status)
   );
-  const optimizationLabel = hasOptimizedVariant
-    ? isSplat
-      ? KNOWN_FORMATS.rad
-      : t('meshOptimizedReady')
-    : activeOptimizeJob
-      ? t('meshOptimizingJob', {
-          // Unknown statuses fall through untranslated rather than render a
-          // message id — the job's own vocabulary can outgrow this map.
-          status: JOB_STATUS_MESSAGE[activeOptimizeJob.status]
-            ? t(JOB_STATUS_MESSAGE[activeOptimizeJob.status])
-            : activeOptimizeJob.status
-        })
-      : null;
+  // Unknown statuses fall through untranslated rather than render a message
+  // id — the job's own vocabulary can outgrow this map.
+  const jobStatusText = (job) =>
+    JOB_STATUS_MESSAGE[job.status]
+      ? t(JOB_STATUS_MESSAGE[job.status])
+      : job.status;
+  const optimizationLabel =
+    activeOptimizeJob && activeOptimizeJob.kind === PROGRESSIVE_JOB_KIND
+      ? // A streaming job in flight wins over whatever variant is served today.
+        t('meshStreamingJob', { status: jobStatusText(activeOptimizeJob) })
+      : hasOptimizedVariant
+        ? isSplat
+          ? KNOWN_FORMATS.rad
+          : isProgressiveVariant(data)
+            ? t('meshStreamingReady')
+            : t('meshOptimizedReady')
+        : activeOptimizeJob
+          ? t('meshOptimizingJob', { status: jobStatusText(activeOptimizeJob) })
+          : null;
 
   // Canonical "{Type} · {Source}" title — matches the gallery card overlay
   // and the image/video modal. The source label is the editable display name,
@@ -941,6 +1085,25 @@ const MeshDetailsModal = ({
                           ({opt.skipReason})
                         </span>
                         {reoptimizeButton(t('reoptimizeRetry'))}
+                        {progressiveButton()}
+                      </>
+                    );
+                  }
+                  if (opt.streaming) {
+                    // Progressive variant: the size is the first request only;
+                    // mesh and texture LODs stream on demand. Reoptimize is
+                    // withheld (the client pipeline would replace the streamed
+                    // variant); Remove optimized restores the original.
+                    return (
+                      <>
+                        {formatBytes(opt.origSize)}
+                        {opt.optSize ? (
+                          <> → {formatBytes(opt.optSize)}</>
+                        ) : null}{' '}
+                        <span className={styles.optimizationSaved}>
+                          ({t('meshOptimizationStreaming')})
+                        </span>
+                        {removeOptimizedButton()}
                       </>
                     );
                   }
@@ -953,6 +1116,7 @@ const MeshDetailsModal = ({
                         </span>
                         {reoptimizeButton(t('reoptimizeAgain'))}
                         {removeOptimizedButton()}
+                        {progressiveButton()}
                       </>
                     );
                   }
@@ -962,6 +1126,7 @@ const MeshDetailsModal = ({
                     <>
                       {formatBytes(opt.origSize)}
                       {reoptimizeButton(t('reoptimizeStart'))}
+                      {progressiveButton()}
                     </>
                   );
                 })()}

@@ -18,6 +18,10 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 // Normalized non-terminal job statuses (see normalizeReplicateStatus on the
 // server). A job in any of these is still "pending" and shown as a card.
 const NON_TERMINAL_JOB_STATUSES = ['queued', 'running', 'saving'];
+// Silent backend transcodes of an asset that already exists (RAD/LOD for
+// splats, Needle progressive streaming for meshes, #1990). Never rendered as a
+// "Generating…" card; they drive the per-asset "Optimizing…" badge instead.
+const BACKEND_OPTIMIZATION_KINDS = ['splat-rad', 'glb-progressive'];
 
 /**
  * Convert Firestore timestamp to ISO string
@@ -178,18 +182,22 @@ const useAssets = () => {
           if (!nextIds.has(id)) completed = true;
         });
         prevJobIdsRef.current = nextIds;
-        // splat-rad is a silent backend transcode (RAD/LOD) of an asset that
-        // already exists — not a user-initiated generation, so don't surface it
-        // as a "Generating…" card (that read as a confusing duplicate next to
-        // the just-uploaded splat). We still TRACK it above for completion, so
-        // the grid refreshes to the optimized URL when it finishes; we just
-        // don't render a card for it.
-        setPendingJobs(jobs.filter((j) => j.kind !== 'splat-rad'));
-        // The hidden splat-rad jobs drive the per-asset "Optimizing…" badge.
+        // Backend optimizations (splat-rad, glb-progressive) transcode an
+        // asset that already exists — not a user-initiated generation, so
+        // don't surface them as a "Generating…" card (that read as a confusing
+        // duplicate next to the just-uploaded splat). We still TRACK them
+        // above for completion, so the grid refreshes to the optimized URL
+        // when one finishes; we just don't render a card for it.
+        setPendingJobs(
+          jobs.filter((j) => !BACKEND_OPTIMIZATION_KINDS.includes(j.kind))
+        );
+        // The hidden optimization jobs drive the per-asset "Optimizing…" badge.
         setOptimizingAssetIds(
           new Set(
             jobs
-              .filter((j) => j.kind === 'splat-rad' && j.assetId)
+              .filter(
+                (j) => BACKEND_OPTIMIZATION_KINDS.includes(j.kind) && j.assetId
+              )
               .map((j) => j.assetId)
           )
         );

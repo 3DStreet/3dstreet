@@ -25,11 +25,68 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { assertAppCheck } = require('../app-check.js');
 const { withJobHealth } = require('./job-health.js');
+const {
+  enqueueNeedleDeleteTask,
+  NEEDLE_LEDGER_COLLECTION
+} = require('../progressive-dispatch.js');
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const GRACE_PERIOD_DAYS = 30;
 const BATCH_LIMIT = 500;
+
+/**
+ * Progressive-streaming copies (#1990) live on Needle Cloud, not in our bucket.
+ * The needle-uploader worker records each one in the `needleContent/{assetId}`
+ * ledger; on purge we ask the worker (the only holder of the Needle token) to
+ * trash it and update the ledger with the outcome. A ledger doc that is not
+ * `deleted` afterwards is the orphan list to purge by hand (needle-cloud
+ * delete <needleAssetId>). Returns a summary key for the counters.
+ */
+async function requestNeedleDelete(db, uid, assetId, { dryRun }) {
+  const ledgerRef = db.collection(NEEDLE_LEDGER_COLLECTION).doc(assetId);
+  const ledgerSnap = await ledgerRef.get();
+  if (!ledgerSnap.exists) return null;
+  const ledger = ledgerSnap.data() || {};
+  if (ledger.status === 'deleted') return 'needleAlreadyDeleted';
+  if (!ledger.needleAssetId) return 'needleNoId';
+  if (dryRun) {
+    console.log(
+      `[asset-gc] would request Needle delete of ${ledger.needleAssetId} for asset ${assetId}`
+    );
+    return 'needleDeleteRequested';
+  }
+  try {
+    await enqueueNeedleDeleteTask({
+      uid,
+      assetId,
+      needleAssetId: ledger.needleAssetId
+    });
+    await ledgerRef.set(
+      {
+        status: 'delete-requested',
+        deleteRequestedAt: admin.firestore.FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+    return 'needleDeleteRequested';
+  } catch (err) {
+    const message = err?.message || String(err);
+    console.error(
+      `[asset-gc] Needle delete enqueue failed for asset ${assetId}:`,
+      message
+    );
+    await ledgerRef.set(
+      {
+        status: 'orphaned',
+        error: message,
+        orphanedAt: admin.firestore.FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+    return 'needleOrphaned';
+  }
+}
 
 async function deleteStorageObject(bucket, path) {
   if (!path) return { skipped: true };
@@ -64,6 +121,8 @@ async function purgeBatch({ dryRun }) {
     storageDeleted: 0,
     storageSkipped: 0,
     storageErrors: 0,
+    needleDeleteRequested: 0,
+    needleOrphaned: 0,
     docErrors: 0,
     bytesReclaimedOriginal: 0,
     bytesReclaimedOptimized: 0,
@@ -83,6 +142,20 @@ async function purgeBatch({ dryRun }) {
     const { storagePath, optimizedSourcePath, thumbnailPath } = data;
     const sizeOriginal = Number(data.size) || 0;
     const sizeOptimized = Number(data.optimizedSourceSize) || 0;
+    // users/{uid}/assets/{assetId} — the owner uid is the parent user doc id.
+    const ownerUid = docSnap.ref.parent.parent?.id || data.userId;
+
+    // Off-bucket progressive copy, if any (ledger lookup; no-op for most docs).
+    try {
+      const needleOutcome = await requestNeedleDelete(db, ownerUid, docSnap.id, {
+        dryRun
+      });
+      if (needleOutcome === 'needleDeleteRequested') summary.needleDeleteRequested++;
+      else if (needleOutcome === 'needleOrphaned') summary.needleOrphaned++;
+    } catch (err) {
+      summary.needleOrphaned++;
+      console.error(`[asset-gc] Needle ledger check failed for ${docSnap.id}:`, err);
+    }
 
     if (dryRun) {
       summary.bytesReclaimedOriginal += sizeOriginal;

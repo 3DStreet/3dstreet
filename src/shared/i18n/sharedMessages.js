@@ -1214,6 +1214,82 @@ const SHARED_MESSAGES = {
     fr: 'Impossible de retirer la version optimisée'
   },
 
+  // "Make streamable" (#1990): server-side Needle Cloud processing into a
+  // progressive-LOD GLB served from Needle's public CDN. Sibling of the
+  // Optimize / Reoptimize buttons in the mesh details modal.
+  progressiveStart: {
+    en: 'Make streamable',
+    es: 'Hacer transmisible',
+    'pt-BR': 'Tornar transmissível',
+    fr: 'Rendre diffusable'
+  },
+  progressiveHint: {
+    en: 'Process this model in the cloud into a progressive-streaming version (loads a small preview first, then refines). The processed copy is served from Needle Cloud.',
+    es: 'Procesa este modelo en la nube en una versión de transmisión progresiva (carga primero una vista previa pequeña y luego se refina). La copia procesada se sirve desde Needle Cloud.',
+    'pt-BR':
+      'Processa este modelo na nuvem em uma versão de transmissão progressiva (carrega uma prévia pequena primeiro e depois refina). A cópia processada é servida pelo Needle Cloud.',
+    fr: "Traite ce modèle dans le cloud en une version à diffusion progressive (charge d'abord un petit aperçu, puis l'affine). La copie traitée est servie depuis Needle Cloud."
+  },
+  progressiveRequested: {
+    en: 'Streaming version requested — processing in the background. You can close this window.',
+    es: 'Versión transmisible solicitada: se procesa en segundo plano. Puedes cerrar esta ventana.',
+    'pt-BR':
+      'Versão transmissível solicitada — processando em segundo plano. Você pode fechar esta janela.',
+    fr: 'Version diffusable demandée — traitement en arrière-plan. Vous pouvez fermer cette fenêtre.'
+  },
+  progressiveRequestFailed: {
+    en: 'Could not request a streaming version',
+    es: 'No se pudo solicitar la versión transmisible',
+    'pt-BR': 'Não foi possível solicitar a versão transmissível',
+    fr: 'Impossible de demander la version diffusable'
+  },
+  progressivePrivate: {
+    en: 'Private assets cannot be made streamable: the processed copy would be served from a public CDN. Set the asset to public or unlisted first.',
+    es: 'Los recursos privados no pueden hacerse transmisibles: la copia procesada se serviría desde una CDN pública. Cambia el recurso a público o no listado primero.',
+    'pt-BR':
+      'Recursos privados não podem ser tornados transmissíveis: a cópia processada seria servida por uma CDN pública. Torne o recurso público ou não listado primeiro.',
+    fr: "Les actifs privés ne peuvent pas être rendus diffusables : la copie traitée serait servie depuis un CDN public. Rendez d'abord l'actif public ou non répertorié."
+  },
+  progressiveDone: {
+    en: 'Streaming version ready. Scenes pick it up on their next load.',
+    es: 'Versión transmisible lista. Las escenas la usarán en su próxima carga.',
+    'pt-BR':
+      'Versão transmissível pronta. As cenas a usarão no próximo carregamento.',
+    fr: 'Version diffusable prête. Les scènes la chargeront à leur prochaine ouverture.'
+  },
+  progressiveSkipped: {
+    en: 'Streaming processing skipped: {reason}. The model is unchanged.',
+    es: 'Procesamiento de transmisión omitido: {reason}. El modelo no cambió.',
+    'pt-BR':
+      'Processamento de transmissão ignorado: {reason}. O modelo não mudou.',
+    fr: 'Traitement de diffusion ignoré : {reason}. Le modèle est inchangé.'
+  },
+  progressiveJobFailed: {
+    en: 'Streaming processing failed: {error}. The model is unchanged.',
+    es: 'El procesamiento de transmisión falló: {error}. El modelo no cambió.',
+    'pt-BR':
+      'O processamento de transmissão falhou: {error}. O modelo não mudou.',
+    fr: 'Le traitement de diffusion a échoué : {error}. Le modèle est inchangé.'
+  },
+  meshStreamingReady: {
+    en: 'Streaming (progressive LOD), served from Needle Cloud',
+    es: 'Transmisión (LOD progresivo), servido desde Needle Cloud',
+    'pt-BR': 'Transmissão (LOD progressivo), servido pelo Needle Cloud',
+    fr: 'Diffusion (LOD progressif), servi depuis Needle Cloud'
+  },
+  meshStreamingJob: {
+    en: 'Making streamable… ({status})',
+    es: 'Haciendo transmisible… ({status})',
+    'pt-BR': 'Tornando transmissível… ({status})',
+    fr: 'Rendu diffusable… ({status})'
+  },
+  meshOptimizationStreaming: {
+    en: 'streaming, first load',
+    es: 'transmisión, primera carga',
+    'pt-BR': 'transmissão, primeiro carregamento',
+    fr: 'diffusion, premier chargement'
+  },
+
   // "Copy to my library" on another user's asset in the mesh details modal
   // (shared/asset-upload/copyAsset.js): downloads the original and uploads
   // it as the viewer's own asset, so they can optimize and keep it.

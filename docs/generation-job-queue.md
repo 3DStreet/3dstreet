@@ -20,7 +20,7 @@ single completion shape:
 | `replicate` | `splat` (image→splat, SHARP), `video` (image→video, Veo/Kling/LTX/…), `image` (nano-banana/seedream/kontext) | **convergent**: provider webhook + client poll + reconciler all funnel into one idempotent processor | charged on submit, refunded once on failure |
 | `modal` | `splat` (video→splat, vid2scene tiers) | convergent, like replicate (status endpoint + staged-output existence check) | charged on submit, refunded once on failure |
 | `fal` | `mesh` (image→3D GLB, Hunyuan3D/TRELLIS), `image` (flux-2 edit family) | **convergent** since #1832: `fal_webhook` + client poll + reconciler via one authoritative status adapter (`fetchFalPrediction`) | charged on submit, refunded once on failure |
-| `cloudrun` | `splat-rad` (.ply→RAD/LOD) | **worker-writeback**: the Cloud Run worker writes its own terminal status; reconciler re-enqueues a stalled task (no external state to poll) | **`tokenCost: 0`** — silent backend optimization, never charges |
+| `cloudrun` | `splat-rad` (.ply→RAD/LOD, automatic on splat create), `glb-progressive` (GLB→Needle Cloud progressive streaming, manual via `requestProgressiveGlb`, #1990) | **worker-writeback**: the Cloud Run worker writes its own terminal status; reconciler re-enqueues a stalled task by kind (no external state to poll) | **`tokenCost: 0`** — silent backend optimization, never charges |
 
 With image migrated (#1835) every user-initiated generation kind is on the
 queue; Teleport/Varjo photogrammetry can drop in as an additional **kind** and

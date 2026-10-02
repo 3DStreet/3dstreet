@@ -143,6 +143,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Needle Cloud content ledger (PRIVATE - cloud functions + worker only).
+    // One doc per asset that has a progressive-streaming copy on Needle Cloud
+    // (#1990); the asset GC uses it to delete the copy on purge. Never
+    // client-writable: a spoofed needleAssetId would trash someone else's copy.
+    match /needleContent/{assetId} {
+      allow read, write: if false;
+    }
+
     // Lifecycle email log (PRIVATE - cloud functions only)
     // Summary doc backs stop-rules (once-ever, cooldowns, dedupe keys);
     // sends subcollection is the append-only audit of every attempted send.

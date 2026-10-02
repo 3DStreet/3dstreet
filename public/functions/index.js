@@ -21,6 +21,7 @@ const { checkAssetUsageHealth, triggerCheckAssetUsageHealth } = require('./sched
 const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
+const { requestProgressiveGlb } = require('./progressive-dispatch.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
 
 // Re-export the getGeoidHeight function
@@ -100,6 +101,10 @@ exports.triggerReconcileGenerationJobs = triggerReconcileGenerationJobs;
 
 // --- RAD conversion (splat optimized variant) -----------------------------
 exports.onSplatAssetCreated = onSplatAssetCreated;
+
+// --- Progressive GLB streaming (mesh optimized variant via Needle Cloud, #1990)
+// Manual, owner-triggered: no onCreate trigger yet. See progressive-dispatch.js.
+exports.requestProgressiveGlb = requestProgressiveGlb;
 
 // Editor AI Assistant — server-side gate for the Vertex/Gemini chat. The client
 // no longer calls Firebase AI Logic directly (model selection was abusable); all

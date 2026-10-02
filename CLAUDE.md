@@ -148,6 +148,8 @@ bounds (`npm run assets:bounds` → `src/model-bounds.json`; user assets carry
 graph. **Read [asset loading](docs/asset-loading.md) before changing scene
 init, `<street-assets>`, texture references or load indicators.**
 
+**Progressive streaming (#1990):** owner-triggered _Make streamable_ sends a GLB through Needle Cloud (`needle-uploader/` Cloud Run worker, `requestProgressiveGlb` callable); the served URL on `cloud.needle.tools` is the only runtime signal (`isProgressiveModelUrl`). Read the asset upload guidance before touching it.
+
 **Asset utilities:** https://github.com/3dstreet/3dstreet-assets-dist
 
 ## Firebase
@@ -156,7 +158,7 @@ init, `<street-assets>`, texture references or load indicators.**
 
 **Auth:** Google, Email/Password, user claims for plan levels
 
-**Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
+**Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated, requestProgressiveGlb
 
 **Project Pass (#1922):** one-time time-boxed Pro. Pro = plan claim OR team domain OR `tokenProfile.proUntil > now` (`hasProEntitlement`, `public/functions/pro-pass.js`); never store pass state in claims. Sold by hand today and delivered as `#redeem` pass codes; all pass fulfilment goes through `grantPass` (idempotency key per grant). Read [docs/project-pass.md](docs/project-pass.md) before touching Pro checks, pass codes, checkout gating or the Stripe webhook.
 

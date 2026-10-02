@@ -67,18 +67,40 @@ export function getServedUrl(item) {
   return item?.optimizedSourceUrl ?? item?.storageUrl;
 }
 
+/** optimizationMetadata.format written by the needle-uploader worker (#1990). */
+export const PROGRESSIVE_FORMAT = 'needle-progressive';
+
+/** True when the asset's served variant is a Needle progressive-streaming GLB. */
+export function isProgressiveVariant(data) {
+  return (
+    !!data?.optimizedSourceUrl &&
+    data?.optimizationMetadata?.format === PROGRESSIVE_FORMAT
+  );
+}
+
 /**
  * Derives optimization display info from a GLB asset doc.
  *
- * Returns one of three shapes:
+ * Returns one of these shapes:
  *   { origSize }                          — no optimization metadata (image/video, or pre-opt upload)
  *   { origSize, skipReason }              — optimization ran but was skipped
  *   { origSize, optSize, savePct }        — optimization succeeded and saved bytes
+ *   { origSize, streaming, optSize?, savePct? } — progressive-streaming variant
+ *     (optSize is the initial file only; the rest streams on demand)
  */
 export function getOptimizationDisplay(data) {
   const meta = data?.optimizationMetadata;
   const origSize = Number(data?.size) || 0;
   if (!meta) return { origSize };
+
+  if (isProgressiveVariant(data)) {
+    const optSize = Number(data?.optimizedSourceSize) || 0;
+    if (optSize > 0 && optSize < origSize) {
+      const savePct = Math.round((1 - optSize / origSize) * 100);
+      return { origSize, streaming: true, optSize, savePct };
+    }
+    return { origSize, streaming: true };
+  }
 
   if (meta.optimizationSkipped) {
     const skipReason =

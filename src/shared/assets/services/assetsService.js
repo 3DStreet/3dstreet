@@ -29,7 +29,8 @@ import {
 } from 'firebase/firestore';
 import { createAggregateProgress } from '../uploadProgress.js';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '@shared/services/firebase.js';
+import { httpsCallable } from 'firebase/functions';
+import { db, storage, functions } from '@shared/services/firebase.js';
 import {
   ASSET_TYPES,
   ASSET_CATEGORIES,
@@ -720,6 +721,35 @@ class AssetsServiceV2 {
    * first. Used by the detail modal to show optimization status / job history.
    * @returns {Promise<Array>}
    */
+  /**
+   * Ask the backend for a Needle Cloud progressive-streaming variant of a GLB
+   * (#1990): owner-only, manual. Resolves { jobId, existing } — `existing`
+   * when a job for this asset was already in flight. Throws the callable's
+   * HttpsError (details.reason: not_mesh | deleted | no_source | private).
+   */
+  async requestProgressiveVariant(assetId) {
+    const callable = httpsCallable(functions, 'requestProgressiveGlb');
+    const { data } = await callable({ assetId });
+    return data;
+  }
+
+  /**
+   * Live view of one processing job. `onChange(job|null)` fires on every
+   * change (null once the doc is gone). Returns the unsubscribe function.
+   */
+  watchAssetJob(userId, jobId, onChange, onError) {
+    const jobRef = doc(db, 'users', userId, 'generationJobs', jobId);
+    return onSnapshot(
+      jobRef,
+      (snap) =>
+        onChange(snap.exists() ? { id: snap.id, ...snap.data() } : null),
+      (err) => {
+        console.warn('[assetsService] job listener error:', err);
+        onError?.(err);
+      }
+    );
+  }
+
   async getAssetJobs(assetId, userId) {
     const jobsRef = collection(db, 'users', userId, 'generationJobs');
     const snap = await getDocs(query(jobsRef, where('assetId', '==', assetId)));

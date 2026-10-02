@@ -64,6 +64,25 @@ describe('getOptimizationDisplay', () => {
     expect(result.skipReason).toBe('Optimization skipped');
   });
 
+  it('flags a Needle progressive variant as streaming (#1990)', () => {
+    const streaming = {
+      size: 76_000_000,
+      optimizedSourceUrl: 'https://cloud.needle.tools/-/assets/x-world/file',
+      optimizedSourceSize: 3_700_000,
+      optimizationMetadata: { format: 'needle-progressive' }
+    };
+    expect(getOptimizationDisplay(streaming)).toEqual({
+      origSize: 76_000_000,
+      streaming: true,
+      optSize: 3_700_000,
+      savePct: 95
+    });
+    // No size yet (HEAD failed): still streaming, no savings claim.
+    expect(
+      getOptimizationDisplay({ ...streaming, optimizedSourceSize: undefined })
+    ).toEqual({ origSize: 76_000_000, streaming: true });
+  });
+
   it('returns optSize and savePct when optimization succeeded', () => {
     const result = getOptimizationDisplay({
       size: 10_000_000,
