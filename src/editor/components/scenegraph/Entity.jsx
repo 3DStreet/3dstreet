@@ -33,8 +33,8 @@ function dropPositionAt(entity, fraction) {
   return fraction <= 0.5 ? 'before' : 'after';
 }
 
-// Same drop, drawn by the same row the same way: a drag over one band
-// re-renders nothing.
+// Same drop, found by the same row and drawn at the same place: a drag over
+// one band re-renders nothing.
 function sameInsertion(a, b) {
   return (
     !!a &&
@@ -74,9 +74,11 @@ class Entity extends React.Component {
     setDraggedEntity: PropTypes.func,
     hoveredDropTarget: PropTypes.object,
     setHoveredDropTarget: PropTypes.func,
-    // The drop the pointer means: `ref` and `position` say where it lands;
-    // `host` (the row or the strip drawing the line) and `edge` say where it
-    // is drawn, with `insideGroup` and `indentPx` for a line inside a group.
+    // The drop the pointer means: `ref` and `position` say where it lands.
+    // The list draws its line, from `gapY` (the y in the list of the gap the
+    // drop is in) and, for a line inside a group, `indentPx`. `host` is the
+    // row or the strip whose dragover found the drop, and `edge` the edge of
+    // that row the gap is on; both only decide `gapY`.
     insertionInfo: PropTypes.object,
     setInsertionInfo: PropTypes.func,
     // The listed rows ({entity, depth}) just above and below this one, whose

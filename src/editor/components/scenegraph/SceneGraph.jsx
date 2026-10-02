@@ -404,7 +404,7 @@ class SceneGraph extends React.Component {
     ) {
       this.setState({
         hoveredDropTarget: null,
-        insertionInfo: { ...insertion, host: DROP_STRIP, edge: 'top', gapY }
+        insertionInfo: { ...insertion, host: DROP_STRIP, gapY }
       });
     }
   };
@@ -770,12 +770,11 @@ class SceneGraph extends React.Component {
   // The line of the drop the pointer means between two rows, drawn by the
   // list so that a gap has one line wherever in it the pointer is.
   renderDropLine = () => {
-    const { insertionInfo: insertion, hoveredDropTarget } = this.state;
+    const insertion = this.state.insertionInfo;
     if (insertion?.gapY == null) return null;
     if (
       insertion.host !== DROP_STRIP &&
-      (hoveredDropTarget !== insertion.host ||
-        !this.isDropLegal(insertion, this.state.draggedEntity))
+      !this.isDropLegal(insertion, this.state.draggedEntity)
     ) {
       return null;
     }
