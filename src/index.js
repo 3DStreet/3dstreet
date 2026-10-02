@@ -74,6 +74,8 @@ require('./aframe-components/geojson.js');
 require('./aframe-components/asset-fallback-system.js');
 require('./aframe-components/asset-load-status.js');
 require('./aframe-components/model-placeholder.js');
+// Plugins (docs/plugins.md): every src/plugins/<id>/ folder, before the editor.
+require('./plugins/index.js');
 require('./editor/index.jsx');
 var firebase = require('./shared/services/firebase.js');
 

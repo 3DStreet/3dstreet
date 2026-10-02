@@ -25,6 +25,7 @@ import { commandsByType } from './index.js';
 import { nonCommandTools } from './nonCommandTools.js';
 import { TRANSFORM_REFUSED } from '../transformGuard.js';
 import { getEditableEntity } from './llmToolGuards.js';
+import { getPluginTools } from '../../../plugins/api.js';
 
 // class → command type string. Built once from commandsByType.
 const commandTypeByClass = new Map();
@@ -73,7 +74,16 @@ for (const tool of nonCommandTools) {
  * `tools/list` response.
  */
 export function getToolDefinitions() {
-  return Array.from(toolEntries.values()).map((entry) => entry.definition);
+  return [
+    ...Array.from(toolEntries.values()).map((entry) => entry.definition),
+    ...getPluginTools()
+      .filter((tool) => !toolEntries.has(tool.name))
+      .map(({ name, description, inputSchema }) => ({
+        name,
+        description,
+        inputSchema
+      }))
+  ];
 }
 
 /**
@@ -108,7 +118,13 @@ function resolveIdRefs(args, { allowRoot = false } = {}) {
  */
 export async function dispatchToolCall(toolName, args, currentUser) {
   const entry = toolEntries.get(toolName);
-  if (!entry) throw new Error(`Unknown tool: ${toolName}`);
+  if (!entry) {
+    // Tools from enabled plugins (docs/plugins.md) are looked up per call:
+    // plugin flags can change between calls, and core names always win.
+    const pluginTool = getPluginTools().find((t) => t.name === toolName);
+    if (pluginTool) return await pluginTool.handler(args || {}, currentUser);
+    throw new Error(`Unknown tool: ${toolName}`);
+  }
 
   if (entry.source === 'handler') {
     return await entry.handler(args || {}, currentUser);

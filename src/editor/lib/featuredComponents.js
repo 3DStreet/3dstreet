@@ -10,6 +10,8 @@
 // See docs/host-generator-pattern.md for the host-primitive + generator pattern
 // that this enables (Grass Box + street-generated-grass is the first example).
 
+import { getPluginFeaturedComponent } from '../../plugins/api.js';
+
 // Generator components follow the managed-children pattern (street-generated-*).
 export const GENERATOR_COMPONENT_PREFIXES = ['street-generated-'];
 
@@ -35,6 +37,7 @@ export const FEATURED_COMPONENT_NAMES = [
 export function isFeaturedComponent(name) {
   return (
     FEATURED_COMPONENT_NAMES.includes(name) ||
+    !!getPluginFeaturedComponent(name) ||
     GENERATOR_COMPONENT_PREFIXES.some((prefix) => name.startsWith(prefix))
   );
 }

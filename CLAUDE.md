@@ -170,6 +170,18 @@ metadata belongs in Firestore. Transient `blob:` placeholders must not be serial
 planning, changing or reviewing uploads, asset persistence, quotas, deletion
 or asset security rules**, including anonymous scene loading.
 
+## Plugins
+
+Self-contained features in `src/plugins/<id>/` (manifest, component,
+fixture), auto-loaded at startup and reaching core only through
+`src/plugins/api.js` (lint-enforced). Components always register; Add Layer
+cards, AI/WebMCP tools and panel sections only show for `stable` plugins or
+ones enabled with `?plugins=<id>`. Every plugin must pass the contract test
+`test/components/plugins.test.js` (fixture renders offline, save/reload
+round-trips). Reference plugin: `tree-inventory`. **Read
+[docs/plugins.md](docs/plugins.md) and `src/plugins/CLAUDE.md` before
+planning, changing or reviewing a plugin or the plugin API.**
+
 ## Generator
 
 Vanilla JS with React islands; generation jobs and results persist server-side.

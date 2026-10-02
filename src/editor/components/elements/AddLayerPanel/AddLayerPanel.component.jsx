@@ -26,6 +26,7 @@ import Events from '../../../lib/Events.js';
 import useStore from '@/store.js';
 import { getGroupedMixinOptions } from '../../../lib/mixinUtils';
 import { getEmptyDragImage } from '@shared/utils/dragImage.js';
+import { getPluginLayerCards } from '@/plugins/api.js';
 
 const ASSET_CARD_MIME = 'application/x-3dstreet-asset';
 
@@ -470,7 +471,8 @@ const AddLayerPanel = () => {
   const selectedCards = useMemo(() => {
     switch (selectedOption) {
       case 'Custom Layers':
-        return customLayersData;
+        // Cards from enabled plugins (docs/plugins.md) follow the built-ins.
+        return [...customLayersData, ...getPluginLayerCards()];
       case 'Shapes':
         return shapeLayersData;
       case 'Streets and Intersections':

@@ -1,0 +1,38 @@
+[
+  {
+    "objectid": "4954200",
+    "genusspecies": "Platanus x acerifolia - London planetree",
+    "dbh": "26",
+    "location": {
+      "type": "Point",
+      "coordinates": [-74.00640438607087, 40.713348211705]
+    }
+  },
+  {
+    "objectid": "4954201",
+    "genusspecies": "Platanus x acerifolia - London planetree",
+    "dbh": "30",
+    "location": {
+      "type": "Point",
+      "coordinates": [-74.00626660508134, 40.713271380259165]
+    }
+  },
+  {
+    "objectid": "4954199",
+    "genusspecies": "Platanus x acerifolia - London planetree",
+    "dbh": "30",
+    "location": {
+      "type": "Point",
+      "coordinates": [-74.00619929631405, 40.71340361851002]
+    }
+  },
+  {
+    "objectid": "5095753",
+    "genusspecies": "Crataegus - Hawthorn",
+    "dbh": "13",
+    "location": {
+      "type": "Point",
+      "coordinates": [-74.00647073156584, 40.71318349713927]
+    }
+  }
+]

@@ -48,5 +48,25 @@ export default [
       'react/self-closing-comp': 'off',
       'react-hooks/set-state-in-effect': 'off'
     }
+  },
+
+  // Plugins (docs/plugins.md) reach core only through src/plugins/api.js, so
+  // core can change underneath them without breaking them silently.
+  {
+    files: ['src/plugins/*/**/*.{js,jsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['../../**', '@/**', '@shared/**'],
+              message:
+                'Plugins import core only via ../api.js (see docs/plugins.md). Add a helper there instead.'
+            }
+          ]
+        }
+      ]
+    }
   }
 ];

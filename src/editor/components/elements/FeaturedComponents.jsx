@@ -10,6 +10,7 @@ import { ViewerStartSectionControls } from './ViewerStartSidebar';
 import { AwesomeIcon } from './AwesomeIcon';
 import { faBullseye, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { getFeaturedComponentNames } from '../../lib/featuredComponents';
+import { getPluginFeaturedComponent } from '@/plugins/api.js';
 
 // Low-level geometry props that are too advanced for the first-class section.
 // They stay reachable under Advanced Components. `segments*` (tessellation) props
@@ -78,6 +79,10 @@ const PROPERTY_RENDERERS = {
 };
 
 function getHiddenProps(name, component) {
+  const pluginFeatured = getPluginFeaturedComponent(name);
+  if (pluginFeatured) {
+    return pluginFeatured.hiddenProps;
+  }
   if (name === 'geometry') {
     return getHiddenGeometryProps(component);
   }

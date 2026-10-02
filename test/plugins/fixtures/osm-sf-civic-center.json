@@ -1,0 +1,55 @@
+{
+  "elements": [
+    {
+      "type": "node",
+      "id": 8717839624,
+      "lat": 37.7798623,
+      "lon": -122.4187743,
+      "tags": {
+        "denotation": "urban",
+        "genus": "Platanus",
+        "leaf_cycle": "deciduous",
+        "leaf_type": "broadleaved",
+        "natural": "tree",
+        "species": "Platanus × acerifolia",
+        "species:en": "London plane"
+      }
+    },
+    {
+      "type": "node",
+      "id": 8717839625,
+      "lat": 37.7798115,
+      "lon": -122.4187561,
+      "tags": {
+        "denotation": "urban",
+        "genus": "Platanus",
+        "leaf_cycle": "deciduous",
+        "leaf_type": "broadleaved",
+        "natural": "tree",
+        "species": "Platanus × acerifolia",
+        "species:en": "London plane"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1000000001,
+      "lat": 37.7793,
+      "lon": -122.4193,
+      "tags": {
+        "natural": "tree",
+        "genus": "Quercus",
+        "circumference": "1.57"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1000000002,
+      "lat": 37.7794,
+      "lon": -122.4192,
+      "tags": {
+        "natural": "tree",
+        "leaf_type": "needleleaved"
+      }
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "tree-inventory",
+  "name": "Tree Inventory",
+  "description": "Place real trees from OpenStreetMap or a city tree database around a location.",
+  "authors": ["3DStreet"],
+  "status": "labs",
+  "components": ["tree-inventory"],
+  "network": [
+    "overpass-api.de",
+    "overpass.kumi.systems",
+    "data.sf.gov",
+    "data.cityofnewyork.us"
+  ]
+}

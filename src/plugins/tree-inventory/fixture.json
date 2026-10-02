@@ -1,0 +1,16 @@
+{
+  "description": "Three San Francisco street trees from a saved cache: must render offline.",
+  "components": {
+    "tree-inventory": {
+      "source": "sf",
+      "latitude": 37.7793,
+      "longitude": -122.4193,
+      "radius": 100,
+      "cache": "{\"key\":\"sf|37.779300|-122.419300|r100|200\",\"trees\":[[\"sf-109549\",37.77889,-122.419832,\"Platanus x hispanica :: Sycamore, London Plane\",10],[\"sf-1\",37.7795,-122.4190,\"Washingtonia robusta :: Mexican Fan Palm\",50],[\"sf-2\",37.7790,-122.4196,\"\",null]]}"
+    }
+  },
+  "expect": {
+    "children": 3,
+    "childMixins": ["sp-tree-small-15ft", "sp-tree-palm-26ft", "tree3"]
+  }
+}
