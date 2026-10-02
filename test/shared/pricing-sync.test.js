@@ -16,7 +16,11 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 import { describe, it, expect } from 'vitest';
-import { PRICING, TOKEN_PACKS } from '@shared/components/UpgradeModal/pricing';
+import {
+  PRICING,
+  TOKEN_PACKS,
+  PRO_PASSES
+} from '@shared/components/UpgradeModal/pricing';
 
 const read = (rel) => readFileSync(path.join(process.cwd(), rel), 'utf8');
 
@@ -82,6 +86,30 @@ describe('one-time token packs stay in sync across deployments (#1374)', () => {
   it('every pack is flat $0.10/token — no volume discount (v1)', () => {
     for (const pack of TOKEN_PACKS) {
       expect(pack.price).toBe(pack.tokens * 0.1);
+    }
+  });
+});
+
+describe('one-time Pro passes stay in sync across deployments (#1922)', () => {
+  const serverPasses = [
+    ...read('public/functions/pro-pass.js').matchAll(
+      /id:\s*'([\w-]+)'[^}]*?days:\s*(\d+)[^}]*?tokens:\s*(\d+)[^}]*?priceUsd:\s*(\d+)/gs
+    )
+  ].map((m) => ({
+    id: m[1],
+    days: Number(m[2]),
+    tokens: Number(m[3]),
+    priceUsd: Number(m[4])
+  }));
+
+  it('client PRO_PASSES matches the server pass config', () => {
+    expect(serverPasses.length).toBe(PRO_PASSES.length);
+    for (const pass of PRO_PASSES) {
+      const server = serverPasses.find((p) => p.id === pass.id);
+      expect(server, `server pass '${pass.id}' missing`).toBeTruthy();
+      expect(server.days).toBe(pass.days);
+      expect(server.tokens).toBe(pass.tokens);
+      expect(server.priceUsd).toBe(pass.price);
     }
   });
 });

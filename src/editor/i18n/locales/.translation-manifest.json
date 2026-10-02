@@ -920,7 +920,9 @@
     "help.shortcut.cycleMoveTools": "Cycle move tools",
     "buildArea.experimentalWarning": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it.",
     "shapeSidebar.sectionTitle": "Shape",
-    "shapeSidebar.styleTitle": "Style"
+    "shapeSidebar.styleTitle": "Style",
+    "profileModal.planProPass": "Plan: Pro until {date}",
+    "rightPanel.planTooltipPass": "3DStreet Pro until {date}"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1843,7 +1845,9 @@
     "help.shortcut.cycleMoveTools": "Cycle move tools",
     "buildArea.experimentalWarning": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it.",
     "shapeSidebar.sectionTitle": "Shape",
-    "shapeSidebar.styleTitle": "Style"
+    "shapeSidebar.styleTitle": "Style",
+    "profileModal.planProPass": "Plan: Pro until {date}",
+    "rightPanel.planTooltipPass": "3DStreet Pro until {date}"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2766,6 +2770,8 @@
     "help.shortcut.cycleMoveTools": "Cycle move tools",
     "buildArea.experimentalWarning": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it.",
     "shapeSidebar.sectionTitle": "Shape",
-    "shapeSidebar.styleTitle": "Style"
+    "shapeSidebar.styleTitle": "Style",
+    "profileModal.planProPass": "Plan: Pro until {date}",
+    "rightPanel.planTooltipPass": "3DStreet Pro until {date}"
   }
 }

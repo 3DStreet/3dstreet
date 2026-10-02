@@ -61,7 +61,7 @@ const ProfileHoverCard = ({
   showDetails = true, // When false, render the trigger with no menu at all.
   onSignIn = null // Called when a signed-out user chooses to sign in.
 }) => {
-  const { currentUser, tokenProfile, setCurrentUser } = useAuthContext();
+  const { currentUser, setCurrentUser } = useAuthContext();
   const t = useSharedMessages();
   const [username, setUsername] = useState(null);
   const [isLoadingUsername, setIsLoadingUsername] = useState(false);
@@ -134,7 +134,10 @@ const ProfileHoverCard = ({
   const userDisplayName =
     currentUser?.displayName || userEmail.split('@')[0] || '';
   const userPhotoURL = currentUser?.photoURL || null;
-  const isPro = tokenProfile?.plan === 'PRO';
+  // Entitlement comes from checkUserProStatus (subscription, team or a
+  // one-time pass, #1922) via the auth context — tokenProfile has no plan.
+  const isPro = !!currentUser?.isPro;
+  const planBadgeLabel = currentUser?.plan === 'MAX' ? 'MAX' : 'PRO';
 
   return (
     <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
@@ -179,7 +182,7 @@ const ProfileHoverCard = ({
 
                 {isPro && (
                   <div className={styles.planBadge}>
-                    <span className={styles.proBadge}>PRO</span>
+                    <span className={styles.proBadge}>{planBadgeLabel}</span>
                   </div>
                 )}
               </div>

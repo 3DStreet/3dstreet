@@ -930,6 +930,220 @@ Merci d'utiliser 3DStreet !`,
   { ctaUrl: tokenExhaustionCta('ai_zero') }
 );
 
+// ---------------------------------------------------------------------------
+// Project Pass (#1922) — sent when a pass code is redeemed (pass-codes.js).
+// Transactional: it's the receipt for something the recipient just claimed,
+// and it doubles as the "where do I sign in" reminder. `data`:
+//   { fromName?, days, tokens, proUntilMs }
+// fromName is the optional display name the buyer chose when the code was
+// minted (e.g. "Prof. Smith, WSU"); without it the email doesn't say who.
+// Every field is optional so the template still renders sensibly (the
+// template test suite renders it with unrelated data).
+// ---------------------------------------------------------------------------
+
+const escapeHtml = (value) =>
+  String(value).replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+  );
+
+const passFacts = (data = {}) => {
+  const days = Number.isFinite(data.days) && data.days > 0 ? data.days : 90;
+  const tokens = Number.isFinite(data.tokens) && data.tokens >= 0 ? data.tokens : 300;
+  const fromName =
+    typeof data.fromName === 'string' && data.fromName.trim() ? data.fromName.trim() : '';
+  return {
+    days,
+    tokens,
+    months: days % 30 === 0 ? days / 30 : null,
+    fromText: fromName,
+    fromHtml: fromName ? escapeHtml(fromName) : '',
+    untilMs: Number.isFinite(data.proUntilMs) ? data.proUntilMs : null
+  };
+};
+
+const passDate = (ms, locale) => {
+  if (ms === null) return '';
+  try {
+    return new Intl.DateTimeFormat(locale, { dateStyle: 'long', timeZone: 'UTC' }).format(
+      new Date(ms)
+    );
+  } catch {
+    return new Date(ms).toISOString().slice(0, 10);
+  }
+};
+
+// Per-locale phrasing for the pass duration and end date.
+const PASS_PHRASES = {
+  en: {
+    name: 'Project Pass',
+    full: '3DStreet Project Pass',
+    duration: (f) => (f.months ? `${f.months} months` : `${f.days} days`),
+    until: (f) => (f.untilMs !== null ? `, through ${passDate(f.untilMs, 'en')}` : '')
+  },
+  es: {
+    name: 'Pase de Proyecto',
+    full: 'Pase de Proyecto de 3DStreet',
+    duration: (f) => (f.months ? `${f.months} meses` : `${f.days} días`),
+    until: (f) => (f.untilMs !== null ? `, hasta el ${passDate(f.untilMs, 'es')}` : '')
+  },
+  'pt-BR': {
+    name: 'Passe de Projeto',
+    full: 'Passe de Projeto do 3DStreet',
+    duration: (f) => (f.months ? `${f.months} meses` : `${f.days} dias`),
+    until: (f) => (f.untilMs !== null ? `, até ${passDate(f.untilMs, 'pt-BR')}` : '')
+  },
+  fr: {
+    name: 'Pass Projet',
+    full: 'Pass Projet 3DStreet',
+    duration: (f) => (f.months ? `${f.months} mois` : `${f.days} jours`),
+    until: (f) => (f.untilMs !== null ? `, jusqu'au ${passDate(f.untilMs, 'fr')}` : '')
+  }
+};
+
+const passActivatedCopy = (locale, words) => {
+  const P = PASS_PHRASES[locale];
+  const facts = (data) => passFacts(data);
+  const list = (f) => words.items(f);
+  return {
+    subject: (data) => {
+      const f = facts(data);
+      return f.fromText ? words.subjectFrom(f.fromText, P.name) : words.subject(P.name);
+    },
+    bodyHtml: (data) => {
+      const f = facts(data);
+      const lead = f.fromHtml
+        ? words.leadFrom(`<strong>${f.fromHtml}</strong>`, `<strong>${P.full}</strong>`)
+        : words.lead(`<strong>${P.full}</strong>`);
+      return `  <p>${lead}</p>
+
+  <p>${words.summary(P.duration(f), P.until(f), f.tokens)}</p>
+
+  <ul style="padding-left: 20px;">
+${list(f)
+  .map((item) => `    <li>${item}</li>`)
+  .join('\n')}
+  </ul>
+
+  <p>${words.signIn('<a href="https://3dstreet.app" style="color: #6366f1;">3dstreet.app</a>')}</p>
+
+  <p>${words.after}</p>`;
+    },
+    bodyText: (data) => {
+      const f = facts(data);
+      const lead = f.fromText
+        ? words.leadFrom(f.fromText, P.full)
+        : words.lead(P.full);
+      return `${lead}
+
+${words.summary(P.duration(f), P.until(f), f.tokens)}
+
+${list(f)
+  .map((item) => `- ${item.replace(/&amp;/g, '&')}`)
+  .join('\n')}
+
+${words.signIn('3dstreet.app')}
+
+${words.after}`;
+    },
+    ctaLabel: words.cta,
+    footnote: words.footnote
+  };
+};
+
+const passActivated = defineTemplate(
+  {
+    en: passActivatedCopy('en', {
+      subjectFrom: (from, name) => `${from} sent you a 3DStreet ${name}`,
+      subject: (name) => `Your 3DStreet ${name} is active`,
+      leadFrom: (from, pass) => `${from} sent you a ${pass}, and it's now active on your account.`,
+      lead: (pass) => `Your ${pass} is now active on your account.`,
+      summary: (duration, until, tokens) =>
+        `That's ${duration} of 3DStreet Pro${until}, plus ${tokens} AI generation tokens. Here's what's included:`,
+      items: (f) => [
+        'Watermark-free snapshots and HD renders',
+        'Unlimited geospatial maps &amp; location changes',
+        `${f.tokens} AI generation tokens for images, video and 3D`,
+        '3D model glTF export',
+        'More storage for uploading your own 3D models, scans and images'
+      ],
+      signIn: (site) => `To get back in anytime, sign in at ${site} with this email address.`,
+      after:
+        'When the pass ends, your account returns to the free plan. Your scenes and files stay, and so do any unused tokens. Nothing renews and you will not be charged.',
+      cta: 'Open 3DStreet',
+      footnote:
+        'You received this email because you redeemed a Project Pass code on 3DStreet. Questions? Just reply to this email.'
+    }),
+    es: passActivatedCopy('es', {
+      subjectFrom: (from, name) => `${from} te envió un ${name} de 3DStreet`,
+      subject: (name) => `Tu ${name} de 3DStreet está activo`,
+      leadFrom: (from, pass) => `${from} te envió un ${pass} y ya está activo en tu cuenta.`,
+      lead: (pass) => `Tu ${pass} ya está activo en tu cuenta.`,
+      summary: (duration, until, tokens) =>
+        `Son ${duration} de 3DStreet Pro${until}, más ${tokens} tokens de generación con IA. Esto es lo que incluye:`,
+      items: (f) => [
+        'Capturas y renders en HD sin marca de agua',
+        'Mapas geoespaciales y cambios de ubicación ilimitados',
+        `${f.tokens} tokens de generación con IA para imágenes, video y 3D`,
+        'Exportación de modelos 3D en glTF',
+        'Más almacenamiento para subir tus propios modelos 3D, escaneos e imágenes'
+      ],
+      signIn: (site) =>
+        `Para volver a entrar cuando quieras, inicia sesión en ${site} con esta dirección de correo.`,
+      after:
+        'Cuando termine el pase, tu cuenta volverá al plan gratuito. Tus escenas y archivos se conservan, igual que los tokens que no hayas usado. No hay renovación ni se te cobrará nada.',
+      cta: 'Abrir 3DStreet',
+      footnote:
+        'Recibes este correo porque canjeaste un código de Pase de Proyecto en 3DStreet. ¿Tienes preguntas? Simplemente responde a este correo.'
+    }),
+    'pt-BR': passActivatedCopy('pt-BR', {
+      subjectFrom: (from, name) => `${from} enviou para você um ${name} do 3DStreet`,
+      subject: (name) => `Seu ${name} do 3DStreet está ativo`,
+      leadFrom: (from, pass) => `${from} enviou para você um ${pass}, e ele já está ativo na sua conta.`,
+      lead: (pass) => `Seu ${pass} já está ativo na sua conta.`,
+      summary: (duration, until, tokens) =>
+        `São ${duration} de 3DStreet Pro${until}, mais ${tokens} tokens de geração com IA. Veja o que está incluído:`,
+      items: (f) => [
+        "Capturas e renderizações em HD sem marca d'água",
+        'Mapas geoespaciais e trocas de localização ilimitados',
+        `${f.tokens} tokens de geração com IA para imagens, vídeo e 3D`,
+        'Exportação de modelos 3D em glTF',
+        'Mais armazenamento para enviar seus próprios modelos 3D, escaneamentos e imagens'
+      ],
+      signIn: (site) =>
+        `Para voltar quando quiser, entre em ${site} com este endereço de e-mail.`,
+      after:
+        'Quando o passe terminar, sua conta volta ao plano gratuito. Suas cenas e arquivos continuam salvos, assim como os tokens que você não usou. Nada é renovado e você não será cobrado.',
+      cta: 'Abrir o 3DStreet',
+      footnote:
+        'Você recebeu este e-mail porque resgatou um código de Passe de Projeto no 3DStreet. Dúvidas? É só responder a este e-mail.'
+    }),
+    fr: passActivatedCopy('fr', {
+      subjectFrom: (from, name) => `${from} vous a envoyé un ${name} 3DStreet`,
+      subject: (name) => `Votre ${name} 3DStreet est actif`,
+      leadFrom: (from, pass) => `${from} vous a envoyé un ${pass}, et il est désormais actif sur votre compte.`,
+      lead: (pass) => `Votre ${pass} est désormais actif sur votre compte.`,
+      summary: (duration, until, tokens) =>
+        `Cela représente ${duration} de 3DStreet Pro${until}, plus ${tokens} jetons de génération IA. Voici ce qui est inclus :`,
+      items: (f) => [
+        'Captures et rendus HD sans filigrane',
+        'Cartes géospatiales et changements de lieu illimités',
+        `${f.tokens} jetons de génération IA pour les images, la vidéo et la 3D`,
+        'Export de modèles 3D au format glTF',
+        "Plus d'espace de stockage pour importer vos propres modèles 3D, scans et images"
+      ],
+      signIn: (site) =>
+        `Pour revenir à tout moment, connectez-vous sur ${site} avec cette adresse e-mail.`,
+      after:
+        "À la fin du pass, votre compte repasse au forfait gratuit. Vos scènes et fichiers sont conservés, tout comme les jetons non utilisés. Rien n'est renouvelé et rien ne vous sera facturé.",
+      cta: 'Ouvrir 3DStreet',
+      footnote:
+        'Vous recevez cet e-mail parce que vous avez utilisé un code Pass Projet sur 3DStreet. Des questions ? Répondez simplement à cet e-mail.'
+    })
+  },
+  { ctaUrl: (content) => `${APP_BASE}/?${utm('pass_activated', content)}` }
+);
+
 module.exports = {
   welcome,
   postUpgradeWelcome,
@@ -940,6 +1154,7 @@ module.exports = {
   geoNotUsed,
   geoTokenExhaustion,
   genTokenExhaustion,
+  passActivated,
   // Exported for unit tests only (per-key fallback + lang normalization); not
   // a lifecycle template, so callers that enumerate templates must skip it.
   defineTemplate

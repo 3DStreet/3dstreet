@@ -213,4 +213,54 @@ describe('lifecycle email templates (localization)', function () {
         .includes('AI tokens')
     );
   });
+
+  describe('passActivated (Project Pass redemption)', function () {
+    const DATA_PASS = {
+      fromName: 'Prof. Smith <WSU>',
+      days: 90,
+      tokens: 300,
+      proUntilMs: Date.UTC(2027, 0, 1)
+    };
+
+    it('names the giver, escaping it in HTML', function () {
+      const t = TEMPLATES.passActivated;
+      assert.strictEqual(
+        t.getSubject('Ana', DATA_PASS, 'en'),
+        'Prof. Smith <WSU> sent you a 3DStreet Project Pass'
+      );
+      const html = t.getHtmlBody('Ana', DATA_PASS, 'en');
+      assert.ok(html.includes('<strong>Prof. Smith &lt;WSU&gt;</strong>'));
+      assert.ok(!html.includes('<WSU>'));
+      assert.ok(
+        t
+          .getTextBody('Ana', DATA_PASS, 'en')
+          .includes('Prof. Smith <WSU> sent you')
+      );
+    });
+
+    it('states the duration, end date, tokens and sign-in reminder', function () {
+      const text = TEMPLATES.passActivated.getTextBody('Ana', DATA_PASS, 'en');
+      assert.ok(
+        text.includes('3 months of 3DStreet Pro, through January 1, 2027')
+      );
+      assert.ok(text.includes('plus 300 AI generation tokens'));
+      assert.ok(
+        text.includes('sign in at 3dstreet.app with this email address')
+      );
+      const es = TEMPLATES.passActivated.getTextBody('Ana', DATA_PASS, 'es');
+      assert.ok(
+        es.includes('3 meses de 3DStreet Pro, hasta el 1 de enero de 2027')
+      );
+    });
+
+    it('omits the giver when there is no fromName', function () {
+      const data = { ...DATA_PASS, fromName: null };
+      for (const locale of EMAIL_LOCALES) {
+        const subject = TEMPLATES.passActivated.getSubject('Ana', data, locale);
+        const text = TEMPLATES.passActivated.getTextBody('Ana', data, locale);
+        assert.ok(!subject.includes('WSU') && !text.includes('WSU'), locale);
+        assert.ok(!/null|undefined/.test(subject + text), locale);
+      }
+    });
+  });
 });
