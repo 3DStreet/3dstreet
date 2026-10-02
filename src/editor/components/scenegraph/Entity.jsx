@@ -14,32 +14,12 @@ import { LEVEL_INDENT_PX } from './dropLevels.js';
 import {
   faCaretDown,
   faCaretRight,
-  faChevronRight,
   faEye,
   faEyeSlash,
   faGripVertical
 } from '@fortawesome/free-solid-svg-icons';
 
 export { isContainer };
-
-// The line of a drop that lands in a group: from the level's indent, with a
-// chevron for "inside". Absolutely placed on the host's top or bottom edge,
-// so showing it moves nothing.
-export function DropLine({ edge, indentPx }) {
-  return (
-    <span
-      className={`drop-line at-${edge}`}
-      style={{ left: `${indentPx}px` }}
-      aria-hidden="true"
-    >
-      <AwesomeIcon icon={faChevronRight} size={8} />
-    </span>
-  );
-}
-DropLine.propTypes = {
-  edge: PropTypes.oneOf(['top', 'bottom']),
-  indentPx: PropTypes.number
-};
 
 // Where a drop at `fraction` of a row's height (0 = top) would put the dragged
 // row. A group row has a middle band that drops into the group; every other row
@@ -63,7 +43,8 @@ function sameInsertion(a, b) {
     a.edge === b.edge &&
     a.ref === b.ref &&
     a.position === b.position &&
-    a.level === b.level
+    a.level === b.level &&
+    a.gapY === b.gapY
   );
 }
 
@@ -211,7 +192,20 @@ class Entity extends React.Component {
 
     const rect = e.currentTarget.getBoundingClientRect();
     const zone = dropPositionAt(entity, (e.clientY - rect.top) / rect.height);
-    const insertion = this.insertionAt(zone, e.clientX, rect.left);
+    const found = this.insertionAt(zone, e.clientX, rect.left);
+    // A drop between rows is placed by its gap's y in the list. Rows sit
+    // flush, so this row's bottom is the next row's top: both sides of a gap
+    // give the same line.
+    const row = e.currentTarget;
+    const insertion = found?.edge
+      ? {
+          ...found,
+          gapY:
+            found.edge === 'top'
+              ? row.offsetTop
+              : row.offsetTop + row.offsetHeight
+        }
+      : found;
 
     // An illegal zone is not advertised: no preventDefault, so the browser
     // shows the no-drop cursor, and no insertion line.
@@ -273,13 +267,6 @@ class Entity extends React.Component {
       !!insertion &&
       this.props.hoveredDropTarget === entity &&
       this.props.isDropLegal(insertion, this.props.draggedEntity);
-    const dropEdge = isHoveredDropTarget ? insertion.edge : null;
-    // A drop into a group draws its own line from the level's indent; any
-    // other drop is drawn by the row's border.
-    const dropLine =
-      isHoveredDropTarget && insertion.insideGroup ? (
-        <DropLine edge={insertion.edge} indentPx={insertion.indentPx} />
-      ) : null;
 
     // Check if entity can be dragged. Suspended while the row's label is in
     // inline-rename mode so drag-start can't swallow text selection there.
@@ -412,10 +399,8 @@ class Entity extends React.Component {
       option: true,
       // Drag and drop classes
       dragging: isDragging,
-      'drop-before': dropEdge === 'top',
-      'drop-after': dropEdge === 'bottom',
-      'drop-child': isHoveredDropTarget && insertion.position === 'child',
-      'drop-level': !!dropLine
+      // A drop between rows is drawn by the list, not the row.
+      'drop-child': isHoveredDropTarget && insertion.position === 'child'
     });
 
     return (
@@ -441,7 +426,6 @@ class Entity extends React.Component {
           {this.props.isMoving && (
             <span className="entityLoadSheen is-pending" aria-hidden="true" />
           )}
-          {dropLine}
           <span>
             <span
               style={{

@@ -5,8 +5,10 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import { FormattedMessage, defineMessages, injectIntl } from 'react-intl';
 import Events from '../../lib/Events';
-import Entity, { DropLine, isContainer } from './Entity';
+import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
+import { faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { Plus20Circle } from '@shared/icons';
 import {
   createUniqueId,
@@ -50,8 +52,32 @@ const messages = defineMessages({
   }
 });
 
-// `insertionInfo.host` of a drop drawn by the strip after the last row.
+// `insertionInfo.host` of a drop over the strip after the last row.
 const DROP_STRIP = 'drop-strip';
+
+// A drop line between rows: 2 px centred on the boundary at `gapY` (kept
+// inside the list at its top edge), placed absolutely so showing it moves
+// nothing. A drop that lands in a group starts at that level's indent, with a
+// chevron for "inside"; any other runs the full width.
+function DropLine({ gapY, indentPx }) {
+  const atLevel = indentPx != null;
+  return (
+    <span
+      className={classNames('drop-line', { 'at-level': atLevel })}
+      style={{
+        top: `${Math.max(0, gapY - 1)}px`,
+        left: `${atLevel ? indentPx : 0}px`
+      }}
+      aria-hidden="true"
+    >
+      {atLevel && <AwesomeIcon icon={faChevronRight} size={8} />}
+    </span>
+  );
+}
+DropLine.propTypes = {
+  gapY: PropTypes.number,
+  indentPx: PropTypes.number
+};
 
 // The move command and the layer's own undo look parents up by id.
 function ensureId(el) {
@@ -313,7 +339,7 @@ class SceneGraph extends React.Component {
    * Undefined where no group level is involved, so the host's own zone
    * decides as it always has.
    */
-  resolveGroupGap = (above, below, clientX, hostLeft, { strip } = {}) => {
+  resolveGroupGap = (above, below, clientX, hostLeft) => {
     const levels = groupGapLevels(above, below);
     if (!levels) return undefined;
     const dragged = this.state.draggedEntity;
@@ -330,7 +356,7 @@ class SceneGraph extends React.Component {
       position: chosen.position,
       level: chosen.level,
       insideGroup,
-      indentPx: insideGroup ? lineIndentPx(chosen.level, { strip }) : null
+      indentPx: insideGroup ? lineIndentPx(chosen.level) : null
     };
   };
 
@@ -349,8 +375,7 @@ class SceneGraph extends React.Component {
       this.lastListedRow(),
       null,
       e.clientX,
-      e.currentTarget.getBoundingClientRect().left,
-      { strip: true }
+      e.currentTarget.getBoundingClientRect().left
     );
     const insertion =
       groupDrop === undefined
@@ -368,16 +393,18 @@ class SceneGraph extends React.Component {
     }
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
+    const gapY = e.currentTarget.offsetTop;
     const current = this.state.insertionInfo;
     if (
       current?.host !== DROP_STRIP ||
       current.ref !== insertion.ref ||
       current.position !== insertion.position ||
-      current.level !== insertion.level
+      current.level !== insertion.level ||
+      current.gapY !== gapY
     ) {
       this.setState({
         hoveredDropTarget: null,
-        insertionInfo: { ...insertion, host: DROP_STRIP, edge: 'top' }
+        insertionInfo: { ...insertion, host: DROP_STRIP, edge: 'top', gapY }
       });
     }
   };
@@ -731,26 +758,28 @@ class SceneGraph extends React.Component {
 
   // The strip after the last row: the gap below it, at the top level or, when
   // the last row is inside groups, at any of their levels.
-  renderDropStrip = () => {
-    const insertion =
-      this.state.insertionInfo?.host === DROP_STRIP
-        ? this.state.insertionInfo
-        : null;
-    return (
-      <div
-        className={classNames('layers-drop-end', {
-          'drop-after': !!insertion,
-          'drop-level': !!insertion?.insideGroup
-        })}
-        onDragOver={this.onDragOverEnd}
-        onDragLeave={this.onDragLeaveEnd}
-        onDrop={this.onDropEnd}
-      >
-        {insertion?.insideGroup && (
-          <DropLine edge="top" indentPx={insertion.indentPx} />
-        )}
-      </div>
-    );
+  renderDropStrip = () => (
+    <div
+      className="layers-drop-end"
+      onDragOver={this.onDragOverEnd}
+      onDragLeave={this.onDragLeaveEnd}
+      onDrop={this.onDropEnd}
+    />
+  );
+
+  // The line of the drop the pointer means between two rows, drawn by the
+  // list so that a gap has one line wherever in it the pointer is.
+  renderDropLine = () => {
+    const { insertionInfo: insertion, hoveredDropTarget } = this.state;
+    if (insertion?.gapY == null) return null;
+    if (
+      insertion.host !== DROP_STRIP &&
+      (hoveredDropTarget !== insertion.host ||
+        !this.isDropLegal(insertion, this.state.draggedEntity))
+    ) {
+      return null;
+    }
+    return <DropLine gapY={insertion.gapY} indentPx={insertion.indentPx} />;
   };
 
   render() {
@@ -878,9 +907,10 @@ class SceneGraph extends React.Component {
                       </button>
                     </div>
                   ) : (
-                    <div>
+                    <div className="layers-list">
                       {this.renderEntities()}
                       {this.renderDropStrip()}
+                      {this.renderDropLine()}
                     </div>
                   )}
                 </div>

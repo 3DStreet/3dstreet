@@ -10,7 +10,6 @@ export const LEVEL_INDENT_PX = 30;
 // From a row's border-box left edge to its depth-1 content: the 2 px border
 // plus the 4 px left padding of `.entity.option`.
 const ROW_CONTENT_INSET_PX = 6;
-const ROW_LEFT_BORDER_PX = 2;
 
 /** The level whose horizontal band `clientX` is in (1 = top level). */
 export function levelAtX(clientX, hostLeft) {
@@ -21,16 +20,11 @@ export function levelAtX(clientX, hostLeft) {
 }
 
 /**
- * Left offset of the drop line for `level`, measured from the host's padding
- * edge (absolute positioning). A row has a 2 px left border inside which the
- * line is placed, so its content starts 4 px in; the strip after the last
- * row has no border, so its content starts 6 px in.
+ * Left offset of the drop line for `level` from the list's left edge, which
+ * is every row's border-box left edge: the level's content indent.
  */
-export function lineIndentPx(level, { strip = false } = {}) {
-  const inset = strip
-    ? ROW_CONTENT_INSET_PX
-    : ROW_CONTENT_INSET_PX - ROW_LEFT_BORDER_PX;
-  return inset + LEVEL_INDENT_PX * (level - 1);
+export function lineIndentPx(level) {
+  return ROW_CONTENT_INSET_PX + LEVEL_INDENT_PX * (level - 1);
 }
 
 function ancestorAtDepth(row, depth) {

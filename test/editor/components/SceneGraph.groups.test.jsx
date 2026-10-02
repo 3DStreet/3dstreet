@@ -142,8 +142,21 @@ async function settle() {
   await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 }
 
+// jsdom lays nothing out: give a row, or the strip after the last row, the
+// place it has in the list (rows 40 px tall, flush, in document order).
+function placeInList(el) {
+  const hosts = [...document.querySelectorAll('.entity, .layers-drop-end')];
+  const top = hosts.indexOf(el) * ROW_HEIGHT;
+  Object.defineProperty(el, 'offsetTop', { configurable: true, value: top });
+  Object.defineProperty(el, 'offsetHeight', {
+    configurable: true,
+    value: ROW_HEIGHT
+  });
+  return el;
+}
+
 function row(name) {
-  const el = screen.getByText(name).closest('.entity');
+  const el = placeInList(screen.getByText(name).closest('.entity'));
   el.getBoundingClientRect = () => ({
     top: 0,
     bottom: ROW_HEIGHT,
@@ -222,21 +235,25 @@ async function dropAndUndo(target) {
   return { parentEl: move.parentEl, indexInParent: move.indexInParent };
 }
 
-// The group-level drop line a row or the strip shows, if any.
-function dropLine(host) {
-  const line = host.querySelector(':scope > .drop-line');
+// The drop line the list shows between rows, if any: its top, its indent and
+// whether it has the "inside" chevron. There is never more than one.
+function dropLine() {
+  const lines = document.querySelectorAll('.drop-line');
+  expect(lines.length).toBeLessThanOrEqual(1);
+  const line = lines[0];
   return (
     line && {
+      top: line.style.top,
       left: line.style.left,
       chevron: !!line.querySelector('svg.fa-chevron-right')
     }
   );
 }
 
-const hostClasses = (host) =>
-  ['drop-before', 'drop-after', 'drop-child', 'drop-level'].filter((c) =>
-    host.classList.contains(c)
-  );
+// The line's top for the gap above or below a placed row: 2 px straddling
+// the boundary, kept inside the list above the first row.
+const lineAbove = (el) => `${Math.max(0, el.offsetTop - 1)}px`;
+const lineBelow = (el) => `${el.offsetTop + el.offsetHeight - 1}px`;
 
 describe('layer panel drop zones', () => {
   it('drops a model into a group through the group row middle band, and offers no middle band for a street segment', async () => {
@@ -335,9 +352,9 @@ describe('layer panel drop zones', () => {
 
     startDrag('Alpha');
     expect(dragOver(row('Bravo'), 0.4)).toBe(true);
-    expect(row('Bravo').classList.contains('drop-before')).toBe(true);
+    expect(dropLine().top).toBe(lineAbove(row('Bravo')));
     expect(dragOver(row('Bravo'), 0.6)).toBe(true);
-    expect(row('Bravo').classList.contains('drop-after')).toBe(true);
+    expect(dropLine().top).toBe(lineBelow(row('Bravo')));
     drop(row('Bravo'));
 
     expect(reparents()).toEqual([
@@ -360,8 +377,11 @@ describe('layer panel drop zones', () => {
       for (const x of [0, atLevel(1), atLevel(3), 200]) {
         startDrag('Loose');
         expect(dragOver(row(name), fraction, x)).toBe(true);
-        expect(dropLine(row(name))).toEqual({ left: '34px', chevron: true });
-        expect(row(name).classList.contains('drop-level')).toBe(true);
+        expect(dropLine()).toEqual({
+          top: lineAbove(row('Group B')),
+          left: '36px',
+          chevron: true
+        });
       }
       expect(await dropAndUndo(row(name))).toEqual({
         parentEl: 'a',
@@ -412,7 +432,7 @@ describe('drop levels at a gap where groups end', () => {
     await expand('Group B');
   }
 
-  it("lets the pointer's x choose the end of the inner group, the outer group or the top level, from either row at the gap, drawing a group level's line from its indent in the hovered row (fails if x is ignored, a group level's line is full width, or the two rows disagree)", async () => {
+  it("lets the pointer's x choose the end of the inner group, the outer group or the top level, from either row at the gap, drawing a group level's line from its indent (fails if x is ignored, a group level's line is full width, or the two rows disagree)", async () => {
     await nestedScene();
 
     const expected = {
@@ -420,27 +440,19 @@ describe('drop levels at a gap where groups end', () => {
       2: { parentEl: 'a', indexInParent: 1 },
       1: { parentEl: 'street-container', indexInParent: 2 }
     };
-    for (const [name, fraction, edgeClass] of [
-      ['Bench', 0.85, 'drop-after'],
-      ['Later', 0.15, 'drop-before']
+    for (const [name, fraction] of [
+      ['Bench', 0.85],
+      ['Later', 0.15]
     ]) {
       for (const level of [3, 2, 1]) {
         startDrag('Loose');
         expect(dragOver(row(name), fraction, atLevel(level))).toBe(true);
-        if (level === 1) {
-          // The top level keeps the row's own border line.
-          expect(hostClasses(row(name))).toEqual([edgeClass]);
-          expect(dropLine(row(name))).toBe(null);
-        } else {
-          expect(hostClasses(row(name))).toEqual([edgeClass, 'drop-level']);
-          expect(dropLine(row(name))).toEqual({
-            left: level === 3 ? '64px' : '34px',
-            chevron: true
-          });
-        }
-        // Only the hovered row draws, never the row the drop is relative to.
-        expect(row('Group B').querySelector('.drop-line')).toBe(null);
-        expect(hostClasses(row('Group B'))).toEqual([]);
+        // The top level keeps a full-width line without a chevron.
+        expect(dropLine()).toEqual({
+          top: lineAbove(row('Later')),
+          left: { 3: '66px', 2: '36px', 1: '0px' }[level],
+          chevron: level > 1
+        });
         expect(await dropAndUndo(row(name))).toEqual(expected[level]);
       }
     }
@@ -503,15 +515,18 @@ describe('drop levels at a gap where groups end', () => {
 
     startDrag('Shape');
     expect(dragOver(row('Bench'), 0.85, atLevel(3))).toBe(true);
-    expect(hostClasses(row('Bench'))).toEqual(['drop-after']);
-    expect(dropLine(row('Bench'))).toBe(null);
+    expect(dropLine()).toEqual({
+      top: lineAbove(row('Later')),
+      left: '0px',
+      chevron: false
+    });
     expect(await dropAndUndo(row('Bench'))).toEqual({
       parentEl: 'street-container',
       indexInParent: 2
     });
   });
 
-  it("offers each group level on the strip after the last row when that row is inside groups, drawn from the strip's own indent (fails if the strip offers only the top level, or uses a row's indent)", async () => {
+  it("offers each group level on the strip after the last row when that row is inside groups, drawn from the level's indent (fails if the strip offers only the top level)", async () => {
     makeEntity(root, { id: 'x', name: 'Loose' });
     const a = makeEntity(root, { id: 'a', name: 'Group A', cls: 'user-group' });
     const b = makeEntity(a, { id: 'b', name: 'Group B', cls: 'user-group' });
@@ -520,7 +535,7 @@ describe('drop levels at a gap where groups end', () => {
     await renderPanel();
     await expand('Group A');
     await expand('Group B');
-    const strip = () => document.querySelector('.layers-drop-end');
+    const strip = () => placeInList(document.querySelector('.layers-drop-end'));
 
     const expected = {
       3: { parentEl: 'b', indexInParent: 2 },
@@ -530,17 +545,11 @@ describe('drop levels at a gap where groups end', () => {
     for (const level of [3, 2, 1]) {
       startDrag('Loose');
       expect(dragOver(strip(), 0.5, atLevel(level))).toBe(true);
-      if (level === 1) {
-        expect(strip().classList.contains('drop-after')).toBe(true);
-        expect(strip().classList.contains('drop-level')).toBe(false);
-        expect(dropLine(strip())).toBe(null);
-      } else {
-        expect(strip().classList.contains('drop-level')).toBe(true);
-        expect(dropLine(strip())).toEqual({
-          left: level === 3 ? '66px' : '36px',
-          chevron: true
-        });
-      }
+      expect(dropLine()).toEqual({
+        top: lineAbove(strip()),
+        left: { 3: '66px', 2: '36px', 1: '0px' }[level],
+        chevron: level > 1
+      });
       expect(await dropAndUndo(strip())).toEqual(expected[level]);
     }
   });
@@ -567,15 +576,18 @@ describe('drop levels at a gap where groups end', () => {
     await expand('Group A');
     await expand('Main Street');
 
-    for (const [name, fraction, edgeClass] of [
-      ['Main Street', 0.6, 'drop-after'],
-      ['Lane 1', 0.4, 'drop-before']
+    for (const [name, fraction] of [
+      ['Main Street', 0.6],
+      ['Lane 1', 0.4]
     ]) {
       for (const level of [2, 3]) {
         startDrag('Loose');
         expect(dragOver(row(name), fraction, atLevel(level))).toBe(true);
-        expect(hostClasses(row(name))).toEqual([edgeClass, 'drop-level']);
-        expect(dropLine(row(name))).toEqual({ left: '34px', chevron: true });
+        expect(dropLine()).toEqual({
+          top: lineAbove(row('Lane 1')),
+          left: '36px',
+          chevron: true
+        });
         expect(await dropAndUndo(row(name))).toEqual({
           parentEl: 'a',
           indexInParent: 1
@@ -583,9 +595,12 @@ describe('drop levels at a gap where groups end', () => {
 
         startDrag('Lane 2');
         expect(dragOver(row(name), fraction, atLevel(level))).toBe(true);
-        // A street is not a group: its own border line, full width.
-        expect(hostClasses(row(name))).toEqual([edgeClass]);
-        expect(dropLine(row(name))).toBe(null);
+        // A street is not a group: a full-width line.
+        expect(dropLine()).toEqual({
+          top: lineAbove(row('Lane 1')),
+          left: '0px',
+          chevron: false
+        });
         expect(await dropAndUndo(row(name))).toEqual({
           parentEl: 'st',
           indexInParent: 0
@@ -614,14 +629,15 @@ describe('drop gaps in a scene without groups', () => {
     await renderPanel();
     await expand('Main Street');
 
+    // A full-width line without a chevron.
     const noLevels = () =>
-      expect(document.querySelector('.drop-level, .drop-line')).toBe(null);
+      expect(dropLine()).toMatchObject({ left: '0px', chevron: false });
 
     // (a) The header's lower zone is "after the street"; above the first
     // segment nothing but a segment may go.
     startDrag('Model');
     expect(dragOver(row('Main Street'), 0.6, atLevel(2))).toBe(true);
-    expect(hostClasses(row('Main Street'))).toEqual(['drop-after']);
+    expect(dropLine().top).toBe(lineBelow(row('Main Street')));
     noLevels();
     expect(await dropAndUndo(row('Main Street'))).toEqual({
       parentEl: 'street-container',
@@ -635,7 +651,7 @@ describe('drop gaps in a scene without groups', () => {
     for (const x of [10, 200]) {
       startDrag('Lane 3');
       expect(dragOver(row('Lane 2'), 0.4, x)).toBe(true);
-      expect(hostClasses(row('Lane 2'))).toEqual(['drop-before']);
+      expect(dropLine().top).toBe(lineAbove(row('Lane 2')));
       noLevels();
       expect(await dropAndUndo(row('Lane 2'))).toEqual({
         parentEl: 'st',
@@ -644,13 +660,13 @@ describe('drop gaps in a scene without groups', () => {
     }
 
     // (c) Between top-level models, the row's own midpoint split.
-    for (const [fraction, edgeClass, indexInParent] of [
-      [0.4, 'drop-before', 0],
-      [0.6, 'drop-after', 1]
+    for (const [fraction, lineAt, indexInParent] of [
+      [0.4, lineAbove, 0],
+      [0.6, lineBelow, 1]
     ]) {
       startDrag('Shape');
       expect(dragOver(row('Model'), fraction, atLevel(3))).toBe(true);
-      expect(hostClasses(row('Model'))).toEqual([edgeClass]);
+      expect(dropLine().top).toBe(lineAt(row('Model')));
       noLevels();
       expect(await dropAndUndo(row('Model'))).toEqual({
         parentEl: 'street-container',
@@ -875,5 +891,113 @@ describe('the new-group button', () => {
     const created = open.querySelector(':scope > .user-group');
     expect(created).not.toBe(null);
     expect(root.querySelectorAll(':scope > .user-group')).toHaveLength(1);
+  });
+});
+
+describe('one drop line per gap', () => {
+  const strip = () => placeInList(document.querySelector('.layers-drop-end'));
+
+  // Everything drawn for a drop between rows: each element that shows a
+  // line (a row's border or a line element), who owns it and where it is.
+  function drawn() {
+    return [
+      ...document.querySelectorAll('.drop-before, .drop-after, .drop-line')
+    ].map((el) => {
+      const host = el.closest('.entity, .layers-drop-end');
+      return {
+        owner: host ? host.textContent || host.className : 'list',
+        className: el.className,
+        top: el.style.top,
+        left: el.style.left,
+        chevron: !!el.querySelector('svg.fa-chevron-right')
+      };
+    });
+  }
+
+  // Drags `dragged` over the lower half of the row above a gap, then over
+  // the upper half of the one below it (or the strip), and returns what each
+  // drew.
+  function bothSides(dragged, [above, below], x) {
+    return [
+      [above, 0.85],
+      [below, 0.15]
+    ].map(([target, fraction]) => {
+      startDrag(dragged);
+      expect(dragOver(target(), fraction, x)).toBe(true);
+      const lines = drawn();
+      fireEvent.dragEnd(target());
+      return lines;
+    });
+  }
+
+  const line = (top, level) => [
+    {
+      owner: 'list',
+      className: level > 1 ? 'drop-line at-level' : 'drop-line',
+      top: `${top - 1}px`,
+      left: level > 1 ? `${6 + 30 * (level - 1)}px` : '0px',
+      chevron: level > 1
+    }
+  ];
+
+  it('draws a drop between two sibling rows once, straddling their boundary, from either row (fails if each row draws its own border)', async () => {
+    makeEntity(root, { id: 'a', name: 'Alpha' });
+    makeEntity(root, { id: 'b', name: 'Bravo' });
+    makeEntity(root, { id: 'c', name: 'Charlie' });
+    await renderPanel();
+
+    const [fromAbove, fromBelow] = bothSides('Charlie', [
+      () => row('Alpha'),
+      () => row('Bravo')
+    ]);
+    expect(fromAbove).toEqual(fromBelow);
+    expect(fromBelow).toEqual(line(row('Bravo').offsetTop, 1));
+  });
+
+  async function nestedScene({ later }) {
+    makeEntity(root, { id: 'x', name: 'Loose' });
+    const a = makeEntity(root, { id: 'a', name: 'Group A', cls: 'user-group' });
+    const b = makeEntity(a, { id: 'b', name: 'Group B', cls: 'user-group' });
+    makeEntity(b, { id: 'tree', name: 'Tree' });
+    makeEntity(b, { id: 'bench', name: 'Bench' });
+    if (later) makeEntity(root, { id: 'later', name: 'Later' });
+    await renderPanel();
+    await expand('Group A');
+    await expand('Group B');
+  }
+
+  it("draws each level's line and chevron at one place from either row at a gap where groups end and at a group's first place (fails if the hovered row owns the line, or the line or chevron moves between the rows)", async () => {
+    await nestedScene({ later: true });
+
+    for (const level of [3, 2, 1]) {
+      const [fromAbove, fromBelow] = bothSides(
+        'Loose',
+        [() => row('Bench'), () => row('Later')],
+        atLevel(level)
+      );
+      expect(fromAbove).toEqual(fromBelow);
+      expect(fromBelow).toEqual(line(row('Later').offsetTop, level));
+    }
+
+    const [fromHeader, fromMember] = bothSides('Loose', [
+      () => row('Group A'),
+      () => row('Group B')
+    ]);
+    expect(fromHeader).toEqual(fromMember);
+    expect(fromMember).toEqual(line(row('Group B').offsetTop, 2));
+  });
+
+  it('draws each level at the strip after the last row at one place from the last row or the strip (fails if the strip and the row draw different lines)', async () => {
+    await nestedScene({ later: false });
+
+    for (const level of [3, 2, 1]) {
+      const [fromRow, fromStrip] = bothSides(
+        'Loose',
+        [() => row('Bench'), strip],
+        atLevel(level)
+      );
+      expect(fromRow).toEqual(fromStrip);
+      expect(fromStrip).toEqual(line(strip().offsetTop, level));
+    }
   });
 });
