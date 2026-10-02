@@ -13,7 +13,13 @@
  *   node scripts/mint-pass-codes.js --project=dev-3dstreet \
  *     --uses=10 --org="Example Foundation" --prefix=FOUNDATION \
  *     [--days=90] [--tokens=300] [--redeem-by-days=365] \
- *     [--buyer-email=ops@example.org] [--notes="Invoice 1234"]
+ *     [--from="Prof. Smith, WSU"] [--buyer-email=ops@example.org] \
+ *     [--notes="Invoice 1234"]
+ *
+ *   --org is internal (who paid). --from is what recipients see: "<from> sent
+ *   you a 3DStreet Project Pass" in the invitation text printed below and in
+ *   the confirmation email sent on redemption. Omit --from to stay anonymous.
+ *   Minting prints an invitation text for the buyer to forward.
  *
  *   # status: uses so far (and redeeming uids with --list)
  *   node scripts/mint-pass-codes.js --project=dev-3dstreet --status=FOUNDATION-7KQ2XXXX [--list]
@@ -30,7 +36,9 @@ const os = require('os');
 const { PRO_PASSES } = require('../public/functions/pro-pass.js');
 const {
   generatePassCode,
-  normalizePassCode
+  normalizePassCode,
+  redeemLink,
+  buildInvitationText
 } = require('../public/functions/pass-code-utils.js');
 
 const args = Object.fromEntries(
@@ -70,9 +78,15 @@ async function mint() {
   const days = args.days ? positiveInt(args.days, 'days') : pass.days;
   const tokens = args.tokens !== undefined ? Number(args.tokens) : pass.tokens;
   if (!Number.isInteger(tokens) || tokens < 0) fail('--tokens must be >= 0');
+  const fromName =
+    typeof args.from === 'string' && args.from.trim()
+      ? args.from.trim().slice(0, 80)
+      : null;
   const redeemByDays = args['redeem-by-days']
     ? positiveInt(args['redeem-by-days'], 'redeem-by-days')
     : 365;
+
+  const redeemByMs = Date.now() + redeemByDays * DAY_MS;
 
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generatePassCode(args.prefix, crypto.randomInt);
@@ -89,10 +103,9 @@ async function mint() {
           maxUses,
           uses: 0,
           active: true,
-          redeemBy: admin.firestore.Timestamp.fromMillis(
-            Date.now() + redeemByDays * DAY_MS
-          ),
+          redeemBy: admin.firestore.Timestamp.fromMillis(redeemByMs),
           org: String(args.org),
+          fromName,
           buyerEmail:
             typeof args['buyer-email'] === 'string'
               ? args['buyer-email']
@@ -105,7 +118,12 @@ async function mint() {
       console.log(
         `  ${maxUses} uses · ${days} days + ${tokens} tokens each · redeemable for ${redeemByDays} days`
       );
-      console.log(`  Link: https://3dstreet.app/#redeem?code=${code}`);
+      console.log(`  From: ${fromName || '(anonymous)'}`);
+      console.log(`  Link: ${redeemLink(code)}`);
+      console.log('\n--- Invitation text for the buyer to forward ---\n');
+      console.log(
+        buildInvitationText({ code, fromName, days, tokens, redeemByMs })
+      );
       return;
     } catch (err) {
       if (err.code !== 6 /* ALREADY_EXISTS */) throw err;
@@ -121,6 +139,7 @@ async function status(rawCode) {
   if (!doc.exists) fail(`no such code ${code}`);
   const d = doc.data();
   console.log(`${code} (${d.org})`);
+  console.log(`  from: ${d.fromName || '(anonymous)'}`);
   console.log(`  uses: ${d.uses || 0} / ${d.maxUses}`);
   console.log(`  pass: ${d.days} days + ${d.tokens} tokens (${d.product})`);
   console.log(`  active: ${d.active !== false}`);

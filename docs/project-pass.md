@@ -80,10 +80,16 @@ Each recipient's days start when **they** redeem, not when the buyer paid.
 - **Minting** (after the invoice or Payment Link is paid):
   ```bash
   node scripts/mint-pass-codes.js --project=<project> --uses=10 \
-    --org="Example Foundation" --prefix=FOUNDATION [--days=90] [--tokens=300] \
-    [--redeem-by-days=365] [--buyer-email=…] [--notes="Invoice 1234"]
+    --org="Example Foundation" --prefix=FOUNDATION [--from="Prof. Smith, WSU"] \
+    [--days=90] [--tokens=300] [--redeem-by-days=365] [--buyer-email=…] \
+    [--notes="Invoice 1234"]
   ```
-  It prints the code and the link to send: `https://3dstreet.app/#redeem?code=CODE`.
+  `--org` is internal (who paid). `--from` is the display name recipients see
+  ("Prof. Smith, WSU sent you a 3DStreet Project Pass"); omit it to keep the
+  giver anonymous. Minting prints the redeem link
+  (`https://3dstreet.app/#redeem?code=CODE`) and a ready-to-forward
+  **invitation text** (English: who it's from, what's included, the link and
+  the code) that you send to the buyer to paste into their own email.
   `--status=CODE [--list]` shows uses so far (and the redeeming uids, if a
   buyer needs them for grant reporting). `--deactivate=CODE` stops further
   redemptions without touching passes already granted.
@@ -93,11 +99,17 @@ Each recipient's days start when **they** redeem, not when the buyer paid.
      `redeemBy` and has uses left, and that this user hasn't redeemed it.
      If so it increments `uses` and writes `passRedemptions/{CODE}_{uid}`.
   2. It then calls `grantPass` with that redemption id as the idempotency key.
+  3. It sends the **`passActivated` email** (transactional, `outbound`
+     stream, localized): who it's from, that it's active, the duration and
+     end date, the tokens, what Pro includes, and a reminder to sign in at
+     3dstreet.app with this email address. Deduped on the redemption id;
+     best-effort, so an email failure never fails the redemption.
   A repeat by the same user returns `already-redeemed` and consumes no use.
-  A crash between steps 1 and 2 is completed by the next attempt.
+  A crash between steps 1 and 2 (or a failed email) is completed by the next
+  attempt.
 - **Data** (server-only; rules deny all client access):
   - `passCodes/{CODE}` holds `product`, `days`, `tokens`, `maxUses`, `uses`,
-    `redeemBy`, `active`, `org`, `buyerEmail` and `notes`
+    `redeemBy`, `active`, `org`, `fromName`, `buyerEmail` and `notes`
   - `passRedemptions/{CODE_uid}` has one row per redemption
 - **Format:** `PREFIX-XXXXXXXX`. The 8 random characters come from an
   alphabet with no 0/O/1/I/L.
@@ -121,10 +133,11 @@ the past.
 ## Deploy checklist
 
 1. Deploy the Firestore rules (tightened `tokenProfile` create; closed
-   `passCodes` / `passRedemptions`), the functions (`redeemPassCode` is new)
-   and hosting. No new secrets are needed.
+   `passCodes` / `passRedemptions`), the functions (`redeemPassCode` is new;
+   it uses the existing `POSTMARK_API_KEY` secret) and hosting.
 2. Mint a test code on staging and redeem it with two accounts. Check that a
-   third account is refused on a two-use code.
+   third account is refused on a two-use code. Check that each account gets
+   the confirmation email once (Postmark Activity, `outbound` stream).
 
 ## Follow-ups
 
@@ -137,4 +150,8 @@ the past.
   config/.env values before deploy.
 - **"Buy for others" checkout**, where the webhook mints a code instead of
   granting the buyer. Only once hand sales show demand.
-- **Lifecycle emails:** pass confirmation, expiry reminder, pass ended.
+- **Invitation emails sent by 3DStreet** to a buyer-supplied list of
+  recipient emails (`--invite=list.csv`), ideally with one single-use code
+  per recipient. Needs a send path keyed on an email address rather than a
+  uid, since recipients may not have accounts yet.
+- **More lifecycle emails:** expiry reminder, pass ended.

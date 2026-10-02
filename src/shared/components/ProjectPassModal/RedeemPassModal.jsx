@@ -207,17 +207,21 @@ const RedeemPassModal = ({ isOpen, onClose, initialCode = '', onSignIn }) => {
 
   const renderSuccess = () => {
     const date = formatDate(result?.proUntil);
+    const body =
+      result?.status === 'already-redeemed'
+        ? t('redeemPassAlreadyRedeemed', { date })
+        : t('projectPassSuccessMessage', {
+            date,
+            tokens: result?.tokens ?? PROJECT_PASS.tokens
+          });
+    // Name the giver when the code carries a display name (mint --from).
+    const from = result?.fromName
+      ? `${t('redeemPassFromLine', { from: result.fromName })} `
+      : '';
     return (
       <SuccessView
         title={t('projectPassSuccessTitle')}
-        message={
-          result?.status === 'already-redeemed'
-            ? t('redeemPassAlreadyRedeemed', { date })
-            : t('projectPassSuccessMessage', {
-                date,
-                tokens: result?.tokens ?? PROJECT_PASS.tokens
-              })
-        }
+        message={`${from}${body}`}
         ctaLabel={t('done')}
         onCta={onClose}
       />

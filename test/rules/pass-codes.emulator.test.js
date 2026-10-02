@@ -9,7 +9,7 @@
  * there (same as lifecycle-email.emulator.test.js).
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 
@@ -58,6 +58,7 @@ describe('redeemPassCodeForUser (emulator)', () => {
   });
 
   afterAll(async () => {
+    vi.unstubAllGlobals();
     await Promise.all(admin.apps.map((app) => app.delete()));
   });
 
@@ -162,5 +163,36 @@ describe('redeemPassCodeForUser (emulator)', () => {
       'exhausted'
     );
     expect(await tokenProfile('pc-x')).toBeUndefined();
+  });
+
+  it('emails the recipient once, naming who the pass is from', async () => {
+    process.env.POSTMARK_API_KEY = 'test-server-token';
+    const uid = `pc-email-${Date.now()}`;
+    await admin.auth().createUser({
+      uid,
+      email: `${uid}@example.test`,
+      displayName: 'Ana'
+    });
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ MessageID: 'pm-pass-1' })
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const code = await mintCode({ fromName: 'Prof. Smith, WSU' });
+    const first = await redeemPassCodeForUser(uid, code);
+    const again = await redeemPassCodeForUser(uid, code);
+
+    expect(first.fromName).toBe('Prof. Smith, WSU');
+    expect(again.status).toBe('already-redeemed');
+    expect(again.fromName).toBe('Prof. Smith, WSU');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.To).toContain(`${uid}@example.test`);
+    expect(body.Subject).toBe(
+      'Prof. Smith, WSU sent you a 3DStreet Project Pass'
+    );
+    expect(body.TextBody).toContain('3 months of 3DStreet Pro');
+    expect(body.MessageStream).toBe('outbound');
   });
 });

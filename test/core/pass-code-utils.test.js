@@ -11,7 +11,8 @@ const {
   normalizePassCode,
   generatePassCode,
   passRedemptionId,
-  checkPassCodeRedeemable
+  checkPassCodeRedeemable,
+  buildInvitationText
 } = require('../../public/functions/pass-code-utils.js');
 
 const NOW = Date.UTC(2026, 9, 1);
@@ -122,5 +123,38 @@ describe('checkPassCodeRedeemable', () => {
       checkPassCodeRedeemable({ ...VALID, maxUses: undefined }, NOW),
       'exhausted'
     );
+  });
+});
+
+describe('buildInvitationText', () => {
+  const base = {
+    code: 'WSU-ABCD2345',
+    days: 90,
+    tokens: 300,
+    redeemByMs: Date.UTC(2027, 9, 1)
+  };
+
+  it('names the giver and carries the link, code, contents and deadline', () => {
+    const text = buildInvitationText({ ...base, fromName: 'Prof. Smith, WSU' });
+    assert.match(
+      text,
+      /Prof\. Smith, WSU has sent you a 3DStreet Project Pass/
+    );
+    assert.match(
+      text,
+      /3 months of 3DStreet Pro, plus 300 AI generation tokens/
+    );
+    assert.ok(text.includes('https://3dstreet.app/#redeem?code=WSU-ABCD2345'));
+    assert.ok(text.includes('Or enter this code: WSU-ABCD2345'));
+    assert.ok(text.includes('Redeem it by 2027-10-01'));
+  });
+
+  it('stays anonymous without a fromName and says days when not whole months', () => {
+    const text = buildInvitationText({ ...base, fromName: null, days: 45 });
+    assert.match(
+      text,
+      /^Subject: .*\n\nYou've been sent a 3DStreet Project Pass: 45 days/
+    );
+    assert.ok(!/null|undefined/.test(text));
   });
 });

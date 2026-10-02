@@ -11,8 +11,12 @@
  *
  * Firestore (server-only; rules deny all client access):
  *   passCodes/{CODE}          — { product, days, tokens, maxUses, uses,
- *                                 redeemBy, active, org, buyerEmail, notes,
- *                                 createdAt, createdBy, lastRedeemedAt }
+ *                                 redeemBy, active, org, fromName,
+ *                                 buyerEmail, notes, createdAt, createdBy,
+ *                                 lastRedeemedAt }
+ *     `org` is internal (who paid); `fromName` is the optional display name
+ *     recipients see ("Prof. Smith, WSU") in the redeem confirmation email
+ *     and the invitation text. Omit it to keep the giver anonymous.
  *   passRedemptions/{CODE_uid} — one row per redemption; the doc id is also
  *                                 what stops a user redeeming a code twice and
  *                                 is grantPass's idempotency key.
@@ -68,11 +72,38 @@ const checkPassCodeRedeemable = (codeData, nowMs = Date.now()) => {
   return null;
 };
 
+const redeemLink = (code) => `https://3dstreet.app/#redeem?code=${code}`;
+
+// Ready-to-forward invitation for the buyer to paste into their own email
+// (English; the buyer can edit it). Names the giver when fromName is set.
+const buildInvitationText = ({ code, fromName, days, tokens, redeemByMs }) => {
+  const duration = days % 30 === 0 ? `${days / 30} months` : `${days} days`;
+  const deadline =
+    Number.isFinite(redeemByMs)
+      ? ` Redeem it by ${new Date(redeemByMs).toISOString().slice(0, 10)}.`
+      : '';
+  const giver = fromName ? `${fromName} has sent you` : "You've been sent";
+  return `Subject: Your 3DStreet Project Pass
+
+${giver} a 3DStreet Project Pass: ${duration} of 3DStreet Pro, plus ${tokens} AI generation tokens.
+
+3DStreet is a browser-based tool for designing and sharing 3D street scenes. Pro includes watermark-free snapshots and HD renders, unlimited geospatial maps, glTF export, and more storage for your own 3D models, scans and images.
+
+To claim it, open this link and sign in (or create a free account):
+${redeemLink(code)}
+
+Or enter this code: ${code}
+
+Your ${duration} start when you redeem.${deadline} Nothing renews and you will not be charged.`;
+};
+
 module.exports = {
   CODE_ALPHABET,
   CODE_RANDOM_LENGTH,
   normalizePassCode,
   generatePassCode,
   passRedemptionId,
-  checkPassCodeRedeemable
+  checkPassCodeRedeemable,
+  redeemLink,
+  buildInvitationText
 };

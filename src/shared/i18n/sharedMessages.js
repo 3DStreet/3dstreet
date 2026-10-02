@@ -351,6 +351,12 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Resgatando…',
     fr: 'Validation…'
   },
+  redeemPassFromLine: {
+    en: '{from} sent you this pass.',
+    es: '{from} te envió este pase.',
+    'pt-BR': '{from} enviou este passe para você.',
+    fr: '{from} vous a envoyé ce pass.'
+  },
   redeemPassAlreadyRedeemed: {
     en: 'You already redeemed this code. You have Pro until {date}.',
     es: 'Ya canjeaste este código. Tienes Pro hasta el {date}.',
