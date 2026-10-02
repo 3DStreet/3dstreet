@@ -208,13 +208,22 @@ const RedeemPassModal = ({ isOpen, onClose, initialCode = '', onSignIn }) => {
 
   const renderSuccess = () => {
     const date = formatDate(result?.proUntil);
-    const body =
-      result?.status === 'already-redeemed'
-        ? t('redeemPassAlreadyRedeemed', { date })
-        : t('projectPassSuccessMessage', {
-            date,
-            tokens: result?.tokens ?? PROJECT_PASS.tokens
-          });
+    // A repeat of this user's own redemption granted nothing new: say so
+    // plainly instead of celebrating an unlock.
+    if (result?.status === 'already-redeemed') {
+      return (
+        <SuccessView
+          title={t('redeemPassAlreadyRedeemedTitle')}
+          message={t('redeemPassAlreadyRedeemed', { date })}
+          ctaLabel={t('done')}
+          onCta={onClose}
+        />
+      );
+    }
+    const body = t('projectPassSuccessMessage', {
+      date,
+      tokens: result?.tokens ?? PROJECT_PASS.tokens
+    });
     // Name the giver when the code carries a display name (mint --from).
     const from = result?.fromName
       ? `${t('redeemPassFromLine', { from: result.fromName })} `

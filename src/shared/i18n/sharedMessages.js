@@ -357,11 +357,18 @@ const SHARED_MESSAGES = {
     'pt-BR': '{from} enviou este passe para você.',
     fr: '{from} vous a envoyé ce pass.'
   },
+  redeemPassAlreadyRedeemedTitle: {
+    en: 'Already redeemed',
+    es: 'Ya canjeado',
+    'pt-BR': 'Já resgatado',
+    fr: 'Déjà utilisé'
+  },
   redeemPassAlreadyRedeemed: {
-    en: 'You already redeemed this code. You have Pro until {date}.',
-    es: 'Ya canjeaste este código. Tienes Pro hasta el {date}.',
-    'pt-BR': 'Você já resgatou este código. Você tem o Pro até {date}.',
-    fr: "Vous avez déjà utilisé ce code. Vous avez Pro jusqu'au {date}."
+    en: 'You already redeemed this code, so nothing has changed. You have Pro until {date}.',
+    es: 'Ya canjeaste este código, así que no ha cambiado nada. Tienes Pro hasta el {date}.',
+    'pt-BR':
+      'Você já resgatou este código, então nada mudou. Você tem o Pro até {date}.',
+    fr: "Vous avez déjà utilisé ce code, rien n'a donc changé. Vous avez Pro jusqu'au {date}."
   },
   redeemPassErrorInvalid: {
     en: 'That code is not valid. Check it and try again.',
