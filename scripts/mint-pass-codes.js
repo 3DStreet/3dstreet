@@ -9,10 +9,11 @@
  * Usage:
  *   gcloud auth application-default login   # one-time
  *
- *   # mint: 10 uses of a 90-day / 300-token pass, redeemable for 365 days
+ *   # mint: 10 uses of a 90-day / 300-token pass. Redeemable by default for
+ *   # 365 - days (275 days ≈ 9 months), so every pass ends within a year
  *   node scripts/mint-pass-codes.js --project=dev-3dstreet \
  *     --uses=10 --org="Example Foundation" --prefix=FOUNDATION \
- *     [--days=90] [--tokens=300] [--redeem-by-days=365] \
+ *     [--days=90] [--tokens=300] [--redeem-by-days=275] \
  *     [--from="Prof. Smith, WSU"] [--buyer-email=ops@example.org] \
  *     [--notes="Invoice 1234"]
  *
@@ -60,6 +61,7 @@ admin.initializeApp({ projectId });
 const db = admin.firestore();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const ANNUAL_TERM_DAYS = 365;
 
 const positiveInt = (value, name) => {
   const n = Number(value);
@@ -82,9 +84,12 @@ async function mint() {
     typeof args.from === 'string' && args.from.trim()
       ? args.from.trim().slice(0, 80)
       : null;
+  // Default deadline: the year minus the pass length (275 days for a 90-day
+  // pass, ~9 months), so even the last recipient's pass ends within 12
+  // months of the sale — matching an annual contract.
   const redeemByDays = args['redeem-by-days']
     ? positiveInt(args['redeem-by-days'], 'redeem-by-days')
-    : 365;
+    : Math.max(1, ANNUAL_TERM_DAYS - days);
 
   const redeemByMs = Date.now() + redeemByDays * DAY_MS;
 

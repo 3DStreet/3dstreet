@@ -81,9 +81,12 @@ Each recipient's days start when **they** redeem, not when the buyer paid.
   ```bash
   node scripts/mint-pass-codes.js --project=<project> --uses=10 \
     --org="Example Foundation" --prefix=FOUNDATION [--from="Prof. Smith, WSU"] \
-    [--days=90] [--tokens=300] [--redeem-by-days=365] [--buyer-email=…] \
+    [--days=90] [--tokens=300] [--redeem-by-days=275] [--buyer-email=…] \
     [--notes="Invoice 1234"]
   ```
+  The code's redeem-by deadline defaults to 365 days minus the pass length
+  (275 days ≈ 9 months for a 90-day pass), so even the last recipient's pass
+  ends within 12 months of the sale, matching an annual contract.
   `--org` is internal (who paid). `--from` is the display name recipients see
   ("Prof. Smith, WSU sent you a 3DStreet Project Pass"); omit it to keep the
   giver anonymous. Minting prints the redeem link
