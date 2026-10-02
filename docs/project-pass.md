@@ -99,6 +99,11 @@ Each recipient's days start when **they** redeem, not when the buyer paid.
   redemptions without touching passes already granted.
 - **Redeeming.** `#redeem?code=` opens `RedeemPassModal`, after sign-in for
   signed-out visitors. It calls `redeemPassCode` (`public/functions/pass-codes.js`):
+  0. Subscribers (PRO/MAX claim) and Pro-team users are refused
+     (`already-pro`, no use consumed): the pass would run alongside the Pro
+     they already have and waste a seat. Existing pass holders may redeem a
+     different code; its days stack onto `proUntil`. Each person can redeem
+     a given code only once.
   1. One transaction checks that the code exists, is active, is before
      `redeemBy` and has uses left, and that this user hasn't redeemed it.
      If so it increments `uses` and writes `passRedemptions/{CODE}_{uid}`.

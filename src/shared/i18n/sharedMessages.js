@@ -382,6 +382,13 @@ const SHARED_MESSAGES = {
       'Esse código já atingiu o número máximo de usos. Fale com quem o compartilhou com você.',
     fr: "Ce code a déjà été utilisé le nombre maximal de fois. Contactez la personne qui vous l'a transmis."
   },
+  redeemPassErrorAlreadyPro: {
+    en: "You already have 3DStreet Pro, so you don't need this pass. Please pass the code on to someone who doesn't have Pro.",
+    es: 'Ya tienes 3DStreet Pro, así que no necesitas este pase. Comparte el código con alguien que no tenga Pro.',
+    'pt-BR':
+      'Você já tem o 3DStreet Pro, então não precisa deste passe. Compartilhe o código com alguém que não tenha o Pro.',
+    fr: "Vous avez déjà 3DStreet Pro, vous n'avez donc pas besoin de ce pass. Transmettez le code à quelqu'un qui n'a pas Pro."
+  },
   redeemPassErrorGeneric: {
     en: 'Something went wrong redeeming your code. Please try again.',
     es: 'Algo salió mal al canjear tu código. Inténtalo de nuevo.',

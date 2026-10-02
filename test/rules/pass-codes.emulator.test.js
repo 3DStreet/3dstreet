@@ -195,4 +195,43 @@ describe('redeemPassCodeForUser (emulator)', () => {
     expect(body.TextBody).toContain('3 months of 3DStreet Pro');
     expect(body.MessageStream).toBe('outbound');
   });
+
+  it('refuses subscribers and Pro-team users without using a seat', async () => {
+    const code = await mintCode({ maxUses: 5 });
+
+    const subscriber = `pc-sub-${Date.now()}`;
+    await admin.auth().createUser({
+      uid: subscriber,
+      email: `${subscriber}@example.test`
+    });
+    await admin.auth().setCustomUserClaims(subscriber, { plan: 'MAX' });
+
+    const teamUser = `pc-team-${Date.now()}`;
+    await admin.auth().createUser({
+      uid: teamUser,
+      email: `${teamUser}@team.example.edu`
+    });
+    process.env.ALLOWED_PRO_TEAM_DOMAINS = JSON.stringify(['team.example.edu']);
+
+    try {
+      expect((await redeemPassCodeForUser(subscriber, code)).status).toBe(
+        'already-pro'
+      );
+      expect((await redeemPassCodeForUser(teamUser, code)).status).toBe(
+        'already-pro'
+      );
+    } finally {
+      delete process.env.ALLOWED_PRO_TEAM_DOMAINS;
+    }
+
+    expect((await codeDoc(code)).uses).toBe(0);
+    expect(await tokenProfile(subscriber)).toBeUndefined();
+    expect(await tokenProfile(teamUser)).toBeUndefined();
+
+    // A free account (cleared claim) can then redeem the same code.
+    await admin.auth().setCustomUserClaims(subscriber, { plan: '' });
+    expect((await redeemPassCodeForUser(subscriber, code)).status).toBe(
+      'redeemed'
+    );
+  });
 });

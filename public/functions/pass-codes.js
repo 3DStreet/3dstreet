@@ -7,8 +7,10 @@
  */
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
-const { grantPass } = require('./token-management.js');
+const { grantPass, validateUserDomain } = require('./token-management.js');
+const { isPaidPlanClaim } = require('./pro-pass.js');
 const { sendLifecycleEmail } = require('./email/lifecycle-email.js');
 const EMAIL_TEMPLATES = require('./email/templates.js');
 const {
@@ -17,8 +19,33 @@ const {
   checkPassCodeRedeemable
 } = require('./pass-code-utils.js');
 
+// Pro from a subscription claim or a Pro-team email domain — deliberately NOT
+// counting an existing pass (see step 0 below). A lookup failure resolves to
+// false: the worst case is a subscriber using up one seat, which is better
+// than refusing a real recipient because Auth hiccuped.
+const hasSubscriptionOrTeamPro = async (userId) => {
+  try {
+    const user = await getAuth().getUser(userId);
+    if (isPaidPlanClaim(user.customClaims && user.customClaims.plan)) return true;
+    const { isProDomain } = await validateUserDomain(user.email);
+    return !!isProDomain;
+  } catch (err) {
+    if (err?.code !== 'auth/user-not-found') {
+      console.error(`pass code: Pro lookup failed for ${userId}:`, err);
+    }
+    return false;
+  }
+};
+
 /**
  * Redeem `rawCode` for `userId`. Two steps, both retry-safe:
+ *
+ *   0. Subscribers (PRO/MAX claim) and Pro-team (domain) users are refused
+ *      with 'already-pro' and no use is consumed: a pass's days run
+ *      alongside their existing Pro, so redeeming would waste a seat the
+ *      buyer paid for. Existing pass holders may redeem (a different code's
+ *      days stack onto proUntil). A repeat of a redemption this user already
+ *      made still answers 'already-redeemed'.
  *
  *   1. One transaction on the code + this user's redemption row: if the row
  *      already exists this is a repeat (no new use is consumed); otherwise
@@ -34,11 +61,14 @@ const {
  * Returns { status: 'redeemed' | 'already-redeemed', days, tokens, fromName,
  * proUntilMs }
  * or { status: <reason> } with reason one of 'invalid-code', 'not-found',
- * 'inactive', 'expired', 'exhausted', 'invalid', 'grant-failed'.
+ * 'already-pro', 'inactive', 'expired', 'exhausted', 'invalid',
+ * 'grant-failed'.
  */
 const redeemPassCodeForUser = async (userId, rawCode, { nowMs = Date.now() } = {}) => {
   const code = normalizePassCode(rawCode);
   if (!code) return { status: 'invalid-code' };
+
+  const subscriberOrTeam = await hasSubscriptionOrTeamPro(userId);
 
   const db = admin.firestore();
   const codeRef = db.collection('passCodes').doc(code);
@@ -51,6 +81,7 @@ const redeemPassCodeForUser = async (userId, rawCode, { nowMs = Date.now() } = {
       const { days, tokens, product = 'project', fromName = null } = redemptionDoc.data();
       return { status: 'already-redeemed', days, tokens, product, fromName };
     }
+    if (subscriberOrTeam) return { status: 'already-pro' };
     const codeData = codeDoc.exists ? codeDoc.data() : null;
     const reason = checkPassCodeRedeemable(codeData, nowMs);
     if (reason) return { status: reason };
@@ -118,6 +149,10 @@ const redeemPassCodeForUser = async (userId, rawCode, { nowMs = Date.now() } = {
 const REASON_TO_HTTPS = {
   'invalid-code': ['invalid-argument', 'That code is not valid.'],
   'not-found': ['not-found', 'That code is not valid.'],
+  'already-pro': [
+    'failed-precondition',
+    'You already have 3DStreet Pro. Please pass this code on to someone who does not.'
+  ],
   inactive: ['failed-precondition', 'That code is no longer active.'],
   expired: ['deadline-exceeded', 'That code has expired.'],
   exhausted: ['resource-exhausted', 'That code has been fully redeemed.'],
@@ -126,8 +161,9 @@ const REASON_TO_HTTPS = {
 };
 
 // POSTMARK_API_KEY: the passActivated confirmation email.
+// ALLOWED_PRO_TEAM_DOMAINS: refusing Pro-team users (step 0).
 const redeemPassCode = functions
-  .runWith({ secrets: ['POSTMARK_API_KEY'] })
+  .runWith({ secrets: ['POSTMARK_API_KEY', 'ALLOWED_PRO_TEAM_DOMAINS'] })
   .https
   .onCall(async (data, context) => {
     if (!context.auth) {

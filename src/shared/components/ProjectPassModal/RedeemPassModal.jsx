@@ -46,7 +46,8 @@ const ERROR_MESSAGE_IDS = {
   'not-found': 'redeemPassErrorInvalid',
   inactive: 'redeemPassErrorExpired',
   expired: 'redeemPassErrorExpired',
-  exhausted: 'redeemPassErrorExhausted'
+  exhausted: 'redeemPassErrorExhausted',
+  'already-pro': 'redeemPassErrorAlreadyPro'
 };
 
 const RedeemPassModal = ({ isOpen, onClose, initialCode = '', onSignIn }) => {
