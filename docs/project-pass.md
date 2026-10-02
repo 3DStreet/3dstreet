@@ -20,9 +20,9 @@ Stripe webhook code handles passes yet.
 | Fulfilment | `grantPass(uid, { days, tokens, idempotencyKey, source })` in `public/functions/token-management.js` |
 | Codes | `#redeem?code=` → `RedeemPassModal` → `redeemPassCode` (`public/functions/pass-codes.js`, pure helpers in `pass-code-utils.js`); minted by `scripts/mint-pass-codes.js` |
 
-Adding a second pass variant (e.g. a team pass with different days and
-tokens) is config-only: add a `PRO_PASSES` entry (server + client), or mint
-a code with `--days` / `--tokens`.
+There is one product today: the 3-month Project Pass. Codes already store
+their own days and tokens, so a second variant later means a `PRO_PASSES`
+entry (server + client) plus a mint-script flag to pick it.
 
 ## Entitlement
 
@@ -80,13 +80,14 @@ Each recipient's days start when **they** redeem, not when the buyer paid.
 - **Minting** (after the invoice or Payment Link is paid):
   ```bash
   node scripts/mint-pass-codes.js --project=<project> --uses=10 \
-    --org="Example Foundation" --prefix=FOUNDATION [--from="Prof. Smith, WSU"] \
-    [--days=90] [--tokens=300] [--redeem-by-days=275] [--buyer-email=…] \
-    [--notes="Invoice 1234"]
+    --org="Example Foundation" [--prefix=FOUNDATION] [--from="Prof. Smith, WSU"] \
+    [--buyer-email=…] [--notes="Invoice 1234"]
   ```
-  The code's redeem-by deadline defaults to 365 days minus the pass length
-  (275 days ≈ 9 months for a 90-day pass), so even the last recipient's pass
-  ends within 12 months of the sale, matching an annual contract.
+  Every code grants the standard pass (90 days + 300 tokens) and must be
+  redeemed within 275 days (~9 months), so even the last recipient's pass
+  ends within 12 months of the sale, matching an annual contract. There are
+  deliberately no flags for days, tokens or deadline; add them back if a
+  second product appears. To extend one user by hand, edit their `proUntil`.
   `--org` is internal (who paid). `--from` is the display name recipients see
   ("Prof. Smith, WSU sent you a 3DStreet Project Pass"); omit it to keep the
   giver anonymous. Minting prints the redeem link

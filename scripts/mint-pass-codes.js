@@ -9,13 +9,18 @@
  * Usage:
  *   gcloud auth application-default login   # one-time
  *
- *   # mint: 10 uses of a 90-day / 300-token pass. Redeemable by default for
- *   # 365 - days (275 days ≈ 9 months), so every pass ends within a year
+ *   # mint: 10 uses of the standard Project Pass (PRO_PASSES 'project':
+ *   # 90 days + 300 tokens). Every code is redeemable for 365 - 90 = 275
+ *   # days (~9 months), so the last recipient's pass still ends within 12
+ *   # months of the sale, matching an annual contract.
  *   node scripts/mint-pass-codes.js --project=dev-3dstreet \
- *     --uses=10 --org="Example Foundation" --prefix=FOUNDATION \
- *     [--days=90] [--tokens=300] [--redeem-by-days=275] \
+ *     --uses=10 --org="Example Foundation" [--prefix=FOUNDATION] \
  *     [--from="Prof. Smith, WSU"] [--buyer-email=ops@example.org] \
  *     [--notes="Invoice 1234"]
+ *
+ *   There are deliberately no knobs for days, tokens or deadline: one product,
+ *   one shape. (To extend a single user by hand, edit their proUntil.)
+ *   Unknown flags are rejected rather than ignored.
  *
  *   --org is internal (who paid). --from is what recipients see: "<from> sent
  *   you a 3DStreet Project Pass" in the invitation text printed below and in
@@ -63,6 +68,26 @@ const db = admin.firestore();
 const DAY_MS = 24 * 60 * 60 * 1000;
 const ANNUAL_TERM_DAYS = 365;
 
+const KNOWN_FLAGS = [
+  'project',
+  'uses',
+  'org',
+  'prefix',
+  'from',
+  'buyer-email',
+  'notes',
+  'status',
+  'list',
+  'deactivate'
+];
+const unknownFlags = Object.keys(args).filter((k) => !KNOWN_FLAGS.includes(k));
+if (unknownFlags.length) {
+  fail(
+    `unknown flag(s): ${unknownFlags.map((k) => `--${k}`).join(', ')}. ` +
+      'Codes always grant the standard Project Pass; see the usage header.'
+  );
+}
+
 const positiveInt = (value, name) => {
   const n = Number(value);
   if (!Number.isInteger(n) || n <= 0) {
@@ -72,24 +97,18 @@ const positiveInt = (value, name) => {
 };
 
 async function mint() {
-  const pass = PRO_PASSES.find((p) => p.id === (args.product || 'project'));
-  if (!pass) fail(`unknown --product ${args.product}`);
+  const pass = PRO_PASSES.find((p) => p.id === 'project');
   if (!args.org || args.org === true) fail('--org is required');
 
   const maxUses = positiveInt(args.uses, 'uses');
-  const days = args.days ? positiveInt(args.days, 'days') : pass.days;
-  const tokens = args.tokens !== undefined ? Number(args.tokens) : pass.tokens;
-  if (!Number.isInteger(tokens) || tokens < 0) fail('--tokens must be >= 0');
+  const { days, tokens } = pass;
   const fromName =
     typeof args.from === 'string' && args.from.trim()
       ? args.from.trim().slice(0, 80)
       : null;
-  // Default deadline: the year minus the pass length (275 days for a 90-day
-  // pass, ~9 months), so even the last recipient's pass ends within 12
-  // months of the sale — matching an annual contract.
-  const redeemByDays = args['redeem-by-days']
-    ? positiveInt(args['redeem-by-days'], 'redeem-by-days')
-    : Math.max(1, ANNUAL_TERM_DAYS - days);
+  // The year minus the pass length (275 days, ~9 months), so even the last
+  // recipient's pass ends within 12 months of the sale.
+  const redeemByDays = ANNUAL_TERM_DAYS - days;
 
   const redeemByMs = Date.now() + redeemByDays * DAY_MS;
 
