@@ -3,15 +3,18 @@
  * pass-code-utils.js; codes are minted by scripts/mint-pass-codes.js (sold by
  * hand for now). Fulfilment is the same grantPass as a paid Project Pass.
  * A successful redemption sends the recipient a "your pass is active"
- * email (passActivated), naming who it's from when the code has a fromName.
+ * email (passActivated), naming who it's from when the code has a fromName,
+ * and sends the code's contacts (notifyEmail) a status update.
  */
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { grantPass, validateUserDomain } = require('./token-management.js');
-const { isPaidPlanClaim } = require('./pro-pass.js');
+const { isPaidPlanClaim, toMillis, DAY_MS } = require('./pro-pass.js');
 const { sendLifecycleEmail } = require('./email/lifecycle-email.js');
+const { sendPostmarkEmail, getUserInfo } = require('./email/postmark.js');
+const { resolveEmailLocale } = require('./email/locale.js');
 const EMAIL_TEMPLATES = require('./email/templates.js');
 const {
   normalizePassCode,
@@ -37,6 +40,36 @@ const hasSubscriptionOrTeamPro = async (userId) => {
   }
 };
 
+// Status email to each of the code's contacts (notifyEmail: one address or
+// a list: the buyer, or us for codes we give out). Recipients are
+// addresses, not users, so this skips sendLifecycleEmail; a contact with a
+// 3DStreet account gets their name and language.
+const notifyCodeContacts = async (notifyEmail, data) => {
+  const db = admin.firestore();
+  for (const email of [].concat(notifyEmail).filter((e) => typeof e === 'string')) {
+    try {
+      let name = null;
+      let locale = null;
+      const user = await getAuth()
+        .getUserByEmail(email)
+        .catch(() => null);
+      if (user) {
+        name = user.displayName || null;
+        locale = await resolveEmailLocale(db, user.uid);
+      }
+      const t = EMAIL_TEMPLATES.passCodeRedeemed;
+      await sendPostmarkEmail(
+        email,
+        t.getSubject(name, data, locale),
+        t.getHtmlBody(name, data, locale),
+        t.getTextBody(name, data, locale)
+      );
+    } catch (err) {
+      console.error(`passCodeRedeemed to ${email} failed for ${data.code}:`, err);
+    }
+  }
+};
+
 /**
  * Redeem `rawCode` for `userId`. Two steps, both retry-safe:
  *
@@ -57,6 +90,11 @@ const hasSubscriptionOrTeamPro = async (userId) => {
  *   3. The passActivated email, deduped on the redemption id: sent once per
  *      redemption, and retried by a repeat call if the first send failed.
  *      Best-effort — an email problem never fails the redemption.
+ *   4. When the code has a notifyEmail, a passCodeRedeemed status email to
+ *      each contact (who redeemed, uses so far, end dates). Read from the code doc at
+ *      redemption, so a contact added later gets the next one. Sent only by
+ *      the call that consumed the use (no dedupe log), so a failed send or a
+ *      crash before it is not retried.
  *
  * Returns { status: 'redeemed' | 'already-redeemed', days, tokens, fromName,
  * proUntilMs }
@@ -86,7 +124,15 @@ const redeemPassCodeForUser = async (userId, rawCode, { nowMs = Date.now() } = {
     const reason = checkPassCodeRedeemable(codeData, nowMs);
     if (reason) return { status: reason };
 
-    const { days, tokens, product = 'project', org = null, fromName = null } = codeData;
+    const {
+      days,
+      tokens,
+      product = 'project',
+      org = null,
+      fromName = null,
+      notifyEmail = null,
+      maxUses
+    } = codeData;
     tx.update(codeRef, {
       uses: admin.firestore.FieldValue.increment(1),
       lastRedeemedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -101,7 +147,25 @@ const redeemPassCodeForUser = async (userId, rawCode, { nowMs = Date.now() } = {
       tokens,
       redeemedAt: admin.firestore.FieldValue.serverTimestamp()
     });
-    return { status: 'redeemed', days, tokens, product, fromName };
+    return {
+      status: 'redeemed',
+      days,
+      tokens,
+      product,
+      fromName,
+      notify: notifyEmail && {
+        notifyEmail,
+        data: {
+          code,
+          uses: (codeData.uses || 0) + 1,
+          maxUses,
+          days,
+          tokens,
+          proUntilMs: nowMs + days * DAY_MS,
+          redeemByMs: toMillis(codeData.redeemBy)
+        }
+      }
+    };
   });
 
   if (step1.status !== 'redeemed' && step1.status !== 'already-redeemed') {
@@ -141,7 +205,17 @@ const redeemPassCodeForUser = async (userId, rawCode, { nowMs = Date.now() } = {
     console.error(`passActivated email failed for ${redemptionId}:`, err);
   }
 
-  return { ...step1, proUntilMs: grant.proUntilMs };
+  if (step1.notify) {
+    const redeemer = await getUserInfo(userId);
+    await notifyCodeContacts(step1.notify.notifyEmail, {
+      ...step1.notify.data,
+      redeemerName: redeemer?.displayName || null,
+      redeemerEmail: redeemer?.email || null
+    });
+  }
+
+  const { notify, ...result } = step1;
+  return { ...result, proUntilMs: grant.proUntilMs };
 };
 
 // Client-facing error codes. 'already-redeemed' is NOT an error: the caller

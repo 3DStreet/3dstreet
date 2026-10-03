@@ -12,11 +12,13 @@
  * Firestore (server-only; rules deny all client access):
  *   passCodes/{CODE}          — { product, days, tokens, maxUses, uses,
  *                                 redeemBy, active, org, fromName,
- *                                 buyerEmail, notes, createdAt, createdBy,
- *                                 lastRedeemedAt }
+ *                                 buyerEmail, notes, notifyEmail, createdAt,
+ *                                 createdBy, lastRedeemedAt }
  *     `org` is internal (who paid); `fromName` is the optional display name
  *     recipients see ("Prof. Smith, WSU") in the redeem confirmation email
  *     and the invitation text. Omit it to keep the giver anonymous.
+ *     `notifyEmail` (an address or a list) gets a status email on each
+ *     redemption.
  *   passRedemptions/{CODE_uid} — one row per redemption; the doc id is also
  *                                 what stops a user redeeming a code twice and
  *                                 is grantPass's idempotency key.

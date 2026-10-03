@@ -16,7 +16,7 @@
  *   node scripts/mint-pass-codes.js --project=dev-3dstreet \
  *     --uses=10 --org="Example Foundation" [--prefix=FOUNDATION] \
  *     [--from="Prof. Smith, WSU"] [--buyer-email=ops@example.org] \
- *     [--notes="Invoice 1234"]
+ *     [--notes="Invoice 1234"] [--notify=you@example.com,buyer@example.org]
  *
  *   There are deliberately no knobs for days, tokens or deadline: one product,
  *   one shape. (To extend a single user by hand, edit their proUntil.)
@@ -26,6 +26,10 @@
  *   you a 3DStreet Project Pass" in the invitation text printed below and in
  *   the confirmation email sent on redemption. Omit --from to stay anonymous.
  *   Minting prints an invitation text for the buyer to forward.
+ *
+ *   --notify is who gets a status email on every redemption (comma-separate
+ *   several, e.g. you and the buyer); it defaults to your
+ *   `git config user.email`. --notify=none turns the emails off.
  *
  *   # status: uses so far (and redeeming uids with --list)
  *   node scripts/mint-pass-codes.js --project=dev-3dstreet --status=FOUNDATION-7KQ2XXXX [--list]
@@ -39,6 +43,7 @@
 const admin = require('firebase-admin');
 const crypto = require('crypto');
 const os = require('os');
+const { execSync } = require('child_process');
 const { PRO_PASSES } = require('../public/functions/pro-pass.js');
 const {
   generatePassCode,
@@ -80,6 +85,7 @@ const KNOWN_FLAGS = [
   'from',
   'buyer-email',
   'notes',
+  'notify',
   'status',
   'list',
   'deactivate'
@@ -116,6 +122,29 @@ async function mint() {
 
   const redeemByMs = Date.now() + redeemByDays * DAY_MS;
 
+  let notify = typeof args.notify === 'string' ? args.notify.trim() : '';
+  if (!notify) {
+    try {
+      notify = execSync('git config user.email').toString().trim();
+    } catch {
+      notify = '';
+    }
+  }
+  const notifyEmails =
+    notify === 'none'
+      ? []
+      : notify
+          .split(',')
+          .map((e) => e.trim())
+          .filter(Boolean);
+  if (notifyEmails.some((e) => !e.includes('@'))) {
+    fail('--notify must be email address(es), comma-separated, or "none"');
+  }
+  // One address is stored as a string, several as a list; redeemPassCode
+  // accepts either, so contacts can be added to the doc by hand later.
+  const notifyEmail =
+    notifyEmails.length > 1 ? notifyEmails : notifyEmails[0] || null;
+
   for (let attempt = 0; attempt < 5; attempt++) {
     const code = generatePassCode(args.prefix, crypto.randomInt);
     try {
@@ -139,6 +168,7 @@ async function mint() {
               ? args['buyer-email']
               : null,
           notes: typeof args.notes === 'string' ? args.notes : null,
+          notifyEmail,
           createdBy: os.userInfo().username,
           createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -147,6 +177,9 @@ async function mint() {
         `  ${maxUses} uses · ${days} days + ${tokens} tokens each · redeemable for ${redeemByDays} days`
       );
       console.log(`  From: ${fromName || '(anonymous)'}`);
+      console.log(
+        `  Redemption updates: ${notifyEmails.join(', ') || '(off)'}`
+      );
       console.log(`  Link: ${redeemLink(code, appBase)}`);
       console.log('\n--- Invitation text for the buyer to forward ---\n');
       console.log(
@@ -175,6 +208,9 @@ async function status(rawCode) {
   const d = doc.data();
   console.log(`${code} (${d.org})`);
   console.log(`  from: ${d.fromName || '(anonymous)'}`);
+  console.log(
+    `  updates to: ${[].concat(d.notifyEmail || []).join(', ') || '(off)'}`
+  );
   console.log(`  uses: ${d.uses || 0} / ${d.maxUses}`);
   console.log(`  pass: ${d.days} days + ${d.tokens} tokens (${d.product})`);
   console.log(`  active: ${d.active !== false}`);

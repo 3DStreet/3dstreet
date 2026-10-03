@@ -81,7 +81,7 @@ Each recipient's days start when **they** redeem, not when the buyer paid.
   ```bash
   node scripts/mint-pass-codes.js --project=<project> --uses=10 \
     --org="Example Foundation" [--prefix=FOUNDATION] [--from="Prof. Smith, WSU"] \
-    [--buyer-email=…] [--notes="Invoice 1234"]
+    [--buyer-email=…] [--notes="Invoice 1234"] [--notify=you@example.com,buyer@example.org]
   ```
   Every code grants the standard pass (90 days + 300 tokens) and must be
   redeemed within 275 days (~9 months), so even the last recipient's pass
@@ -94,6 +94,11 @@ Each recipient's days start when **they** redeem, not when the buyer paid.
   (`https://3dstreet.app/#redeem?code=CODE`) and a ready-to-forward
   **invitation text** (English: who it's from, what's included, the link and
   the code) that you send to the buyer to paste into their own email.
+  `--notify` lists the code's contacts (comma-separated: you, the buyer),
+  who get a status email on every redemption; it defaults to your
+  `git config user.email`, and `--notify=none` turns it off. To add or
+  change contacts on a code already given out, edit `notifyEmail` on its
+  doc (a string or an array of strings); the next redemption uses it.
   `--status=CODE [--list]` shows uses so far (and the redeeming uids, if a
   buyer needs them for grant reporting). `--deactivate=CODE` stops further
   redemptions without touching passes already granted.
@@ -113,12 +118,21 @@ Each recipient's days start when **they** redeem, not when the buyer paid.
      end date, the tokens, what Pro includes, and a reminder to sign in at
      3dstreet.app with this email address. Deduped on the redemption id;
      best-effort, so an email failure never fails the redemption.
+  4. If the code has a `notifyEmail`, each contact gets the
+     **`passCodeRedeemed` email** (standard template, localized when the
+     contact has a 3DStreet account, no CTA): the code, who redeemed it
+     (name and email, with "tell us if you don't recognize them"), uses so
+     far and how many are left, when this pass ends, the code's redeem-by
+     date, the redeem link while passes remain, and "reply to this email"
+     for changes, since there is no code dashboard. Sent once, by the call
+     that consumed the use; best-effort and not retried.
   A repeat by the same user returns `already-redeemed` and consumes no use.
   A crash between steps 1 and 2 (or a failed email) is completed by the next
   attempt.
 - **Data** (server-only; rules deny all client access):
   - `passCodes/{CODE}` holds `product`, `days`, `tokens`, `maxUses`, `uses`,
-    `redeemBy`, `active`, `org`, `fromName`, `buyerEmail` and `notes`
+    `redeemBy`, `active`, `org`, `fromName`, `buyerEmail`, `notes` and
+    `notifyEmail`
   - `passRedemptions/{CODE_uid}` has one row per redemption
 - **Format:** `PREFIX-XXXXXXXX`. The 8 random characters come from an
   alphabet with no 0/O/1/I/L.
