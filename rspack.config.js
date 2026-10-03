@@ -1,11 +1,18 @@
-const webpack = require('webpack');
+const { rspack } = require('@rspack/core');
 const path = require('path');
 const net = require('net');
 const { execSync } = require('child_process');
 const Dotenv = require('dotenv-webpack');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const DEFAULT_PORT = 3333;
+
+// Don't watch dotfiles/dot-directories or node_modules in the static dirs.
+// A function, not globs: the dev server's chokidar v4 dropped glob support,
+// and watching node_modules exhausts file handles (EMFILE). Paths are tested
+// relative to the repo so a worktree under `.claude/` isn't ignored wholesale.
+const IGNORED_SEGMENT = /(^|[/\\])(\.[^/\\]|node_modules([/\\]|$))/;
+const STATIC_WATCH_IGNORED = (file) =>
+  IGNORED_SEGMENT.test(path.relative(__dirname, path.resolve(file)));
 
 // Full build identity: CalVer base from package.json + short git SHA.
 // e.g. "2026.6.0+a1b2c3d". The base is bumped by hand at release time;
@@ -52,14 +59,14 @@ const config = {
       {
         directory: '.',
         watch: {
-          ignored: ['.*', '**/node_modules']
+          ignored: STATIC_WATCH_IGNORED
         }
       },
       {
         directory: path.join(__dirname, 'public'),
         publicPath: '/',
         watch: {
-          ignored: ['**/.*', '**/node_modules/**']
+          ignored: STATIC_WATCH_IGNORED
         }
       }
     ]
@@ -79,7 +86,7 @@ const config = {
   output: {
     publicPath: '/dist/',
     path: path.join(__dirname, 'dist'),
-    libraryTarget: 'umd'
+    library: { type: 'umd' }
   },
   externals: {
     // Stubs out `import ... from 'three'` so it returns `import ... from window.THREE` effectively using THREE global variable that is defined by AFRAME.
@@ -95,16 +102,16 @@ const config = {
     // but webpack still resolves them statically and throws UnhandledSchemeError
     // on the `node:` URI scheme. Strip the prefix so the fs/path fallbacks
     // below substitute empty modules instead.
-    new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+    new rspack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
       resource.request = resource.request.replace(/^node:/, '');
     }),
     new Dotenv({
       path: './config/.env.development'
     }),
-    new webpack.DefinePlugin({
+    new rspack.DefinePlugin({
       VERSION: JSON.stringify(buildVersion())
     }),
-    new CopyWebpackPlugin({
+    new rspack.CopyRspackPlugin({
       patterns: [
         { from: 'src/notyf.min.css' },
         { from: 'src/viewer-styles.css' },
@@ -120,9 +127,17 @@ const config = {
       {
         test: /\.jsx?$/,
         exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader'
-        }
+        // Rspack's built-in SWC loader replaces Babel (whose only job was JSX).
+        // target esnext: transform JSX only, never downlevel syntax.
+        loader: 'builtin:swc-loader',
+        options: {
+          jsc: {
+            parser: { syntax: 'ecmascript', jsx: true },
+            transform: { react: { runtime: 'automatic' } },
+            target: 'esnext'
+          }
+        },
+        type: 'javascript/auto'
       },
       {
         test: /\.svg$/,
@@ -203,6 +218,12 @@ const config = {
       fs: false,
       path: false
     }
+  },
+  // The same Node-only draco branches reference __filename / __dirname.
+  // Mock them silently, as webpack did by default for web builds.
+  node: {
+    __filename: 'mock',
+    __dirname: 'mock'
   }
 };
 
