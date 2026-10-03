@@ -182,8 +182,9 @@ const REPLICATE_MODELS = {
     type: 'fal-3d',
     endpoint: 'fal-ai/hunyuan-3d/v3.1/rapid/image-to-3d',
     imageField: 'input_image_url',
-    // Textured by default (enable_geometry: false); PBR maps add $0.15 and
-    // aren't needed for street props.
+    // The endpoint returns a textured mesh unless asked for geometry only, so
+    // no opt-in is needed. PBR maps add $0.15 and aren't needed for street
+    // props.
     params: { enable_pbr: false },
     assetSlug: 'hunyuan3d-model',
     assetLabel: 'Hunyuan3D Model',

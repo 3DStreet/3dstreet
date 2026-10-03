@@ -32,34 +32,11 @@ import {
 } from '@shared/utils/generationJobs.js';
 import { t } from './i18n/messages.js';
 import { isTokenExhaustedError } from '@shared/utils/tokens.js';
-
-// Selectable image -> mesh models (all GLB output via fal). tokenCost mirrors
-// the backend source of truth (public/functions/replicate-models.js); the
-// backend enforces the real charge. estimatedTime drives the progress bar only.
-const MODEL3D_MODELS = [
-  {
-    id: 'hunyuan-3d',
-    name: t('model3d.modelHunyuanName'),
-    tokenCost: 5,
-    estimatedTime: 60
-  },
-  {
-    id: 'trellis',
-    name: t('model3d.modelTrellisName'),
-    tokenCost: 6,
-    estimatedTime: 60
-  },
-  {
-    id: 'meshy',
-    name: t('model3d.modelMeshyName'),
-    tokenCost: 24,
-    estimatedTime: 120
-  }
-];
+import { MODEL3D_MODELS } from './model3d-models.js';
 
 const Model3DTab = {
   imageData: null,
-  selectedModel: 'hunyuan-3d',
+  selectedModel: MODEL3D_MODELS[0].id,
   currentModelUrl: '',
   timerInterval: null,
   startTime: null,
@@ -148,7 +125,7 @@ const Model3DTab = {
             <span id="model3d-generate-text">${t('model3d.generateButton')}</span>
             <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 4px;">
               <img src="/ui_assets/token-image.png" alt="${t('model3d.tokenAlt')}" class="w-5 h-5" />
-              <span id="model3d-token-cost" class="text-sm font-medium">5</span>
+              <span id="model3d-token-cost" class="text-sm font-medium">${this.getModelConfig().tokenCost}</span>
             </span>
           </button>
 
