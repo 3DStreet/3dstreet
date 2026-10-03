@@ -214,8 +214,9 @@ const redeemPassCodeForUser = async (userId, rawCode, { nowMs = Date.now() } = {
     });
   }
 
-  const { notify, ...result } = step1;
-  return { ...result, proUntilMs: grant.proUntilMs };
+  const result = { ...step1, proUntilMs: grant.proUntilMs };
+  delete result.notify;
+  return result;
 };
 
 // Client-facing error codes. 'already-redeemed' is NOT an error: the caller

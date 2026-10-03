@@ -1291,7 +1291,7 @@ const passCodeRedeemed = defineTemplate({
     share: (link) => `Pour partager les pass restants, envoyez ce lien : ${link}`,
     allUsed: 'Tous les pass de ce code ont maintenant été utilisés.',
     unfamiliar:
-      "Si vous ne reconnaissez pas cette personne, répondez à cet e-mail pour nous prévenir.",
+      'Si vous ne reconnaissez pas cette personne, répondez à cet e-mail pour nous prévenir.',
     support:
       "Il n'existe pas encore de tableau de bord pour les codes. Pour faire le point sur ce code, ajouter des pass, changer qui reçoit ces mises à jour ou désactiver le code, répondez simplement à cet e-mail et notre équipe vous aidera.",
     footnote:
