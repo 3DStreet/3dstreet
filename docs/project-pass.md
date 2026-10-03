@@ -96,7 +96,9 @@ Each recipient's days start when **they** redeem, not when the buyer paid.
   the code) that you send to the buyer to paste into their own email.
   `--notify` lists the code's contacts (comma-separated: you, the buyer),
   who get a status email on every redemption; it defaults to your
-  `git config user.email`, and `--notify=none` turns it off. To add or
+  `git config user.email` (minting refuses when that is unset, rather than
+  silently minting a code with no contacts), and `--notify=none` turns it
+  off. To add or
   change contacts on a code already given out, edit `notifyEmail` on its
   doc (a string or an array of strings); the next redemption uses it.
   `--status=CODE [--list]` shows uses so far (and the redeeming uids, if a

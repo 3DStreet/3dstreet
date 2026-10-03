@@ -29,7 +29,8 @@
  *
  *   --notify is who gets a status email on every redemption (comma-separate
  *   several, e.g. you and the buyer); it defaults to your
- *   `git config user.email`. --notify=none turns the emails off.
+ *   `git config user.email` (and is required when that is unset).
+ *   --notify=none turns the emails off.
  *
  *   # status: uses so far (and redeeming uids with --list)
  *   node scripts/mint-pass-codes.js --project=dev-3dstreet --status=FOUNDATION-7KQ2XXXX [--list]
@@ -129,6 +130,13 @@ async function mint() {
     } catch {
       notify = '';
     }
+  }
+  // Never mint a code with no contacts by accident: no --notify and no git
+  // email means the operator must say --notify=none.
+  if (!notify) {
+    fail(
+      'no --notify given and no git email to default to; pass --notify=<email> or --notify=none'
+    );
   }
   const notifyEmails =
     notify === 'none'

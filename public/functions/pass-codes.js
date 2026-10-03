@@ -206,12 +206,16 @@ const redeemPassCodeForUser = async (userId, rawCode, { nowMs = Date.now() } = {
   }
 
   if (step1.notify) {
-    const redeemer = await getUserInfo(userId);
-    await notifyCodeContacts(step1.notify.notifyEmail, {
-      ...step1.notify.data,
-      redeemerName: redeemer?.displayName || null,
-      redeemerEmail: redeemer?.email || null
-    });
+    try {
+      const redeemer = await getUserInfo(userId);
+      await notifyCodeContacts(step1.notify.notifyEmail, {
+        ...step1.notify.data,
+        redeemerName: redeemer?.displayName || null,
+        redeemerEmail: redeemer?.email || null
+      });
+    } catch (err) {
+      console.error(`passCodeRedeemed failed for ${redemptionId}:`, err);
+    }
   }
 
   const result = { ...step1, proUntilMs: grant.proUntilMs };
