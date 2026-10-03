@@ -1144,6 +1144,161 @@ const passActivated = defineTemplate(
   { ctaUrl: (content) => `${APP_BASE}/?${utm('pass_activated', content)}` }
 );
 
+// Sent to a pass code's contact (notifyEmail) each time a pass is redeemed.
+// There is no code dashboard, so this email is the buyer's status report:
+// which code, uses so far, when this pass ends and the code's redeem-by
+// date. It names who redeemed so the buyer can spot a code that leaked, and
+// has no CTA: the next step, if any, is replying to us.
+const codeFacts = (data = {}) => {
+  const f = passFacts(data);
+  const uses = Number.isInteger(data.uses) && data.uses > 0 ? data.uses : null;
+  const maxUses = Number.isInteger(data.maxUses) && data.maxUses > 0 ? data.maxUses : null;
+  const code = typeof data.code === 'string' ? data.code : '';
+  return {
+    ...f,
+    code,
+    uses,
+    maxUses,
+    left: uses !== null && maxUses !== null ? Math.max(maxUses - uses, 0) : null,
+    redeemByMs: Number.isFinite(data.redeemByMs) ? data.redeemByMs : null,
+    link: code ? `${APP_BASE}/#redeem?code=${code}` : '',
+    by: [data.redeemerName, data.redeemerEmail && `<${data.redeemerEmail}>`]
+      .filter((v) => typeof v === 'string' && v.trim())
+      .join(' ')
+  };
+};
+
+const passCodeRedeemedCopy = (locale, words) => {
+  const P = PASS_PHRASES[locale];
+  const items = (f, strong) =>
+    [
+      f.code && words.code(strong(f.code)),
+      f.by && words.by(strong(f.by)),
+      f.left !== null && words.used(f.uses, f.maxUses, f.left),
+      words.thisPass(P.duration(f), P.until(f), f.tokens),
+      f.left && f.redeemByMs !== null && words.redeemBy(passDate(f.redeemByMs, locale))
+    ].filter(Boolean);
+  const share = (f, link) => (f.left === 0 ? words.allUsed : f.link ? words.share(link) : '');
+  return {
+    subject: (data) => {
+      const f = codeFacts(data);
+      return f.left !== null ? words.subjectCount(f.uses, f.maxUses) : words.subject;
+    },
+    bodyHtml: (data) => {
+      const f = codeFacts(data);
+      const link = `<a href="${f.link}" style="color: #6366f1;">${f.link}</a>`;
+      const next = share(f, link);
+      return `  <p>${words.lead(`<strong>${P.full}</strong>`)}</p>
+
+  <ul style="padding-left: 20px;">
+${items(f, (s) => `<strong>${escapeHtml(s)}</strong>`)
+  .map((item) => `    <li>${item}</li>`)
+  .join('\n')}
+  </ul>
+${next ? `\n  <p>${next}</p>\n` : ''}
+  <p>${words.unfamiliar}</p>
+
+  <p>${words.support}</p>`;
+    },
+    bodyText: (data) => {
+      const f = codeFacts(data);
+      const next = share(f, f.link);
+      return `${words.lead(P.full)}
+
+${items(f, (s) => s)
+  .map((item) => `- ${item}`)
+  .join('\n')}
+${next ? `\n${next}\n` : ''}
+${words.unfamiliar}
+
+${words.support}`;
+    },
+    footnote: words.footnote
+  };
+};
+
+const passCodeRedeemed = defineTemplate({
+  en: passCodeRedeemedCopy('en', {
+    subjectCount: (uses, max) => `Your Project Pass code was redeemed (${uses} of ${max} used)`,
+    subject: 'Your Project Pass code was redeemed',
+    lead: (pass) => `Someone just redeemed a ${pass} from your code. Here's where it stands:`,
+    code: (code) => `Code: ${code}`,
+    by: (who) => `Redeemed by: ${who}`,
+    used: (uses, max, left) => `Passes used: ${uses} of ${max} (${left} left)`,
+    thisPass: (duration, until, tokens) =>
+      `This pass: ${duration} of 3DStreet Pro${until}, plus ${tokens} AI generation tokens`,
+    redeemBy: (date) => `Remaining passes can be redeemed until ${date}`,
+    share: (link) => `To share the remaining passes, send people this link: ${link}`,
+    allUsed: 'All passes on this code have now been redeemed.',
+    unfamiliar:
+      "If you don't recognize this person, reply to this email and let us know.",
+    support:
+      "There's no dashboard for pass codes yet. To check on this code, add passes, change who gets these updates, or turn the code off, just reply to this email and our team will help.",
+    footnote:
+      "You received this email because you're the contact for a 3DStreet Project Pass code."
+  }),
+  es: passCodeRedeemedCopy('es', {
+    subjectCount: (uses, max) =>
+      `Se canjeó tu código de Pase de Proyecto (${uses} de ${max} usados)`,
+    subject: 'Se canjeó tu código de Pase de Proyecto',
+    lead: (pass) => `Alguien acaba de canjear un ${pass} con tu código. Este es su estado:`,
+    code: (code) => `Código: ${code}`,
+    by: (who) => `Canjeado por: ${who}`,
+    used: (uses, max, left) => `Pases usados: ${uses} de ${max} (quedan ${left})`,
+    thisPass: (duration, until, tokens) =>
+      `Este pase: ${duration} de 3DStreet Pro${until}, más ${tokens} tokens de generación con IA`,
+    redeemBy: (date) => `Los pases restantes se pueden canjear hasta el ${date}`,
+    share: (link) => `Para compartir los pases restantes, envía este enlace: ${link}`,
+    allUsed: 'Ya se canjearon todos los pases de este código.',
+    unfamiliar:
+      'Si no reconoces a esta persona, responde a este correo y avísanos.',
+    support:
+      'Todavía no hay un panel para los códigos de pase. Para consultar este código, añadir pases, cambiar quién recibe estas actualizaciones o desactivar el código, simplemente responde a este correo y nuestro equipo te ayudará.',
+    footnote:
+      'Recibes este correo porque eres el contacto de un código de Pase de Proyecto de 3DStreet.'
+  }),
+  'pt-BR': passCodeRedeemedCopy('pt-BR', {
+    subjectCount: (uses, max) =>
+      `Seu código de Passe de Projeto foi resgatado (${uses} de ${max} usados)`,
+    subject: 'Seu código de Passe de Projeto foi resgatado',
+    lead: (pass) => `Alguém acabou de resgatar um ${pass} com o seu código. Veja a situação:`,
+    code: (code) => `Código: ${code}`,
+    by: (who) => `Resgatado por: ${who}`,
+    used: (uses, max, left) => `Passes usados: ${uses} de ${max} (restam ${left})`,
+    thisPass: (duration, until, tokens) =>
+      `Este passe: ${duration} de 3DStreet Pro${until}, mais ${tokens} tokens de geração com IA`,
+    redeemBy: (date) => `Os passes restantes podem ser resgatados até ${date}`,
+    share: (link) => `Para compartilhar os passes restantes, envie este link: ${link}`,
+    allUsed: 'Todos os passes deste código já foram resgatados.',
+    unfamiliar:
+      'Se você não reconhece esta pessoa, responda a este e-mail e nos avise.',
+    support:
+      'Ainda não há um painel para códigos de passe. Para consultar este código, adicionar passes, mudar quem recebe estas atualizações ou desativar o código, é só responder a este e-mail e nossa equipe vai ajudar.',
+    footnote:
+      'Você recebeu este e-mail porque é o contato de um código de Passe de Projeto do 3DStreet.'
+  }),
+  fr: passCodeRedeemedCopy('fr', {
+    subjectCount: (uses, max) =>
+      `Votre code Pass Projet a été utilisé (${uses} sur ${max})`,
+    subject: 'Votre code Pass Projet a été utilisé',
+    lead: (pass) => `Quelqu'un vient d'utiliser un ${pass} avec votre code. Voici le point :`,
+    code: (code) => `Code : ${code}`,
+    by: (who) => `Utilisé par : ${who}`,
+    used: (uses, max, left) => `Pass utilisés : ${uses} sur ${max} (il en reste ${left})`,
+    thisPass: (duration, until, tokens) =>
+      `Ce pass : ${duration} de 3DStreet Pro${until}, plus ${tokens} jetons de génération IA`,
+    redeemBy: (date) => `Les pass restants peuvent être utilisés jusqu'au ${date}`,
+    share: (link) => `Pour partager les pass restants, envoyez ce lien : ${link}`,
+    allUsed: 'Tous les pass de ce code ont maintenant été utilisés.',
+    unfamiliar:
+      'Si vous ne reconnaissez pas cette personne, répondez à cet e-mail pour nous prévenir.',
+    support:
+      "Il n'existe pas encore de tableau de bord pour les codes. Pour faire le point sur ce code, ajouter des pass, changer qui reçoit ces mises à jour ou désactiver le code, répondez simplement à cet e-mail et notre équipe vous aidera.",
+    footnote:
+      'Vous recevez cet e-mail parce que vous êtes le contact d’un code Pass Projet 3DStreet.'
+  })
+});
+
 module.exports = {
   welcome,
   postUpgradeWelcome,
@@ -1155,6 +1310,7 @@ module.exports = {
   geoTokenExhaustion,
   genTokenExhaustion,
   passActivated,
+  passCodeRedeemed,
   // Exported for unit tests only (per-key fallback + lang normalization); not
   // a lifecycle template, so callers that enumerate templates must skip it.
   defineTemplate

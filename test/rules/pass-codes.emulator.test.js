@@ -196,6 +196,33 @@ describe('redeemPassCodeForUser (emulator)', () => {
     expect(body.MessageStream).toBe('outbound');
   });
 
+  it('sends each code contact one status email per redemption', async () => {
+    process.env.POSTMARK_API_KEY = 'test-server-token';
+    const uid = `pc-notify-${Date.now()}`;
+    await admin.auth().createUser({ uid, email: `${uid}@example.test` });
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ MessageID: 'pm-pass-2' })
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const contacts = ['issuer@example.test', 'buyer@example.test'];
+    const code = await mintCode({ notifyEmail: contacts });
+    await redeemPassCodeForUser(uid, code);
+    await redeemPassCodeForUser(uid, code);
+
+    const updates = fetchMock.mock.calls
+      .map((call) => JSON.parse(call[1].body))
+      .filter((body) => contacts.includes(body.To));
+    expect(updates.map((body) => body.To)).toEqual(contacts);
+    expect(updates[0].Subject).toBe(
+      'Your Project Pass code was redeemed (1 of 2 used)'
+    );
+    expect(updates[0].TextBody).toContain(code);
+    expect(updates[0].TextBody).toContain('1 of 2 (1 left)');
+    expect(updates[0].TextBody).toContain(`Redeemed by: <${uid}@example.test>`);
+  });
+
   it('refuses subscribers and Pro-team users without using a seat', async () => {
     const code = await mintCode({ maxUses: 5 });
 

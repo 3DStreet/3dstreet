@@ -21,6 +21,9 @@ const TEAM_SIGNATURE = {
 // exercises the one data-dependent template (postUpgradeWelcome).
 const DATA = { planTier: 'MAX' };
 
+// Status emails with no call to action.
+const NO_CTA = ['passCodeRedeemed'];
+
 describe('lifecycle email templates (localization)', function () {
   describe('locale matching (normalizeEmailLocale)', function () {
     it('passes through supported codes and defaults unknowns to en', function () {
@@ -81,6 +84,10 @@ describe('lifecycle email templates (localization)', function () {
           }
 
           // CTA links must survive translation with the right utm_content.
+          if (NO_CTA.includes(name)) {
+            assert.ok(!html.includes('utm_content=cta_button'), 'no CTA');
+            return;
+          }
           assert.ok(
             html.includes('https://3dstreet.app/?utm_source=email') &&
               html.includes('utm_content=cta_button'),
