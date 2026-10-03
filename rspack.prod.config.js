@@ -1,9 +1,7 @@
-const webpack = require('webpack');
+const { rspack } = require('@rspack/core');
 const path = require('path');
 const { execSync } = require('child_process');
 const Dotenv = require('dotenv-webpack');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
-const TerserPlugin = require('terser-webpack-plugin');
 
 const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
 
@@ -49,11 +47,9 @@ module.exports = {
   devtool: 'source-map',
   optimization: {
     minimizer: [
-      // SWC instead of the default Terser: ~3x faster builds with output
-      // ~1% smaller. esbuild was tried too but skips the in-scope dead-code
-      // removal webpack's tree shaking relies on (+14-26% bundle size).
-      // SWC minifies without transpiling, so syntax is not downleveled.
-      new TerserPlugin({ minify: TerserPlugin.swcMinify })
+      // JS only (no CSS minimizer, so copied stylesheets ship as-is), and
+      // license comments extracted to *.LICENSE.txt as Terser did.
+      new rspack.SwcJsMinimizerRspackPlugin({ extractComments: true })
     ]
   },
   entry: {
@@ -70,7 +66,7 @@ module.exports = {
   output: {
     clean: true,
     path: path.join(__dirname, 'dist'),
-    libraryTarget: 'umd'
+    library: { type: 'umd' }
   },
   externals: {
     // Stubs out `import ... from 'three'` so it returns `import ... from window.THREE` effectively using THREE global variable that is defined by AFRAME.
@@ -82,16 +78,16 @@ module.exports = {
     // but webpack still resolves them statically and throws UnhandledSchemeError
     // on the `node:` URI scheme. Strip the prefix so the fs/path fallbacks
     // below substitute empty modules instead.
-    new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+    new rspack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
       resource.request = resource.request.replace(/^node:/, '');
     }),
     new Dotenv({
       path: `./config/.env.${DEPLOY_ENV}`
     }),
-    new webpack.DefinePlugin({
+    new rspack.DefinePlugin({
       VERSION: JSON.stringify(buildVersion())
     }),
-    new CopyWebpackPlugin({
+    new rspack.CopyRspackPlugin({
       patterns: [
         { from: 'src/notyf.min.css' },
         { from: 'src/viewer-styles.css' },
@@ -107,9 +103,17 @@ module.exports = {
       {
         test: /\.jsx?$/,
         exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader'
-        }
+        // Rspack's built-in SWC loader replaces Babel (whose only job was JSX).
+        // target esnext: transform JSX only, never downlevel syntax.
+        loader: 'builtin:swc-loader',
+        options: {
+          jsc: {
+            parser: { syntax: 'ecmascript', jsx: true },
+            transform: { react: { runtime: 'automatic' } },
+            target: 'esnext'
+          }
+        },
+        type: 'javascript/auto'
       },
       {
         test: /\.svg$/,
@@ -182,5 +186,11 @@ module.exports = {
       fs: false,
       path: false
     }
+  },
+  // The same Node-only draco branches reference __filename / __dirname.
+  // Mock them silently, as webpack did by default for web builds.
+  node: {
+    __filename: 'mock',
+    __dirname: 'mock'
   }
 };
