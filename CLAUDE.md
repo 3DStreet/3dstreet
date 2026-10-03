@@ -264,7 +264,7 @@ Because the app now runs at a nested path, every static asset reference must be 
 
 ## Tech Stack
 
-A-Frame 1.8.0 (loaded via CDN in index.html; ships super-three 0.184), Three.js r184 (npm `three` must match the A-Frame build's super-three version, upgrade together; the bundler externalizes bare `three` imports to the A-Frame global, while `three/examples` addons are bundled from npm), React 18.2.0, Zustand 5.0.1, Firebase 11.10.0, Rspack 2 (webpack-compatible bundler; configs `rspack.config.js` / `rspack.prod.config.js`; Storybook alone still runs on webpack), TailwindCSS 3.4.14
+A-Frame 1.8.0 (loaded via CDN in index.html; ships super-three 0.184), Three.js r184 (npm `three` must match the A-Frame build's super-three version, upgrade together; the bundler externalizes bare `three` imports to the A-Frame global, while `three/examples` addons are bundled from npm), React 18.2.0, Zustand 5.0.1, Firebase 11.10.0, Rspack 2 (webpack-compatible bundler; configs `rspack.config.js` / `rspack.prod.config.js`; Storybook uses the Rspack-based `storybook-react-rsbuild`), TailwindCSS 3.4.14
 
 ## Resources
 
