@@ -165,7 +165,8 @@ async function fetchFalPrediction(job) {
       return { prediction: { status: 'succeeded', output: falImageUrl } };
     }
 
-    // fal 3D models return the mesh under model_mesh; accept aliases defensively.
+    // fal 3D models return the mesh under model_mesh (Hunyuan3D v2) or model_glb
+    // (Hunyuan3D 3.1, TRELLIS 2, Meshy); accept aliases defensively.
     const meshUrl =
       response?.model_mesh?.url ||
       response?.model_glb?.url ||
@@ -316,7 +317,7 @@ async function refundFalJobInline(db, userId, jobRef, tokenCost) {
 // (refunded once on failure), submit to fal's queue (with a completion webhook,
 // #1832), and return the jobId immediately. The webhook finalizes + emails in
 // real time; the client poll drives live UI and the reconciler backstops a
-// dropped delivery. These endpoints (Hunyuan3D v2, TRELLIS 2) are image-to-3D
+// dropped delivery. These endpoints (Hunyuan3D, TRELLIS 2, Meshy) are image-to-3D
 // only: a reference image is required (no text prompt input).
 const generateFalMesh = functions
   .runWith({
@@ -483,7 +484,7 @@ const generateFalMesh = functions
       });
 
       // Submit to fal's queue. imageField/params come from the model config
-      // because the two endpoints differ (input_image_url vs image_url).
+      // because the endpoints differ (input_image_url vs image_url).
       // fal_webhook makes fal call falJobWebhook on completion for real-time
       // finalize + email; the poll/reconciler paths remain as backstops.
       const falPayload = {

@@ -19,7 +19,7 @@ single completion shape:
 | --- | --- | --- | --- |
 | `replicate` | `splat` (image→splat, SHARP), `video` (image→video, Veo/Kling/LTX/…), `image` (nano-banana/seedream/kontext) | **convergent**: provider webhook + client poll + reconciler all funnel into one idempotent processor | charged on submit, refunded once on failure |
 | `modal` | `splat` (video→splat, vid2scene tiers) | convergent, like replicate (status endpoint + staged-output existence check) | charged on submit, refunded once on failure |
-| `fal` | `mesh` (image→3D GLB, Hunyuan3D/TRELLIS), `image` (flux-2 edit family) | **convergent** since #1832: `fal_webhook` + client poll + reconciler via one authoritative status adapter (`fetchFalPrediction`) | charged on submit, refunded once on failure |
+| `fal` | `mesh` (image→3D GLB, Hunyuan3D/TRELLIS/Meshy), `image` (flux-2 edit family) | **convergent** since #1832: `fal_webhook` + client poll + reconciler via one authoritative status adapter (`fetchFalPrediction`) | charged on submit, refunded once on failure |
 | `cloudrun` | `splat-rad` (.ply→RAD/LOD) | **worker-writeback**: the Cloud Run worker writes its own terminal status; reconciler re-enqueues a stalled task (no external state to poll) | **`tokenCost: 0`** — silent backend optimization, never charges |
 
 With image migrated (#1835) every user-initiated generation kind is on the
@@ -619,8 +619,9 @@ or fal queue congestion) hit the 300s function timeout and 500'd with the
 token uncharged-but-work-wasted feel. Same class of failure as the video
 migration (#1780).
 
-- **Kind/provider:** `kind: 'mesh'`, `provider: 'fal'`. Models Hunyuan3D v2 and
-  TRELLIS 2 (`type: 'fal-3d'` in `replicate-models.js`), image-to-3D only.
+- **Kind/provider:** `kind: 'mesh'`, `provider: 'fal'`. Models Hunyuan3D 3.1
+  Rapid, TRELLIS 2 and Meshy 7.1 (`type: 'fal-3d'` in `replicate-models.js`),
+  image-to-3D only.
 - **Submit-and-return:** `generateFalMesh` stages the input image, writes the
   pending job, charges at submit (refund-once-on-failure, shared
   `refundSplatToken` path), submits to `queue.fal.run`, stores the fal

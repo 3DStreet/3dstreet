@@ -2,11 +2,12 @@
  * 3D Model Tab
  *
  * The "3D Model" medium alongside Image, Video and Splat: image → 3D mesh
- * (GLB) via fal. Two selectable models, both image-to-3D:
- *   - Hunyuan3D (fal-ai/hunyuan3d/v2)
- *   - TRELLIS   (fal-ai/trellis-2)
+ * (GLB) via fal. Three selectable models, all image-to-3D:
+ *   - Hunyuan3D 3.1 Rapid (fal-ai/hunyuan-3d/v3.1/rapid/image-to-3d)
+ *   - TRELLIS 2           (fal-ai/trellis-2)
+ *   - Meshy 7.1           (meshy/v7.1/image-to-3d)
  *
- * Both endpoints are image-to-3D only (no text prompt input), so a reference
+ * All endpoints are image-to-3D only (no text prompt input), so a reference
  * image is required to generate. Generation uses the async job queue (like
  * splats/videos): generateFalMesh submits to fal and returns a jobId
  * immediately; the client polls getGenerationJobStatus while the tab is open,
@@ -32,21 +33,27 @@ import {
 import { t } from './i18n/messages.js';
 import { isTokenExhaustedError } from '@shared/utils/tokens.js';
 
-// Selectable image -> mesh models (both GLB output via fal). tokenCost mirrors
+// Selectable image -> mesh models (all GLB output via fal). tokenCost mirrors
 // the backend source of truth (public/functions/replicate-models.js); the
 // backend enforces the real charge. estimatedTime drives the progress bar only.
 const MODEL3D_MODELS = [
   {
     id: 'hunyuan-3d',
     name: t('model3d.modelHunyuanName'),
-    tokenCost: 3,
-    estimatedTime: 30
+    tokenCost: 5,
+    estimatedTime: 60
   },
   {
     id: 'trellis',
     name: t('model3d.modelTrellisName'),
     tokenCost: 6,
     estimatedTime: 60
+  },
+  {
+    id: 'meshy',
+    name: t('model3d.modelMeshyName'),
+    tokenCost: 24,
+    estimatedTime: 120
   }
 ];
 
@@ -141,7 +148,7 @@ const Model3DTab = {
             <span id="model3d-generate-text">${t('model3d.generateButton')}</span>
             <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 4px;">
               <img src="/ui_assets/token-image.png" alt="${t('model3d.tokenAlt')}" class="w-5 h-5" />
-              <span id="model3d-token-cost" class="text-sm font-medium">3</span>
+              <span id="model3d-token-cost" class="text-sm font-medium">5</span>
             </span>
           </button>
 
