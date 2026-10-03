@@ -7,8 +7,8 @@ importers, of which we have none). We use two identifiers instead.
 ## Two identifiers, two jobs
 
 1. **Build stamp** (`+a1b2c3d`) — the short git SHA, appended automatically to
-   every build by Rspack (`buildVersion()` in `rspack.config.js` /
-   `rspack.prod.config.js`). It uniquely fingerprints the exact deployed
+   every build by webpack (`buildVersion()` in `webpack.config.js` /
+   `webpack.prod.config.js`). It uniquely fingerprints the exact deployed
    bundle. This is what gets set as the Sentry `release`, and what a user reads
    off the Profile modal when reporting a bug. Nobody touches it by hand.
 

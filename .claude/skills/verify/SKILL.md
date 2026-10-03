@@ -8,7 +8,7 @@ description: Build, launch, and drive the 3DStreet editor/viewer in a real brows
 ## Launch
 
 ```bash
-npx rspack serve --config rspack.config.js --no-open --port 3333 &
+npx webpack serve --config webpack.config.js --no-open --port 3333 &
 # ready when: curl -s -o /dev/null -w "%{http_code}" --noproxy localhost http://localhost:3333/  → 200
 ```
 
@@ -50,7 +50,7 @@ Gotchas that cost time:
   + `page.waitForEvent('download')`.
 - Pro-gated flows: anonymous users get the "Export requires Pro" upgrade modal.
   To exercise a Pro-only path locally, temporarily hardcode the `isPro` flag in
-  the component under test and revert after (the Rspack dev server hot-rebuilds).
+  the component under test and revert after (webpack dev server hot-rebuilds).
 
 Useful in-page handles: `AFRAME.scenes[0]`, `AFRAME.INSPECTOR.opened`,
 `STREET.store.getState()`, `scene.systems['mode-manager'].getMode()`,
