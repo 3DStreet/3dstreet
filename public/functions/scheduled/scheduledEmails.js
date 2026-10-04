@@ -30,13 +30,37 @@ const EMAIL_TEMPLATES = {
   // fall back to neutral "generation" wording rather than failing.
   generationReady: {
     copyByKind: {
-      splat: { noun: 'splat', desc: '3D Gaussian Splat' },
-      video: { noun: 'video', desc: 'video' },
-      image: { noun: 'image', desc: 'image' },
-      mesh: { noun: '3D model', desc: '3D model (GLB)' }
+      // `next`: what the user does with it. Only placeable kinds (splat,
+      // mesh) get dragged into a scene; videos and images are viewed/downloaded.
+      splat: {
+        noun: 'splat',
+        desc: '3D Gaussian Splat',
+        next: 'Open it in the editor to preview it and drag it into your scene.'
+      },
+      video: {
+        noun: 'video',
+        desc: 'video',
+        next: 'Open it in 3DStreet to watch and download it.'
+      },
+      image: {
+        noun: 'image',
+        desc: 'image',
+        next: 'Open it in 3DStreet to view and download it.'
+      },
+      mesh: {
+        noun: '3D model',
+        desc: '3D model (GLB)',
+        next: 'Open it in the editor to preview it and drag it into your scene.'
+      }
     },
     getCopy(kind) {
-      return this.copyByKind[kind] || { noun: 'generation', desc: 'generation' };
+      return (
+        this.copyByKind[kind] || {
+          noun: 'generation',
+          desc: 'generation',
+          next: 'Open it in 3DStreet to see it.'
+        }
+      );
     },
     // Fallback CTA when a caller doesn't pass a deep link to the specific asset.
     defaultCtaUrl:
@@ -70,7 +94,7 @@ const EMAIL_TEMPLATES = {
         : `Your 3DStreet ${noun} is ready`;
     },
     getTextBody(userName, kind, ctaUrl, ctx = {}) {
-      const { noun, desc } = this.getCopy(kind);
+      const { noun, desc, next } = this.getCopy(kind);
       const link = ctaUrl || this.defaultCtaUrl;
       const name = ctx.assetName ? ` "${ctx.assetName}"` : '';
       const when = this.formatWhen(ctx.when);
@@ -80,7 +104,7 @@ const EMAIL_TEMPLATES = {
 Your ${desc}${name} finished generating and has been saved to your 3DStreet gallery.
 ${generatedLine}
 
-Open it in the editor:
+${next}
 ${link}
 
 Thanks for using 3DStreet!
@@ -109,7 +133,7 @@ You received this email because you asked to be notified when your ${noun} finis
   </div>`;
     },
     getHtmlBody(userName, kind, ctaUrl, ctx = {}) {
-      const { noun, desc } = this.getCopy(kind);
+      const { noun, desc, next } = this.getCopy(kind);
       const link = ctaUrl || this.defaultCtaUrl;
       const name = ctx.assetName
         ? ` <strong>&ldquo;${ctx.assetName}&rdquo;</strong>`
@@ -133,7 +157,7 @@ You received this email because you asked to be notified when your ${noun} finis
 
   <p>Your <strong>${desc}</strong>${name} finished generating and has been saved to your 3DStreet gallery.</p>
 ${generatedLine}${this.previewHtml(link, ctx)}
-  <p>Open it in the editor to preview it and drag it into your scene.</p>
+  <p>${next}</p>
 
   <div style="text-align: center; margin: 30px 0;">
     <a href="${link}" style="display: inline-block; background-color: #6366f1; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600;">Open my ${noun}</a>
