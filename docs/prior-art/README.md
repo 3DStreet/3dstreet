@@ -18,7 +18,8 @@ needs a license check first (our code is AGPL-3.0).
 | [jeantimex/tokyo](https://github.com/jeantimex/tokyo) ("procedural-tokyo") | three.js driving game: PLATEAU + OSM + GSI compiled offline into binary 256 m tiles, procedural detail in the client | MIT per `package.json` (no LICENSE file yet) | `5a42b00` (2026-10-04) | #1930, #2004, #2083, #2090; [notes](procedural-tokyo.md) |
 | [kfarr/zoningviz](https://github.com/kfarr/zoningviz) | parcel redevelopment simulator: per-city adapter → normalized parcel parquet → Monte Carlo; 3DStreet POC | MIT | `a6bc1aa` (main), `d07699a` (`poc/3dstreet-integration`) | #1784, #1744, #2083, #2090; [notes](zoningviz.md) |
 | [osmberlin/strassenraumkarte](https://github.com/osmberlin/strassenraumkarte) | Berlin street-space micromap: osm2pgsql + `lanes.lua` lane model per way + PostGIS | Apache-2.0 | see the issues | #2004, #2005 (the research lives in those issue bodies) |
-| buildings-generator kernel (`archkit.js` / `recipe.js`) | pure-JS parametric building kernel, JSON recipe → buffers | see the issue | see the issue | #2083 ([research comment](https://github.com/3DStreet/3dstreet/issues/2083#issuecomment-5977826658)) |
+| [PhiloLabs/fable51-worlds](https://github.com/PhiloLabs/fable51-worlds) | agent swarms build a city twin as Three.js code, refined by a visual loop against photos with reviewer agents | MIT | `d240284` (2026-09-08) | #2083, #2090; [notes](fable51-worlds.md) |
+| [akbartus/buildings-generator](https://github.com/akbartus/buildings-generator) | builds a real place's buildings: OSM footprints + lidar heights + a vision model filling a JSON recipe per building from Mapillary photos → parametric kernel (`3d/mesh/archkit.js`); grew out of fable51-worlds | see the notes | README only (repo not readable from our session) | #2083, #2090, #1744; [notes](buildings-generator.md) |
 | [alzin/japan-rail-sim](https://github.com/alzin/japan-rail-sim) | rail sim; track profile, sleeper and catenary dimensions | MIT | see the issue | #2004 rail fidelity |
 | [mkturkcan/boundless-nyc](https://github.com/mkturkcan/boundless-nyc) | NYC open data compiled into streamed tiles; the architecture procedural-tokyo copies | not reviewed | not reviewed | background only |
 
@@ -38,6 +39,18 @@ source adapter        →  normalized facts           →  streamable tiles     
 - zoningviz: `jurisdictions/<city>.py` → `sf_parcels.parquet` → (planned) PMTiles
 - strassenraumkarte: osm2pgsql flex + `lanes.lua` → PostGIS → vector tiles
 - procedural-tokyo: PLATEAU/OSM/GSI fetchers → (in memory) → `TKY1` binary tiles
+
+**The expensive alternative: a visual feedback loop.** fable51-worlds builds a
+twin by having agents author each place, render it, compare it with
+photographs and fix it in rounds. It works, but it is laborious (each round
+costs screenshots and several reviewer agents' tokens) and lands at similar or
+lower fidelity, with its worst errors up close. The reusable value turned out
+to be the generators, which became buildings-generator: there the model only
+fills in a JSON recipe per building, once, and a parametric kernel builds it on
+measured footprints and heights. Spend agent effort on generators run over
+data, constrain models to emitting parameters, and keep visual comparison as a
+QA tool. See
+[fable51-worlds](fable51-worlds.md).
 
 3DStreet's version of this is proposed as **context tile layers**
 ([#2090](https://github.com/3DStreet/3dstreet/issues/2090)): facts live in streamable tiles keyed by
