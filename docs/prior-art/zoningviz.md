@@ -45,7 +45,7 @@ Three Python steps (`scripts/1_fetch_data.py`, `2_score_parcels.py`,
 - **Facts versus scenario.** `sf_parcels.parquet` holds only facts about the
   city; scenarios are applied later, in memory. The same split as #1930's
   "saved scenes carry user intent, not derived trims" and #2083's "saving by
-  source". Generalized in the context tile layers issue as *facts in tiles,
+  source". Generalized in #2090 as *facts in tiles,
   intent in scenes*.
 - **A stable `parcel_id` is the join key** between the parcel layer, the
   simulation output and (later) user edits such as #1744's per-parcel

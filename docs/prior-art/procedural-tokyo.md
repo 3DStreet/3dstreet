@@ -155,9 +155,8 @@ WebXR, editor gizmo outlines and the splat `renderOrder` band.
 - Frame: theirs is x east, z south; our OSM layers are x north, z east. A 90°
   turn about y plus the origin offset to `street-geo`'s lat/lon.
 - Heights: Tokyo Peil (close to orthometric) vs `street-geo`'s
-  orthometric/ellipsoidal pair. See the height open question in the context
-  tile layers issue.
+  orthometric/ellipsoidal pair. See the height open question in #2090.
 - Their worker meshing already obeys our "worker code never imports `three`" rule.
 - three.js 0.186 vs our 0.184: fine for meshing and shader code.
 - Outreach first: LICENSE file, and whether they would publish the format
-  and meshing as a package, or emit our context-tile layers from their compiler.
+  and meshing as a package, or emit our context tile layers (#2090) from their compiler.
