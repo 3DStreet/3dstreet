@@ -7,6 +7,7 @@ import {
   FALLBACK_FORWARD_DIST,
   EYE_MARGIN_METRES,
   MIN_ORBIT_RADIUS_METRES,
+  SELECTION_PIVOT_NDC_MARGIN,
   LB_TWEEN_HYSTERESIS_DEGREES
 } from './constants.js';
 import {
@@ -649,8 +650,10 @@ export class DragGestureController {
       pivotX = rect.left + rect.width / 2;
       pivotY = rect.top + rect.height / 2;
     }
+    // Map regime with a visible selected entity → orbit the selection
+    // (#1993); otherwise the bounds-sphere + fallback pivot.
     const center = isMap
-      ? this._mapModePivot(pivotX, pivotY) // bounds sphere + fallback
+      ? this._selectionPivot(camera) || this._mapModePivot(pivotX, pivotY)
       : camera.position.clone(); // street: rotate-in-place
     this._ctx.latch.start({
       mode: 'rotate',
@@ -669,6 +672,47 @@ export class DragGestureController {
     } else {
       this._indicator.hide();
     }
+  }
+
+  // Selection pivot (#1993): the selected entity's world origin, when it is
+  // in view (in front of the camera, within SELECTION_PIVOT_NDC_MARGIN of the
+  // viewport on both axes). Returns null — use the normal Map pivot — with no
+  // selection, the scene/camera selected, a hidden entity, or an origin out
+  // of view. Unlike `_mapModePivot` this pivot is NOT forced to the ground:
+  // the point the user picked is the one that stays pinned on screen.
+  _selectionPivot(camera) {
+    const el = this._ctx.selectedEntity;
+    if (!el || el.isScene || !el.object3D || !el.isConnected) return null;
+    if (el.hasAttribute && el.hasAttribute('camera')) return null;
+    for (let o = el.object3D; o; o = o.parent) {
+      if (!o.visible) return null;
+    }
+    const p = new THREE.Vector3();
+    el.object3D.getWorldPosition(p);
+    // Degenerate: pivot on the camera itself — nothing to orbit.
+    if (p.distanceToSquared(camera.position) < 1e-6) return null;
+    camera.updateMatrixWorld();
+    const ndc = p.clone().project(camera);
+    const m = SELECTION_PIVOT_NDC_MARGIN;
+    if (
+      !Number.isFinite(ndc.x) ||
+      !Number.isFinite(ndc.y) ||
+      ndc.z < -1 ||
+      ndc.z > 1 ||
+      Math.abs(ndc.x) > m ||
+      Math.abs(ndc.y) > m
+    ) {
+      return null;
+    }
+    const fwd = this._tmpV3c;
+    camera.getWorldDirection(fwd);
+    return clampOrbitRadius(
+      camera.position,
+      p,
+      MIN_ORBIT_RADIUS_METRES,
+      Infinity,
+      fwd
+    );
   }
 
   // Map-mode pivot. The fallback rotation centre is the screen-centre
