@@ -33,20 +33,63 @@ const AwesomeIconSimple = ({ icon, size = 12, className = '' }) => {
   );
 };
 
+// Format a per-second rate without trailing zeros: 4, 1.4, 0.5.
+const formatRate = (n) => String(Math.round(n * 10) / 10);
+
+// The token cost shown in a model's badge, or null for none. Video models
+// are billed per second, so they show a per-second rate rather than a flat
+// per-generation cost. `tokenCostLabel` overrides (e.g. a tier range).
+const getCostLabel = (model, mode) => {
+  if (!model) return null;
+  if (model.tokenCostLabel) return model.tokenCostLabel;
+  if (mode === 'video') {
+    // tokenCost5s bills the short tier: 5s, or `shortDuration` (Veo: 4s)
+    const seconds = model.shortDuration || 5;
+    return model.tokenCost5s
+      ? `${formatRate(model.tokenCost5s / seconds)}/s`
+      : null;
+  }
+  return model.tokenCost >= 1 ? model.tokenCost : null;
+};
+
+const CostBadge = ({ model, mode }) => {
+  const label = getCostLabel(model, mode);
+  if (label === null) return null;
+  return (
+    <TokenDisplayBase
+      count={label}
+      inline={true}
+      compact={true}
+      className={styles.tokenCostBadge}
+    />
+  );
+};
+
 const AIModelSelector = ({
   value,
   onChange,
   disabled = false,
   mode = 'image', // 'image' or 'video'
-  hasSourceImage = true // When false, filter out models that require source images (e.g., fal.ai edit models)
+  hasSourceImage = true, // When false, filter out models that require source images (e.g., fal.ai edit models)
+  // Optional flat model list ({ id, name, logo?, tokenCost?, tokenCostLabel? })
+  // that replaces the built-in image/video catalogs — used by the generator's
+  // splat and 3D model tabs, whose catalogs live with their tabs.
+  options = null
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Select appropriate models and groups based on mode
-  const models = mode === 'video' ? VIDEO_MODELS : REPLICATE_MODELS;
-  const modelGroups = mode === 'video' ? VIDEO_MODEL_GROUPS : MODEL_GROUPS;
-  const rawGroupedModels =
-    mode === 'video' ? getGroupedVideoModels() : getGroupedModels();
+  // Select appropriate models and groups based on mode (or custom options)
+  let models, modelGroups, rawGroupedModels;
+  if (options) {
+    models = Object.fromEntries(options.map((m) => [m.id, m]));
+    modelGroups = { all: { order: 0 } };
+    rawGroupedModels = { all: options };
+  } else {
+    models = mode === 'video' ? VIDEO_MODELS : REPLICATE_MODELS;
+    modelGroups = mode === 'video' ? VIDEO_MODEL_GROUPS : MODEL_GROUPS;
+    rawGroupedModels =
+      mode === 'video' ? getGroupedVideoModels() : getGroupedModels();
+  }
 
   // Filter out models that require source images if hasSourceImage is false
   const groupedModels = {};
@@ -85,16 +128,7 @@ const AIModelSelector = ({
           <span className={styles.modelName}>
             {selectedModelConfig?.name || 'Select Model'}
           </span>
-          {mode === 'image' &&
-            selectedModelConfig?.tokenCost &&
-            selectedModelConfig.tokenCost >= 1 && (
-              <TokenDisplayBase
-                count={selectedModelConfig.tokenCost}
-                inline={true}
-                compact={true}
-                className={styles.tokenCostBadge}
-              />
-            )}
+          <CostBadge model={selectedModelConfig} mode={mode} />
         </div>
         <AwesomeIconSimple
           icon={faChevronDown}
@@ -115,9 +149,11 @@ const AIModelSelector = ({
 
             return (
               <div key={groupKey} className={styles.group}>
-                <DropdownMenu.Label className={styles.groupLabel}>
-                  {groupConfig.label}
-                </DropdownMenu.Label>
+                {groupConfig.label && (
+                  <DropdownMenu.Label className={styles.groupLabel}>
+                    {groupConfig.label}
+                  </DropdownMenu.Label>
+                )}
                 {models.map((model) => (
                   <DropdownMenu.Item
                     key={model.id}
@@ -133,16 +169,7 @@ const AIModelSelector = ({
                         />
                       )}
                       <span className={styles.modelName}>{model.name}</span>
-                      {mode === 'image' &&
-                        model.tokenCost &&
-                        model.tokenCost >= 1 && (
-                          <TokenDisplayBase
-                            count={model.tokenCost}
-                            inline={true}
-                            compact={true}
-                            className={styles.tokenCostBadge}
-                          />
-                        )}
+                      <CostBadge model={model} mode={mode} />
                     </div>
                   </DropdownMenu.Item>
                 ))}

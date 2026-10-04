@@ -122,8 +122,8 @@ const TokenDetailsCard = ({
               <ul className={styles.tipsList}>
                 {tokenType === 'genToken' ? (
                   <>
-                    <li>{t('tipImageGeneration')}</li>
-                    <li>{t('tipVideoGeneration')}</li>
+                    <li>{t('tipCostVariesByModel')}</li>
+                    <li>{t('tipVideoPerSecond')}</li>
                   </>
                 ) : (
                   <>
