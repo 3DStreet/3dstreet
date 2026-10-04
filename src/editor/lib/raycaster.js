@@ -170,6 +170,21 @@ export function initRaycaster(inspector) {
     osmHover = { wayId: hit.wayId, worldPoint: hit.worldPoint };
   }
 
+  // Hover is only re-resolved by the polling above, which stops while the
+  // raycaster is disabled. Switching to the hand or shape tool by keyboard
+  // disables it with the pointer still over the canvas, so the leave has to
+  // be emitted here or the hover box stays on the last entity until the
+  // pointer exits the canvas. Resetting lastHoveredEl also lets the same
+  // entity fire a fresh enter once the raycaster is back on.
+  function clearHover() {
+    if (lastHoveredEl) {
+      Events.emit('raycastermouseleave', lastHoveredEl);
+      lastHoveredEl = null;
+    }
+    updateOsmHover(null);
+  }
+  Events.on('hidecursor', clearHover);
+
   mouseCursor.addEventListener('click', handleClick);
   inspector.container.addEventListener('mousedown', onMouseDown);
   inspector.container.addEventListener('mouseup', onMouseUp);
@@ -334,6 +349,7 @@ export function initRaycaster(inspector) {
     },
     disable: () => {
       mouseCursor.setAttribute('raycaster', 'enabled', false);
+      clearHover();
       inspector.container.removeEventListener('mousedown', onMouseDown);
       inspector.container.removeEventListener('mouseup', onMouseUp);
       inspector.container.removeEventListener('dblclick', onDoubleClick);

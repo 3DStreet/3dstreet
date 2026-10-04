@@ -73,7 +73,8 @@ creation order: a generator's `skip` array holds `"x z"` placement holes for
 **per-object detach** (#2011): a clone carries no `data-no-transform`, and its
 first edit — gizmo drag, transform field, model change, Delete — detaches it
 into a plain `Detached Model` entity via the command-layer router
-`routeCloneEdit`. Read
+`routeCloneEdit`; **Detach all** (#2036) does the same for every clone of one
+generator and removes the generator (`detachallclones`). Read
 [docs/per-object-detach.md](docs/per-object-detach.md) before changing clone
 placement or creation order, seeded draws, `autocreated` handling or the
 gizmo's no-transform gating.

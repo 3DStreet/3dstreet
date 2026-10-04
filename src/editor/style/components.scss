@@ -1823,6 +1823,26 @@ a.help-linkhover {
       color: variables.$white;
     }
   }
+  /* "Detach all" (#2036): a text pill in the more-toggle voice, always
+     filled so it reads as an action rather than a disclosure. */
+  .generator-detach-all {
+    display: flex;
+    align-items: center;
+    flex: none;
+    font-size: 11px;
+    font-family: inherit;
+    padding: 3px 7px;
+    border: 0;
+    border-radius: 6px;
+    background: variables.$bgalphadark;
+    color: variables.$lightgray-700;
+    cursor: pointer;
+    white-space: nowrap;
+    &:hover {
+      background: variables.$gray-200;
+      color: variables.$white;
+    }
+  }
   .generator-remove {
     display: flex;
     flex: none;
