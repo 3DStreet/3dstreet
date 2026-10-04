@@ -171,19 +171,6 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Uso de tokens:',
     fr: 'Utilisation des jetons :'
   },
-  tipCostVariesByModel: {
-    en: 'Cost varies by model — each model shows its token cost in the model picker',
-    es: 'El costo varía según el modelo: cada modelo muestra su costo en tokens en el selector de modelos',
-    'pt-BR':
-      'O custo varia conforme o modelo — cada modelo mostra seu custo em tokens no seletor de modelos',
-    fr: 'Le coût varie selon le modèle — chaque modèle affiche son coût en jetons dans le sélecteur de modèle'
-  },
-  tipVideoPerSecond: {
-    en: 'Video models charge per second of video generated',
-    es: 'Los modelos de video cobran por segundo de video generado',
-    'pt-BR': 'Os modelos de vídeo cobram por segundo de vídeo gerado',
-    fr: 'Les modèles vidéo facturent par seconde de vidéo générée'
-  },
   tipMapTile: {
     en: '1 token = 1 map tile request',
     es: '1 token = 1 solicitud de mosaico de mapa',
