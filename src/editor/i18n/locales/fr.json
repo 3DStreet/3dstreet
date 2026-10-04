@@ -835,6 +835,8 @@
   "shareModal.urlCopied": "URL de la scène copiée dans le presse-papiers",
   "shareModal.webShareUnsupported": "L'API Web Share n'est pas prise en charge dans ce navigateur",
   "sidebar.cloneEditHint": "Modifier cet objet le détache du générateur. Annuler le remet en place.",
+  "sidebar.detachAllClones": "Tout détacher",
+  "sidebar.detachAllClonesTitle": "Rend modifiable seul chaque objet placé par ce générateur : chacun devient un modèle indépendant que vous pouvez déplacer, faire pivoter, dupliquer ou supprimer, et le générateur est supprimé. Annuler les remet en place.",
   "sidebar.detachClone": "Détacher",
   "sidebar.detachCloneTitle": "Rend cet objet modifiable seul : il quitte le générateur et devient un modèle indépendant que vous pouvez déplacer, faire pivoter, dupliquer ou supprimer. Le faire glisser dans la vue produit le même résultat.",
   "sidebar.editCloneSettings": "Modifier les paramètres de clonage",

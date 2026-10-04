@@ -835,6 +835,8 @@
   "shareModal.urlCopied": "URL da cena copiada para a área de transferência",
   "shareModal.webShareUnsupported": "A API Web Share não é suportada neste navegador",
   "sidebar.cloneEditHint": "Editar este objeto o desanexa do gerador. Desfazer o coloca de volta.",
+  "sidebar.detachAllClones": "Desanexar tudo",
+  "sidebar.detachAllClonesTitle": "Torna editável por conta própria cada objeto que este gerador coloca: cada um vira um modelo independente que você pode mover, girar, duplicar ou excluir, e o gerador é removido. Desfazer os coloca de volta.",
   "sidebar.detachClone": "Desanexar",
   "sidebar.detachCloneTitle": "Torna este objeto editável por conta própria: ele sai do gerador e vira um modelo independente que você pode mover, girar, duplicar ou excluir. Arrastá-lo na visualização faz o mesmo.",
   "sidebar.editCloneSettings": "Editar Configurações de Clone",
