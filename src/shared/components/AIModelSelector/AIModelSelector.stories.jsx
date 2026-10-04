@@ -323,7 +323,7 @@ export const AllVideoModels = {
         initialValue="bytedance/seedance-2.0-fast"
         mode="video"
       />
-      <InteractiveWrapper initialValue="lightricks/ltx-2-fast" mode="video" />
+      <InteractiveWrapper initialValue="lightricks/ltx-2.5-fast" mode="video" />
 
       <h3 style={{ margin: 0, fontSize: '16px', marginTop: '8px' }}>
         Versatile

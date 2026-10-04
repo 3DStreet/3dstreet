@@ -211,14 +211,14 @@ export const VIDEO_MODELS = {
     tokenCost5s: 15,
     tokenCost10s: 30
   },
-  'lightricks/ltx-2-fast': {
-    name: 'LTX-2 Fast',
+  'lightricks/ltx-2.5-fast': {
+    name: 'LTX-2.5 Fast',
     type: 'replicate',
     group: 'video-high-quality-fast',
     logo: '/ui_assets/model-lightricks.png',
     estimatedTime: 40,
-    tokenCost5s: 5,
-    tokenCost10s: 10
+    tokenCost5s: 6,
+    tokenCost10s: 12
   },
   'wan-video/wan-2.7-i2v': {
     name: 'Wan 2.7 I2V',

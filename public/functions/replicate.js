@@ -556,10 +556,23 @@ const SUPPORTED_VIDEO_MODELS = {
   'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
   'kwaivgi/kling-v3-video': 'Kling v3.0 Pro',
   'lightricks/ltx-2-fast': 'LTX-2 Fast',
+  'lightricks/ltx-2.5-fast': 'LTX-2.5 Fast',
   'google/veo-3.1': 'Veo 3.1',
   'google/veo-3.1-fast': 'Veo 3.1 Fast',
   'google/veo-3.1-lite': 'Veo 3.1 Lite'
 };
+
+// Retired model ids that the provider no longer serves, mapped to their
+// replacement so a stale open tab still gets a video. Lightricks' upstream API
+// rejects `ltx-2-fast` ("Invalid model ltx-2-fast") even though Replicate still
+// lists the model.
+const VIDEO_MODEL_ALIASES = {
+  'lightricks/ltx-2-fast': 'lightricks/ltx-2.5-fast'
+};
+
+// Models that only accept 16:9 or 9:16. Any other ratio (the picker also
+// offers 1:1) is left out so the model falls back to its 16:9 default.
+const LANDSCAPE_OR_PORTRAIT = ['16:9', '9:16'];
 
 // Replicate API function for video generation (image → video).
 // Asynchronous: creates the Replicate prediction and returns the internal job
@@ -595,7 +608,7 @@ const generateReplicateVideo = functions
     assertAppCheck(context);
 
     const userId = context.auth.uid;
-    const { prompt, input_image, model_name = 'lightricks/ltx-2-fast', aspect_ratio = '16:9', duration_seconds = 5, scene_id, source = 'generator', notify } = data;
+    const { prompt, input_image, model_name: requestedModel = 'lightricks/ltx-2.5-fast', aspect_ratio = '16:9', duration_seconds = 5, scene_id, source = 'generator', notify } = data;
 
     // Opt-in completion email, same contract as the splat submit: `pending:
     // true` is the flag the notify sweep queries on; it clears when the email
@@ -603,6 +616,7 @@ const generateReplicateVideo = functions
     // Renders are usually ~2 min, but provider queue waits can stretch a job
     // far past what anyone keeps a tab open for.
     const wantsEmail = notify?.email === true;
+    const model_name = VIDEO_MODEL_ALIASES[requestedModel] || requestedModel;
 
     // Validate the model before staging anything or charging tokens.
     if (!SUPPORTED_VIDEO_MODELS[model_name]) {
@@ -620,7 +634,7 @@ const generateReplicateVideo = functions
       // Legacy (no longer in the picker; kept so a stale open tab still works)
       'bytedance/seedance-1-pro-fast': { tokenCost5s: 7, tokenCost10s: 14 },
       'wan-video/wan-2.6-i2v': { tokenCost5s: 15, tokenCost10s: 30 },
-      'lightricks/ltx-2-fast': { tokenCost5s: 5, tokenCost10s: 10 }
+      'lightricks/ltx-2.5-fast': { tokenCost5s: 6, tokenCost10s: 12 }
     };
 
     // Calculate token cost based on model and duration
@@ -756,23 +770,24 @@ const generateReplicateVideo = functions
         modelInput.mode = 'pro';
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds;
-      } else if (model_name === 'lightricks/ltx-2-fast') {
-        // LTX model parameters - uses duration in seconds (not frames or aspect_ratio)
-        // LTX accepts: 6, 8, 10, 12, 14, 16, 18, or 20 seconds
-        // We'll map our 5/10 second options to 6/10 for LTX
-        modelInput.duration = duration_seconds === 10 ? 10 : 6;
+      } else if (model_name === 'lightricks/ltx-2.5-fast') {
+        // LTX-2.5 Fast parameters. Accepts 5s and 10s directly; audio is on
+        // by default, so turn it off like the other models.
+        if (LANDSCAPE_OR_PORTRAIT.includes(aspect_ratio)) modelInput.aspect_ratio = aspect_ratio;
+        modelInput.duration = duration_seconds;
+        modelInput.resolution = '1080p';
         modelInput.generate_audio = false;
       } else if (model_name === 'google/veo-3.1' || model_name === 'google/veo-3.1-fast') {
         // Veo 3.1 model parameters
         // Veo accepts duration: 4, 6, or 8 seconds only
-        modelInput.aspect_ratio = aspect_ratio;
+        if (LANDSCAPE_OR_PORTRAIT.includes(aspect_ratio)) modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds <= 5 ? 4 : 8;
         modelInput.generate_audio = false;
       } else if (model_name === 'google/veo-3.1-lite') {
         // Veo 3.1 Lite: same 4/6/8s durations as Veo 3.1. 720p only (1080p
         // requires 8s and costs more). Audio is always generated and has no
         // off switch, so there is no generate_audio flag.
-        modelInput.aspect_ratio = aspect_ratio;
+        if (LANDSCAPE_OR_PORTRAIT.includes(aspect_ratio)) modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds <= 5 ? 4 : 8;
         modelInput.resolution = '720p';
       }
