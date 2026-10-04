@@ -191,26 +191,37 @@ export const VIDEO_MODELS = {
     tokenCost5s: 10,
     tokenCost10s: 20
   },
-  'bytedance/seedance-1-pro-fast': {
-    name: 'SeeDance 1 Pro Fast',
+  'google/veo-3.1-lite': {
+    name: 'Veo 3.1 Lite',
+    type: 'replicate',
+    group: 'video-high-quality-fast',
+    logo: '/ui_assets/model-google.png',
+    estimatedTime: 60,
+    // Veo only supports 4s/8s, so the 5s/10s cost tiers bill 4s/8s
+    shortDuration: 4,
+    tokenCost5s: 5,
+    tokenCost10s: 10
+  },
+  'bytedance/seedance-2.0-fast': {
+    name: 'Seedance 2.0 Fast',
     type: 'replicate',
     group: 'video-high-quality-fast',
     logo: '/ui_assets/model-bytedance.png',
-    estimatedTime: 65,
-    tokenCost5s: 7,
-    tokenCost10s: 14
+    estimatedTime: 90,
+    tokenCost5s: 15,
+    tokenCost10s: 30
   },
-  'lightricks/ltx-2-fast': {
-    name: 'LTX-2 Fast',
+  'lightricks/ltx-2.5-fast': {
+    name: 'LTX-2.5 Fast',
     type: 'replicate',
     group: 'video-high-quality-fast',
     logo: '/ui_assets/model-lightricks.png',
     estimatedTime: 40,
-    tokenCost5s: 5,
-    tokenCost10s: 10
+    tokenCost5s: 6,
+    tokenCost10s: 12
   },
-  'wan-video/wan-2.6-i2v': {
-    name: 'Wan 2.6 I2V',
+  'wan-video/wan-2.7-i2v': {
+    name: 'Wan 2.7 I2V',
     type: 'replicate',
     group: 'video-versatile',
     logo: '/ui_assets/model-wan.png',
