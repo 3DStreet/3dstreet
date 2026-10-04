@@ -370,7 +370,9 @@ STREET.utils.filterJSONstreet = filterJSONstreet;
  */
 function getMixedValue(component, propertyName, source) {
   var value;
-  var reversedMixins = source.mixinEls.reverse();
+  // toReversed: `reverse()` would flip the entity's own mixin list in place
+  // on every serialized component (mixin precedence alternating per call).
+  var reversedMixins = source.mixinEls.toReversed();
   for (var i = 0; value === undefined && i < reversedMixins.length; i++) {
     var mixin = reversedMixins[i];
     /* eslint-disable-next-line no-prototype-builtins */
