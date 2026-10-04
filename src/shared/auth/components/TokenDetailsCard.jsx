@@ -116,24 +116,18 @@ const TokenDetailsCard = ({
               )}
             </div>
 
-            {/* Usage Tips */}
-            <div className={styles.usageTips}>
-              <h5 className={styles.tipsTitle}>{t('tokenUsage')}</h5>
-              <ul className={styles.tipsList}>
-                {tokenType === 'genToken' ? (
-                  <>
-                    <li>{t('tipImageGeneration')}</li>
-                    <li>{t('tipVideoGeneration')}</li>
-                  </>
-                ) : (
-                  <>
-                    <li>{t('tipMapTile')}</li>
-                    <li>{t('tipLocationServices')}</li>
-                    <li>{t('tipGeospatialFeatures')}</li>
-                  </>
-                )}
-              </ul>
-            </div>
+            {/* Usage Tips — geo only: gen token costs vary by model and
+                are shown in each model picker instead. */}
+            {tokenType === 'geoToken' && (
+              <div className={styles.usageTips}>
+                <h5 className={styles.tipsTitle}>{t('tokenUsage')}</h5>
+                <ul className={styles.tipsList}>
+                  <li>{t('tipMapTile')}</li>
+                  <li>{t('tipLocationServices')}</li>
+                  <li>{t('tipGeospatialFeatures')}</li>
+                </ul>
+              </div>
+            )}
           </div>
 
           <HoverCard.Arrow className={styles.hoverCardArrow} />

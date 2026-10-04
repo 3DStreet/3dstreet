@@ -3,7 +3,9 @@ import * as THREE from 'three';
 import Events from '@/editor/lib/Events.js';
 import { entity, mountViewport } from './viewportHarness.js';
 
-vi.mock('@/store', () => ({ default: { subscribe: vi.fn() } }));
+vi.mock('@/store', () => ({
+  default: { subscribe: vi.fn(), getState: () => ({}) }
+}));
 vi.mock('@/editor/lib/cameras', () => ({ copyCameraPosition: vi.fn() }));
 vi.mock('@/editor/lib/raycaster', () => ({
   initRaycaster: () => ({ enable() {}, disable() {} })

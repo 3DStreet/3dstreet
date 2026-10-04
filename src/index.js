@@ -54,6 +54,7 @@ require('./aframe-components/osm-streets.js');
 require('./aframe-components/mode-manager.js');
 require('./aframe-components/play/play-mode.js');
 require('./aframe-components/play/viewer-start.js');
+require('./aframe-components/play/build-area.js');
 require('./aframe-components/play/play-mode-vehicle.js');
 require('./aframe-components/play/race-target.js');
 require('./aframe-components/play/collision-marker.js');

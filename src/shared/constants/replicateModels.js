@@ -175,6 +175,8 @@ export const VIDEO_MODELS = {
     group: 'video-best-quality',
     logo: '/ui_assets/model-google.png',
     estimatedTime: 120,
+    // Veo only supports 4s/8s, so the 5s/10s cost tiers bill 4s/8s
+    shortDuration: 4,
     tokenCost5s: 20,
     tokenCost10s: 40
   },
@@ -184,6 +186,8 @@ export const VIDEO_MODELS = {
     group: 'video-high-quality-fast',
     logo: '/ui_assets/model-google.png',
     estimatedTime: 90,
+    // Veo only supports 4s/8s, so the 5s/10s cost tiers bill 4s/8s
+    shortDuration: 4,
     tokenCost5s: 10,
     tokenCost10s: 20
   },

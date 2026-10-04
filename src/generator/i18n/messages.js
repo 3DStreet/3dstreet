@@ -1247,19 +1247,25 @@ const MESSAGES = {
   },
 
   // ── 3D Model tab (model3d.js) ───────────────────────────────────────────
-  // Brand model names (Hunyuan3D, TRELLIS) stay; only the parenthetical
-  // qualifier is translated.
+  // Brand model names (Hunyuan3D, TRELLIS, Meshy) stay; only the
+  // parenthetical qualifier is translated.
   'model3d.modelHunyuanName': {
-    en: 'Hunyuan3D v2 (faster)',
-    es: 'Hunyuan3D v2 (más rápido)',
-    'pt-BR': 'Hunyuan3D v2 (mais rápido)',
-    fr: 'Hunyuan3D v2 (plus rapide)'
+    en: 'Hunyuan3D 3.1 Pro (detailed, slow)',
+    es: 'Hunyuan3D 3.1 Pro (detallado, lento)',
+    'pt-BR': 'Hunyuan3D 3.1 Pro (detalhado, lento)',
+    fr: 'Hunyuan3D 3.1 Pro (détaillé, lent)'
   },
   'model3d.modelTrellisName': {
-    en: 'TRELLIS 2 (best quality)',
-    es: 'TRELLIS 2 (mejor calidad)',
-    'pt-BR': 'TRELLIS 2 (melhor qualidade)',
-    fr: 'TRELLIS 2 (meilleure qualité)'
+    en: 'TRELLIS 2 (balanced)',
+    es: 'TRELLIS 2 (equilibrado)',
+    'pt-BR': 'TRELLIS 2 (equilibrado)',
+    fr: 'TRELLIS 2 (équilibré)'
+  },
+  'model3d.modelMeshyName': {
+    en: 'Meshy 7.1 (best quality)',
+    es: 'Meshy 7.1 (mejor calidad)',
+    'pt-BR': 'Meshy 7.1 (melhor qualidade)',
+    fr: 'Meshy 7.1 (meilleure qualité)'
   },
   'model3d.settingsHeading': {
     en: '3D Model Settings',
