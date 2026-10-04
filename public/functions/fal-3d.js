@@ -132,17 +132,10 @@ async function saveMeshToGallery(userId, glbUrl, job) {
         predictionId: job.predictionId || null,
         timestamp: new Date().toISOString()
       },
-      // Pre-filled attribution, shown (and editable) in the details modal:
-      // "by <model>" plus a "View on fal.ai" link to the model page.
+      // Pre-filled attribution, shown (and editable) in the details modal as
+      // "by <model>". No source link: fal is our host, not the model's maker.
       ...(modelName && {
-        attribution: {
-          author: modelName,
-          generator: modelName,
-          sourceName: 'fal.ai',
-          ...(job.endpoint && {
-            source: `https://fal.ai/models/${job.endpoint}`
-          })
-        }
+        attribution: { author: modelName, generator: modelName }
       }),
       ...(thumbnail && {
         thumbnailPath: thumbnail.path,
