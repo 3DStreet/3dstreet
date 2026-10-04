@@ -44,7 +44,7 @@ export const REPLICATE_MODELS = {
     group: 'best-quality',
     logo: '/ui_assets/model-black-forest-labs.png',
     endpoint: 'blackforestlabs/flux-3/edit-image',
-    estimatedTime: 40,
+    estimatedTime: 80,
     includeIn4x: true,
     tokenCost: 2,
     requiresSourceImage: true,

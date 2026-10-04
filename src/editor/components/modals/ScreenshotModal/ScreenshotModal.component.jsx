@@ -27,6 +27,7 @@ import {
 import { TokenDisplayInner } from '@shared/auth/components';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import { fitScale } from '@shared/utils/imageScale.js';
+import { computeRenderGridCell } from './renderGridLayout.js';
 import {
   DEFAULT_RENDER_STYLE_ID,
   getDefaultInstructions,
@@ -116,6 +117,11 @@ function ScreenshotModal() {
   // and saves server-side regardless).
   const activePollsRef = useRef(new Set());
   const batch4xRef = useRef(null);
+  // 4x grid sizing: the image area's size and the screenshot's aspect ratio
+  // decide whether cells keep the screenshot's shape (see renderGridLayout).
+  const imageContainerRef = useRef(null);
+  const [imageAreaSize, setImageAreaSize] = useState({ width: 0, height: 0 });
+  const [sourceAspect, setSourceAspect] = useState(null);
 
   useEffect(() => {
     const polls = activePollsRef.current;
@@ -919,6 +925,43 @@ function ScreenshotModal() {
     };
   }, [isGeneratingAI, renderStartTime, selectedModel]);
 
+  // Track the image area's size for the 4x grid layout.
+  useEffect(() => {
+    const el = imageContainerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setImageAreaSize({ width, height });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [modal]);
+
+  // The screenshot's aspect ratio (width / height).
+  useEffect(() => {
+    if (!originalImageUrl) {
+      setSourceAspect(null);
+      return;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled && img.naturalHeight) {
+        setSourceAspect(img.naturalWidth / img.naturalHeight);
+      }
+    };
+    img.src = originalImageUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [originalImageUrl]);
+
+  const renderGridCell = computeRenderGridCell({
+    width: imageAreaSize.width,
+    height: imageAreaSize.height,
+    aspect: sourceAspect
+  });
+
   // Timer updates for individual renders in 4x mode
   useEffect(() => {
     const intervals = {};
@@ -1375,7 +1418,7 @@ function ScreenshotModal() {
           </div>
         </div>
 
-        <div className={styles.imageContainer}>
+        <div className={styles.imageContainer} ref={imageContainerRef}>
           {/* Always render the screentock-destination img for screenshot functionality */}
           <img
             id="screentock-destination"
@@ -1525,7 +1568,17 @@ function ScreenshotModal() {
                 </div>
               ) : (
                 // 4x Render Grid - show when renders are in progress or completed
-                <div className={styles.renderGrid}>
+                <div
+                  className={`${styles.renderGrid} ${renderGridCell ? styles.renderGridSourceAspect : ''}`}
+                  style={
+                    renderGridCell
+                      ? {
+                          gridTemplateColumns: `repeat(2, ${renderGridCell.width}px)`,
+                          gridTemplateRows: `repeat(2, ${renderGridCell.height}px)`
+                        }
+                      : undefined
+                  }
+                >
                   {Array.from({ length: 4 }, (_, index) => {
                     // Filter models to only include those with includeIn4x: true
                     const modelKeys = Object.keys(AI_MODELS).filter(

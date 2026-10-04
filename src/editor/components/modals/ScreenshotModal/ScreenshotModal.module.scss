@@ -462,6 +462,19 @@
   max-height: 600px;
 }
 
+// Cells sized in px (inline grid template, see renderGridLayout.js): the
+// screenshot's aspect ratio when there's room, else square.
+.renderGridSourceAspect {
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+
+  .renderSlot {
+    min-height: 0;
+  }
+}
+
 .renderSlot {
   position: relative;
   border: 2px solid #d1d5db;
