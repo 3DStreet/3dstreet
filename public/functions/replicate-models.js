@@ -25,6 +25,16 @@ const REPLICATE_MODELS = {
     resolution: '2k',
     tokenCost: 2
   },
+  // FLUX.2 [klein] 9B edit: $0.011 per megapixel of input (resized to 1 MP)
+  // and output. Output matches the input size, capped at 2 MP client-side,
+  // so ≤ ~$0.033/image. The fast Flux for the 4x batch.
+  'fal-flux-2-klein-9b-edit': {
+    name: 'Flux 2 Klein',
+    type: 'fal',
+    endpoint: 'fal-ai/flux-2/klein/9b/edit',
+    payloadStyle: 'flux-2-klein',
+    tokenCost: 1
+  },
   // Meta Muse Image edit: $0.01/image. On trial in the picker.
   'fal-muse-image-edit': {
     name: 'Muse Image',

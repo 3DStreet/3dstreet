@@ -5,7 +5,8 @@
  *
  *   Replicate models: `inputStyle` — 'nano-banana' | 'seedream' | 'grok' |
  *     'kontext' (the default, for the legacy FLUX Kontext version hashes).
- *   fal models: `payloadStyle` — 'flux-2' (the default) | 'flux-3' | 'muse'.
+ *   fal models: `payloadStyle` — 'flux-2' (the default) | 'flux-2-klein' |
+ *     'flux-3' | 'muse'.
  *
  * Pure functions (no Firebase), so they're unit tested directly
  * (test/generator/image-model-inputs.test.js).
@@ -88,9 +89,10 @@ function buildReplicateImageInput(
  * @param {Object} args
  * @param {string} args.prompt
  * @param {string} args.imageUrl - Public URL of the source image (required)
- * @param {string|Object} args.imageSize - FLUX.2 only: preset or {width, height}
- * @param {number} args.guidanceScale - FLUX.2 only
- * @param {number} args.numInferenceSteps - FLUX.2 only
+ * @param {string|Object} args.imageSize - FLUX.2 [pro/max/dev] only: preset or
+ *   {width, height}
+ * @param {number} args.guidanceScale - FLUX.2 [pro/max/dev] only
+ * @param {number} args.numInferenceSteps - FLUX.2 [pro/max/dev] only
  */
 function buildFalImagePayload(
   modelConfig,
@@ -105,6 +107,16 @@ function buildFalImagePayload(
         image_urls: [imageUrl],
         resolution: modelConfig.resolution || '2k',
         aspect_ratio: 'auto',
+        output_format: 'jpeg'
+      };
+    case 'flux-2-klein':
+      // Distilled 4-step model: no guidance input, and no image_size so the
+      // output keeps the input image's size (capped client-side by
+      // maxInputMegapixels).
+      return {
+        prompt,
+        image_urls: [imageUrl],
+        enable_safety_checker: true,
         output_format: 'jpeg'
       };
     case 'muse':

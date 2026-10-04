@@ -45,7 +45,8 @@ export const REPLICATE_MODELS = {
     logo: '/ui_assets/model-black-forest-labs.png',
     endpoint: 'blackforestlabs/flux-3/edit-image',
     estimatedTime: 80,
-    includeIn4x: true,
+    // Too slow for the 4x batch; Flux 2 Klein is the Flux there.
+    includeIn4x: false,
     tokenCost: 2,
     requiresSourceImage: true,
     // fal rejects FLUX.3 reference images over 4 megapixels.
@@ -75,6 +76,20 @@ export const REPLICATE_MODELS = {
   },
 
   // Fast and affordable (on trial)
+  'fal-flux-2-klein-9b-edit': {
+    name: 'Flux 2 Klein',
+    type: 'fal',
+    group: 'affordable',
+    logo: '/ui_assets/model-black-forest-labs.png',
+    endpoint: 'fal-ai/flux-2/klein/9b/edit',
+    estimatedTime: 15,
+    includeIn4x: true,
+    tokenCost: 1,
+    requiresSourceImage: true,
+    // Output matches the input size; capping the input keeps cost and render
+    // time down.
+    maxInputMegapixels: 2
+  },
   'grok-imagine-image-2': {
     name: 'Grok Imagine 2.0',
     type: 'replicate',

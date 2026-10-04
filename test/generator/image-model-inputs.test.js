@@ -129,6 +129,20 @@ describe('buildFalImagePayload', () => {
     });
   });
 
+  it('FLUX.2 klein sends no sampler settings or image_size', () => {
+    expect(
+      buildFalImagePayload(
+        REPLICATE_MODELS['fal-flux-2-klein-9b-edit'],
+        falArgs
+      )
+    ).toEqual({
+      prompt: 'p',
+      image_urls: [IMG],
+      enable_safety_checker: true,
+      output_format: 'jpeg'
+    });
+  });
+
   it('Muse sends only the prompt, image and format', () => {
     expect(
       buildFalImagePayload(REPLICATE_MODELS['fal-muse-image-edit'], falArgs)
