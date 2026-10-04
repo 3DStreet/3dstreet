@@ -861,6 +861,7 @@ class GeneratorTabBase {
       case 'fal-flux-3-edit':
       case 'grok-imagine-image-2':
       case 'fal-muse-image-edit':
+      case 'fal-flux-2-klein-9b-edit':
         // These endpoints ignore dimensions (output size is fixed server-side).
         showDimensions = false;
         showAspectRatio = false;

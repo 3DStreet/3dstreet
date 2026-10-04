@@ -8,7 +8,8 @@
  * sides.
  */
 
-const GAP = 12; // matches .renderGrid gap
+export const RENDER_GRID_GAP = 12; // matches .renderGrid gap
+const GAP = RENDER_GRID_GAP;
 const MIN_HEIGHT_RATIO = 0.75;
 const MAX_SQUARE_CELL = 294; // (600px max grid - gap) / 2, the stylesheet cap
 

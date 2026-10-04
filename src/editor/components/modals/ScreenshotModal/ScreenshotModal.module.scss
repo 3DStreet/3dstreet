@@ -23,6 +23,7 @@
   display: flex;
   flex: 1;
   min-height: 0; // Critical for preventing overflow
+  min-width: 0; // let the image area shrink with the window
   padding: 0;
   gap: 20px;
 }
@@ -463,10 +464,14 @@
 }
 
 // Cells sized in px (inline grid template, see renderGridLayout.js): the
-// screenshot's aspect ratio when there's room, else square.
+// screenshot's aspect ratio when there's room, else square. Positioned
+// absolutely so the px-sized grid never props .imageContainer open: the
+// container must be free to shrink with the window, or the ResizeObserver
+// that sizes the cells never sees it get smaller.
 .renderGridSourceAspect {
-  width: auto;
-  height: auto;
+  position: absolute;
+  inset: 0;
+  margin: auto;
   max-width: none;
   max-height: none;
 

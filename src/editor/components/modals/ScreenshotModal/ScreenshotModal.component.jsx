@@ -27,7 +27,7 @@ import {
 import { TokenDisplayInner } from '@shared/auth/components';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
 import { fitScale } from '@shared/utils/imageScale.js';
-import { computeRenderGridCell } from './renderGridLayout.js';
+import { computeRenderGridCell, RENDER_GRID_GAP } from './renderGridLayout.js';
 import {
   DEFAULT_RENDER_STYLE_ID,
   getDefaultInstructions,
@@ -1573,6 +1573,8 @@ function ScreenshotModal() {
                   style={
                     renderGridCell
                       ? {
+                          width: `${renderGridCell.width * 2 + RENDER_GRID_GAP}px`,
+                          height: `${renderGridCell.height * 2 + RENDER_GRID_GAP}px`,
                           gridTemplateColumns: `repeat(2, ${renderGridCell.width}px)`,
                           gridTemplateRows: `repeat(2, ${renderGridCell.height}px)`
                         }
