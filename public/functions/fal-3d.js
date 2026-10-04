@@ -20,6 +20,37 @@ function validateMeshUserId(userId) {
 }
 
 /**
+ * Copy fal's rendered preview (Meshy, Hunyuan) next to the GLB as the asset
+ * thumbnail, at the path the client's thumbnail capture uses. Best-effort: a
+ * missing preview just leaves the details modal to capture one on first view.
+ */
+async function saveMeshThumbnail(bucket, userId, assetId, srcUrl) {
+  if (!srcUrl) return null;
+  try {
+    const res = await fetch(srcUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const contentType = res.headers.get('content-type') || 'image/png';
+    const ext = contentType.includes('jpeg') ? 'jpg' : 'png';
+    const path = `users/${userId}/assets/meshes/${assetId}-thumb.${ext}`;
+    const token = crypto.randomUUID();
+    await bucket.file(path).save(Buffer.from(await res.arrayBuffer()), {
+      metadata: {
+        contentType,
+        cacheControl: 'public, max-age=31536000',
+        metadata: { firebaseStorageDownloadTokens: token }
+      }
+    });
+    const url =
+      `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
+      `${encodeURIComponent(path)}?alt=media&token=${token}`;
+    return { path, url };
+  } catch (err) {
+    console.warn(`Mesh thumbnail save failed for ${assetId}:`, err.message);
+    return null;
+  }
+}
+
+/**
  * Download a generated GLB from fal and persist it as a first-class `mesh`
  * asset (Storage + Firestore), mirroring saveSplatToGallery in replicate.js.
  * Runs server-side so the large binary streams straight from fal's CDN to
@@ -65,6 +96,14 @@ async function saveMeshToGallery(userId, glbUrl, job) {
     `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/` +
     `${encodeURIComponent(storagePath)}?alt=media&token=${downloadToken}`;
 
+  const thumbnail = await saveMeshThumbnail(
+    bucket,
+    userId,
+    assetId,
+    job.thumbnailSrcUrl
+  );
+  const modelName = job.attribution?.modelName || job.model || null;
+
   const now = admin.firestore.FieldValue.serverTimestamp();
 
   await admin
@@ -93,6 +132,22 @@ async function saveMeshToGallery(userId, glbUrl, job) {
         predictionId: job.predictionId || null,
         timestamp: new Date().toISOString()
       },
+      // Pre-filled attribution, shown (and editable) in the details modal:
+      // "by <model>" plus a "View on fal.ai" link to the model page.
+      ...(modelName && {
+        attribution: {
+          author: modelName,
+          generator: modelName,
+          sourceName: 'fal.ai',
+          ...(job.endpoint && {
+            source: `https://fal.ai/models/${job.endpoint}`
+          })
+        }
+      }),
+      ...(thumbnail && {
+        thumbnailPath: thumbnail.path,
+        thumbnailUrl: thumbnail.url
+      }),
       createdAt: now,
       updatedAt: now,
       uploadedAt: now,
@@ -141,6 +196,25 @@ async function fetchFalPrediction(job) {
         method: 'GET',
         headers: { Authorization: `Key ${key}` }
       });
+      // 422 is fal rejecting the input (e.g. Hunyuan 3.1 Rapid's image size
+      // cap): permanent, so fail now (refunded by the terminal processor)
+      // instead of retrying until the reconciler's give-up window.
+      if (r.status === 422) {
+        const body = await r.text();
+        console.error(`fal response 422 for job: ${body}`);
+        let detail = null;
+        try {
+          detail = JSON.parse(body)?.detail?.[0]?.msg || null;
+        } catch {
+          // non-JSON body; fall back to the generic message
+        }
+        return {
+          prediction: {
+            status: 'failed',
+            error: detail || 'fal.ai rejected the input.'
+          }
+        };
+      }
       // Throw (like the status fetch above) rather than fall through with an
       // empty response: a transient non-OK here must stay retryable, or a
       // COMPLETED job gets finalized as failed and can never be resurrected.
@@ -182,7 +256,15 @@ async function fetchFalPrediction(job) {
         }
       };
     }
-    return { prediction: { status: 'succeeded', output: meshUrl } };
+    // Meshy and Hunyuan also return a rendered preview; TRELLIS doesn't (the
+    // details modal captures one on first view instead).
+    return {
+      prediction: {
+        status: 'succeeded',
+        output: meshUrl,
+        thumbnail: response?.thumbnail?.url || null
+      }
+    };
   }
 
   if (falStatus === 'FAILED' || falStatus === 'ERROR') {

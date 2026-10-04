@@ -1536,6 +1536,13 @@ async function saveSplatToGallery(userId, plyUrl, job) {
         predictionId: job.predictionId || null,
         timestamp: new Date().toISOString()
       },
+      // Pre-filled, editable attribution for the details modal ("by <model>").
+      // No source link: attribution.model is a credit (Apple, a GitHub repo),
+      // not a reliable provider URL.
+      attribution: {
+        author: job.attribution?.modelName || 'SHARP (Image to Splat)',
+        generator: job.attribution?.modelName || 'SHARP (Image to Splat)'
+      },
       createdAt: now,
       updatedAt: now,
       uploadedAt: now,
@@ -1968,7 +1975,8 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       try {
         const { assetId, storageUrl } = await saveMeshToGallery(userId, splatUrl, {
           ...job,
-          predictionId: job.providerJobId || jobRef.id
+          predictionId: job.providerJobId || jobRef.id,
+          thumbnailSrcUrl: prediction.thumbnail || null
         });
         await cleanupSplatTempFile(job.tempFilePath);
         await jobRef.update({

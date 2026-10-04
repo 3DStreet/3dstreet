@@ -3,7 +3,7 @@
  *
  * The "3D Model" medium alongside Image, Video and Splat: image → 3D mesh
  * (GLB) via fal. Three selectable models, all image-to-3D:
- *   - Hunyuan3D 3.1 Rapid (fal-ai/hunyuan-3d/v3.1/rapid/image-to-3d)
+ *   - Hunyuan3D 3.1 Pro (fal-ai/hunyuan-3d/v3.1/pro/image-to-3d)
  *   - TRELLIS 2           (fal-ai/trellis-2)
  *   - Meshy 7.1           (meshy/v7.1/image-to-3d)
  *
@@ -274,7 +274,54 @@ const Model3DTab = {
     reader.readAsDataURL(file);
   },
 
-  setImage(dataUrl, fileName) {
+  // Keep the reference image within what every model and the callable accept
+  // (Hunyuan3D Pro takes up to 8MB; the callable request caps at ~10MB of
+  // base64). Images already under the limits pass through untouched; larger
+  // ones are scaled to 2048px. PNGs stay PNG so cutout transparency survives
+  // (the models use it as the object mask); only if that's still too big do we
+  // fall back to JPEG on white.
+  async shrinkImage(dataUrl, maxDim = 2048, maxBytes = 4 * 1024 * 1024) {
+    const bytesOf = (url) => (url.length - url.indexOf(',') - 1) * 0.75;
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = dataUrl;
+    });
+    const longest = Math.max(img.width, img.height);
+    if (longest <= maxDim && bytesOf(dataUrl) <= maxBytes) return dataUrl;
+
+    const scale = Math.min(1, maxDim / longest);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    const ctx = canvas.getContext('2d');
+    if (dataUrl.startsWith('data:image/png')) {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const png = canvas.toDataURL('image/png');
+      if (bytesOf(png) <= maxBytes) return png;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    let out;
+    for (const quality of [0.92, 0.85, 0.75]) {
+      out = canvas.toDataURL('image/jpeg', quality);
+      if (bytesOf(out) <= maxBytes) break;
+    }
+    return out;
+  },
+
+  async setImage(dataUrl, fileName) {
+    try {
+      dataUrl = await this.shrinkImage(dataUrl);
+    } catch (err) {
+      console.warn(
+        'Could not downscale reference image; sending original',
+        err
+      );
+    }
     this.imageData = dataUrl;
     this.elements.imageName.textContent = fileName;
     this.elements.imagePreview.src = dataUrl;

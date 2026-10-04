@@ -620,7 +620,7 @@ token uncharged-but-work-wasted feel. Same class of failure as the video
 migration (#1780).
 
 - **Kind/provider:** `kind: 'mesh'`, `provider: 'fal'`. Models Hunyuan3D 3.1
-  Rapid, TRELLIS 2 and Meshy 7.1 (`type: 'fal-3d'` in `replicate-models.js`),
+  Pro, TRELLIS 2 and Meshy 7.1 (`type: 'fal-3d'` in `replicate-models.js`),
   image-to-3D only.
 - **Submit-and-return:** `generateFalMesh` stages the input image, writes the
   pending job, charges at submit (refund-once-on-failure, shared

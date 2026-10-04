@@ -175,25 +175,26 @@ const REPLICATE_MODELS = {
   // generator. `imageField` names the model's input-image key (they differ);
   // `params` are model-specific extras. Model ids are stable across endpoint
   // upgrades (they key the client picker). Token cost ≈ fal $ / $0.10 base × 2
-  // margin (Hunyuan 3.1 Rapid textured $0.225→5, TRELLIS 2 @1024 $0.30→6,
+  // margin (Hunyuan 3.1 Pro textured $0.375→8, TRELLIS 2 @1024 $0.30→6,
   // Meshy 7.1 textured $1.20→24).
   'hunyuan-3d': {
     name: 'Hunyuan3D',
     type: 'fal-3d',
-    endpoint: 'fal-ai/hunyuan-3d/v3.1/rapid/image-to-3d',
+    // Pro, not Rapid: Rapid's textured output is OBJ only (served under
+    // model_glb anyway) and it rejects inputs over ~950KB. Pro returns a real
+    // GLB, but heavy (default 500k faces + 4096² PNG texture ≈ 32MB) and slow
+    // (~10 min). PBR maps and a custom face_count each add $0.15.
+    endpoint: 'fal-ai/hunyuan-3d/v3.1/pro/image-to-3d',
     imageField: 'input_image_url',
-    // The endpoint returns a textured mesh unless asked for geometry only, so
-    // no opt-in is needed. PBR maps add $0.15 and aren't needed for street
-    // props.
     params: { enable_pbr: false },
     assetSlug: 'hunyuan3d-model',
     assetLabel: 'Hunyuan3D Model',
     attribution: {
       model: 'tencent/hunyuan3d-3.1',
-      modelName: 'Hunyuan3D 3.1 Rapid',
+      modelName: 'Hunyuan3D 3.1 Pro',
       sourceType: 'image'
     },
-    tokenCost: 5
+    tokenCost: 8
   },
   trellis: {
     name: 'TRELLIS',

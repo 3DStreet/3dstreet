@@ -7,16 +7,16 @@ import { t } from './i18n/messages.js';
 // progress bar only.
 export const MODEL3D_MODELS = [
   {
-    id: 'hunyuan-3d',
-    name: t('model3d.modelHunyuanName'),
-    tokenCost: 5,
-    estimatedTime: 60
-  },
-  {
     id: 'trellis',
     name: t('model3d.modelTrellisName'),
     tokenCost: 6,
     estimatedTime: 60
+  },
+  {
+    id: 'hunyuan-3d',
+    name: t('model3d.modelHunyuanName'),
+    tokenCost: 8,
+    estimatedTime: 600
   },
   {
     id: 'meshy',
