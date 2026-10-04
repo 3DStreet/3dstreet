@@ -88,6 +88,8 @@ const REPLICATE_MODELS = {
     // User-facing attribution written to the asset's generationMetadata.
     attribution: {
       model: 'apple/sharp-ml',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: 'Apple SHARP',
       modelName: 'SHARP (Image to Splat)',
       sourceType: 'image'
     },
@@ -128,6 +130,8 @@ const REPLICATE_MODELS = {
     assetLabel: 'vid2scene Splat',
     attribution: {
       model: 'samuelm2/vid2scene',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: "samuelm2's vid2scene",
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },
@@ -153,6 +157,8 @@ const REPLICATE_MODELS = {
     assetLabel: 'vid2scene Splat',
     attribution: {
       model: 'samuelm2/vid2scene',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: "samuelm2's vid2scene",
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },
@@ -191,6 +197,8 @@ const REPLICATE_MODELS = {
     assetLabel: 'Hunyuan3D Model',
     attribution: {
       model: 'tencent/hunyuan3d-3.1',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: 'Tencent Hunyuan3D 3.1 Pro',
       modelName: 'Hunyuan3D 3.1 Pro',
       sourceType: 'image'
     },
@@ -209,6 +217,8 @@ const REPLICATE_MODELS = {
     assetLabel: 'TRELLIS Model',
     attribution: {
       model: 'microsoft/trellis-2',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: 'Microsoft TRELLIS 2',
       modelName: 'TRELLIS 2',
       sourceType: 'image'
     },
@@ -231,6 +241,8 @@ const REPLICATE_MODELS = {
     assetLabel: 'Meshy Model',
     attribution: {
       model: 'meshy/meshy-7.1',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: 'Meshy 7.1',
       modelName: 'Meshy 7.1',
       sourceType: 'image'
     },
@@ -246,6 +258,8 @@ const REPLICATE_MODELS = {
     assetLabel: 'vid2scene Splat',
     attribution: {
       model: 'samuelm2/vid2scene',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: "samuelm2's vid2scene",
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },

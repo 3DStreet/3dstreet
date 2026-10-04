@@ -103,6 +103,7 @@ async function saveMeshToGallery(userId, glbUrl, job) {
     job.thumbnailSrcUrl
   );
   const modelName = job.attribution?.modelName || job.model || null;
+  const credit = job.attribution?.credit || modelName;
 
   const now = admin.firestore.FieldValue.serverTimestamp();
 
@@ -133,9 +134,9 @@ async function saveMeshToGallery(userId, glbUrl, job) {
         timestamp: new Date().toISOString()
       },
       // Pre-filled attribution, shown (and editable) in the details modal as
-      // "by <model>". No source link: fal is our host, not the model's maker.
-      ...(modelName && {
-        attribution: { author: modelName, generator: modelName }
+      // "by <maker> <model>". No source link: fal is our host, not the maker.
+      ...(credit && {
+        attribution: { author: credit, generator: modelName }
       }),
       ...(thumbnail && {
         thumbnailPath: thumbnail.path,

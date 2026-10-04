@@ -1536,11 +1536,14 @@ async function saveSplatToGallery(userId, plyUrl, job) {
         predictionId: job.predictionId || null,
         timestamp: new Date().toISOString()
       },
-      // Pre-filled, editable attribution for the details modal ("by <model>").
+      // Pre-filled, editable attribution for the details modal ("by <credit>").
       // No source link: attribution.model is a credit (Apple, a GitHub repo),
       // not a reliable provider URL.
       attribution: {
-        author: job.attribution?.modelName || 'SHARP (Image to Splat)',
+        author:
+          job.attribution?.credit ||
+          job.attribution?.modelName ||
+          'Apple SHARP',
         generator: job.attribution?.modelName || 'SHARP (Image to Splat)'
       },
       createdAt: now,
