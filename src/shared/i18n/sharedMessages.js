@@ -171,18 +171,6 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Uso de tokens:',
     fr: 'Utilisation des jetons :'
   },
-  tipImageGeneration: {
-    en: '1 token = 1 image generation',
-    es: '1 token = 1 generación de imagen',
-    'pt-BR': '1 token = 1 geração de imagem',
-    fr: "1 jeton = 1 génération d'image"
-  },
-  tipVideoGeneration: {
-    en: '2 tokens = 1 second of video generation',
-    es: '2 tokens = 1 segundo de generación de video',
-    'pt-BR': '2 tokens = 1 segundo de geração de vídeo',
-    fr: '2 jetons = 1 seconde de génération de vidéo'
-  },
   tipMapTile: {
     en: '1 token = 1 map tile request',
     es: '1 token = 1 solicitud de mosaico de mapa',

@@ -33,6 +33,7 @@ import {
 import { t } from './i18n/messages.js';
 import { isTokenExhaustedError } from '@shared/utils/tokens.js';
 import { MODEL3D_MODELS } from './model3d-models.js';
+import { mountModelSelector } from './mount-model-selector.js';
 
 const Model3DTab = {
   imageData: null,
@@ -68,10 +69,6 @@ const Model3DTab = {
   },
 
   createTabContent(container) {
-    const modelOptions = MODEL3D_MODELS.map(
-      (model) => `<option value="${model.id}">${model.name}</option>`
-    ).join('');
-
     container.innerHTML = `
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Parameters Column -->
@@ -83,10 +80,8 @@ const Model3DTab = {
 
           <!-- Model Selection -->
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="model3d-model-select">${t('model3d.modelLabel')}</label>
-            <select id="model3d-model-select" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              ${modelOptions}
-            </select>
+            <label class="block text-sm font-medium text-gray-700 mb-1">${t('model3d.modelLabel')}</label>
+            <div id="model3d-model-selector-container"></div>
           </div>
 
           <!-- Reference Image (required; these endpoints are image-to-3D) -->
@@ -193,7 +188,9 @@ const Model3DTab = {
 
   getElements() {
     this.elements = {
-      modelSelect: document.getElementById('model3d-model-select'),
+      modelSelectorContainer: document.getElementById(
+        'model3d-model-selector-container'
+      ),
       imageInput: document.getElementById('model3d-image-input'),
       imageName: document.getElementById('model3d-image-name'),
       imageUploadLabel: document.getElementById('model3d-image-upload-label'),
@@ -220,10 +217,19 @@ const Model3DTab = {
   },
 
   setupEventListeners() {
-    this.elements.modelSelect.addEventListener('change', (e) => {
-      this.selectedModel = e.target.value;
-      this.updateTokenCost();
-    });
+    // Same dropdown as the image tab, with each model's token cost badged
+    this.modelSelector = mountModelSelector(
+      this.elements.modelSelectorContainer,
+      {
+        value: this.selectedModel,
+        options: MODEL3D_MODELS,
+        onChange: (modelId) => {
+          this.selectedModel = modelId;
+          this.modelSelector.update({ value: modelId });
+          this.updateTokenCost();
+        }
+      }
+    );
 
     this.elements.imageInput.addEventListener(
       'change',
