@@ -60,7 +60,7 @@ export const REPLICATE_MODELS = {
     logo: '/ui_assets/model-bytedance.png',
     modelName: 'bytedance/seedream-5-pro',
     estimatedTime: 30,
-    includeIn4x: true,
+    includeIn4x: false,
     tokenCost: 2
   },
   'nano-banana-2': {
@@ -70,7 +70,7 @@ export const REPLICATE_MODELS = {
     logo: '/ui_assets/model-google.png',
     modelName: 'google/nano-banana-2',
     estimatedTime: 30,
-    includeIn4x: true,
+    includeIn4x: false,
     tokenCost: 2
   },
 
@@ -79,18 +79,20 @@ export const REPLICATE_MODELS = {
     name: 'Grok Imagine 2.0',
     type: 'replicate',
     group: 'affordable',
+    logo: '/ui_assets/model-xai.png',
     modelName: 'xai/grok-imagine-image-2',
     estimatedTime: 20,
-    includeIn4x: false,
+    includeIn4x: true,
     tokenCost: 1
   },
   'fal-muse-image-edit': {
     name: 'Muse Image',
     type: 'fal',
     group: 'affordable',
+    logo: '/ui_assets/model-meta.png',
     endpoint: 'meta/muse-image/edit',
     estimatedTime: 20,
-    includeIn4x: false,
+    includeIn4x: true,
     tokenCost: 1,
     requiresSourceImage: true
   }
