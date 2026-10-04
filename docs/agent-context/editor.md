@@ -53,7 +53,8 @@ is the per-generator rung: `detachallclones` (`DetachAllClonesCommand`,
 payload `{ entity: segmentEl, component }`) creates one plain `Detached
 Model` entity per live clone of a generator (`entitycreate` with the
 `noSelectEntity` option) and removes the generator (`componentremove`) as one
-undo entry, selection landing on the segment; doors are the Detach all pill
+undo entry, selection landing on the segment (or, from a clone's panel, on
+that clone's plain replacement via the payload's `focus`); doors are the Detach all pill
 in the generator header (`StreetSegmentComponent.jsx`), the clone header, and
 the `detachAllClones` AI tool.
 

@@ -13,6 +13,7 @@ import {
   listGeneratorClones,
   poseFromObject3D,
   rememberDetached,
+  requestDetachAll,
   resolveDetachAllToolArgs,
   resolveDetachToolArgs,
   routeCloneEdit
@@ -879,6 +880,62 @@ describe('detachClone (#2011)', () => {
         expect(() =>
           buildDetachAllCommands(segment, 'street-generated-clones__1')
         ).toThrow(/no live clones/);
+      });
+    });
+
+    describe('requestDetachAll', () => {
+      afterEach(() => {
+        delete globalThis.AFRAME;
+        delete globalThis.STREET;
+      });
+
+      function stubGlobals() {
+        const calls = { execute: [], warnings: [] };
+        globalThis.AFRAME = {
+          INSPECTOR: { execute: (...args) => calls.execute.push(args) }
+        };
+        globalThis.STREET = {
+          notify: { warningMessage: (m) => calls.warnings.push(m) }
+        };
+        return calls;
+      }
+
+      it('runs the command, carrying the clone the user was on', () => {
+        const calls = stubGlobals();
+        const segment = makeSegment();
+        const clone = makeClone(segment);
+        expect(
+          requestDetachAll(segment, 'street-generated-clones__1', {
+            focus: clone
+          })
+        ).toBe(true);
+        expect(requestDetachAll(segment, 'street-generated-clones__1')).toBe(
+          true
+        );
+        expect(calls.execute).toEqual([
+          [
+            'detachallclones',
+            {
+              entity: segment,
+              component: 'street-generated-clones__1',
+              focus: clone
+            }
+          ],
+          [
+            'detachallclones',
+            { entity: segment, component: 'street-generated-clones__1' }
+          ]
+        ]);
+      });
+
+      it('warns instead of running when the clones are gone at click time', () => {
+        const calls = stubGlobals();
+        const segment = makeSegment();
+        expect(requestDetachAll(segment, 'street-generated-clones__1')).toBe(
+          false
+        );
+        expect(calls.execute).toEqual([]);
+        expect(calls.warnings).toHaveLength(1);
       });
     });
 

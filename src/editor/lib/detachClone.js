@@ -171,9 +171,11 @@ export function getDetachAllBlocker(segmentEl, componentName) {
  * The UI door for "Detach all": re-check the live DOM at click time (the
  * pill is gated by a render-time census, and the clones can be gone before
  * React re-renders) and say so in a toast instead of letting the command
- * constructor throw out of the click handler.
+ * constructor throw out of the click handler. `focus` is the clone whose
+ * panel the user pressed it in: the selection follows that object to its
+ * plain replacement instead of jumping to the segment.
  */
-export function requestDetachAll(segmentEl, componentName) {
+export function requestDetachAll(segmentEl, componentName, { focus } = {}) {
   const blocker = getDetachAllBlocker(segmentEl, componentName);
   if (blocker) {
     globalThis.STREET?.notify?.warningMessage?.(
@@ -181,10 +183,9 @@ export function requestDetachAll(segmentEl, componentName) {
     );
     return false;
   }
-  AFRAME.INSPECTOR.execute('detachallclones', {
-    entity: segmentEl,
-    component: componentName
-  });
+  const payload = { entity: segmentEl, component: componentName };
+  if (focus) payload.focus = focus;
+  AFRAME.INSPECTOR.execute('detachallclones', payload);
   return true;
 }
 

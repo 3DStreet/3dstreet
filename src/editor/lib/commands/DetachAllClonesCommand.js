@@ -1,6 +1,8 @@
 import { MultiCommand } from './MultiCommand.js';
 import {
   buildDetachAllCommands,
+  findCloneAtSlot,
+  getCloneSlot,
   resolveDetachAllToolArgs
 } from '../detachClone.js';
 
@@ -19,11 +21,16 @@ import {
  * regenerates the clones exactly where they were (holes from earlier
  * per-object detaches included), and removes the plain entities.
  *
- * Payload: `{ entity, component }` — the street-segment and the generator
- * component name on it (`street-generated-clones__1`, ...). Composed from
- * the existing entitycreate + componentremove commands; the creates run
- * with `noSelectEntity` and the batch lands the selection on the segment,
- * whose panel the user pressed "Detach all" in.
+ * Payload: `{ entity, component, focus? }` — the street-segment, the
+ * generator component name on it (`street-generated-clones__1`, ...) and,
+ * optionally, the clone the user had selected when they pressed "Detach
+ * all" in its panel. Composed from the existing entitycreate +
+ * componentremove commands; the creates run with `noSelectEntity` and the
+ * batch lands the selection once it has run: on the focused clone's plain
+ * replacement after execute (and the regenerated clone at the same slot
+ * after undo), so the object the user was editing stays selected; on the
+ * segment when there is no focus (the generator section's pill, the AI
+ * tool).
  */
 export class DetachAllClonesCommand extends MultiCommand {
   // AI tool (registry.js picks this up from commandsByType). The generator
@@ -60,17 +67,68 @@ export class DetachAllClonesCommand extends MultiCommand {
       segmentEl,
       componentName
     );
-    // The segment is where the user is (its generator section, or a clone's
-    // "Placed by" header): land there after execute and after undo, once
-    // the whole batch has run.
+    // Runs once the whole batch has: after execute (the creates wait for
+    // their entities to load) and after undo (synchronous). Undo selects
+    // for itself (see undo), so only execute is handled here.
     super(editor, commands, () => {
-      if (segmentEl.isConnected) editor.selectEntity(segmentEl);
+      if (!this.undoing) this.selectAfterExecute();
     });
     this.type = 'detachallclones';
     this.name = 'Detach All Models';
     this.segmentEl = segmentEl;
     this.componentName = componentName;
     this.count = clones.length;
+    this.undoing = false;
+    // The clone the user was on, as its position in the batch (its plain
+    // replacement is made by commands[focusIndex]) and its generator slot
+    // (where undo regenerates it). -1 / null: land on the segment.
+    this.focusIndex = payload.focus ? clones.indexOf(payload.focus) : -1;
+    this.focusSlot =
+      this.focusIndex === -1 ? null : getCloneSlot(payload.focus).index;
+  }
+
+  selectAfterExecute() {
+    const createCmd = this.commands[this.focusIndex];
+    const detachedEl =
+      createCmd?.entityId && document.getElementById(createCmd.entityId);
+    if (detachedEl?.isConnected) {
+      this.editor.selectEntity(detachedEl);
+    } else if (this.segmentEl.isConnected) {
+      this.editor.selectEntity(this.segmentEl);
+    }
+  }
+
+  undo() {
+    this.undoing = true;
+    try {
+      super.undo();
+    } finally {
+      this.undoing = false;
+    }
+    // The generator is back and has regenerated its clones; hand the
+    // selection to the one at the focused slot, like a per-object detach's
+    // undo (DetachCloneCommand), or to the segment.
+    const clone =
+      this.focusSlot === null
+        ? null
+        : findCloneAtSlot(this.segmentEl, this.componentName, this.focusSlot);
+    if (!clone) {
+      if (this.segmentEl.isConnected) this.editor.selectEntity(this.segmentEl);
+      return;
+    }
+    // Freshly regenerated: its components initialize on load, and the
+    // properties panel reads them.
+    if (clone.hasLoaded) {
+      this.editor.selectEntity(clone);
+    } else {
+      clone.addEventListener(
+        'loaded',
+        () => {
+          if (clone.isConnected) this.editor.selectEntity(clone);
+        },
+        { once: true }
+      );
+    }
   }
 
   execute() {

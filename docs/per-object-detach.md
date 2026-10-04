@@ -189,7 +189,11 @@ bake). Same instinct as rasterize in Photoshop or detach instance in Figma.
   (earlier per-object holes included) and regenerates the clones exactly
   where they were, and the plain entities are removed. The creates run with
   `noSelectEntity` (an `entitycreate` option added for this) and the batch
-  lands the selection on the segment once, after execute and after undo.
+  lands the selection once. From a clone's panel the payload carries that
+  clone as `focus`: execute selects its plain replacement and undo selects
+  the regenerated clone at the same slot, so the object the user was
+  editing stays selected. Without a focus (the generator section's pill,
+  the AI tool) both land on the segment.
 - **Doors:** a **Detach all** pill in the generator's header on the segment
   panel (`StreetSegmentComponent.jsx`, shown only while the generator has
   live clones; a generator placing nothing is just removed with the trash

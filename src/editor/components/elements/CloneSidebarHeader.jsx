@@ -66,7 +66,9 @@ const CloneSidebarHeader = ({ entity }) => {
             onClick={() =>
               requestDetachAll(
                 segmentEl,
-                entity.getAttribute('data-parent-component')
+                entity.getAttribute('data-parent-component'),
+                // Keep this object selected: land on its plain replacement.
+                { focus: entity }
               )
             }
           >
