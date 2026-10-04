@@ -20,6 +20,10 @@ AFRAME.registerComponent('focus-animation', {
     this.transitionCamPosEnd = new THREE.Vector3();
     this.transitionCamQuaternionStart = new THREE.Quaternion();
     this.transitionCamQuaternionEnd = new THREE.Quaternion();
+    // Optional per-frame pose writer (eased progress 0..1). The editor
+    // controls set it to a look-at glide (#2054) that derives rotation from
+    // a tweened position + target; without it the tween slerps rotation.
+    this.onFrame = null;
   },
 
   update() {
@@ -50,21 +54,23 @@ AFRAME.registerComponent('focus-animation', {
       }
       this.transitionProgress += delta * this.transitionSpeed;
       const easeInOutTransitionProgress = easeInOutQuad(
-        this.transitionProgress
+        Math.min(this.transitionProgress, 1)
       );
 
-      // Set camera position
-      this.camera.position.lerpVectors(
-        this.transitionCamPosStart,
-        this.transitionCamPosEnd,
-        easeInOutTransitionProgress
-      );
-
-      this.camera.quaternion.slerpQuaternions(
-        this.transitionCamQuaternionStart,
-        this.transitionCamQuaternionEnd,
-        easeInOutTransitionProgress
-      );
+      if (this.onFrame) {
+        this.onFrame(easeInOutTransitionProgress);
+      } else {
+        this.camera.position.lerpVectors(
+          this.transitionCamPosStart,
+          this.transitionCamPosEnd,
+          easeInOutTransitionProgress
+        );
+        this.camera.quaternion.slerpQuaternions(
+          this.transitionCamQuaternionStart,
+          this.transitionCamQuaternionEnd,
+          easeInOutTransitionProgress
+        );
+      }
 
       if (this.transitionProgress >= 1) {
         this.transitioning = false;
