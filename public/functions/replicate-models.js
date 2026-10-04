@@ -88,6 +88,8 @@ const REPLICATE_MODELS = {
     // User-facing attribution written to the asset's generationMetadata.
     attribution: {
       model: 'apple/sharp-ml',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: 'Apple SHARP',
       modelName: 'SHARP (Image to Splat)',
       sourceType: 'image'
     },
@@ -128,6 +130,8 @@ const REPLICATE_MODELS = {
     assetLabel: 'vid2scene Splat',
     attribution: {
       model: 'samuelm2/vid2scene',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: "samuelm2's vid2scene",
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },
@@ -153,6 +157,8 @@ const REPLICATE_MODELS = {
     assetLabel: 'vid2scene Splat',
     attribution: {
       model: 'samuelm2/vid2scene',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: "samuelm2's vid2scene",
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },
@@ -168,45 +174,79 @@ const REPLICATE_MODELS = {
     },
     tokenCost: 30
   },
-  // Image → 3D mesh (GLB) via fal's unified 3D API. Both are image-to-3D only
-  // (no text prompt input). Consumed by the 3D Model tab through
-  // generateFalMesh, an async-queue submit callable (kind: 'mesh',
-  // provider: 'fal'); the client poll + reconciler finalize via
-  // fetchFalPrediction. NOT used by the image generator. `imageField` names the
-  // model's input-image key (they differ); `params` are model-specific extras.
-  // Token cost ≈ fal $ / $0.10 base × 2 margin (Hunyuan $0.16→3, TRELLIS 1024
-  // texture $0.30→6).
+  // Image → 3D mesh (GLB) via fal. All three are image-to-3D only (no text
+  // prompt input). Consumed by the 3D Model tab through generateFalMesh, an
+  // async-queue submit callable (kind: 'mesh', provider: 'fal'); the client
+  // poll + reconciler finalize via fetchFalPrediction. NOT used by the image
+  // generator. `imageField` names the model's input-image key (they differ);
+  // `params` are model-specific extras. Model ids are stable across endpoint
+  // upgrades (they key the client picker). Token cost ≈ fal $ / $0.10 base × 2
+  // margin (Hunyuan 3.1 Pro textured $0.375→8, TRELLIS 2 @1024 $0.30→6,
+  // Meshy 7.1 textured $1.20→24).
   'hunyuan-3d': {
     name: 'Hunyuan3D',
     type: 'fal-3d',
-    endpoint: 'fal-ai/hunyuan3d/v2',
+    // Pro, not Rapid: Rapid's textured output is OBJ only (served under
+    // model_glb anyway) and it rejects inputs over ~950KB. Pro returns a real
+    // GLB, but heavy (default 500k faces + 4096² PNG texture ≈ 32MB) and slow
+    // (~10 min). PBR maps and a custom face_count each add $0.15.
+    endpoint: 'fal-ai/hunyuan-3d/v3.1/pro/image-to-3d',
     imageField: 'input_image_url',
-    // textured_mesh bakes a texture (fal charges 3× the white-mesh price, which
-    // the token cost below already accounts for).
-    params: { textured_mesh: true },
+    params: { enable_pbr: false },
     assetSlug: 'hunyuan3d-model',
     assetLabel: 'Hunyuan3D Model',
     attribution: {
-      model: 'tencent/hunyuan3d-2',
-      modelName: 'Hunyuan3D v2',
+      model: 'tencent/hunyuan3d-3.1',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: 'Tencent Hunyuan3D 3.1 Pro',
+      modelName: 'Hunyuan3D 3.1 Pro',
       sourceType: 'image'
     },
-    tokenCost: 3
+    tokenCost: 8
   },
   trellis: {
     name: 'TRELLIS',
     type: 'fal-3d',
     endpoint: 'fal-ai/trellis-2',
     imageField: 'image_url',
-    params: { texture_resolution: 1024 },
+    // resolution sets fal's price tier (512/1024/1536 → $0.25/0.30/0.35);
+    // texture_size is the baked texture. decimation_target trims fal's 500k
+    // default to a web-friendly vertex count.
+    params: { resolution: 1024, texture_size: 2048, decimation_target: 200000 },
     assetSlug: 'trellis-model',
     assetLabel: 'TRELLIS Model',
     attribution: {
       model: 'microsoft/trellis-2',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: 'Microsoft TRELLIS 2',
       modelName: 'TRELLIS 2',
       sourceType: 'image'
     },
     tokenCost: 6
+  },
+  meshy: {
+    name: 'Meshy',
+    type: 'fal-3d',
+    endpoint: 'meshy/v7.1/image-to-3d',
+    imageField: 'image_url',
+    // Textured, triangle topology at Meshy's default 30k polycount. Rigging,
+    // animation and PBR are paid add-ons we don't request.
+    params: {
+      should_texture: true,
+      enable_pbr: false,
+      topology: 'triangle',
+      target_polycount: 30000
+    },
+    assetSlug: 'meshy-model',
+    assetLabel: 'Meshy Model',
+    attribution: {
+      model: 'meshy/meshy-7.1',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: 'Meshy 7.1',
+      modelName: 'Meshy 7.1',
+      sourceType: 'image'
+    },
+    tokenCost: 24
   },
   'vid2scene-max': {
     name: 'vid2scene Max (Video to Splat)',
@@ -218,6 +258,8 @@ const REPLICATE_MODELS = {
     assetLabel: 'vid2scene Splat',
     attribution: {
       model: 'samuelm2/vid2scene',
+      // Shown on the saved asset as "by <credit>": maker + model.
+      credit: "samuelm2's vid2scene",
       modelName: 'vid2scene (Video to Splat)',
       sourceType: 'video'
     },
