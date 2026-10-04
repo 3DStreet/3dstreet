@@ -9,6 +9,7 @@ import ImageUploadUtils from './image-upload-utils.js';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@shared/services/firebase.js';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import { fitScale } from '@shared/utils/imageScale.js';
 import {
   getStyleSentence,
   describeStyleText,
@@ -856,10 +857,11 @@ class GeneratorTabBase {
     switch (model) {
       case 'nano-banana-pro':
       case 'nano-banana-2':
-      case 'seedream-4.5':
-      case 'fal-flux-2-max-edit':
-      case 'fal-flux-2-pro-edit':
-        // These endpoints ignore dimensions (a fixed image_size is sent).
+      case 'seedream-5-pro':
+      case 'fal-flux-3-edit':
+      case 'grok-imagine-image-2':
+      case 'fal-muse-image-edit':
+        // These endpoints ignore dimensions (output size is fixed server-side).
         showDimensions = false;
         showAspectRatio = false;
         break;
@@ -1276,15 +1278,17 @@ class GeneratorTabBase {
   /**
    * Convert image to JPEG with specified quality
    */
-  convertToJpeg(dataUrl, quality = 0.9) {
+  convertToJpeg(dataUrl, quality = 0.9, maxMegapixels = null) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
+        // Downscale to at most maxMegapixels when the model caps input size.
+        const scale = fitScale(img.width, img.height, maxMegapixels);
         const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = Math.floor(img.width * scale);
+        canvas.height = Math.floor(img.height * scale);
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         // Convert to JPEG with specified quality (0.9 = 90%)
         const jpegDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(jpegDataUrl);
@@ -1296,9 +1300,10 @@ class GeneratorTabBase {
 
   /**
    * Prepare the source image (if any) for submission: normalize to a data URL
-   * and re-encode as JPEG at 90% quality to reduce upload time.
+   * and re-encode as JPEG at 90% quality to reduce upload time, downscaled to
+   * the model's maxInputMegapixels if it has one.
    */
-  async prepareInputImage() {
+  async prepareInputImage(modelConfig) {
     if (!this.imagePromptData) return null;
 
     let inputImageSrc = this.imagePromptData.startsWith('data:')
@@ -1307,7 +1312,11 @@ class GeneratorTabBase {
 
     if (inputImageSrc.startsWith('data:image/')) {
       try {
-        inputImageSrc = await this.convertToJpeg(inputImageSrc, 0.9);
+        inputImageSrc = await this.convertToJpeg(
+          inputImageSrc,
+          0.9,
+          modelConfig?.maxInputMegapixels
+        );
       } catch (error) {
         console.warn('Failed to convert to JPEG, using original:', error);
       }
@@ -1359,7 +1368,7 @@ class GeneratorTabBase {
         style: this.elements.styleInput.value
       });
       const promptStyle = describeStyleText(this.elements.styleInput.value);
-      const inputImageSrc = await this.prepareInputImage();
+      const inputImageSrc = await this.prepareInputImage(modelConfig);
 
       const result = await generateReplicateImage({
         prompt: prompt,
@@ -1420,7 +1429,7 @@ class GeneratorTabBase {
         style: this.elements.styleInput.value
       });
       const promptStyle = describeStyleText(this.elements.styleInput.value);
-      const inputImageSrc = await this.prepareInputImage();
+      const inputImageSrc = await this.prepareInputImage(modelConfig);
 
       const result = await generateFalImage({
         prompt: prompt,

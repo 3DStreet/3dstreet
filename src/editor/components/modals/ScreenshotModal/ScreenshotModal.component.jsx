@@ -26,6 +26,7 @@ import {
 } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import { fitScale } from '@shared/utils/imageScale.js';
 import {
   DEFAULT_RENDER_STYLE_ID,
   getDefaultInstructions,
@@ -156,16 +157,18 @@ function ScreenshotModal() {
     return AI_MODELS[modelKey]?.tokenCost || 1;
   };
 
-  // Convert image to JPEG with specified quality
-  const convertToJpeg = (dataUrl, quality = 0.9) => {
+  // Convert image to JPEG with specified quality, downscaling to at most
+  // maxMegapixels when the model caps its input size.
+  const convertToJpeg = (dataUrl, quality = 0.9, maxMegapixels = null) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
+        const scale = fitScale(img.width, img.height, maxMegapixels);
         const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = Math.floor(img.width * scale);
+        canvas.height = Math.floor(img.height * scale);
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         // Convert to JPEG with specified quality (0.9 = 90%)
         const jpegDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(jpegDataUrl);
@@ -494,7 +497,11 @@ function ScreenshotModal() {
       // Convert to JPEG with 90% quality to reduce upload time
       if (inputImageSrc && inputImageSrc.startsWith('data:image/')) {
         try {
-          inputImageSrc = await convertToJpeg(inputImageSrc, 0.9);
+          inputImageSrc = await convertToJpeg(
+            inputImageSrc,
+            0.9,
+            selectedModelConfig.maxInputMegapixels
+          );
         } catch (error) {
           console.warn('Failed to convert to JPEG, using original:', error);
         }
