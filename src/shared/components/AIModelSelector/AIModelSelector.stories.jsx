@@ -118,7 +118,7 @@ export const VideoMode = {
 export const VideoModeFast = {
   render: () => (
     <InteractiveWrapper
-      initialValue="bytedance/seedance-1-pro-fast"
+      initialValue="bytedance/seedance-2.0-fast"
       mode="video"
     />
   ),
@@ -320,7 +320,7 @@ export const AllVideoModels = {
         High Quality and Fast
       </h3>
       <InteractiveWrapper
-        initialValue="bytedance/seedance-1-pro-fast"
+        initialValue="bytedance/seedance-2.0-fast"
         mode="video"
       />
       <InteractiveWrapper initialValue="lightricks/ltx-2-fast" mode="video" />
