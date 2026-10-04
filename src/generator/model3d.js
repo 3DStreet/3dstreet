@@ -2,11 +2,12 @@
  * 3D Model Tab
  *
  * The "3D Model" medium alongside Image, Video and Splat: image → 3D mesh
- * (GLB) via fal. Two selectable models, both image-to-3D:
- *   - Hunyuan3D (fal-ai/hunyuan3d/v2)
- *   - TRELLIS   (fal-ai/trellis-2)
+ * (GLB) via fal. Three selectable models, all image-to-3D:
+ *   - Hunyuan3D 3.1 Pro (fal-ai/hunyuan-3d/v3.1/pro/image-to-3d)
+ *   - TRELLIS 2           (fal-ai/trellis-2)
+ *   - Meshy 7.1           (meshy/v7.1/image-to-3d)
  *
- * Both endpoints are image-to-3D only (no text prompt input), so a reference
+ * All endpoints are image-to-3D only (no text prompt input), so a reference
  * image is required to generate. Generation uses the async job queue (like
  * splats/videos): generateFalMesh submits to fal and returns a jobId
  * immediately; the client polls getGenerationJobStatus while the tab is open,
@@ -31,28 +32,11 @@ import {
 } from '@shared/utils/generationJobs.js';
 import { t } from './i18n/messages.js';
 import { isTokenExhaustedError } from '@shared/utils/tokens.js';
-
-// Selectable image -> mesh models (both GLB output via fal). tokenCost mirrors
-// the backend source of truth (public/functions/replicate-models.js); the
-// backend enforces the real charge. estimatedTime drives the progress bar only.
-const MODEL3D_MODELS = [
-  {
-    id: 'hunyuan-3d',
-    name: t('model3d.modelHunyuanName'),
-    tokenCost: 3,
-    estimatedTime: 30
-  },
-  {
-    id: 'trellis',
-    name: t('model3d.modelTrellisName'),
-    tokenCost: 6,
-    estimatedTime: 60
-  }
-];
+import { MODEL3D_MODELS } from './model3d-models.js';
 
 const Model3DTab = {
   imageData: null,
-  selectedModel: 'hunyuan-3d',
+  selectedModel: MODEL3D_MODELS[0].id,
   currentModelUrl: '',
   timerInterval: null,
   startTime: null,
@@ -141,7 +125,7 @@ const Model3DTab = {
             <span id="model3d-generate-text">${t('model3d.generateButton')}</span>
             <span class="inline-flex items-center rounded" style="background: rgba(0, 0, 0, 0.15); padding: 6px 8px; gap: 4px;">
               <img src="/ui_assets/token-image.png" alt="${t('model3d.tokenAlt')}" class="w-5 h-5" />
-              <span id="model3d-token-cost" class="text-sm font-medium">3</span>
+              <span id="model3d-token-cost" class="text-sm font-medium">${this.getModelConfig().tokenCost}</span>
             </span>
           </button>
 
@@ -290,7 +274,54 @@ const Model3DTab = {
     reader.readAsDataURL(file);
   },
 
-  setImage(dataUrl, fileName) {
+  // Keep the reference image within what every model and the callable accept
+  // (Hunyuan3D Pro takes up to 8MB; the callable request caps at ~10MB of
+  // base64). Images already under the limits pass through untouched; larger
+  // ones are scaled to 2048px. PNGs stay PNG so cutout transparency survives
+  // (the models use it as the object mask); only if that's still too big do we
+  // fall back to JPEG on white.
+  async shrinkImage(dataUrl, maxDim = 2048, maxBytes = 4 * 1024 * 1024) {
+    const bytesOf = (url) => (url.length - url.indexOf(',') - 1) * 0.75;
+    const img = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = dataUrl;
+    });
+    const longest = Math.max(img.width, img.height);
+    if (longest <= maxDim && bytesOf(dataUrl) <= maxBytes) return dataUrl;
+
+    const scale = Math.min(1, maxDim / longest);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    const ctx = canvas.getContext('2d');
+    if (dataUrl.startsWith('data:image/png')) {
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const png = canvas.toDataURL('image/png');
+      if (bytesOf(png) <= maxBytes) return png;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    let out;
+    for (const quality of [0.92, 0.85, 0.75]) {
+      out = canvas.toDataURL('image/jpeg', quality);
+      if (bytesOf(out) <= maxBytes) break;
+    }
+    return out;
+  },
+
+  async setImage(dataUrl, fileName) {
+    try {
+      dataUrl = await this.shrinkImage(dataUrl);
+    } catch (err) {
+      console.warn(
+        'Could not downscale reference image; sending original',
+        err
+      );
+    }
     this.imageData = dataUrl;
     this.elements.imageName.textContent = fileName;
     this.elements.imagePreview.src = dataUrl;

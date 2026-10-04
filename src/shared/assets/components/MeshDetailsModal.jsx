@@ -255,22 +255,28 @@ const MeshDetailsModal = ({
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [onNavigate]);
 
-  // Lazy splat-thumbnail backfill: the splat-viewer iframe captures a frame of
-  // the loaded splat and postMessages it up. If this splat has no thumbnail yet
-  // and we're the owner (only the owner may write to their asset path), upload
-  // it so the gallery card stops showing a blank .ply placeholder. Best-effort,
-  // at most once per asset (the assetUpdated event then refreshes the card).
+  // Lazy thumbnail backfill: the viewer iframe (splat-viewer or model-viewer)
+  // captures a frame of the loaded asset and postMessages it up. If it has no
+  // thumbnail yet and we're the owner (only the owner may write to their asset
+  // path), upload it so the gallery card stops showing a placeholder. Covers
+  // splats and server-generated meshes (which skip the upload-time capture).
+  // Best-effort, at most once per asset (assetUpdated then refreshes the card).
   const thumbUploadedRef = useRef(null);
   useEffect(() => {
     const isOwnerNow = !!auth.currentUser && auth.currentUser.uid === ownerUid;
-    if (!data || data.type !== 'splat' || !isOwnerNow) return;
+    if (!data || !isOwnerNow) return;
+    if (data.type !== 'splat' && data.type !== 'mesh') return;
     if (data.thumbnailUrl || thumbUploadedRef.current === assetId) return;
     const expectedSrc = getServedUrl(data);
+    const isSplatAsset = data.type === 'splat';
     const onMessage = (e) => {
       const msg = e.data;
       if (
         !msg ||
-        msg.type !== '3dstreet:splat-thumbnail' ||
+        msg.type !==
+          (isSplatAsset
+            ? '3dstreet:splat-thumbnail'
+            : '3dstreet:mesh-thumbnail') ||
         !(msg.blob instanceof Blob)
       ) {
         return;
@@ -282,10 +288,15 @@ const MeshDetailsModal = ({
       thumbUploadedRef.current = assetId;
       import('@shared/asset-upload')
         .then(({ uploadCapturedThumbnail }) =>
-          uploadCapturedThumbnail(assetId, ownerUid, msg.blob, 'splats')
+          uploadCapturedThumbnail(
+            assetId,
+            ownerUid,
+            msg.blob,
+            isSplatAsset ? 'splats' : 'meshes'
+          )
         )
         .catch((err) =>
-          console.warn('[MeshDetailsModal] splat thumbnail upload failed', err)
+          console.warn('[MeshDetailsModal] thumbnail upload failed', err)
         );
     };
     window.addEventListener('message', onMessage);
