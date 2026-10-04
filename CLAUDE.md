@@ -255,7 +255,7 @@ Because the app now runs at a nested path, every static asset reference must be 
 
 **Google 3D Tiles:** Real-world context (`google-maps-aerial` component, `3d-tiles-renderer` library)
 
-**fal.ai / Replicate:** Image and video generation via Firebase proxy (Flux 2, nano-banana, seedream, kontext, etc.)
+**fal.ai / Replicate:** Image and video generation via Firebase proxy (Flux 3, nano-banana, seedream, grok, muse, kontext, etc.)
 
 **Firebase:** Auth, Firestore, Cloud Functions, Hosting
 

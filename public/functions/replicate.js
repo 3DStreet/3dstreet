@@ -5,7 +5,8 @@ const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
-const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
+const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, REPLICATE_MODELS } = require('./replicate-models.js');
+const { buildReplicateImageInput } = require('./image-model-inputs.js');
 const { assertAppCheck } = require('./app-check.js');
 // Pure .ply sanity check — gates degenerate (failed-SfM) reconstructions out of
 // the success/charge/save path. See issue #1745.
@@ -155,7 +156,7 @@ async function postAIVideoToDiscord(userId, videoUrl, prompt, modelName, duratio
 }
 
 // Replicate API function for image generation (nano-banana / seedream /
-// kontext families). Asynchronous since #1835: the callable stages the input,
+// grok / kontext families). Asynchronous since #1835: the callable stages the input,
 // writes a `kind: 'image'` job to the async queue, charges at submit
 // (refunded once on failure), creates the Replicate prediction with a webhook,
 // and returns the jobId immediately — the same create-and-return pattern as
@@ -296,46 +297,14 @@ const generateReplicateImage = functions
       }
 
 
-      // Different models use different input parameter names and formats
-      let modelInput = {
-        prompt: prompt,
-        guidance: guidance,
-        num_inference_steps: num_inference_steps
-      };
-
-      // Check if this is a Nano Banana model (uses different input format)
-      if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_2) {
-        // Nano Banana models use image_input as an array (optional)
-        if (imageUrl) {
-          modelInput.image_input = [imageUrl];
-          modelInput.aspect_ratio = 'match_input_image';
-        }
-        // Nano Banana Pro and Nano Banana 2 support higher resolution
-        if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_2) {
-          modelInput.resolution = '2K'; // Can be '1K', '2K', or '4K'
-        }
-        modelInput.output_format = 'jpg';
-        // Remove parameters that Nano Banana models don't use
-        delete modelInput.guidance;
-        delete modelInput.num_inference_steps;
-      } else if (modelVersionToUse === MODEL_VERSIONS.SEEDREAM_4 || model_id === 'seedream-4.5') {
-        // Seedream uses image_input as an array and different parameters (optional)
-        if (imageUrl) {
-          modelInput.image_input = [imageUrl];
-        }
-        modelInput.size = '2K';
-        // Note: output_format and aspect_ratio are omitted for seedream-4.5
-        // as the API uses default aspect_ratio of match_input_image
-        // Remove parameters that Seedream doesn't use
-        delete modelInput.guidance;
-        delete modelInput.num_inference_steps;
-      } else {
-        // Kontext models use input_image as string (optional)
-        if (imageUrl) {
-          modelInput.input_image = imageUrl;
-        }
-        modelInput.output_format = 'jpg';
-      }
+      // Different models use different input parameter names and formats;
+      // the model config's `inputStyle` picks the shape.
+      const modelInput = buildReplicateImageInput(modelConfig, {
+        prompt,
+        imageUrl,
+        guidance,
+        numInferenceSteps: num_inference_steps
+      });
 
       // Durable job identity, same contract as the video/splat submits: the
       // internal jobId (a uuid) is the Firestore doc id, NOT the Replicate

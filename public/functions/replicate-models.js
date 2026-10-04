@@ -4,18 +4,53 @@
  */
 
 const REPLICATE_MODELS = {
+  // Image models. `inputStyle` (Replicate) / `payloadStyle` (fal) pick how
+  // the request input is shaped — see image-model-inputs.js. Token cost is
+  // about 2x the provider cost at $0.10/token. Retired models stay listed so
+  // a tab left open on an older picker still works; the picker itself lives
+  // in src/shared/constants/replicateModels.js (drift-guarded by
+  // test/generator/image-models-sync.test.js).
   'kontext-realearth': {
     name: 'Kontext Real Earth',
     version: '2af4da47bcb7b55a0705b0de9933701f7607531d763ae889241f827a648c1755',
     tokenCost: 1
   },
   // fal.ai Models
+  // FLUX.3 Image edit at the 2K tier: $0.10/image (fal list price).
+  'fal-flux-3-edit': {
+    name: 'Flux 3',
+    type: 'fal',
+    endpoint: 'blackforestlabs/flux-3/edit-image',
+    payloadStyle: 'flux-3',
+    resolution: '2k',
+    tokenCost: 2
+  },
+  // FLUX.2 [klein] 9B edit: $0.011 per megapixel of input (resized to 1 MP)
+  // and output. Output matches the input size, capped at 2 MP client-side,
+  // so ≤ ~$0.033/image. The fast Flux for the 4x batch.
+  'fal-flux-2-klein-9b-edit': {
+    name: 'Flux 2 Klein',
+    type: 'fal',
+    endpoint: 'fal-ai/flux-2/klein/9b/edit',
+    payloadStyle: 'flux-2-klein',
+    tokenCost: 1
+  },
+  // Meta Muse Image edit: $0.01/image. On trial in the picker.
+  'fal-muse-image-edit': {
+    name: 'Muse Image',
+    type: 'fal',
+    endpoint: 'meta/muse-image/edit',
+    payloadStyle: 'muse',
+    tokenCost: 1
+  },
+  // Retired from the picker (replaced by Flux 3).
   'fal-flux-2-max-edit': {
     name: 'Flux 2 Max',
     type: 'fal',
     endpoint: 'fal-ai/flux-2-max/edit',
     tokenCost: 3
   },
+  // Retired from the picker (replaced by Flux 3).
   'fal-flux-2-pro-edit': {
     name: 'Flux 2 Pro',
     type: 'fal',
@@ -28,6 +63,7 @@ const REPLICATE_MODELS = {
     endpoint: 'fal-ai/flux-2/edit',
     tokenCost: 2
   },
+  // Stays on FLUX.2: the LoRA was trained on FLUX.2 weights.
   'fal-flux-2-lora-sfmta': {
     name: 'Flux 2 SFMTA Striping',
     type: 'fal',
@@ -48,27 +84,56 @@ const REPLICATE_MODELS = {
   'nano-banana': {
     name: 'Nano Banana',
     version: 'f0a9d34b12ad1c1cd76269a844b218ff4e64e128ddaba93e15891f47368958a0',
+    inputStyle: 'nano-banana',
     tokenCost: 1
   },
+  // $0.15/image at 2K.
   'nano-banana-pro': {
     name: 'Nano Banana Pro',
     version: '99256cc418d9ac41854575e2f1c8846ce2defd0c0fb6ff2d5cbc3c826be75bc8',
+    inputStyle: 'nano-banana',
+    resolution: '2K',
     tokenCost: 3
   },
+  // $0.101/image at 2K.
   'nano-banana-2': {
     name: 'Nano Banana 2',
     modelName: 'google/nano-banana-2',
+    inputStyle: 'nano-banana',
+    resolution: '2K',
     tokenCost: 2
   },
   'seedream-4': {
     name: 'Seedream v4',
     version: '254faac883c3a411e95cc95d0fb02274a81e388aaa4394b3ce5b7d2a9f7a6569',
+    inputStyle: 'seedream',
     tokenCost: 1
   },
+  // Retired from the picker (replaced by Seedream 5.0 Pro).
   'seedream-4.5': {
     name: 'Seedream v4.5',
     modelName: 'bytedance/seedream-4.5',
+    inputStyle: 'seedream',
     tokenCost: 2
+  },
+  // $0.09/image at 2K ($0.045 at 1K).
+  'seedream-5-pro': {
+    name: 'Seedream 5.0 Pro',
+    modelName: 'bytedance/seedream-5-pro',
+    inputStyle: 'seedream',
+    size: '2K',
+    textOnlyAspectRatio: '16:9',
+    outputFormat: 'jpeg',
+    tokenCost: 2
+  },
+  // xAI Grok Imagine Image 2.0: $0.04/output image + $0.01/input image.
+  // On trial in the picker.
+  'grok-imagine-image-2': {
+    name: 'Grok Imagine 2.0',
+    modelName: 'xai/grok-imagine-image-2',
+    inputStyle: 'grok',
+    resolution: '2k',
+    tokenCost: 1
   },
   // Image → 3D Gaussian Splat (Apple SHARP, packaged by kfarr).
   // Single image in, .ply splat out (~4 min on a T4). Used by the Splat tab
@@ -300,22 +365,9 @@ const DEFAULT_MODEL_ID = 'nano-banana-pro';
  */
 const DEFAULT_MODEL_VERSION = REPLICATE_MODELS['nano-banana-pro'].version;
 
-/**
- * Model version constants for easy reference
- */
-const MODEL_VERSIONS = {
-  KONTEXT_REALEARTH: REPLICATE_MODELS['kontext-realearth'].version,
-  NANO_BANANA: REPLICATE_MODELS['nano-banana'].version,
-  NANO_BANANA_PRO: REPLICATE_MODELS['nano-banana-pro'].version,
-  SEEDREAM_4: REPLICATE_MODELS['seedream-4'].version,
-  SEEDREAM_4_5: 'seedream-4.5', // Uses modelName-based calling, not version hash
-  NANO_BANANA_2: 'nano-banana-2' // Uses modelName-based calling, not version hash
-};
-
 module.exports = {
   REPLICATE_MODELS,
   AI_MODEL_NAMES,
   DEFAULT_MODEL_ID,
-  DEFAULT_MODEL_VERSION,
-  MODEL_VERSIONS
+  DEFAULT_MODEL_VERSION
 };
