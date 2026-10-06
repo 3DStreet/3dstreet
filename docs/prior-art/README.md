@@ -21,7 +21,7 @@ needs a license check first (our code is AGPL-3.0).
 | [PhiloLabs/fable51-worlds](https://github.com/PhiloLabs/fable51-worlds) | agent swarms build a city twin as Three.js code, refined by a visual loop against photos with reviewer agents | MIT | `d240284` (2026-09-08) | #2083, #2090; [notes](fable51-worlds.md) |
 | [akbartus/buildings-generator](https://github.com/akbartus/buildings-generator) | builds a real place's buildings: OSM footprints + lidar heights + a vision model filling a JSON recipe per building from Mapillary photos → parametric kernel (`3d/mesh/archkit.js`); grew out of fable51-worlds | see the notes | README only (repo not readable from our session) | #2083, #2090, #1744; [notes](buildings-generator.md) |
 | [alzin/japan-rail-sim](https://github.com/alzin/japan-rail-sim) | rail sim; track profile, sleeper and catenary dimensions | MIT | see the issue | #2004 rail fidelity |
-| [mkturkcan/boundless-nyc](https://github.com/mkturkcan/boundless-nyc) | NYC open data compiled into streamed tiles; the architecture procedural-tokyo copies | not reviewed | not reviewed | background only |
+| [mkturkcan/boundless-nyc](https://github.com/mkturkcan/boundless-nyc) (BoundlessNYC) | four NYC boroughs compiled from municipal records (footprints joined to PLUTO by BBL, CSCL centrelines, city registries) into `CTL1` tiles; traffic, perception ground truth, CARLA-style API; the architecture procedural-tokyo follows | MIT code; compiled city ODbL | `f453c1d` (2026-10-05) | #2090, #1930, #2004, #2083, play mode; [notes](boundless-nyc.md) |
 
 ## The pattern they converge on
 
@@ -38,6 +38,7 @@ source adapter        →  normalized facts           →  streamable tiles     
 
 - zoningviz: `jurisdictions/<city>.py` → `sf_parcels.parquet` → (planned) PMTiles
 - strassenraumkarte: osm2pgsql flex + `lanes.lua` → PostGIS → vector tiles
+- BoundlessNYC: NYC Open Data + OSM gap-fill → (in memory) → `CTL1` binary tiles (512 m near, 2,048 m far)
 - procedural-tokyo: PLATEAU/OSM/GSI fetchers → (in memory) → `TKY1` binary tiles
 
 **The expensive alternative: a visual feedback loop.** fable51-worlds builds a
