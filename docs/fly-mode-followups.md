@@ -71,6 +71,38 @@ Still worth a look if reports continue: stale `matrixWorld` if
 `street-geo` repositions the tileset root mid-session, and per-tile
 `MAX_TILE_VERTICES` skips (console-warned).
 
+### Ground-level spawn sank through the tile — FIXED 2026-09-28 (#2030)
+
+Symptom: Play with the helicopter parked on the ground over Google 3D
+Tiles, and it sinks below the surface, then is stuck underground once
+collision "starts". Cause: tile trimeshes are built on a 120 ms timer
+queue in `visibleTiles` traversal order, while the player body is a
+dynamic Rapier body under gravity from its first sub-step with the rotor
+still unspooled (no thrust). The flat pad drops to the -250 m safety net
+when a tileset is present, so nothing caught the fall until the spawn
+tile's collider happened to build — by then the body was below it. Two
+fixes in `tiles-colliders.js` / `play-mode-helicopter.js`:
+
+- The build queue drains NEAREST-FIRST around a focus point
+  (`attachTilesColliders(sceneEl, { focus: spawnPos })`, passed by both
+  fly-mode and drive-mode, then moved to the player each frame via the
+  handle's `setFocus`), so the tile under the player builds in the
+  first pass. Distances use each tile's `engineData.boundingVolume` in
+  the tileset frame (`group.matrixWorldInverse`).
+- Spawn hold: the chassis is created with gravity scale 0 and pinned at
+  its spawn pose each sub-step until the downward ground probe hits a
+  surface that is not the safety net (`isSafetyNetSurface`, shared
+  `TILES_SAFETY_NET_Y`), or `SPAWN_HOLD_TIMEOUT` (4 s sim) passes (a
+  tile that never builds, e.g. over budget, then falls to the net as
+  before). The rotor spools during the hold, so it reads as winding up
+  on the pad. Without tiles the pad is at y=0 and the hold releases on
+  the first sub-step — no behavior change.
+
+Not covered: a spawn whose tile surface is ABOVE the fly-controls entity
+(helicopter placed under the terrain) — the downward probe cannot see
+that surface. The car has the same free-fall window (its chassis is not
+held), narrowed but not closed by the nearest-first queue.
+
 ## 3. Helicopter doesn't collide with scene objects
 
 Symptom: flies through catalog obstacles/buildings. As with tiles, the
