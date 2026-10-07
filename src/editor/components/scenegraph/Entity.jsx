@@ -79,7 +79,8 @@ class Entity extends React.Component {
     }
   };
 
-  onDoubleClick = () => Events.emit('objectfocus', this.props.entity.object3D);
+  onDoubleClick = () =>
+    Events.emit('objectfocus', this.props.entity.object3D, { twoStep: true });
 
   // Badge click (the badge lives inside the clickable row, so the row's own
   // click is stopped). A hotspot badge focuses the camera on the layer; a

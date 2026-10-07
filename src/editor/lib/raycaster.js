@@ -336,7 +336,9 @@ export function initRaycaster(inspector) {
     if (!selected) {
       return;
     }
-    Events.emit('objectfocus', selected.object3D);
+    // First double-click centers the entity keeping the camera's heading;
+    // a second one frames it with its full focus view (#2054).
+    Events.emit('objectfocus', selected.object3D, { twoStep: true });
   }
 
   return {

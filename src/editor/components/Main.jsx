@@ -38,6 +38,7 @@ import useStore from '@/store';
 import UnofficialDeploymentBanner from './UnofficialDeploymentBanner.jsx';
 import { useNavMode } from '../lib/nav-experimental/useNavMode';
 import { RecoveryCue } from '../lib/nav-experimental/RecoveryCue.jsx';
+import { FocusStepCue } from './elements/FocusStepCue.jsx';
 import { isStreetLevelNav } from '../lib/nav-experimental/index.js';
 import { useProfileLocaleSync } from '../i18n/useProfileLocaleSync';
 import styles from './Main.module.scss';
@@ -221,6 +222,7 @@ export default function Main() {
             </div>
           )}
           {isStreetLevelNav() && <RecoveryCue />}
+          <FocusStepCue />
           <OsmUpgradeChip />
         </div>
       )}
