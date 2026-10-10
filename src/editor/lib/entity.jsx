@@ -9,6 +9,7 @@ import { captureFocusPose } from './focusPose.js';
 import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 import { reseededGeneratorAttributes } from '../../tested/generator-seeds.js';
 import { innermostOpenGroup } from './groups/groupPlacement.js';
+import { isUserGroup } from './groups/groupModel.js';
 import {
   GeospatialIcon,
   ManagedStreetIcon,
@@ -21,6 +22,7 @@ import {
   Object24IconCyan,
   Geometry24Icon,
   ShapeIcon,
+  GroupIcon,
   ViewerStartIcon
 } from '@shared/icons';
 
@@ -769,6 +771,9 @@ export function getEntityIcon(entity) {
   }
   if (entity.getAttribute('viewer-start')) {
     return <ViewerStartIcon />;
+  }
+  if (isUserGroup(entity)) {
+    return <GroupIcon />;
   }
 
   // Check for class-based icons
