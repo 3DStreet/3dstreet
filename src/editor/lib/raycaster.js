@@ -110,12 +110,31 @@ export function initRaycaster(inspector) {
     return undefined;
   }
 
+  // Viewer build session (build-area, docs/visitor-build.md): the only
+  // selectable things are the visitor's own objects, so a click resolves
+  // to the nearest `data-viewer-added` ancestor of the hit or to nothing.
+  // No cascade: the shape under them, the street, the author's layers are
+  // all off limits while playing.
+  function resolveVisitorSelection(intersectedEl) {
+    let node = intersectedEl;
+    while (node && node.isEntity) {
+      if (node.hasAttribute && node.hasAttribute('data-viewer-added')) {
+        return node;
+      }
+      node = node.parentElement;
+    }
+    return null;
+  }
+
   function getIntersectedEl() {
     const batched = getBatchedIntersectedEl();
     const intersectedEl =
       batched !== undefined
         ? batched
         : mouseCursor.components.cursor.intersectedEl;
+    if (!useStore.getState().isInspectorEnabled) {
+      return resolveVisitorSelection(intersectedEl);
+    }
     // Figma-style cascading selection (epic #1720): resolve one step down
     // the intersected entity's ancestor chain per click — street, then
     // segment, then child — see cascadingSelection.js. Hover previews the
@@ -293,6 +312,21 @@ export function initRaycaster(inspector) {
     comp.highlightWayAt(hit.worldPoint, { kind: 'hover' });
     osmHover = { wayId: hit.wayId, worldPoint: hit.worldPoint };
   }
+
+  // Hover is only re-resolved by the polling above, which stops while the
+  // raycaster is disabled. Switching to the hand or shape tool by keyboard
+  // disables it with the pointer still over the canvas, so the leave has to
+  // be emitted here or the hover box stays on the last entity until the
+  // pointer exits the canvas. Resetting lastHoveredEl also lets the same
+  // entity fire a fresh enter once the raycaster is back on.
+  function clearHover() {
+    if (lastHoveredEl) {
+      Events.emit('raycastermouseleave', lastHoveredEl);
+      lastHoveredEl = null;
+    }
+    updateOsmHover(null);
+  }
+  Events.on('hidecursor', clearHover);
 
   mouseCursor.addEventListener('click', handleClick);
   inspector.container.addEventListener('mousedown', onMouseDown);
@@ -524,6 +558,7 @@ export function initRaycaster(inspector) {
     },
     disable: () => {
       mouseCursor.setAttribute('raycaster', 'enabled', false);
+      clearHover();
       inspector.container.removeEventListener('mousedown', onMouseDown);
       inspector.container.removeEventListener('mouseup', onMouseUp);
       inspector.container.removeEventListener('dblclick', onDoubleClick);

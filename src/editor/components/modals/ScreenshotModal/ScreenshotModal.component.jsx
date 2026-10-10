@@ -26,6 +26,8 @@ import {
 } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
 import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import { fitScale } from '@shared/utils/imageScale.js';
+import { computeRenderGridCell, RENDER_GRID_GAP } from './renderGridLayout.js';
 import {
   DEFAULT_RENDER_STYLE_ID,
   getDefaultInstructions,
@@ -115,6 +117,11 @@ function ScreenshotModal() {
   // and saves server-side regardless).
   const activePollsRef = useRef(new Set());
   const batch4xRef = useRef(null);
+  // 4x grid sizing: the image area's size and the screenshot's aspect ratio
+  // decide whether cells keep the screenshot's shape (see renderGridLayout).
+  const imageContainerRef = useRef(null);
+  const [imageAreaSize, setImageAreaSize] = useState({ width: 0, height: 0 });
+  const [sourceAspect, setSourceAspect] = useState(null);
 
   useEffect(() => {
     const polls = activePollsRef.current;
@@ -156,16 +163,18 @@ function ScreenshotModal() {
     return AI_MODELS[modelKey]?.tokenCost || 1;
   };
 
-  // Convert image to JPEG with specified quality
-  const convertToJpeg = (dataUrl, quality = 0.9) => {
+  // Convert image to JPEG with specified quality, downscaling to at most
+  // maxMegapixels when the model caps its input size.
+  const convertToJpeg = (dataUrl, quality = 0.9, maxMegapixels = null) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
+        const scale = fitScale(img.width, img.height, maxMegapixels);
         const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = Math.floor(img.width * scale);
+        canvas.height = Math.floor(img.height * scale);
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         // Convert to JPEG with specified quality (0.9 = 90%)
         const jpegDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(jpegDataUrl);
@@ -494,7 +503,11 @@ function ScreenshotModal() {
       // Convert to JPEG with 90% quality to reduce upload time
       if (inputImageSrc && inputImageSrc.startsWith('data:image/')) {
         try {
-          inputImageSrc = await convertToJpeg(inputImageSrc, 0.9);
+          inputImageSrc = await convertToJpeg(
+            inputImageSrc,
+            0.9,
+            selectedModelConfig.maxInputMegapixels
+          );
         } catch (error) {
           console.warn('Failed to convert to JPEG, using original:', error);
         }
@@ -911,6 +924,43 @@ function ScreenshotModal() {
       }
     };
   }, [isGeneratingAI, renderStartTime, selectedModel]);
+
+  // Track the image area's size for the 4x grid layout.
+  useEffect(() => {
+    const el = imageContainerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setImageAreaSize({ width, height });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [modal]);
+
+  // The screenshot's aspect ratio (width / height).
+  useEffect(() => {
+    if (!originalImageUrl) {
+      setSourceAspect(null);
+      return;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled && img.naturalHeight) {
+        setSourceAspect(img.naturalWidth / img.naturalHeight);
+      }
+    };
+    img.src = originalImageUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [originalImageUrl]);
+
+  const renderGridCell = computeRenderGridCell({
+    width: imageAreaSize.width,
+    height: imageAreaSize.height,
+    aspect: sourceAspect
+  });
 
   // Timer updates for individual renders in 4x mode
   useEffect(() => {
@@ -1368,7 +1418,7 @@ function ScreenshotModal() {
           </div>
         </div>
 
-        <div className={styles.imageContainer}>
+        <div className={styles.imageContainer} ref={imageContainerRef}>
           {/* Always render the screentock-destination img for screenshot functionality */}
           <img
             id="screentock-destination"
@@ -1518,7 +1568,19 @@ function ScreenshotModal() {
                 </div>
               ) : (
                 // 4x Render Grid - show when renders are in progress or completed
-                <div className={styles.renderGrid}>
+                <div
+                  className={`${styles.renderGrid} ${renderGridCell ? styles.renderGridSourceAspect : ''}`}
+                  style={
+                    renderGridCell
+                      ? {
+                          width: `${renderGridCell.width * 2 + RENDER_GRID_GAP}px`,
+                          height: `${renderGridCell.height * 2 + RENDER_GRID_GAP}px`,
+                          gridTemplateColumns: `repeat(2, ${renderGridCell.width}px)`,
+                          gridTemplateRows: `repeat(2, ${renderGridCell.height}px)`
+                        }
+                      : undefined
+                  }
+                >
                   {Array.from({ length: 4 }, (_, index) => {
                     // Filter models to only include those with includeIn4x: true
                     const modelKeys = Object.keys(AI_MODELS).filter(

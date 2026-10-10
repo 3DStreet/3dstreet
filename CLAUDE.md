@@ -73,7 +73,8 @@ creation order: a generator's `skip` array holds `"x z"` placement holes for
 **per-object detach** (#2011): a clone carries no `data-no-transform`, and its
 first edit — gizmo drag, transform field, model change, Delete — detaches it
 into a plain `Detached Model` entity via the command-layer router
-`routeCloneEdit`. Read
+`routeCloneEdit`; **Detach all** (#2036) does the same for every clone of one
+generator and removes the generator (`detachallclones`). Read
 [docs/per-object-detach.md](docs/per-object-detach.md) before changing clone
 placement or creation order, seeded draws, `autocreated` handling or the
 gizmo's no-transform gating.
@@ -98,7 +99,11 @@ touching them. Entry point: `docs/focus-hotspots.md`.
 
 ## Play Mode & Viewer
 
-Playing is presentation-only: nothing persists and no edit permission is needed.
+Playing needs no edit permission and persists nothing: play may change the
+live scene (traffic, a driven car, visitor-placed objects) but never writes
+to the source scene. **Visitor Build** (`build-area` on a closed shape,
+palette dock, Open in 3DStreet handoff, `?embed=true`): entry point
+`docs/visitor-build.md`.
 Hide/restore of static street clones must use the refcounted registry in
 `src/aframe-components/play/clone-visibility.js`.
 
@@ -154,7 +159,9 @@ init, `<street-assets>`, texture references or load indicators.**
 
 **Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
 
-**Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Localized (en/es/pt-BR/fr, hand-written copy per locale in `templates.js`): recipient locale resolved from `socialProfile/{uid}` (`locale` explicit pick > `detectedLocale` captured at sign-in > en) via `email/locale.js`. Docs: [docs/email-lifecycle.md](docs/email-lifecycle.md).
+**Project Pass (#1922):** one-time time-boxed Pro. Pro = plan claim OR team domain OR `tokenProfile.proUntil > now` (`hasProEntitlement`, `public/functions/pro-pass.js`); never store pass state in claims. Sold by hand today and delivered as `#redeem` pass codes; all pass fulfilment goes through `grantPass` (idempotency key per grant). Read [docs/project-pass.md](docs/project-pass.md) before touching Pro checks, pass codes, checkout gating or the Stripe webhook.
+
+**Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `redeemPassCode` (Project Pass activated), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Localized (en/es/pt-BR/fr, hand-written copy per locale in `templates.js`): recipient locale resolved from `socialProfile/{uid}` (`locale` explicit pick > `detectedLocale` captured at sign-in > en) via `email/locale.js`. Docs: [docs/email-lifecycle.md](docs/email-lifecycle.md).
 
 ## User Asset Upload
 
@@ -177,7 +184,7 @@ to shared components, editor entry points and Firebase functions.
 
 ## Shared Library (@shared/\*)
 
-**Purpose:** Reusable components/services across editor + generator, imported via webpack alias
+**Purpose:** Reusable components/services across editor + generator, imported via bundler alias
 
 **Categories:**
 
@@ -248,7 +255,7 @@ Because the app now runs at a nested path, every static asset reference must be 
 
 **Google 3D Tiles:** Real-world context (`google-maps-aerial` component, `3d-tiles-renderer` library)
 
-**fal.ai / Replicate:** Image and video generation via Firebase proxy (Flux 2, nano-banana, seedream, kontext, etc.)
+**fal.ai / Replicate:** Image and video generation via Firebase proxy (Flux 3, nano-banana, seedream, grok, muse, kontext, etc.)
 
 **Firebase:** Auth, Firestore, Cloud Functions, Hosting
 
@@ -258,7 +265,7 @@ Because the app now runs at a nested path, every static asset reference must be 
 
 ## Tech Stack
 
-A-Frame 1.8.0 (loaded via CDN in index.html; ships super-three 0.184), Three.js r184 (npm `three` must match the A-Frame build's super-three version, upgrade together; webpack externalizes bare `three` imports to the A-Frame global, while `three/examples` addons are bundled from npm), React 18.2.0, Zustand 5.0.1, Firebase 11.10.0, Webpack 5.91.0, TailwindCSS 3.4.14
+A-Frame 1.8.0 (loaded via CDN in index.html; ships super-three 0.184), Three.js r184 (npm `three` must match the A-Frame build's super-three version, upgrade together; the bundler externalizes bare `three` imports to the A-Frame global, while `three/examples` addons are bundled from npm), React 18.2.0, Zustand 5.0.1, Firebase 11.10.0, Rspack 2 (webpack-compatible bundler; configs `rspack.config.js` / `rspack.prod.config.js`; Storybook uses the Rspack-based `storybook-react-rsbuild`), TailwindCSS 3.4.14
 
 ## Resources
 

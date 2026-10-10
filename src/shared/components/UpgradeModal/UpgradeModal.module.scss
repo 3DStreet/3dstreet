@@ -492,6 +492,33 @@ $green: #10b981;
   text-align: center;
 }
 
+// Pass-code input (RedeemPassModal, #1922 follow-up).
+.codeInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #404040;
+  background: #111;
+  color: #fff;
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+
+  &:focus {
+    outline: none;
+    border-color: #8b5cf6;
+  }
+}
+
+.formError {
+  font-size: 14px;
+  color: #f87171;
+  margin: 0;
+  text-align: center;
+}
+
 // ─── Header used by checkout + has-subscription states ───────────
 
 .modalHeader {

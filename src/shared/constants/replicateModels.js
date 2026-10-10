@@ -14,11 +14,17 @@ export const MODEL_GROUPS = {
   'high-quality': {
     label: 'High quality',
     order: 2
+  },
+  affordable: {
+    label: 'Fast and affordable',
+    order: 3
   }
 };
 
 /**
- * All available AI models with metadata
+ * All available AI models with metadata. Token costs must match the server
+ * table (public/functions/replicate-models.js); the two are drift-guarded by
+ * test/generator/image-models-sync.test.js.
  */
 export const REPLICATE_MODELS = {
   // Best quality
@@ -32,27 +38,30 @@ export const REPLICATE_MODELS = {
     includeIn4x: true,
     tokenCost: 3
   },
-  'fal-flux-2-max-edit': {
-    name: 'Flux 2 Max',
+  'fal-flux-3-edit': {
+    name: 'Flux 3',
     type: 'fal',
     group: 'best-quality',
     logo: '/ui_assets/model-black-forest-labs.png',
-    endpoint: 'fal-ai/flux-2-max/edit',
-    estimatedTime: 60,
-    includeIn4x: true,
-    tokenCost: 3,
-    requiresSourceImage: true
+    endpoint: 'blackforestlabs/flux-3/edit-image',
+    estimatedTime: 80,
+    // Too slow for the 4x batch; Flux 2 Klein is the Flux there.
+    includeIn4x: false,
+    tokenCost: 2,
+    requiresSourceImage: true,
+    // fal rejects FLUX.3 reference images over 4 megapixels.
+    maxInputMegapixels: 4
   },
 
   // High quality
-  'seedream-4.5': {
-    name: 'Seedream 4.5',
+  'seedream-5-pro': {
+    name: 'Seedream 5.0 Pro',
     type: 'replicate',
     group: 'high-quality',
     logo: '/ui_assets/model-bytedance.png',
-    modelName: 'bytedance/seedream-4.5',
-    estimatedTime: 20,
-    includeIn4x: true,
+    modelName: 'bytedance/seedream-5-pro',
+    estimatedTime: 30,
+    includeIn4x: false,
     tokenCost: 2
   },
   'nano-banana-2': {
@@ -62,18 +71,44 @@ export const REPLICATE_MODELS = {
     logo: '/ui_assets/model-google.png',
     modelName: 'google/nano-banana-2',
     estimatedTime: 30,
-    includeIn4x: true,
+    includeIn4x: false,
     tokenCost: 2
   },
-  'fal-flux-2-pro-edit': {
-    name: 'Flux 2 Pro',
+
+  // Fast and affordable (on trial)
+  'fal-flux-2-klein-9b-edit': {
+    name: 'Flux 2 Klein',
     type: 'fal',
-    group: 'high-quality',
+    group: 'affordable',
     logo: '/ui_assets/model-black-forest-labs.png',
-    endpoint: 'fal-ai/flux-2-pro/edit',
-    estimatedTime: 30,
-    includeIn4x: false,
-    tokenCost: 2,
+    endpoint: 'fal-ai/flux-2/klein/9b/edit',
+    estimatedTime: 15,
+    includeIn4x: true,
+    tokenCost: 1,
+    requiresSourceImage: true,
+    // Output matches the input size; capping the input keeps cost and render
+    // time down.
+    maxInputMegapixels: 2
+  },
+  'grok-imagine-image-2': {
+    name: 'Grok Imagine 2.0',
+    type: 'replicate',
+    group: 'affordable',
+    logo: '/ui_assets/model-xai.png',
+    modelName: 'xai/grok-imagine-image-2',
+    estimatedTime: 20,
+    includeIn4x: true,
+    tokenCost: 1
+  },
+  'fal-muse-image-edit': {
+    name: 'Muse Image',
+    type: 'fal',
+    group: 'affordable',
+    logo: '/ui_assets/model-meta.png',
+    endpoint: 'meta/muse-image/edit',
+    estimatedTime: 20,
+    includeIn4x: true,
+    tokenCost: 1,
     requiresSourceImage: true
   }
 };
@@ -175,6 +210,8 @@ export const VIDEO_MODELS = {
     group: 'video-best-quality',
     logo: '/ui_assets/model-google.png',
     estimatedTime: 120,
+    // Veo only supports 4s/8s, so the 5s/10s cost tiers bill 4s/8s
+    shortDuration: 4,
     tokenCost5s: 20,
     tokenCost10s: 40
   },
@@ -184,29 +221,42 @@ export const VIDEO_MODELS = {
     group: 'video-high-quality-fast',
     logo: '/ui_assets/model-google.png',
     estimatedTime: 90,
+    // Veo only supports 4s/8s, so the 5s/10s cost tiers bill 4s/8s
+    shortDuration: 4,
     tokenCost5s: 10,
     tokenCost10s: 20
   },
-  'bytedance/seedance-1-pro-fast': {
-    name: 'SeeDance 1 Pro Fast',
+  'google/veo-3.1-lite': {
+    name: 'Veo 3.1 Lite',
+    type: 'replicate',
+    group: 'video-high-quality-fast',
+    logo: '/ui_assets/model-google.png',
+    estimatedTime: 60,
+    // Veo only supports 4s/8s, so the 5s/10s cost tiers bill 4s/8s
+    shortDuration: 4,
+    tokenCost5s: 5,
+    tokenCost10s: 10
+  },
+  'bytedance/seedance-2.0-fast': {
+    name: 'Seedance 2.0 Fast',
     type: 'replicate',
     group: 'video-high-quality-fast',
     logo: '/ui_assets/model-bytedance.png',
-    estimatedTime: 65,
-    tokenCost5s: 7,
-    tokenCost10s: 14
+    estimatedTime: 90,
+    tokenCost5s: 15,
+    tokenCost10s: 30
   },
-  'lightricks/ltx-2-fast': {
-    name: 'LTX-2 Fast',
+  'lightricks/ltx-2.5-fast': {
+    name: 'LTX-2.5 Fast',
     type: 'replicate',
     group: 'video-high-quality-fast',
     logo: '/ui_assets/model-lightricks.png',
     estimatedTime: 40,
-    tokenCost5s: 5,
-    tokenCost10s: 10
+    tokenCost5s: 6,
+    tokenCost10s: 12
   },
-  'wan-video/wan-2.6-i2v': {
-    name: 'Wan 2.6 I2V',
+  'wan-video/wan-2.7-i2v': {
+    name: 'Wan 2.7 I2V',
     type: 'replicate',
     group: 'video-versatile',
     logo: '/ui_assets/model-wan.png',

@@ -1,92 +1,59 @@
 const path = require('path');
-const webpack = require('webpack');
+const { pluginReact } = require('@rsbuild/plugin-react');
+const { pluginSass } = require('@rsbuild/plugin-sass');
 
-/** @type { import('@storybook/react-webpack5').StorybookConfig } */
+/** @type { import('storybook-react-rsbuild').StorybookConfig } */
 const config = {
   stories: [
     '../src/shared/**/*.stories.@(js|jsx|mjs|ts|tsx)',
     '../src/generator/**/*.stories.@(js|jsx|mjs|ts|tsx)'
   ],
-  addons: [
-    '@storybook/addon-webpack5-compiler-swc',
-    '@storybook/addon-docs',
-    '@storybook/addon-onboarding'
-  ],
+  addons: ['@storybook/addon-docs', '@storybook/addon-onboarding'],
   framework: {
-    name: '@storybook/react-webpack5',
+    name: 'storybook-react-rsbuild',
     options: {}
   },
   staticDirs: [{ from: '../ui_assets', to: '/ui_assets' }],
-  webpackFinal: async (config) => {
-    // Add SCSS support
-    config.module.rules.push({
-      test: /\.module\.scss$/,
-      use: [
-        'style-loader',
-        {
-          loader: 'css-loader',
-          options: {
-            // css-loader v7 defaults modules.namedExport to true, dropping the
-            // default export and breaking `import styles from './x.module.scss'`
-            // (white-screens any story importing one). Keep v6 behavior, matching
-            // webpack.config.js / webpack.prod.config.js.
-            modules: {
-              namedExport: false,
-              exportLocalsConvention: 'as-is'
-            },
-            sourceMap: true
-          }
-        },
-        {
-          loader: 'sass-loader',
-          options: {
-            sourceMap: true
-          }
+  rsbuildFinal: async (config) => {
+    const { mergeRsbuildConfig } = await import('@rsbuild/core');
+    return mergeRsbuildConfig(config, {
+      plugins: [pluginReact(), pluginSass()],
+      source: {
+        // Source .js files contain JSX too, not only .jsx.
+        include: [/\.jsx?$/],
+        // Mock Firebase config for Storybook
+        define: {
+          'process.env.FIREBASE_API_KEY': JSON.stringify('mock-api-key'),
+          'process.env.FIREBASE_AUTH_DOMAIN': JSON.stringify(
+            'mock-project.firebaseapp.com'
+          ),
+          'process.env.FIREBASE_PROJECT_ID': JSON.stringify('mock-project'),
+          'process.env.FIREBASE_STORAGE_BUCKET': JSON.stringify(
+            'mock-project.appspot.com'
+          ),
+          'process.env.FIREBASE_MESSAGING_SENDER_ID':
+            JSON.stringify('123456789'),
+          'process.env.FIREBASE_APP_ID': JSON.stringify(
+            '1:123456789:web:abc123'
+          ),
+          'process.env.FIREBASE_MEASUREMENT_ID': JSON.stringify('G-ABCDEFG')
         }
-      ]
-    });
-
-    config.module.rules.push({
-      test: /\.scss$/,
-      exclude: /\.module\.scss$/,
-      use: [
-        'style-loader',
-        'css-loader',
-        {
-          loader: 'sass-loader',
-          options: {
-            sourceMap: true
-          }
+      },
+      resolve: {
+        alias: {
+          '@': path.resolve(__dirname, '../src'),
+          '@shared': path.resolve(__dirname, '../src/shared')
         }
-      ]
+      },
+      output: {
+        // Match rspack.config.js: `import styles from './x.module.scss'` gets
+        // a default export with class names kept as-is (already camelCase).
+        cssModules: {
+          namedExport: false,
+          exportLocalsConvention: 'asIs'
+        }
+      }
     });
-
-    // Add path aliases
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': path.resolve(__dirname, '../src'),
-      '@shared': path.resolve(__dirname, '../src/shared')
-    };
-
-    // Define process.env with mock Firebase config for Storybook
-    config.plugins.push(
-      new webpack.DefinePlugin({
-        'process.env.FIREBASE_API_KEY': JSON.stringify('mock-api-key'),
-        'process.env.FIREBASE_AUTH_DOMAIN': JSON.stringify(
-          'mock-project.firebaseapp.com'
-        ),
-        'process.env.FIREBASE_PROJECT_ID': JSON.stringify('mock-project'),
-        'process.env.FIREBASE_STORAGE_BUCKET': JSON.stringify(
-          'mock-project.appspot.com'
-        ),
-        'process.env.FIREBASE_MESSAGING_SENDER_ID': JSON.stringify('123456789'),
-        'process.env.FIREBASE_APP_ID': JSON.stringify('1:123456789:web:abc123'),
-        'process.env.FIREBASE_MEASUREMENT_ID': JSON.stringify('G-ABCDEFG'),
-        'process.env.NODE_ENV': JSON.stringify('development')
-      })
-    );
-
-    return config;
   }
 };
 

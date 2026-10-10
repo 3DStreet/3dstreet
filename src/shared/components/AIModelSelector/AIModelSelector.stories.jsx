@@ -57,7 +57,9 @@ const InteractiveWrapper = ({ initialValue, mode, disabled }) => {
 
 // Default image model selector
 export const Default = {
-  render: () => <InteractiveWrapper initialValue="seedream-4.5" mode="image" />,
+  render: () => (
+    <InteractiveWrapper initialValue="seedream-5-pro" mode="image" />
+  ),
   parameters: {
     docs: {
       description: {
@@ -118,7 +120,7 @@ export const VideoMode = {
 export const VideoModeFast = {
   render: () => (
     <InteractiveWrapper
-      initialValue="bytedance/seedance-1-pro-fast"
+      initialValue="bytedance/seedance-2.0-fast"
       mode="video"
     />
   ),
@@ -135,7 +137,7 @@ export const VideoModeFast = {
 export const Disabled = {
   render: () => (
     <InteractiveWrapper
-      initialValue="seedream-4.5"
+      initialValue="seedream-5-pro"
       mode="image"
       disabled={true}
     />
@@ -172,7 +174,7 @@ export const InFormContext = {
         >
           AI Model
         </label>
-        <InteractiveWrapper initialValue="seedream-4.5" mode="image" />
+        <InteractiveWrapper initialValue="seedream-5-pro" mode="image" />
       </div>
       <div style={{ marginBottom: '16px' }}>
         <label
@@ -248,7 +250,7 @@ const ControlledWrapper = () => {
             Set to Nano Banana Pro
           </button>
           <button
-            onClick={() => setModel('seedream-4.5')}
+            onClick={() => setModel('seedream-5-pro')}
             style={{
               padding: '6px 12px',
               fontSize: '12px',
@@ -288,7 +290,7 @@ export const AllImageModels = {
       <h3 style={{ margin: 0, fontSize: '16px', marginTop: '8px' }}>
         High Quality and Fast
       </h3>
-      <InteractiveWrapper initialValue="seedream-4.5" mode="image" />
+      <InteractiveWrapper initialValue="seedream-5-pro" mode="image" />
       <InteractiveWrapper initialValue="seedream-4" mode="image" />
 
       <h3 style={{ margin: 0, fontSize: '16px', marginTop: '8px' }}>
@@ -320,10 +322,10 @@ export const AllVideoModels = {
         High Quality and Fast
       </h3>
       <InteractiveWrapper
-        initialValue="bytedance/seedance-1-pro-fast"
+        initialValue="bytedance/seedance-2.0-fast"
         mode="video"
       />
-      <InteractiveWrapper initialValue="lightricks/ltx-2-fast" mode="video" />
+      <InteractiveWrapper initialValue="lightricks/ltx-2.5-fast" mode="video" />
 
       <h3 style={{ margin: 0, fontSize: '16px', marginTop: '8px' }}>
         Versatile

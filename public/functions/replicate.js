@@ -5,7 +5,8 @@ const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
-const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, MODEL_VERSIONS, REPLICATE_MODELS } = require('./replicate-models.js');
+const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, REPLICATE_MODELS } = require('./replicate-models.js');
+const { buildReplicateImageInput } = require('./image-model-inputs.js');
 const { assertAppCheck } = require('./app-check.js');
 // Pure .ply sanity check — gates degenerate (failed-SfM) reconstructions out of
 // the success/charge/save path. See issue #1745.
@@ -155,7 +156,7 @@ async function postAIVideoToDiscord(userId, videoUrl, prompt, modelName, duratio
 }
 
 // Replicate API function for image generation (nano-banana / seedream /
-// kontext families). Asynchronous since #1835: the callable stages the input,
+// grok / kontext families). Asynchronous since #1835: the callable stages the input,
 // writes a `kind: 'image'` job to the async queue, charges at submit
 // (refunded once on failure), creates the Replicate prediction with a webhook,
 // and returns the jobId immediately — the same create-and-return pattern as
@@ -296,46 +297,14 @@ const generateReplicateImage = functions
       }
 
 
-      // Different models use different input parameter names and formats
-      let modelInput = {
-        prompt: prompt,
-        guidance: guidance,
-        num_inference_steps: num_inference_steps
-      };
-
-      // Check if this is a Nano Banana model (uses different input format)
-      if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_2) {
-        // Nano Banana models use image_input as an array (optional)
-        if (imageUrl) {
-          modelInput.image_input = [imageUrl];
-          modelInput.aspect_ratio = 'match_input_image';
-        }
-        // Nano Banana Pro and Nano Banana 2 support higher resolution
-        if (modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_PRO || modelVersionToUse === MODEL_VERSIONS.NANO_BANANA_2) {
-          modelInput.resolution = '2K'; // Can be '1K', '2K', or '4K'
-        }
-        modelInput.output_format = 'jpg';
-        // Remove parameters that Nano Banana models don't use
-        delete modelInput.guidance;
-        delete modelInput.num_inference_steps;
-      } else if (modelVersionToUse === MODEL_VERSIONS.SEEDREAM_4 || model_id === 'seedream-4.5') {
-        // Seedream uses image_input as an array and different parameters (optional)
-        if (imageUrl) {
-          modelInput.image_input = [imageUrl];
-        }
-        modelInput.size = '2K';
-        // Note: output_format and aspect_ratio are omitted for seedream-4.5
-        // as the API uses default aspect_ratio of match_input_image
-        // Remove parameters that Seedream doesn't use
-        delete modelInput.guidance;
-        delete modelInput.num_inference_steps;
-      } else {
-        // Kontext models use input_image as string (optional)
-        if (imageUrl) {
-          modelInput.input_image = imageUrl;
-        }
-        modelInput.output_format = 'jpg';
-      }
+      // Different models use different input parameter names and formats;
+      // the model config's `inputStyle` picks the shape.
+      const modelInput = buildReplicateImageInput(modelConfig, {
+        prompt,
+        imageUrl,
+        guidance,
+        numInferenceSteps: num_inference_steps
+      });
 
       // Durable job identity, same contract as the video/splat submits: the
       // internal jobId (a uuid) is the Firestore doc id, NOT the Replicate
@@ -548,15 +517,31 @@ const generateReplicateImage = functions
 // the Discord post. Module-scoped because both the submit validation and the
 // terminal processor (Discord post) need it.
 const SUPPORTED_VIDEO_MODELS = {
+  'bytedance/seedance-2.0-fast': 'Seedance 2.0 Fast',
   'bytedance/seedance-1-pro-fast': 'SeeDance 1 Pro Fast',
   'wan-video/wan-2.2-i2v-fast': 'Wan 2.2 I2V Fast',
   'wan-video/wan-2.6-i2v': 'Wan 2.6 I2V',
+  'wan-video/wan-2.7-i2v': 'Wan 2.7 I2V',
   'kwaivgi/kling-v2.5-turbo-pro': 'Kling v2.5 Turbo Pro',
   'kwaivgi/kling-v3-video': 'Kling v3.0 Pro',
   'lightricks/ltx-2-fast': 'LTX-2 Fast',
+  'lightricks/ltx-2.5-fast': 'LTX-2.5 Fast',
   'google/veo-3.1': 'Veo 3.1',
-  'google/veo-3.1-fast': 'Veo 3.1 Fast'
+  'google/veo-3.1-fast': 'Veo 3.1 Fast',
+  'google/veo-3.1-lite': 'Veo 3.1 Lite'
 };
+
+// Retired model ids that the provider no longer serves, mapped to their
+// replacement so a stale open tab still gets a video. Lightricks' upstream API
+// rejects `ltx-2-fast` ("Invalid model ltx-2-fast") even though Replicate still
+// lists the model.
+const VIDEO_MODEL_ALIASES = {
+  'lightricks/ltx-2-fast': 'lightricks/ltx-2.5-fast'
+};
+
+// Models that only accept 16:9 or 9:16. Any other ratio (the picker also
+// offers 1:1) is left out so the model falls back to its 16:9 default.
+const LANDSCAPE_OR_PORTRAIT = ['16:9', '9:16'];
 
 // Replicate API function for video generation (image → video).
 // Asynchronous: creates the Replicate prediction and returns the internal job
@@ -592,7 +577,7 @@ const generateReplicateVideo = functions
     assertAppCheck(context);
 
     const userId = context.auth.uid;
-    const { prompt, input_image, model_name = 'lightricks/ltx-2-fast', aspect_ratio = '16:9', duration_seconds = 5, scene_id, source = 'generator', notify } = data;
+    const { prompt, input_image, model_name: requestedModel = 'lightricks/ltx-2.5-fast', aspect_ratio = '16:9', duration_seconds = 5, scene_id, source = 'generator', notify } = data;
 
     // Opt-in completion email, same contract as the splat submit: `pending:
     // true` is the flag the notify sweep queries on; it clears when the email
@@ -600,6 +585,7 @@ const generateReplicateVideo = functions
     // Renders are usually ~2 min, but provider queue waits can stretch a job
     // far past what anyone keeps a tab open for.
     const wantsEmail = notify?.email === true;
+    const model_name = VIDEO_MODEL_ALIASES[requestedModel] || requestedModel;
 
     // Validate the model before staging anything or charging tokens.
     if (!SUPPORTED_VIDEO_MODELS[model_name]) {
@@ -611,9 +597,13 @@ const generateReplicateVideo = functions
       'kwaivgi/kling-v3-video': { tokenCost5s: 20, tokenCost10s: 40 },
       'google/veo-3.1': { tokenCost5s: 20, tokenCost10s: 40 },
       'google/veo-3.1-fast': { tokenCost5s: 10, tokenCost10s: 20 },
+      'google/veo-3.1-lite': { tokenCost5s: 5, tokenCost10s: 10 },
+      'bytedance/seedance-2.0-fast': { tokenCost5s: 15, tokenCost10s: 30 },
+      'wan-video/wan-2.7-i2v': { tokenCost5s: 15, tokenCost10s: 30 },
+      // Legacy (no longer in the picker; kept so a stale open tab still works)
       'bytedance/seedance-1-pro-fast': { tokenCost5s: 7, tokenCost10s: 14 },
       'wan-video/wan-2.6-i2v': { tokenCost5s: 15, tokenCost10s: 30 },
-      'lightricks/ltx-2-fast': { tokenCost5s: 5, tokenCost10s: 10 }
+      'lightricks/ltx-2.5-fast': { tokenCost5s: 6, tokenCost10s: 12 }
     };
 
     // Calculate token cost based on model and duration
@@ -703,8 +693,15 @@ const generateReplicateVideo = functions
       };
 
       // Add model-specific parameters
-      if (model_name === 'bytedance/seedance-1-pro-fast') {
-        // SeeDance model parameters
+      if (model_name === 'bytedance/seedance-2.0-fast') {
+        // Seedance 2.0 Fast parameters. Max resolution is 720p; audio is
+        // generated by default, so turn it off like the other models.
+        modelInput.aspect_ratio = aspect_ratio;
+        modelInput.duration = duration_seconds; // Accepts up to 15 seconds
+        modelInput.resolution = '720p';
+        modelInput.generate_audio = false;
+      } else if (model_name === 'bytedance/seedance-1-pro-fast') {
+        // SeeDance 1 model parameters (legacy)
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds; // SeeDance accepts 2-12 seconds
         modelInput.resolution = '1080p'; // Use highest quality
@@ -720,7 +717,13 @@ const generateReplicateVideo = functions
         modelInput.frames_per_second = 16;
         modelInput.interpolate_output = true;
       } else if (model_name === 'wan-video/wan-2.6-i2v') {
-        // Wan Video 2.6 model parameters
+        // Wan Video 2.6 model parameters (legacy)
+        modelInput.resolution = '1080p';
+        modelInput.duration = duration_seconds;
+      } else if (model_name === 'wan-video/wan-2.7-i2v') {
+        // Wan Video 2.7 model parameters - uses first_frame instead of image
+        delete modelInput.image;
+        modelInput.first_frame = imageUrl;
         modelInput.resolution = '1080p';
         modelInput.duration = duration_seconds;
       } else if (model_name === 'kwaivgi/kling-v2.5-turbo-pro') {
@@ -736,18 +739,26 @@ const generateReplicateVideo = functions
         modelInput.mode = 'pro';
         modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds;
-      } else if (model_name === 'lightricks/ltx-2-fast') {
-        // LTX model parameters - uses duration in seconds (not frames or aspect_ratio)
-        // LTX accepts: 6, 8, 10, 12, 14, 16, 18, or 20 seconds
-        // We'll map our 5/10 second options to 6/10 for LTX
-        modelInput.duration = duration_seconds === 10 ? 10 : 6;
-        modelInput.generate_audio = false; // LTX is the only model that supports audio control
+      } else if (model_name === 'lightricks/ltx-2.5-fast') {
+        // LTX-2.5 Fast parameters. Accepts 5s and 10s directly; audio is on
+        // by default, so turn it off like the other models.
+        if (LANDSCAPE_OR_PORTRAIT.includes(aspect_ratio)) modelInput.aspect_ratio = aspect_ratio;
+        modelInput.duration = duration_seconds;
+        modelInput.resolution = '1080p';
+        modelInput.generate_audio = false;
       } else if (model_name === 'google/veo-3.1' || model_name === 'google/veo-3.1-fast') {
         // Veo 3.1 model parameters
         // Veo accepts duration: 4, 6, or 8 seconds only
-        modelInput.aspect_ratio = aspect_ratio;
+        if (LANDSCAPE_OR_PORTRAIT.includes(aspect_ratio)) modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds <= 5 ? 4 : 8;
         modelInput.generate_audio = false;
+      } else if (model_name === 'google/veo-3.1-lite') {
+        // Veo 3.1 Lite: same 4/6/8s durations as Veo 3.1. 720p only (1080p
+        // requires 8s and costs more). Audio is always generated and has no
+        // off switch, so there is no generate_audio flag.
+        if (LANDSCAPE_OR_PORTRAIT.includes(aspect_ratio)) modelInput.aspect_ratio = aspect_ratio;
+        modelInput.duration = duration_seconds <= 5 ? 4 : 8;
+        modelInput.resolution = '720p';
       }
 
       console.log(`Submitting ${duration_seconds}s video job for user ${userId} with model ${model_name} (tokenCost: ${tokenCost})`);
@@ -1536,6 +1547,16 @@ async function saveSplatToGallery(userId, plyUrl, job) {
         predictionId: job.predictionId || null,
         timestamp: new Date().toISOString()
       },
+      // Pre-filled, editable attribution for the details modal ("by <credit>").
+      // No source link: attribution.model is a credit (Apple, a GitHub repo),
+      // not a reliable provider URL.
+      attribution: {
+        author:
+          job.attribution?.credit ||
+          job.attribution?.modelName ||
+          'Apple SHARP',
+        generator: job.attribution?.modelName || 'SHARP (Image to Splat)'
+      },
       createdAt: now,
       updatedAt: now,
       uploadedAt: now,
@@ -1968,7 +1989,8 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       try {
         const { assetId, storageUrl } = await saveMeshToGallery(userId, splatUrl, {
           ...job,
-          predictionId: job.providerJobId || jobRef.id
+          predictionId: job.providerJobId || jobRef.id,
+          thumbnailSrcUrl: prediction.thumbnail || null
         });
         await cleanupSplatTempFile(job.tempFilePath);
         await jobRef.update({

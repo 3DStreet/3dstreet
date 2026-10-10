@@ -5,6 +5,16 @@ rotation and explicit landing buttons. Its implementation lives in
 `src/editor/lib/gizmos/`. The viewport routes selection and camera changes;
 the controller owns gesture state, presentation and ground queries.
 
+## Visitor Build (viewer)
+
+During a Visitor Build session ([visitor-build.md](visitor-build.md)) the
+viewport attaches this gizmo, never the stock one, to the visitor's selected
+object with `viewerSession` set: it runs with the editor closed, holds the
+object's height (no ground following), and withdraws the vertical handle and
+the landing targets so objects stay on their build area's shape.
+`rotateEnabled = false` withdraws the rotate arc when the area's Allow rotate
+is off. Both flags are reset when the session ends.
+
 ## Vertical adjustment and visual feedback
 
 Drag the yellow double-headed arrow above the movement pad to raise or lower
@@ -102,6 +112,32 @@ Translation records pointer movement and evaluates it once per scene frame.
 Release queues the final coordinate for the next frame token, so finishing a drag
 does not spend a second path-query budget within one frame. Cancellation restores
 the press snapshot instead of committing that queued movement.
+
+## Path evaluation and its ray budget
+
+A frame of horizontal travel is judged by `evaluatePath` in
+`easyGizmoGround.js`. It probes the destination column first, under a ceiling
+of everything a step-by-step chain across the frame could have climbed to. A
+destination level with the remembered support (within one step) settles the
+frame as continuous on that one ray, at any pointer speed; one lower than the
+chain could have stepped down to settles it as discontinuous on the same ray,
+and an empty column holds the reference as a miss does anywhere. Only a rise
+or drop of more than a step within that reach samples the interior at the
+sub-step spacing, pairwise with an advancing reference, so a followable ramp
+is told from a riser. A frame within a single sub-span is one endpoint probe
+either way.
+
+This is what keeps a drag over Google 3D Tiles usable (#2059). Tiles carry no
+BVH by design, so each probe ray is a full triangle scan of the tiles under
+the cursor; sampling the interior of every fast frame cast up to thirteen of
+them, and the frame rate fell with pointer speed. Level ground is now one ray
+per frame however fast the pointer moves, and the peak of thirteen rays per
+frame (look-ahead, `PATH_PROBE_BUDGET` interiors, closing endpoint) is spent
+only on a steep climb, where it is the price of following the ramp.
+
+The look-ahead can settle a frame the strict chain would have held: the step
+it takes is bounded by the same allowance, and the chain would have taken it
+from that column on the next frame anyway. It cannot invent a leap.
 
 ## Attach policies
 

@@ -489,7 +489,11 @@ describe('classified rays composed with real move gestures', () => {
         f.frame();
         expect(f.object.position.y).toBe(height === 0.15 ? 0 : 1);
         expect(rays.mock.calls.length).toBeLessThanOrEqual(13);
-        if (distance === 1) expect(rays.mock.calls.length).toBeGreaterThan(1);
+        // A kerb-height drop settles on the endpoint look-ahead alone; a
+        // metre is a climb the interior has to judge (#2059).
+        if (distance === 1) {
+          expect(rays.mock.calls.length).toBe(height === 0.15 ? 1 : 6);
+        }
       });
     }
   }
@@ -506,7 +510,8 @@ describe('classified rays composed with real move gestures', () => {
       f.pointer('pointerup', new THREE.Vector3(1, 0, 0));
       f.frame();
       expect(f.object.position.y).toBe(enabled ? 0 : 1);
-      expect(rays.mock.calls.length).toBe(enabled ? 5 : 1);
+      // The roof is a climb, so the look-ahead ray precedes the sampled chain.
+      expect(rays.mock.calls.length).toBe(enabled ? 6 : 1);
     });
   }
   it('starts, tracks and releases onto a kerb without a second frame budget', () => {
@@ -572,7 +577,8 @@ describe('classified rays composed with real move gestures', () => {
     });
     expect(result.continuous).toBe(false);
     expect(result.cast).toBe(result.demanded);
-    expect(rays).toHaveBeenCalledTimes(result.demanded + 1);
+    // The look-ahead, every interior, and the endpoint that closes the chain.
+    expect(rays).toHaveBeenCalledTimes(result.demanded + 2);
     expect(result.endColumn.below.entity).toBe(destination.el);
     expect(f.controls.probe.lastHits[0].object.el).toBe(destination.el);
   });

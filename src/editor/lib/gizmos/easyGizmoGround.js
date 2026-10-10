@@ -26,7 +26,7 @@ import {
   owningEntity
 } from '../nav-experimental/cursorAnchor.js';
 import { continuityAllowance } from './easyGizmoMath.js';
-import { SUBSTEP_METRES } from './easyGizmoConstants.js';
+import { STEP_METRES, SUBSTEP_METRES } from './easyGizmoConstants.js';
 
 /** Heights within this of the base are treated as level with it. */
 const SPLIT_EPSILON = 1e-3;
@@ -210,6 +210,22 @@ function supportHeightOf(column) {
  * reference plus its allowance. `from` and `to` are `{ x, z }`;
  * `fromSupportY` seeds the comparison. Landing columns use a separate split.
  *
+ * THE ENDPOINT IS PROBED FIRST, AND USUALLY ALONE. A frame whose destination
+ * column carries support level with the remembered reference — within one
+ * step, under a ceiling of everything the sampled chain below could have
+ * climbed to — is continuous on that one ray: the interior samples could only
+ * have withheld a step that the next frame, starting from that very column,
+ * would take anyway, and a step is bounded by `STEP_METRES` however the frame
+ * is judged. The one ray this costs is what keeps a drag over Google 3D Tiles
+ * (#2059) at one triangle scan per frame at any pointer speed, where sampling
+ * the interior of a fast frame cast thirteen and read as a slideshow. A
+ * destination lower than that chain could possibly have stepped down to is
+ * discontinuous on the same ray, since every interior probe picks under a
+ * lower ceiling and can only find lower support, and an empty column holds
+ * the reference as a miss does anywhere. What is left — more than a step up
+ * or down, within reach — is what the interior sampling below exists for: a
+ * ramp is followable and a riser is not, and only the chain tells them apart.
+ *
  * THE COMPARISON IS PAIRWISE AND THE REFERENCE ADVANCES. Each consecutive pair
  * of samples is judged against the allowance for its own sub-span, and an
  * accepted sample becomes the reference for the next one — so a frame's total
@@ -242,17 +258,41 @@ export function evaluatePath({
   const demanded = n - 1;
   const overBudget = demanded > budget;
 
-  if (overBudget) {
-    // Skip interiors, but keep the destination column current for landing.
-    return {
-      continuous: false,
-      supportY: fromSupportY,
+  // A frame within one sub-span is the single endpoint probe below already;
+  // the look-ahead is for frames that would otherwise sample their interior.
+  // (With the sampler switched off every frame is one sub-span, so that
+  // diagnostic build keeps its plain endpoint probe and no step limit.)
+  if (demanded > 0) {
+    // The endpoint alone, under the highest ceiling the sampled chain could
+    // have reached: every accepted interior sample may step up by at most one
+    // allowance, and at these sub-spans an allowance is a step.
+    const reach = n * STEP_METRES;
+    const endFirst = probeAt(to.x, to.z, fromSupportY + reach);
+    const endY = supportHeightOf(endFirst);
+    const settled = (continuous, supportY) => ({
+      continuous,
+      supportY,
       samples: [],
       demanded,
       cast: 0,
-      overBudget: true,
-      endColumn: probeAt(to.x, to.z, fromSupportY)
-    };
+      overBudget,
+      endColumn: endFirst
+    });
+    // An empty column holds the reference, as a miss does anywhere; with no
+    // reference yet, whatever the column holds becomes it.
+    if (endY === null || fromSupportY === null) {
+      return settled(true, endY ?? fromSupportY);
+    }
+    if (Math.abs(endY - fromSupportY) <= STEP_METRES) {
+      return settled(true, endY);
+    }
+    if (endY < fromSupportY - reach) return settled(false, fromSupportY);
+    if (overBudget) {
+      // Skip interiors, but keep the destination column current for landing.
+      return settled(false, fromSupportY);
+    }
+    // More than a step up or down, within reach: a ramp or a riser, which
+    // only the sampled chain can tell apart.
   }
 
   const samples = [];
