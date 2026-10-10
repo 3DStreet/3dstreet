@@ -26,6 +26,41 @@
     }
   }
 
+  // Drop target after the last row: drops there go to the end of the top
+  // level (or, when the last row is inside groups, of the level the pointer
+  // is at), so an item can leave a group that is itself the last row.
+  .layers-drop-end {
+    min-height: 16px;
+    border-top: 2px solid transparent;
+  }
+
+  // The rows and the strip after them. Positioned so that the rows' and the
+  // strip's offsetTop, which place the drop line, are measured from it.
+  .layers-list {
+    position: relative;
+  }
+
+  // The one drop line between rows (inline `top`, and `left` from the
+  // level's indent for a drop into a group), straddling the boundary.
+  .layers-list > span.drop-line {
+    position: absolute;
+    z-index: 1;
+    display: block;
+    right: 0;
+    height: 2px;
+    background: variables.$blue-100;
+    pointer-events: none;
+
+    // "Inside": a small chevron just left of the line, centred on it.
+    > svg {
+      position: absolute;
+      left: -9px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: variables.$blue-100;
+    }
+  }
+
   // Empty state for the layers panel
   .layers-empty-state {
     display: flex;
@@ -161,6 +196,8 @@
       flex-grow: 0;
       height: 40px;
       justify-content: center;
+      // The left padding and the row border below: ROW_CONTENT_INSET_PX in
+      // dropLevels.js.
       padding: 0 6px 0 4px;
       box-sizing: border-box;
 
@@ -228,21 +265,8 @@
       opacity: 0.5;
     }
 
+    // See ROW_CONTENT_INSET_PX in dropLevels.js.
     border: 2px solid transparent;
-
-    &.drop-before {
-      border-bottom-color: transparent;
-      border-left-color: transparent;
-      border-right-color: transparent;
-      border-top-color: variables.$blue-100;
-    }
-
-    &.drop-after {
-      border-bottom-color: variables.$blue-100;
-      border-left-color: transparent;
-      border-right-color: transparent;
-      border-top-color: transparent;
-    }
 
     &.drop-child {
       border-color: variables.$blue-100;
@@ -639,6 +663,12 @@
         background-color: variables.$purple-900;
         color: variables.$white;
       }
+    }
+
+    // The new-group button's label.
+    .left-panel-new-group {
+      font-size: 11px;
+      font-weight: 600;
     }
 
     .left-panel-tab-hint {

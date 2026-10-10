@@ -3,15 +3,32 @@ import classNames from 'classnames';
 import debounce from 'lodash-es/debounce';
 import PropTypes from 'prop-types';
 import React from 'react';
-import { FormattedMessage, injectIntl } from 'react-intl';
+import { FormattedMessage, defineMessages, injectIntl } from 'react-intl';
 import Events from '../../lib/Events';
 import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
+import { AwesomeIcon } from '../elements/AwesomeIcon';
+import { faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { Plus20Circle } from '@shared/icons';
 import {
+  createUniqueId,
   getEntityDisplayName,
   reorderEntityRelativeTo
 } from '../../lib/entity';
+import {
+  USER_GROUP_CLASS,
+  canReparent,
+  isUserGroup
+} from '../../lib/groups/groupModel.js';
+import { isReparentInFlight } from '../../lib/commands/EntityReparentCommand.js';
+import { nestedGroupPlacement } from '../../lib/groups/groupPlacement.js';
+import {
+  groupGapLevels,
+  isNoOpDrop,
+  levelAtX,
+  lineIndentPx,
+  pickLevel
+} from './dropLevels.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
@@ -27,6 +44,45 @@ import { AuthContext } from '@/editor/contexts';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 const HIDDEN_CLASSES = ['teleportRay', 'hitEntity', 'hideFromSceneGraph'];
 const HIDDEN_IDS = ['dropPlane', 'previewEntity'];
+
+const messages = defineMessages({
+  newGroup: {
+    id: 'sceneGraph.newGroup',
+    defaultMessage: 'New group'
+  }
+});
+
+// `insertionInfo.host` of a drop over the strip after the last row.
+const DROP_STRIP = 'drop-strip';
+
+// A drop line between rows: 2 px centred on the boundary at `gapY` (kept
+// inside the list at its top edge), placed absolutely so showing it moves
+// nothing. A drop that lands in a group starts at that level's indent, with a
+// chevron for "inside"; any other runs the full width.
+function DropLine({ gapY, indentPx }) {
+  const atLevel = indentPx != null;
+  return (
+    <span
+      className={classNames('drop-line', { 'at-level': atLevel })}
+      style={{
+        top: `${Math.max(0, gapY - 1)}px`,
+        left: `${atLevel ? indentPx : 0}px`
+      }}
+      aria-hidden="true"
+    >
+      {atLevel && <AwesomeIcon icon={faChevronRight} size={8} />}
+    </span>
+  );
+}
+DropLine.propTypes = {
+  gapY: PropTypes.number,
+  indentPx: PropTypes.number
+};
+
+// The move command and the layer's own undo look parents up by id.
+function ensureId(el) {
+  if (el && !el.id) el.setAttribute('id', createUniqueId());
+}
 
 class SceneGraph extends React.Component {
   static contextType = AuthContext;
@@ -55,6 +111,9 @@ class SceneGraph extends React.Component {
       // Row whose label is in inline-rename mode (context menu Rename)
       renamingEntity: null
     };
+    // Ids of expanded rows whose element a move has just discarded, so the
+    // element that replaces it (same id) opens expanded too.
+    this.expandedIdsInTransit = new Set();
 
     this.rebuildEntityOptions = debounce(
       this.rebuildEntityOptions.bind(this),
@@ -88,6 +147,8 @@ class SceneGraph extends React.Component {
     Events.on('componentadd', this.rebuildEntityOptions);
     Events.on('componentremove', this.rebuildEntityOptions);
     Events.on('openassetspanel', this.showAssetsPanel);
+    Events.on('entityremoved', this.onEntityRemoved);
+    Events.on('entitycreated', this.onEntityCreated);
     document.addEventListener('child-attached', this.onChildAttachedDetached);
     document.addEventListener('child-detached', this.onChildAttachedDetached);
     this.unsubscribePanels = useStore.subscribe(
@@ -101,6 +162,8 @@ class SceneGraph extends React.Component {
     Events.off('componentadd', this.rebuildEntityOptions);
     Events.off('componentremove', this.rebuildEntityOptions);
     Events.off('openassetspanel', this.showAssetsPanel);
+    Events.off('entityremoved', this.onEntityRemoved);
+    Events.off('entitycreated', this.onEntityCreated);
     document.removeEventListener(
       'child-attached',
       this.onChildAttachedDetached
@@ -111,6 +174,27 @@ class SceneGraph extends React.Component {
     );
     this.unsubscribePanels?.();
   }
+
+  // Expand state is keyed by element, and a move replaces the moved subtree's
+  // elements with new ones carrying the same ids.
+  onEntityRemoved = (entity) => {
+    for (const el of [entity, ...entity.querySelectorAll('[id]')]) {
+      if (el.id && this.isExpanded(el)) this.expandedIdsInTransit.add(el.id);
+    }
+  };
+
+  onEntityCreated = (entity) => {
+    if (this.expandedIdsInTransit.size) {
+      for (const el of [entity, ...entity.querySelectorAll('[id]')]) {
+        if (this.expandedIdsInTransit.delete(el.id)) {
+          this.state.expandedElements.set(el, true);
+        }
+      }
+    }
+    // Also re-renders rows whose move has just settled, so they can be
+    // dragged again.
+    this.setState({ expandedElements: this.state.expandedElements });
+  };
 
   /**
    * Selected entity updated from somewhere else in the app.
@@ -176,11 +260,16 @@ class SceneGraph extends React.Component {
       !isContainer(entity) &&
       !entity.classList.contains('autocreated') &&
       // Pinned to the top of the list (see rebuildEntityOptions).
-      !entity.hasAttribute('viewer-start')
+      !entity.hasAttribute('viewer-start') &&
+      !isReparentInFlight(entity.id)
     );
   };
 
-  canBeDropTarget = (entity, draggedEntity) => {
+  /**
+   * May `draggedEntity` be dropped at `position` ('before', 'after' or
+   * 'child') of the row for `entity`?
+   */
+  canBeDropTarget = (entity, draggedEntity, position) => {
     // Segments only accept other segments (reorder within their managed
     // street, which relayouts via its childList observer); dropping anything
     // else into a street is still disallowed.
@@ -192,24 +281,169 @@ class SceneGraph extends React.Component {
       entity.id === 'cameraRig' ||
       entity.hasAttribute('viewer-start') ||
       (entity.hasAttribute('street-segment') &&
-        !draggedEntity.hasAttribute('street-segment'))
+        !draggedEntity.hasAttribute('street-segment')) ||
+      isReparentInFlight(draggedEntity.id) ||
+      isReparentInFlight(entity.id)
     ) {
       return false;
     }
 
-    // Only allow reordering within the same parent for now.
-    // To re-enable reparenting, replace this check with the descendant-walk check:
-    //   let current = entity.parentNode;
-    //   while (current && current.isEntity) {
-    //     if (current === draggedEntity) return false;
-    //     current = current.parentNode;
-    //   }
-    // and re-enable the "child" drop position in Entity.js onDragOver.
-    if (entity.parentNode !== draggedEntity.parentNode) {
+    if (position === 'child') {
+      return isUserGroup(entity) && canReparent(draggedEntity, entity);
+    }
+    // A reorder within the current parent is allowed wherever it always was;
+    // a move to another parent only where the group model allows it.
+    const parent = entity.parentNode;
+    return (
+      parent === draggedEntity.parentNode || canReparent(draggedEntity, parent)
+    );
+  };
+
+  // May the item drop at the end of the top level (the strip after the last
+  // row, at its top level)? So an item can always leave a group, even when
+  // that group is the last row.
+  canDropAtEnd = (draggedEntity) => {
+    const root = this.props.scene.querySelector('#street-container');
+    if (!draggedEntity || !root || isReparentInFlight(draggedEntity.id)) {
       return false;
     }
+    if (draggedEntity.parentNode === root) {
+      // Already the last row: a drop would move nothing the list shows.
+      return this.rowFollows(draggedEntity);
+    }
+    return canReparent(draggedEntity, root);
+  };
 
-    return true;
+  // Is a row listed below `entity` among its siblings? Children the list
+  // leaves out (such as the batch root) and the Starting View, which is
+  // listed first wherever it is, are not.
+  rowFollows = (entity) => {
+    for (let el = entity.nextElementSibling; el; el = el.nextElementSibling) {
+      if (this.includeInSceneGraph(el) && !el.hasAttribute('viewer-start')) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // May the dragged row land where `insertion` says?
+  isDropLegal = (insertion, draggedEntity) =>
+    insertion.position === 'end'
+      ? this.canDropAtEnd(draggedEntity)
+      : this.canBeDropTarget(insertion.ref, draggedEntity, insertion.position);
+
+  /**
+   * The drop at the gap between the listed rows `above` and `below` for a
+   * pointer at `clientX` over a host whose left edge is `hostLeft`: the
+   * legal level nearest the pointer's band, or null if no level is legal.
+   * Undefined where no group level is involved, so the host's own zone
+   * decides as it always has.
+   */
+  resolveGroupGap = (above, below, clientX, hostLeft) => {
+    const levels = groupGapLevels(above, below);
+    if (!levels) return undefined;
+    const dragged = this.state.draggedEntity;
+    const chosen = pickLevel(
+      levels.filter(
+        (c) => !isNoOpDrop(dragged, c) && this.isDropLegal(c, dragged)
+      ),
+      levelAtX(clientX, hostLeft)
+    );
+    if (!chosen) return null;
+    const insideGroup = isUserGroup(chosen.parent);
+    return {
+      ref: chosen.ref,
+      position: chosen.position,
+      level: chosen.level,
+      insideGroup,
+      indentPx: insideGroup ? lineIndentPx(chosen.level) : null
+    };
+  };
+
+  lastListedRow = () => {
+    const rows = this.state.entities;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (this.isVisibleInSceneGraph(rows[i].entity)) return rows[i];
+    }
+    return null;
+  };
+
+  onDragOverEnd = (e) => {
+    const draggedEntity = this.state.draggedEntity;
+    if (!draggedEntity) return;
+    const groupDrop = this.resolveGroupGap(
+      this.lastListedRow(),
+      null,
+      e.clientX,
+      e.currentTarget.getBoundingClientRect().left
+    );
+    const insertion =
+      groupDrop === undefined
+        ? this.canDropAtEnd(draggedEntity) && {
+            ref: null,
+            position: 'end',
+            level: null
+          }
+        : groupDrop;
+    if (!insertion) {
+      if (this.state.insertionInfo?.host === DROP_STRIP) {
+        this.setState({ insertionInfo: null });
+      }
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const gapY = e.currentTarget.offsetTop;
+    const current = this.state.insertionInfo;
+    if (
+      current?.host !== DROP_STRIP ||
+      current.ref !== insertion.ref ||
+      current.position !== insertion.position ||
+      current.level !== insertion.level ||
+      current.gapY !== gapY
+    ) {
+      this.setState({
+        hoveredDropTarget: null,
+        insertionInfo: { ...insertion, host: DROP_STRIP, gapY }
+      });
+    }
+  };
+
+  onDragLeaveEnd = () => {
+    if (this.state.insertionInfo?.host === DROP_STRIP) {
+      this.setState({ insertionInfo: null });
+    }
+  };
+
+  onDropEnd = (e) => {
+    e.preventDefault();
+    const insertion = this.state.insertionInfo;
+    this.setState({ hoveredDropTarget: null, insertionInfo: null });
+    if (insertion?.host === DROP_STRIP) {
+      this.dropAt(this.state.draggedEntity, insertion);
+    }
+  };
+
+  // Carry out a drop the panel resolved, if it is still allowed.
+  dropAt = (draggedEntity, insertion) => {
+    if (
+      !draggedEntity ||
+      !insertion ||
+      !this.isDropLegal(insertion, draggedEntity)
+    ) {
+      return;
+    }
+    if (insertion.position !== 'end') {
+      this.onReparentEntity(draggedEntity, insertion.ref, insertion.position);
+      return;
+    }
+    const root = this.props.scene.querySelector('#street-container');
+    ensureId(draggedEntity.parentNode);
+    AFRAME.INSPECTOR.execute('entityreparent', {
+      entity: draggedEntity,
+      parentEl: root.id,
+      indexInParent: root.children.length
+    });
   };
 
   // Drag and drop handlers
@@ -241,6 +475,8 @@ class SceneGraph extends React.Component {
     }
 
     // Make draggedEntity a child of targetEntity, added at the end
+    ensureId(targetEntity);
+    ensureId(draggedEntity.parentNode);
     const parentEl = targetEntity.id;
     const indexInParent = targetEntity.children.length;
 
@@ -431,6 +667,24 @@ class SceneGraph extends React.Component {
     posthog.capture('add_layer_panel_opened', { source: 'left_panel_plus' });
   };
 
+  createGroup = () => {
+    // Not 'custom-group': the Add Layer panel finds its own street-prop
+    // holders by that class.
+    const definition = {
+      class: USER_GROUP_CLASS,
+      'data-layer-name': 'Group',
+      components: { position: '0 0 0' }
+    };
+    // With a group open, the new group goes inside it, at its center.
+    const nested = nestedGroupPlacement();
+    if (nested) {
+      definition.parentEl = nested.parentEl;
+      definition.requireParent = nested.requireParent;
+      definition.components.position = nested.position;
+    }
+    AFRAME.INSPECTOR.execute('entitycreate', definition);
+  };
+
   getEntityById = (id) => document.getElementById(id);
 
   selectGeoTab = () => {
@@ -459,6 +713,8 @@ class SceneGraph extends React.Component {
         <Entity
           {...entityOption}
           key={i}
+          aboveRow={entityOptions[i - 1] ?? null}
+          belowRow={entityOptions[i + 1] ?? null}
           isFiltering={!!this.state.filter}
           isExpanded={this.isExpanded(entityOption.entity)}
           isSelected={this.props.selectedEntity === entityOption.entity}
@@ -471,9 +727,12 @@ class SceneGraph extends React.Component {
           setHoveredDropTarget={this.setHoveredDropTarget}
           insertionInfo={this.state.insertionInfo}
           setInsertionInfo={this.setInsertionInfo}
-          onReparentEntity={this.onReparentEntity}
+          resolveGroupGap={this.resolveGroupGap}
+          isDropLegal={this.isDropLegal}
+          dropAt={this.dropAt}
           canBeDragged={this.canBeDragged}
           canBeDropTarget={this.canBeDropTarget}
+          isMoving={isReparentInFlight(entityOption.entity.id)}
           // Context menu rename state
           renamingEntity={this.state.renamingEntity}
           setRenamingEntity={this.setRenamingEntity}
@@ -495,6 +754,31 @@ class SceneGraph extends React.Component {
       }
     }
     return renderedEntities;
+  };
+
+  // The strip after the last row: the gap below it, at the top level or, when
+  // the last row is inside groups, at any of their levels.
+  renderDropStrip = () => (
+    <div
+      className="layers-drop-end"
+      onDragOver={this.onDragOverEnd}
+      onDragLeave={this.onDragLeaveEnd}
+      onDrop={this.onDropEnd}
+    />
+  );
+
+  // The line of the drop the pointer means between two rows, drawn by the
+  // list so that a gap has one line wherever in it the pointer is.
+  renderDropLine = () => {
+    const insertion = this.state.insertionInfo;
+    if (insertion?.gapY == null) return null;
+    if (
+      insertion.host !== DROP_STRIP &&
+      !this.isDropLegal(insertion, this.state.draggedEntity)
+    ) {
+      return null;
+    }
+    return <DropLine gapY={insertion.gapY} indentPx={insertion.indentPx} />;
   };
 
   render() {
@@ -585,6 +869,17 @@ class SceneGraph extends React.Component {
                     <Plus20Circle />
                   </button>
                 )}
+                {this.state.activeTab === 'layers' && (
+                  <button
+                    type="button"
+                    className="left-panel-add-layer"
+                    onClick={this.createGroup}
+                    aria-label={intl.formatMessage(messages.newGroup)}
+                    title={intl.formatMessage(messages.newGroup)}
+                  >
+                    <span className="left-panel-new-group">G+</span>
+                  </button>
+                )}
               </div>
               {this.state.activeTab === 'layers' && (
                 <div className="layers">
@@ -611,7 +906,11 @@ class SceneGraph extends React.Component {
                       </button>
                     </div>
                   ) : (
-                    <div>{this.renderEntities()}</div>
+                    <div className="layers-list">
+                      {this.renderEntities()}
+                      {this.renderDropStrip()}
+                      {this.renderDropLine()}
+                    </div>
                   )}
                 </div>
               )}

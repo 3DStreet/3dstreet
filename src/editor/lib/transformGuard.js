@@ -1,13 +1,27 @@
+/* global THREE */
 // Capability markers that restrict what may be done to an entity's transform,
 // enforced centrally for every command the editor runs. An entity opts in by
 // carrying the attribute; the guard is otherwise entity-type-agnostic.
 //
-//   data-transform-no-scale     scale must stay unit
-//   data-transform-yaw-only     rotation must stay about Y alone
-//   data-transform-no-reparent  the entity may not change parent (reordering
-//                               WITHIN its current parent is still allowed —
-//                               the layers panel does that through the same
-//                               reparent command)
+//   data-transform-no-scale       scale must stay unit
+//   data-transform-yaw-only       rotation may change about Y alone: the X and
+//                                 Z angles must stay as they are
+//   data-transform-uniform-scale  scale must stay the same on every axis
+//   data-transform-no-reparent    the entity may not change parent (reordering
+//                                 WITHIN its current parent is still allowed —
+//                                 the layers panel does that through the same
+//                                 reparent command)
+//
+// A user group carries yaw-only and uniform-scale by its class rather than as
+// attributes (hasTransformMarker): data-* attributes are not saved with the
+// scene, and a class needs no editor code to have run for an AI command to see
+// it. A group scaled unevenly could only hold a turned member by shearing it.
+//
+// Two further refusals keep the hierarchy sound: a move to another parent must
+// be legal for the group model (groups/groupModel.js) and must be able to keep
+// the item's world pose; and a create or paste that names its parent with
+// `requireParent` is refused when that parent can no longer take it, rather
+// than falling back to the top level.
 //
 // The related, much more widely used `data-no-transform` is a different kind of
 // thing: it is UI-only. It suppresses the properties panel's transform rows and
@@ -20,6 +34,14 @@
 // Inspector.execute. A direct setAttribute — from scene load, from generator
 // code, or from an animation component — bypasses it, as does a scene authored
 // before the markers existed.
+
+import {
+  canAcceptChild,
+  canReparent,
+  isUserGroup
+} from './groups/groupModel.js';
+import { groupMessage } from './groups/groupMessages.js';
+import { localPoseFromWorld } from './groups/groupTransformMath.js';
 
 // A scale within this of 1, or a rotation within this many degrees of 0, is
 // treated as unchanged. Both guard against float noise in a round-trip through
@@ -66,6 +88,80 @@ function departsFrom(axes, target, names) {
   );
 }
 
+// The entity's current value of a vec3 component, with `fallback` for an axis
+// it does not set.
+function currentAxes(entity, component, fallback) {
+  const axes = requestedAxes({ value: entity.getAttribute?.(component) });
+  return {
+    x: axes.x ?? fallback,
+    y: axes.y ?? fallback,
+    z: axes.z ?? fallback
+  };
+}
+
+function departsFromCurrent(entity, component, axes, names) {
+  const current = currentAxes(entity, component, 0);
+  return names.some(
+    (axis) =>
+      axes[axis] !== undefined &&
+      Math.abs(axes[axis] - current[axis]) > UNIT_EPS
+  );
+}
+
+function leavesScaleUneven(entity, axes) {
+  const current = currentAxes(entity, 'scale', 1);
+  const x = axes.x ?? current.x;
+  const y = axes.y ?? current.y;
+  const z = axes.z ?? current.z;
+  const tolerance =
+    UNIT_EPS * Math.max(1, Math.abs(x), Math.abs(y), Math.abs(z));
+  return Math.abs(x - y) > tolerance || Math.abs(y - z) > tolerance;
+}
+
+const IMPLIED_BY_USER_GROUP = new Set([
+  'data-transform-yaw-only',
+  'data-transform-uniform-scale'
+]);
+
+/** Does `entity` carry `marker`, as an attribute or implied by its class? */
+export function hasTransformMarker(entity, marker) {
+  return (
+    entity.hasAttribute(marker) ||
+    (IMPLIED_BY_USER_GROUP.has(marker) && isUserGroup(entity))
+  );
+}
+
+let poseScratch = null;
+
+// Can `entity` keep its world pose as a child of `newParent`?
+function poseRepresentableUnder(entity, newParent) {
+  const child = entity.object3D;
+  const parent = newParent.object3D;
+  if (!child || !parent) return true;
+  poseScratch ??= {
+    position: new THREE.Vector3(),
+    quaternion: new THREE.Quaternion(),
+    scale: new THREE.Vector3()
+  };
+  child.updateWorldMatrix(true, false);
+  parent.updateWorldMatrix(true, false);
+  return localPoseFromWorld(parent.matrixWorld, child.matrixWorld, poseScratch);
+}
+
+// A create or paste that must land in a particular parent (placement into an
+// open group) names it; that parent may have gone while the operation was
+// under way.
+function requiredParentGone(commandType, payload) {
+  if (!payload?.requireParent) return false;
+  if (commandType !== 'entitycreate' && commandType !== 'entitypaste') {
+    return false;
+  }
+  const ref =
+    commandType === 'entitycreate' ? payload.parentEl : payload.parentId;
+  const parent = typeof ref === 'string' ? document.getElementById(ref) : ref;
+  return !canAcceptChild(parent);
+}
+
 /**
  * Would this command violate one of the transform markers on its target?
  * Returns the reason to show the user, or null to let the command through.
@@ -86,35 +182,53 @@ export function refuseGuardedTransform(commandType, payload) {
     return null;
   }
 
+  if (requiredParentGone(commandType, payload)) {
+    return groupMessage('destinationGone');
+  }
+
   const entity = payload?.entity;
   if (!entity || !entity.hasAttribute) return null;
 
   if (commandType === 'entityupdate') {
-    if (
-      payload.component === 'scale' &&
-      entity.hasAttribute('data-transform-no-scale') &&
-      departsFrom(requestedAxes(payload), 1, ['x', 'y', 'z'])
-    ) {
-      return 'Scaling is not available for this element.';
+    if (payload.component === 'scale') {
+      const axes = requestedAxes(payload);
+      if (
+        hasTransformMarker(entity, 'data-transform-no-scale') &&
+        departsFrom(axes, 1, ['x', 'y', 'z'])
+      ) {
+        return 'Scaling is not available for this element.';
+      }
+      if (
+        hasTransformMarker(entity, 'data-transform-uniform-scale') &&
+        leavesScaleUneven(entity, axes)
+      ) {
+        return groupMessage('nonUniformScale');
+      }
     }
     if (
       payload.component === 'rotation' &&
-      entity.hasAttribute('data-transform-yaw-only') &&
-      departsFrom(requestedAxes(payload), 0, ['x', 'z'])
+      hasTransformMarker(entity, 'data-transform-yaw-only') &&
+      departsFromCurrent(entity, 'rotation', requestedAxes(payload), ['x', 'z'])
     ) {
       return 'This element can only be rotated about the vertical axis.';
     }
     return null;
   }
 
-  if (
-    commandType === 'entityreparent' &&
-    entity.hasAttribute('data-transform-no-reparent') &&
+  if (commandType === 'entityreparent') {
     // payload.parentEl is the target parent's id. A same-parent reorder comes
     // through this command too, and must not be refused.
-    payload.parentEl !== entity.parentNode?.id
-  ) {
-    return 'This element cannot be moved to a different parent.';
+    if (payload.parentEl === entity.parentNode?.id) return null;
+    if (hasTransformMarker(entity, 'data-transform-no-reparent')) {
+      return 'This element cannot be moved to a different parent.';
+    }
+    const newParent = document.getElementById(payload.parentEl);
+    // An unknown parent is left to the command.
+    if (!newParent) return null;
+    if (!canReparent(entity, newParent)) return groupMessage('illegalParent');
+    if (!poseRepresentableUnder(entity, newParent)) {
+      return groupMessage('unrepresentablePose');
+    }
   }
 
   return null;

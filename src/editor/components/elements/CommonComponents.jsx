@@ -8,6 +8,8 @@ import PositionRow from './PositionRow';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { expandBatchedMeshesForExport } from '../../../batch-models';
+import { isUserGroup } from '../../lib/groups/groupModel.js';
+import { withOriginalAppearance } from '../../lib/groups/scopeFade.js';
 
 export default class CommonComponents extends React.Component {
   static propTypes = {
@@ -78,22 +80,35 @@ export default class CommonComponents extends React.Component {
 
   exportToGLTF() {
     const entity = this.props.entity;
-    // A batched entity's own mesh was stripped into a scene-level BatchedMesh; expansion
-    // rebuilds temporary meshes under the entity so the export isn't empty.
-    // restore() must run in BOTH exporter callbacks.
-    const restoreExportScene = expandBatchedMeshesForExport(entity.object3D);
-    AFRAME.INSPECTOR.exporters.gltf.parse(
-      entity.object3D,
-      function (buffer) {
-        restoreExportScene();
-        const blob = new Blob([buffer], { type: 'application/octet-stream' });
-        saveBlob(blob, (entity.id || 'entity') + '.glb');
-      },
-      function (error) {
-        restoreExportScene();
-        console.error(error);
-      },
-      { binary: true }
+    // Exported as it is, without an open group's outside fade, until
+    // the exporter has finished.
+    withOriginalAppearance(
+      () =>
+        new Promise((resolve) => {
+          // A batched entity's own mesh was stripped into a scene-level BatchedMesh; expansion
+          // rebuilds temporary meshes under the entity so the export isn't empty.
+          // restore() must run in BOTH exporter callbacks.
+          const restoreExportScene = expandBatchedMeshesForExport(
+            entity.object3D
+          );
+          AFRAME.INSPECTOR.exporters.gltf.parse(
+            entity.object3D,
+            function (buffer) {
+              restoreExportScene();
+              const blob = new Blob([buffer], {
+                type: 'application/octet-stream'
+              });
+              saveBlob(blob, (entity.id || 'entity') + '.glb');
+              resolve();
+            },
+            function (error) {
+              restoreExportScene();
+              console.error(error);
+              resolve();
+            },
+            { binary: true }
+          );
+        })
     );
   }
 
@@ -119,6 +134,14 @@ export default class CommonComponents extends React.Component {
           </span>
         </div>
         <div className="collapsible-content sidepanelContent">
+          {isUserGroup(entity) && (
+            <p className="group-origin-hint">
+              <FormattedMessage
+                id="sidebar.groupOriginHint"
+                defaultMessage="Position describes the group origin. On-canvas movement and rotation controls use the group center, which is distinct from the origin."
+              />
+            </p>
+          )}
           {this.renderCommonAttributes()}
         </div>
       </Collapsible>

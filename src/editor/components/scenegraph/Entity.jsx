@@ -9,6 +9,8 @@ import { AwesomeIcon } from '../elements/AwesomeIcon';
 import EntityContextMenu from './EntityContextMenu';
 import EntityLabel from './EntityLabel';
 import EntityLoadSheen from './EntityLoadSheen';
+import { isContainer, isUserGroup } from '../../lib/groups/groupModel.js';
+import { LEVEL_INDENT_PX } from './dropLevels.js';
 import { revealSection } from '../../lib/panelPrefs';
 import {
   faCaretDown,
@@ -18,15 +20,34 @@ import {
   faGripVertical
 } from '@fortawesome/free-solid-svg-icons';
 
-// Utility function to check if entity is a container (including scene)
-export const isContainer = (entity) => {
+export { isContainer };
+
+// Where a drop at `fraction` of a row's height (0 = top) would put the dragged
+// row. A group row has a middle band that drops into the group; every other row
+// splits at its midpoint, so it has no dead middle.
+function dropPositionAt(entity, fraction) {
+  if (isUserGroup(entity)) {
+    if (fraction < 0.25) return 'before';
+    if (fraction > 0.75) return 'after';
+    return 'child';
+  }
+  return fraction <= 0.5 ? 'before' : 'after';
+}
+
+// Same drop, found by the same row and drawn at the same place: a drag over
+// one band re-renders nothing.
+function sameInsertion(a, b) {
   return (
-    entity.tagName === 'A-SCENE' ||
-    entity.id === 'street-container' ||
-    entity.id === 'reference-layers' ||
-    entity.id === 'environment'
+    !!a &&
+    !!b &&
+    a.host === b.host &&
+    a.edge === b.edge &&
+    a.ref === b.ref &&
+    a.position === b.position &&
+    a.level === b.level &&
+    a.gapY === b.gapY
   );
-};
+}
 
 // Tooltips for the passive role badges at the right of a row (keys from
 // getEntityBadges).
@@ -59,11 +80,24 @@ class Entity extends React.Component {
     setDraggedEntity: PropTypes.func,
     hoveredDropTarget: PropTypes.object,
     setHoveredDropTarget: PropTypes.func,
+    // The drop the pointer means: `ref` and `position` say where it lands.
+    // The list draws its line, from `gapY` (the y in the list of the gap the
+    // drop is in) and, for a line inside a group, `indentPx`. `host` is the
+    // row or the strip whose dragover found the drop, and `edge` the edge of
+    // that row the gap is on; both only decide `gapY`.
     insertionInfo: PropTypes.object,
     setInsertionInfo: PropTypes.func,
-    onReparentEntity: PropTypes.func,
+    // The listed rows ({entity, depth}) just above and below this one, whose
+    // gaps with it its upper and lower zones drop into.
+    aboveRow: PropTypes.object,
+    belowRow: PropTypes.object,
+    resolveGroupGap: PropTypes.func,
+    isDropLegal: PropTypes.func,
+    dropAt: PropTypes.func,
     canBeDragged: PropTypes.func,
     canBeDropTarget: PropTypes.func,
+    // A move of this row is still settling: it cannot be dragged meanwhile.
+    isMoving: PropTypes.bool,
     // Context menu rename state (owned by SceneGraph)
     renamingEntity: PropTypes.object,
     setRenamingEntity: PropTypes.func
@@ -132,46 +166,81 @@ class Entity extends React.Component {
     this.props.setInsertionInfo(null);
   };
 
-  onDragOver = (e) => {
+  // What a drop in `zone` of this row would do, or null where none is
+  // allowed. The upper and lower zones are the gaps above and below the row;
+  // where a gap involves a group level, the pointer's x picks the level.
+  insertionAt(zone, clientX, rowLeft) {
+    const { entity, draggedEntity } = this.props;
+    const edge = { before: 'top', after: 'bottom' }[zone] ?? null;
+    if (edge) {
+      const row = { entity, depth: this.props.depth };
+      const [above, below] =
+        edge === 'top'
+          ? [this.props.aboveRow, row]
+          : [row, this.props.belowRow];
+      const groupDrop = this.props.resolveGroupGap(
+        above,
+        below,
+        clientX,
+        rowLeft
+      );
+      // undefined: no group level here; null: none allowed.
+      if (groupDrop !== undefined) {
+        return groupDrop && { ...groupDrop, host: entity, edge };
+      }
+    }
+
+    // Drops that would leave the dragged row where it already is.
     if (
-      !this.props.canBeDropTarget(this.props.entity, this.props.draggedEntity)
+      (zone === 'before' && draggedEntity === entity.previousElementSibling) ||
+      (zone === 'after' && draggedEntity === entity.nextElementSibling) ||
+      (zone === 'child' && draggedEntity.parentNode === entity) ||
+      !this.props.canBeDropTarget(entity, draggedEntity, zone)
     ) {
+      return null;
+    }
+    return { ref: entity, position: zone, host: entity, edge, level: null };
+  }
+
+  onDragOver = (e) => {
+    const { entity, draggedEntity } = this.props;
+    if (!draggedEntity || isContainer(entity)) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const zone = dropPositionAt(entity, (e.clientY - rect.top) / rect.height);
+    const found = this.insertionAt(zone, e.clientX, rect.left);
+    // A drop between rows is placed by its gap's y in the list. Rows sit
+    // flush, so this row's bottom is the next row's top: both sides of a gap
+    // give the same line.
+    const row = e.currentTarget;
+    const insertion = found?.edge
+      ? {
+          ...found,
+          gapY:
+            found.edge === 'top'
+              ? row.offsetTop
+              : row.offsetTop + row.offsetHeight
+        }
+      : found;
+
+    // An illegal zone is not advertised: no preventDefault, so the browser
+    // shows the no-drop cursor, and no insertion line.
+    if (!insertion) {
+      if (this.props.insertionInfo?.host === entity) {
+        this.props.setHoveredDropTarget(null);
+        this.props.setInsertionInfo(null);
+      }
       return;
     }
 
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const y = e.clientY;
-    const midpoint = rect.top + rect.height * 0.5;
-
-    // Currently only "before" and "after" are enabled (reorder within same parent).
-    // To re-enable reparenting (dropping as a child of another entity), restore
-    // the three-zone layout: top 25% = "before", middle 50% = "child", bottom 25% = "after"
-    // and remove the same-parent check in canBeDropTarget in SceneGraph.js.
-    let position = null;
-
-    if (!isContainer(this.props.entity)) {
-      if (y <= midpoint) {
-        const draggedEntity = this.props.draggedEntity;
-        const prevSibling = this.props.entity.previousElementSibling;
-        if (draggedEntity !== prevSibling) {
-          position = 'before';
-        }
-      } else {
-        const draggedEntity = this.props.draggedEntity;
-        const nextSibling = this.props.entity.nextElementSibling;
-        if (draggedEntity !== nextSibling) {
-          position = 'after';
-        }
-      }
+    if (this.props.hoveredDropTarget !== entity) {
+      this.props.setHoveredDropTarget(entity);
     }
-
-    if (!position) return;
-
-    this.props.setHoveredDropTarget(this.props.entity);
-    this.props.setInsertionInfo({ entity: this.props.entity, position });
+    if (!sameInsertion(this.props.insertionInfo, insertion)) {
+      this.props.setInsertionInfo(insertion);
+    }
   };
 
   onDragLeave = (e) => {
@@ -180,7 +249,10 @@ class Entity extends React.Component {
     const x = e.clientX;
     const y = e.clientY;
 
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+    if (
+      (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) &&
+      this.props.insertionInfo?.host === this.props.entity
+    ) {
       this.props.setHoveredDropTarget(null);
       this.props.setInsertionInfo(null);
     }
@@ -191,19 +263,7 @@ class Entity extends React.Component {
     const insertion = this.props.insertionInfo;
     this.props.setHoveredDropTarget(null);
     this.props.setInsertionInfo(null);
-
-    const dragged = this.props.draggedEntity;
-    if (
-      dragged &&
-      this.props.canBeDropTarget(this.props.entity, dragged) &&
-      insertion
-    ) {
-      this.props.onReparentEntity(
-        dragged,
-        insertion.entity,
-        insertion.position
-      );
-    }
+    this.props.dropAt(this.props.draggedEntity, insertion);
   };
 
   render() {
@@ -215,13 +275,14 @@ class Entity extends React.Component {
 
     // Drag and drop state
     const isDragging = this.props.draggedEntity === entity;
-    const isHoveredDropTarget =
-      this.props.hoveredDropTarget === entity &&
-      this.props.canBeDropTarget(entity, this.props.draggedEntity);
-    const insertionPosition =
-      this.props.insertionInfo && this.props.insertionInfo.entity === entity
-        ? this.props.insertionInfo.position
+    const insertion =
+      this.props.insertionInfo?.host === entity
+        ? this.props.insertionInfo
         : null;
+    const isHoveredDropTarget =
+      !!insertion &&
+      this.props.hoveredDropTarget === entity &&
+      this.props.isDropLegal(insertion, this.props.draggedEntity);
 
     // Check if entity can be dragged. Suspended while the row's label is in
     // inline-rename mode so drag-start can't swallow text selection there.
@@ -354,8 +415,8 @@ class Entity extends React.Component {
       option: true,
       // Drag and drop classes
       dragging: isDragging,
-      'drop-before': isHoveredDropTarget && insertionPosition === 'before',
-      'drop-after': isHoveredDropTarget && insertionPosition === 'after'
+      // A drop between rows is drawn by the list, not the row.
+      'drop-child': isHoveredDropTarget && insertion.position === 'child'
     });
 
     return (
@@ -378,10 +439,13 @@ class Entity extends React.Component {
         >
           {/* Ambient load sheen behind the row content (#2009). */}
           <EntityLoadSheen entity={entity} />
+          {this.props.isMoving && (
+            <span className="entityLoadSheen is-pending" aria-hidden="true" />
+          )}
           <span>
             <span
               style={{
-                width: `${30 * (this.props.depth - 1)}px`
+                width: `${LEVEL_INDENT_PX * (this.props.depth - 1)}px`
               }}
             />
             {dragHandle}

@@ -1,6 +1,10 @@
 import Events from '../Events';
 import { Command } from '../command.js';
-import { findClosestEntity, prepareForSerialization } from '../entity.js';
+import {
+  createUniqueId,
+  findClosestEntity,
+  prepareForSerialization
+} from '../entity.jsx';
 
 export class EntityRemoveCommand extends Command {
   static llmTool = {
@@ -31,9 +35,25 @@ export class EntityRemoveCommand extends Command {
       ? entityOrPayload
       : entityOrPayload.entity;
     this.entity = entity;
-    // Store the parent element and index for precise reinsertion
+    // Store the parent and index for precise reinsertion. The parent is
+    // found again by id on undo: moving it in the layer panel replaces its
+    // element, so the element held here may be gone by then. An id-less
+    // parent is given one, as creating into it already does.
     this.parentEl = entity.parentNode;
+    if (!this.parentEl.id) {
+      this.parentEl.setAttribute('id', createUniqueId());
+    }
+    this.parentId = this.parentEl.id;
     this.index = Array.from(this.parentEl.children).indexOf(entity);
+  }
+
+  // The parent to restore into: the element now carrying the stored id, or
+  // the stored element itself if that id no longer resolves but the element
+  // is still in the scene.
+  resolveParent() {
+    const byId = document.getElementById(this.parentId);
+    if (byId) return byId;
+    return this.parentEl.isConnected ? this.parentEl : null;
   }
 
   execute(nextCommandCallback) {
@@ -55,9 +75,14 @@ export class EntityRemoveCommand extends Command {
   }
 
   undo(nextCommandCallback) {
+    const parentEl = this.resolveParent();
+    if (!parentEl) {
+      console.error(`Parent element with id ${this.parentId} not found`);
+      return;
+    }
     // Reinsert the entity at its original position using the stored index
-    const referenceNode = this.parentEl.children[this.index] ?? null;
-    this.parentEl.insertBefore(this.entity, referenceNode);
+    const referenceNode = parentEl.children[this.index] ?? null;
+    parentEl.insertBefore(this.entity, referenceNode);
 
     // Emit event after entity is loaded
     this.entity.addEventListener(

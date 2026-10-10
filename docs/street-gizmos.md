@@ -47,7 +47,7 @@ src/editor/lib/gizmos/
   table: the stock gizmo attaches to every transformable entity, a managed
   street additionally gets endpoint nodes, and a managed street's segment
   gets width bars INSTEAD of the stock gizmo (#1806, see above;
-  `isManagedStreetSegment()` in `editor/lib/entity.js` is the shared
+  `isManagedStreetSegment()` in `editor/lib/entity.jsx` is the shared
   predicate).
 - Segment width bars mutate `street-segment.width` live during the drag (so
   the street's re-layout cascade runs). Endpoint nodes do not touch the

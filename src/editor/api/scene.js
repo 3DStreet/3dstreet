@@ -19,6 +19,7 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { httpsCallable, getFunctions } from 'firebase/functions';
 import posthog from 'posthog-js';
 import { isUserPro } from '@shared/auth/api/user';
+import { withOriginalAppearanceSync } from '../lib/groups/scopeFade.js';
 
 const sceneRef = collection(db, 'scenes');
 
@@ -241,7 +242,11 @@ const takeScreenshotWithOptions = async (options = {}) => {
     scene_id: STREET.utils.getCurrentSceneId()
   });
 
-  screenshotEl.setAttribute('screentock', 'takeScreenshot', true);
+  // The screenshot renders synchronously, as the scene is, without an open
+  // group's outside fade.
+  withOriginalAppearanceSync(() =>
+    screenshotEl.setAttribute('screentock', 'takeScreenshot', true)
+  );
 };
 
 // Legacy function for backward compatibility - auto-detects user plan

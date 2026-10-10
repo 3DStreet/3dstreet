@@ -16,6 +16,15 @@
  * In-flight transient state (status, progress, sizeBytes, originalFilename)
  * lives in the Zustand assetUploadStore keyed by entity.id, not on DOM
  * attributes. It does not survive scene save/reload — by design.
+ *
+ * Once the placeholder exists the flow keeps only its id and looks the entity
+ * up whenever it needs it: moving an item in the layer panel replaces its
+ * element (same id), and a delete or undo can remove it while the upload runs.
+ *
+ * With a group open for editing, the item is placed in the group that was open
+ * when the upload began (see groups/groupPlacement.js), checked again just
+ * before the placeholder is created; if that group has gone, nothing is placed
+ * and nothing is uploaded.
  */
 
 import posthog from 'posthog-js';
@@ -37,6 +46,18 @@ import {
   gltfRejectionMessage
 } from '@shared/asset-upload';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
+import Events from '@/editor/lib/Events.js';
+import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
+import {
+  beginPlacement,
+  defaultPlacementPoint,
+  executePlacedCreate,
+  placeDefinition
+} from '@/editor/lib/groups/groupPlacement.js';
+import {
+  TRANSFORM_REFUSED,
+  notifyRefusal
+} from '@/editor/lib/transformGuard.js';
 
 export { FILE_PICKER_ACCEPT, isAcceptedAssetFile };
 
@@ -95,6 +116,43 @@ function notifySuccess(msg) {
   }
 }
 
+function notifyInfo(msg) {
+  if (window.STREET?.notify?.infoMessage) {
+    window.STREET.notify.infoMessage(msg);
+  }
+}
+
+// Uploads that finished after their item had left the scene: entity id ->
+// the attributes that finish the item. Undoing its deletion, or redoing its
+// creation, brings the item back as it was while uploading: on a blob: URL
+// that has since been revoked, and marked temporary, so the scene would never
+// save it. It is finished as it comes back, with no history entry of its own.
+// Kept until the history is cleared (a new scene): until then any undo or
+// redo can bring the item back again.
+const finishedWhileGone = new Map();
+
+function finishReturnedItems(cmd) {
+  // History.clear() announces itself with no command.
+  if (cmd === null) {
+    finishedWhileGone.clear();
+    Events.off('historychanged', finishReturnedItems);
+    return;
+  }
+  for (const [entityId, attributes] of finishedWhileGone) {
+    const el = document.getElementById(entityId);
+    if (!el?.hasAttribute('data-temporary-file')) continue;
+    for (const [name, value] of attributes) el.setAttribute(name, value);
+    el.removeAttribute('data-temporary-file');
+  }
+}
+
+function finishIfItReturns(entityId, attributes) {
+  if (!finishedWhileGone.size) {
+    Events.on('historychanged', finishReturnedItems);
+  }
+  finishedWhileGone.set(entityId, attributes);
+}
+
 // Longest side of a placed image plane, in meters. The other side is scaled
 // to preserve aspect ratio. Keeps the 4m default for square images so existing
 // behavior is unchanged.
@@ -126,12 +184,19 @@ function readImageDimensions(blob) {
   });
 }
 
-async function createPlaceholderEntity(file, position, kind) {
+// Where an item with no position of its own goes, read when called: the
+// stand point of the group the ticket names, else the scene origin.
+function defaultPosition(ticket) {
+  return defaultPlacementPoint(ticket) ?? '0 0 0';
+}
+
+// Resolves to { entity: null } when the placement is refused.
+async function createPlaceholderEntity(file, position, kind, ticket) {
   const blobUrl = URL.createObjectURL(file);
   const kindLabel =
     kind === 'glb' ? 'glTF Model' : kind === 'splat' ? 'Splat' : 'Image';
   const baseComponents = {
-    position: position ?? '0 0 0',
+    position,
     'data-layer-name': `${kindLabel} • ${file.name}`,
     // Marks the entity as carrying a transient blob: URL so the scene
     // serializer skips it. Removed (via entityupdate) on upload success.
@@ -174,10 +239,29 @@ async function createPlaceholderEntity(file, position, kind) {
     };
   }
 
+  // Checked here, after the reads above, just before the item is created:
+  // the group's pose now, not when the file was picked.
+  if (position == null) {
+    definition.components.position = defaultPosition(ticket);
+  }
+  const placed = placeDefinition(definition, ticket);
+  if (placed.refusal) {
+    notifyRefusal(null, placed.refusal);
+    URL.revokeObjectURL(blobUrl);
+    return { entity: null, blobUrl: null };
+  }
+
   return new Promise((resolve) => {
-    AFRAME.INSPECTOR.execute('entitycreate', definition, undefined, (entity) =>
-      resolve({ entity, blobUrl })
+    const result = AFRAME.INSPECTOR.execute(
+      'entitycreate',
+      placed.definition,
+      undefined,
+      (entity) => resolve({ entity, blobUrl })
     );
+    if (result === TRANSFORM_REFUSED) {
+      URL.revokeObjectURL(blobUrl);
+      resolve({ entity: null, blobUrl: null });
+    }
   });
 }
 
@@ -194,14 +278,16 @@ async function createPlaceholderEntity(file, position, kind) {
  * @param {string} asset.name
  * @param {string} asset.type     - 'mesh' | 'image' | 'splat'
  * @param {THREE.Vector3 | string} position
+ * @param {object|null} [ticket] - Where it goes with a group open, from
+ *   groups/groupPlacement.js `beginPlacement`; taken now when not given.
  */
-export function placeCloudAsset(asset, position) {
+export function placeCloudAsset(asset, position, ticket = beginPlacement()) {
   if (!asset?.assetId || !getServedUrl(asset)) return;
   const isMesh = asset.type === 'mesh';
   const isSplat = asset.type === 'splat';
   const servedUrl = getServedUrl(asset);
   const baseComponents = {
-    position: position ?? '0 0 0',
+    position,
     'data-layer-name': asset.name || asset.assetId,
     'data-asset-id': asset.assetId,
     'data-asset-owner-uid': asset.ownerUid
@@ -236,7 +322,10 @@ export function placeCloudAsset(asset, position) {
       }
     };
   }
-  AFRAME.INSPECTOR.execute('entitycreate', definition);
+  if (position == null) {
+    definition.components.position = defaultPosition(ticket);
+  }
+  executePlacedCreate(definition, { ticket });
 }
 
 async function preflightQuota(proposedBytes) {
@@ -261,9 +350,18 @@ async function preflightQuota(proposedBytes) {
  * @param {THREE.Vector3 | string} [position] - Drop position in world space.
  * @param {Element} [existingEntity] - When retrying a failed upload, the
  *   existing placeholder entity. Skips creating a new placeholder.
+ * @param {object|null} [ticket] - Where the item goes with a group open,
+ *   from groups/groupPlacement.js `beginPlacement`, taken when the operation
+ *   began (a file picker takes it on the click that opened it). Taken now,
+ *   before anything is awaited, when not given.
  * @returns {Promise<{ entity: Element, assetId: string | null, kind: string }>}
  */
-export async function uploadAndPlaceAsset(file, position, existingEntity) {
+export async function uploadAndPlaceAsset(
+  file,
+  position,
+  existingEntity,
+  ticket = existingEntity ? null : beginPlacement()
+) {
   const kind = getAssetKind(file);
   if (!kind) {
     captureUploadBlockedEvent(null, 'unsupported_file_type', {
@@ -334,13 +432,24 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     blobUrl =
       useAssetUploadStore.getState().uploads[entity.id]?.blobUrl || null;
   } else {
-    ({ entity, blobUrl } = await createPlaceholderEntity(file, position, kind));
+    ({ entity, blobUrl } = await createPlaceholderEntity(
+      file,
+      position,
+      kind,
+      ticket
+    ));
+    if (!entity) {
+      // The group it was going into has gone: nothing was placed, and
+      // nothing is uploaded.
+      currentUploadStore.clear();
+      return { entity: null, assetId: null, kind };
+    }
   }
+  const entityId = entity.id;
   // Start watching the local preview's load outcome immediately — before any
   // awaits — so a fast model-error can't slip past. Consumed below (after the
   // quota check) to refuse uploading a model that can't even render locally.
-  const modelLoadGate = kind === 'glb' ? watchModelLoad(entity) : null;
-  const entityId = entity.id;
+  const modelLoadGate = kind === 'glb' ? watchModelLoad(entityId) : null;
   const { setUpload, clearUpload } = useAssetUploadStore.getState();
 
   setUpload(entityId, {
@@ -569,6 +678,20 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       }
     );
     pendingAssetId = assetId;
+    // Thumbnail capture ran in parallel with the upload. Fire-and-forget
+    // the upload step — errors are logged but never block the success
+    // toast. The 'assetUpdated' event from updateAsset will replace the
+    // gallery card placeholder with the generated JPEG when it lands.
+    const uploadThumbnail = () => {
+      thumbnailCapture?.then((jpegBlob) => {
+        if (!jpegBlob) return;
+        import('@shared/asset-upload/captureThumbnail.js').then(
+          ({ uploadCapturedThumbnail }) => {
+            uploadCapturedThumbnail(assetId, userId, jpegBlob);
+          }
+        );
+      });
+    };
     // Hide the new asset from the gallery grid while finalization runs
     // (preload + entity swap). The pending card keeps showing progress
     // until we call clear() below — atomic swap, no overlap.
@@ -595,13 +718,6 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       await preloadGltfWithTimeout(cloudUrl, 12000);
     }
 
-    // Swap the temp blob URL for the cloud URL and write persistent identity
-    // attrs (data-asset-id, data-asset-owner-uid). These go through
-    // entityupdate commands wrapped in a single MultiCommand so:
-    //   - the editor's dirty/save-state machinery fires,
-    //   - the change is one history entry, undoable as a unit,
-    //   - serializer picks them up on next save (data-asset-* are special-
-    //     cased to persist; see src/json-utils_1.1.js).
     let modelComponent;
     let modelValue;
     if (kind === 'glb') {
@@ -614,13 +730,44 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       modelComponent = 'src';
       modelValue = cloudUrl;
     }
+
+    // The item may have been deleted (or its creation undone) while the
+    // upload ran. It is not brought back: the asset is in the user's library.
+    const placed = document.getElementById(entityId);
+    if (!placed) {
+      finishIfItReturns(entityId, [
+        [modelComponent, modelValue],
+        ['data-asset-id', assetId],
+        ['data-asset-owner-uid', userId]
+      ]);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+      clearUpload(entityId);
+      currentUploadStore.clear();
+      uploadThumbnail();
+      notifyInfo(groupMessage('uploadFinishedItemGone'));
+      captureUploadEvent(
+        kind,
+        'success',
+        Date.now() - uploadStartTime,
+        optimizationMetadata
+      );
+      return { entity: null, assetId, kind };
+    }
+
+    // Swap the temp blob URL for the cloud URL and write persistent identity
+    // attrs (data-asset-id, data-asset-owner-uid). These go through
+    // entityupdate commands wrapped in a single MultiCommand so:
+    //   - the editor's dirty/save-state machinery fires,
+    //   - the change is one history entry, undoable as a unit,
+    //   - serializer picks them up on next save (data-asset-* are special-
+    //     cased to persist; see src/json-utils_1.1.js).
     AFRAME.INSPECTOR.execute(
       'multi',
       [
         [
           'entityupdate',
           {
-            entity,
+            entity: placed,
             component: modelComponent,
             value: modelValue,
             noSelectEntity: true
@@ -629,7 +776,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
         [
           'entityupdate',
           {
-            entity,
+            entity: placed,
             component: 'data-asset-id',
             value: assetId,
             noSelectEntity: true
@@ -638,7 +785,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
         [
           'entityupdate',
           {
-            entity,
+            entity: placed,
             component: 'data-asset-owner-uid',
             value: userId,
             noSelectEntity: true
@@ -649,7 +796,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
           // including this entity in saved scenes.
           'entityupdate',
           {
-            entity,
+            entity: placed,
             component: 'data-temporary-file',
             value: null,
             noSelectEntity: true
@@ -668,20 +815,7 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
     // this is the moment of the atomic swap: card vanishes, real item appears.
     currentUploadStore.clear();
 
-    // Thumbnail capture ran in parallel with the upload. Fire-and-forget
-    // the upload step — errors are logged but never block the success
-    // toast. The 'assetUpdated' event from updateAsset will replace the
-    // gallery card placeholder with the generated JPEG when it lands.
-    if (thumbnailCapture) {
-      thumbnailCapture.then((jpegBlob) => {
-        if (!jpegBlob) return;
-        import('@shared/asset-upload/captureThumbnail.js').then(
-          ({ uploadCapturedThumbnail }) => {
-            uploadCapturedThumbnail(assetId, userId, jpegBlob);
-          }
-        );
-      });
-    }
+    uploadThumbnail();
 
     notifySuccess(`Uploaded ${file.name}`);
     captureUploadEvent(
@@ -690,12 +824,13 @@ export async function uploadAndPlaceAsset(file, position, existingEntity) {
       Date.now() - uploadStartTime,
       optimizationMetadata
     );
-    return { entity, assetId, kind };
+    return { entity: placed, assetId, kind };
   } catch (err) {
     if (err.name === 'AbortError') {
       // User cancelled — remove the placeholder entity and clean up silently.
-      if (entity?.parentNode) {
-        AFRAME.INSPECTOR.execute('entityremove', entity);
+      const placed = document.getElementById(entityId);
+      if (placed) {
+        AFRAME.INSPECTOR.execute('entityremove', placed);
       }
       if (blobUrl) URL.revokeObjectURL(blobUrl);
       clearUpload(entityId);
@@ -737,10 +872,14 @@ const MODEL_LOAD_GATE_TIMEOUT_MS = 30000;
  * `{ loaded: true }` on model-loaded (or an already-present mesh, e.g. the
  * retry path), `{ loaded: false }` on model-error, `{ loaded: true }` on
  * timeout so a slow parse never blocks an upload.
+ *
+ * Listens at the document, filtered by id, so the outcome still arrives when
+ * the entity is moved in the layer panel (which replaces its element) before
+ * its model loads. Both events bubble.
  */
-function watchModelLoad(entity, timeoutMs = MODEL_LOAD_GATE_TIMEOUT_MS) {
+function watchModelLoad(entityId, timeoutMs = MODEL_LOAD_GATE_TIMEOUT_MS) {
   return new Promise((resolve) => {
-    if (entity.getObject3D('mesh')) {
+    if (document.getElementById(entityId)?.getObject3D('mesh')) {
       resolve({ loaded: true });
       return;
     }
@@ -748,15 +887,16 @@ function watchModelLoad(entity, timeoutMs = MODEL_LOAD_GATE_TIMEOUT_MS) {
     const finish = (result) => {
       if (done) return;
       done = true;
-      entity.removeEventListener('model-loaded', onLoaded);
-      entity.removeEventListener('model-error', onError);
+      document.removeEventListener('model-loaded', onLoaded);
+      document.removeEventListener('model-error', onError);
       clearTimeout(timer);
       resolve(result);
     };
-    const onLoaded = () => finish({ loaded: true });
-    const onError = () => finish({ loaded: false });
-    entity.addEventListener('model-loaded', onLoaded);
-    entity.addEventListener('model-error', onError);
+    const isOurs = (event) => event.target?.id === entityId;
+    const onLoaded = (event) => isOurs(event) && finish({ loaded: true });
+    const onError = (event) => isOurs(event) && finish({ loaded: false });
+    document.addEventListener('model-loaded', onLoaded);
+    document.addEventListener('model-error', onError);
     const timer = setTimeout(
       () => finish({ loaded: true, timedOut: true }),
       timeoutMs
