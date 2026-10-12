@@ -869,7 +869,9 @@ class SceneGraph extends React.Component {
                     aria-label={intl.formatMessage(commonMessages.addLayer)}
                     title={intl.formatMessage(commonMessages.addLayer)}
                   >
-                    <Plus20Circle />
+                    {/* Cyan, like the scene's own entities; the white folder
+                        beside it makes a group, an organising feature. */}
+                    <Plus20Circle color="#00FFFF" />
                   </button>
                 )}
                 {this.state.activeTab === 'layers' && (
