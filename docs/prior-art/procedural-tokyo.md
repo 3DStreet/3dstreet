@@ -17,8 +17,8 @@
 ## What it is
 
 A three.js driving game in a Tokyo compiled from public data, following the
-BoundlessNYC architecture ([notes](boundless-nyc.md); `TKY1` is a sibling of
-its `CTL1` tile format). Areas are blocks of 3×3 PLATEAU grid squares
+BoundlessNYC architecture (now Valdrada, [notes](valdrada.md); `TKY1` is a
+sibling of its `CTL1` tile format). Areas are blocks of 3×3 PLATEAU grid squares
 (about 3.4 × 2.8 km) defined in `tools/pipeline/config.mjs`: Shibuya, Tokyo
 Station, Shiba (Tokyo Tower) and Fujinomiya.
 

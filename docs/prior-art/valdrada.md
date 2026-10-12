@@ -1,19 +1,28 @@
-# BoundlessNYC (mkturkcan/boundless-nyc)
+# Valdrada, formerly BoundlessNYC (mkturkcan/valdrada)
 
 [Prior-art index](README.md)
 
-- **Repo:** https://github.com/mkturkcan/boundless-nyc (M. K. Turkcan)
-- **Read at:** `f453c1d` (2026-10-05), 25 commits since 2026-09-24, version
-  0.2.1. We read the README, `BUILDING.md`, `LICENSING.md`,
-  `boundlessjs/DATA_SOURCES.md`, the compiler (`boundlessjs/tools/pipeline/`,
-  about 7.7k lines), the tile writer, the technique and typology docs, and the
-  QA tools. We did not run it (the compiled city is a 3.1 GB download).
+- **Repo:** https://github.com/mkturkcan/valdrada (M. K. Turkcan). Published
+  as BoundlessNYC (`mkturkcan/boundless-nyc`) up to version 0.3.0 and renamed
+  Valdrada in 0.3.1 "to avoid confusion with the earlier Boundless project"
+  (`ACKNOWLEDGEMENTS.md`). The old repository URL resolves to the same
+  repository; the Python package keeps `boundless` as an alias of `valdrada`.
+- **Read at:** first `f453c1d` (2026-10-05, v0.2.1, as BoundlessNYC), then
+  `bef9783` (2026-10-09, v0.3.1, as Valdrada). We read the README,
+  `BUILDING.md`, `LICENSING.md`, `client/DATA_SOURCES.md`, the compiler
+  (`client/tools/pipeline/`, about 7.7k lines), the tile writer, the technique
+  and typology docs, the QA tools, and `docs/architecture.md` and
+  `docs/unreal.md` for the offline renderers. We did not run it (the compiled
+  city is a 3.1 GB download). **Between the two reads the compiler and tiles
+  are unchanged** apart from the `boundlessjs/` → `client/` folder rename;
+  the new work is the offline rendering path (below).
 - **License:** code MIT; docs and figures CC BY 4.0; **compiled city ODbL
   1.0** (it contains OSM-derived data); vehicle and pedestrian models CC BY 4.0
   from CARLA, with a MetaHuman restriction (below); textures CC0.
-- **Lineage:** procedural-tokyo's README says it follows this architecture;
-  `TKY1` is a sibling of BoundlessNYC's `CTL1` tile format. BoundlessNYC
-  itself follows the authors' earlier *Boundless* paper (arXiv:2409.03022).
+- **Lineage:** procedural-tokyo's README says it follows this architecture
+  (as BoundlessNYC); `TKY1` is a sibling of Valdrada's `CTL1` tile format.
+  Valdrada itself follows the authors' earlier *Boundless* paper
+  (arXiv:2409.03022), a separate work.
 
 ## What it is
 
@@ -22,8 +31,8 @@ compiled from public municipal records, built for **synthetic data and
 closed-loop simulation**: a WebGL2 renderer, lane-level traffic and
 pedestrian simulation, pixel-exact perception ground truth (semantic and
 instance segmentation, amodal boxes, metric depth), and a CARLA-style TCP API
-with a Python client. Also an OpenUSD export of recorded takes for Blender
-Cycles. A browser demo runs on Hugging Face Spaces.
+with a Python client. Recorded takes export to OpenUSD and render offline in
+Blender Cycles and Unreal Engine 5. A browser demo runs on Hugging Face Spaces.
 
 ### Sources (from `DATA_SOURCES.md`)
 
@@ -54,12 +63,12 @@ The city's own records first, OSM only to fill gaps:
 
 ### Compiler and tiles
 
-A Node compiler (`npm run fetch` then `npm run compile -- --boro 1,2,3,4`)
+A Node compiler in `client/tools/pipeline/` (`npm run fetch` then `npm run compile -- --boro 1,2,3,4`)
 writes **2,884 near tiles (512 m) and 210 far-field tiles (2,048 m)**, bridge
 alignments and a city-wide sky-occlusion bake. Distributed as a Hugging Face
-dataset: 3,738 files, 3.1 GB, versioned by tag (`--revision v0.2.1`).
+dataset: 3,738 files, 3.1 GB at v0.2.1, versioned by tag (`--revision v0.3.1`).
 
-**Tile format `CTL1`** (`tools/pipeline/binio.mjs`): magic, a JSON header,
+**Tile format `CTL1`** (`client/tools/pipeline/binio.mjs`): magic, a JSON header,
 then **named typed-array sections** described in the header (`bldgXZ`,
 `bldg`, `bholes`, `roads`, `furn`, `terrain`, `asphalt`, `sidewalk`, `curb`,
 `paintW`, `paintY`, `grass`, `busred`, ...). Coordinates are f32 metres local
@@ -81,7 +90,7 @@ record (class, one-way, width, lanes, parking, level, speed, name, CSCL
   same property: add a layer or attribute, old clients ignore it.
 - **The same ID gap as TKY1.** The compiler joins on BIN and BBL but neither
   is written to the building record; only roads keep their CSCL `segId`. A
-  BoundlessNYC building can't be pinned, skipped or joined after compile.
+  Valdrada building can't be pinned, skipped or joined after compile.
   Confirms #2090's rule that every feature carries its source ID, and that
   BBL (NYC's parcel ID) should ride on buildings so parcel-keyed skips work.
 - **BBL is the parcel join, at city scale.** Footprints → PLUTO by BBL is
@@ -152,6 +161,45 @@ record (class, one-way, width, lanes, parking, level, speed, name, CSCL
   Reference for play-mode traffic.
 - Pixel-exact segmentation and depth per frame are the control signals AI
   image generation conditions on. Worth a look for 3DStreet's generator.
+
+### One city, three renderers (new in 0.3.1)
+
+`docs/architecture.md` describes the export path: a headless browser plays a
+recorded camera path in the three.js client and "harvests" the geometry
+within 350 m of the path (with a coarse city out to 4 km), materials, lights
+and every moving object per frame; `usd_write.py` turns that into OpenUSD;
+Blender Cycles and Unreal Engine 5.8 render it.
+
+- **One authority for what exists.** "The city is authored and simulated in
+  the three.js client, the one place that decides what exists, where it is,
+  its size and its class ... A renderer may improve how something looks,
+  never what exists or where." Nothing flows back from a renderer. This is
+  the rule for 3DStreet's own downstream consumers: the scene (and #2090's
+  facts) decide content; AI image and video generation, or any offline
+  render, may change appearance only.
+- **They broke the rule once, and say so.** The client's traffic drives some
+  elevated ramps that its road builder doesn't deck, so the exporter
+  (`usd_ramps.py`) adds decks under them; "the client still draws these ramps
+  without one." A fix applied in a consumer instead of at the source makes
+  the outputs disagree. For #2090: correct facts in the pipeline, not in one
+  layer's renderer.
+- **Material semantics travel with the export.** Every material carries a
+  plain `UsdPreviewSurface` that any renderer can draw, plus a `bx` tag
+  naming its family (`pbr`, `ground`, `decal`, `sign`, ...) and parameters, so
+  each renderer rebuilds a better version per family and falls back to the
+  preview surface when it has no port. `frontend_coverage.py` reports how
+  much of a take each renderer covers (95 % in Cycles, 97 % in Unreal for one
+  golden-hour shot). Unreal swaps in 4K CC0 materials per family (asphalt,
+  brick by colour, granite) tinted to the source colour. The same idea fits
+  AI rendering: semantic classes per surface, with a plain fallback.
+- **Cross-renderer checks against the web render:** colour and lightness
+  per 16 px cell, CIELAB bands per region (sky, buildings, ground,
+  vegetation), temporal flicker, coplanar surfaces, camera clearance and
+  vehicle overlaps, run by the batch script on every take.
+- **Cost:** Unreal renders 0.13–0.23 s a frame against 6.9–8.5 s in Cycles,
+  but needs an RTX GPU (tested on an RTX 6000 Ada, 48 GB), Linux, and Unreal
+  built from source (about 200 GB). Offline only; nothing here runs in a
+  user's browser.
 
 ### QA that scales (contrast with fable51-worlds)
 
