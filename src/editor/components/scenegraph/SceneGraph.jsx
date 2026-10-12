@@ -9,7 +9,7 @@ import Entity, { isContainer } from './Entity';
 import { ToolbarWrapper } from './ToolbarWrapper';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { faChevronRight } from '@fortawesome/free-solid-svg-icons';
-import { Plus20Circle } from '@shared/icons';
+import { FolderPlusIcon, Plus20Circle } from '@shared/icons';
 import {
   createUniqueId,
   getEntityDisplayName,
@@ -877,7 +877,7 @@ class SceneGraph extends React.Component {
                     aria-label={intl.formatMessage(messages.newGroup)}
                     title={intl.formatMessage(messages.newGroup)}
                   >
-                    <span className="left-panel-new-group">G+</span>
+                    <FolderPlusIcon />
                   </button>
                 )}
               </div>

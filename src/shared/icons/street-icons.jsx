@@ -74,11 +74,35 @@ export const GroupIcon = () => (
   >
     <path
       d="M3 6.5C3 5.67 3.67 5 4.5 5H9.4L11.4 7.2H19.5C20.33 7.2 21 7.87 21 8.7V17.5C21 18.33 20.33 19 19.5 19H4.5C3.67 19 3 18.33 3 17.5V6.5Z"
-      stroke="#00FFFF"
+      stroke="white"
       strokeWidth="1.6"
       strokeLinejoin="round"
     />
-    <path d="M3 10H21" stroke="white" strokeWidth="1.2" strokeLinecap="round" />
+  </svg>
+);
+
+// The layer panel's new-group button: the group row's folder with a plus.
+export const FolderPlusIcon = ({ className }) => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path
+      d="M1.25 3.75C1.25 3.2 1.7 2.75 2.25 2.75H6L7.5 4.35H13.75C14.3 4.35 14.75 4.8 14.75 5.35V12.25C14.75 12.8 14.3 13.25 13.75 13.25H2.25C1.7 13.25 1.25 12.8 1.25 12.25V3.75Z"
+      stroke="white"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M8 6.6V11M5.8 8.8H10.2"
+      stroke="white"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
   </svg>
 );
 
