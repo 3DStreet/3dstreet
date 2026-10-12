@@ -20,6 +20,7 @@
 
 import {
   BACKDROP_CLASS,
+  STREET_CONTAINER_ID,
   canAcceptChild,
   isGroupableItem,
   isStreetContainer,
@@ -303,18 +304,46 @@ export function viewCenterPoint(camera) {
 }
 
 /**
- * Where a new group made with the layer panel's button goes with a group open:
- * inside the innermost open group, with its origin at that group's center.
- * Null with no group open.
+ * Where a new group made with the layer panel's button goes, so it shows up
+ * where the user is looking rather than at the end of a long list.
+ *
+ * With an item selected, the group goes directly above it, in the same parent,
+ * with its origin at the item's position: the user can drop the item straight
+ * in. A selection inside a street or intersection stands for the whole street,
+ * since a group cannot go inside one. With nothing selected (or a fixed layer
+ * such as the environment), the group goes first in the innermost open group,
+ * at its center, or first at the top level, at the origin.
+ *
+ * Returns `{ parentEl, beforeEl, position }`; `beforeEl` may be null when the
+ * parent is empty.
  */
-export function nestedGroupPlacement() {
+export function newGroupPlacement(selectedEl) {
+  let anchor = selectedEl;
+  while (anchor && !canAcceptChild(anchor.parentNode)) {
+    anchor = anchor.parentElement;
+  }
+  if (anchor?.object3D && anchor.id !== 'cameraRig') {
+    const { x, y, z } = anchor.object3D.position;
+    return {
+      parentEl: anchor.parentNode,
+      beforeEl: anchor,
+      position: { x, y, z }
+    };
+  }
   const groupEl = innermostOpenGroup();
-  if (!groupEl) return null;
-  const center = getGroupCenter(groupEl, new THREE.Vector3());
+  if (groupEl) {
+    const center = getGroupCenter(groupEl, new THREE.Vector3());
+    return {
+      parentEl: groupEl,
+      beforeEl: groupEl.firstElementChild,
+      position: { x: center.x, y: center.y, z: center.z }
+    };
+  }
+  const topEl = document.getElementById(STREET_CONTAINER_ID);
   return {
-    parentEl: groupEl,
-    requireParent: true,
-    position: { x: center.x, y: center.y, z: center.z }
+    parentEl: topEl,
+    beforeEl: topEl?.firstElementChild ?? null,
+    position: { x: 0, y: 0, z: 0 }
   };
 }
 

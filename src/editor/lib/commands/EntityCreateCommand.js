@@ -96,6 +96,20 @@ export class EntityCreateCommand extends Command {
         parentEl: this.definition.parentEl.id
       };
     }
+    // `beforeEl`, the sibling to insert before, is kept by id too, so a redo
+    // puts the entity back in the same place.
+    if (
+      this.definition.beforeEl &&
+      typeof this.definition.beforeEl !== 'string'
+    ) {
+      if (!this.definition.beforeEl.id) {
+        this.definition.beforeEl.id = createUniqueId();
+      }
+      this.definition = {
+        ...this.definition,
+        beforeEl: this.definition.beforeEl.id
+      };
+    }
   }
 
   execute(nextCommandCallback) {

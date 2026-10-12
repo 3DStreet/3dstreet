@@ -843,7 +843,13 @@ export function createEntity(definition, cb, parentEl = undefined) {
     { once: true }
   );
 
-  if (parentEl) {
+  // `beforeEl` (an id) inserts before that sibling, when it is still a child
+  // of the parent; otherwise the entity goes at the end.
+  const beforeEl =
+    definition.beforeEl && document.getElementById(definition.beforeEl);
+  if (parentEl && beforeEl?.parentNode === parentEl) {
+    parentEl.insertBefore(entity, beforeEl);
+  } else if (parentEl) {
     parentEl.appendChild(entity);
   } else {
     document

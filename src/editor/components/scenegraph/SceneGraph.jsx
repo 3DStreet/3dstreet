@@ -21,7 +21,7 @@ import {
   isUserGroup
 } from '../../lib/groups/groupModel.js';
 import { isReparentInFlight } from '../../lib/commands/EntityReparentCommand.js';
-import { nestedGroupPlacement } from '../../lib/groups/groupPlacement.js';
+import { newGroupPlacement } from '../../lib/groups/groupPlacement.js';
 import {
   groupGapLevels,
   isNoOpDrop,
@@ -675,12 +675,15 @@ class SceneGraph extends React.Component {
       'data-layer-name': 'Group',
       components: { position: '0 0 0' }
     };
-    // With a group open, the new group goes inside it, at its center.
-    const nested = nestedGroupPlacement();
-    if (nested) {
-      definition.parentEl = nested.parentEl;
-      definition.requireParent = nested.requireParent;
-      definition.components.position = nested.position;
+    // Above the selected item, or first in the list (see newGroupPlacement).
+    const { parentEl, beforeEl, position } = newGroupPlacement(
+      this.props.selectedEntity
+    );
+    if (parentEl) {
+      definition.parentEl = parentEl;
+      definition.beforeEl = beforeEl;
+      definition.requireParent = true;
+      definition.components.position = position;
     }
     AFRAME.INSPECTOR.execute('entitycreate', definition);
   };
