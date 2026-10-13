@@ -478,6 +478,15 @@ intended. The reminder request rides on the job; the reconciler delivers it.
   returned the error to a necessarily-open tab), and failures older than 24h →
   retired silently (guards the first deploy against historic failed jobs whose
   `pending` flag never cleared under the old success-only rule).
+- **Bounded retries (2026-10-13).** The 24h staleness cutoff now applies to
+  success emails too (`STALE_OUTCOME_CUTOFF_MS`). A transient send failure
+  restores `pending` for the sweep, but only up to `MAX_NOTIFY_ATTEMPTS` (5)
+  sends, tracked in `notify.attempts`. A permanent Postmark recipient rejection
+  (422 with ErrorCode 406 inactive / 300 invalid) is never retried: the job is
+  retired with `notify.error: 'undeliverable: …'`, the address is recorded in
+  `emailPrefs/{uid}.undeliverable`, and the sweep counts it as
+  `notify.undeliverable`, not `notify.errored`. Before this, one suppressed
+  address was retried every 10 minutes indefinitely.
 - Deferred: in-app **Jobs panel** reading `generationJobs`, web push.
 
 ### Monitoring — reconciler self-escalation ✅ DONE
