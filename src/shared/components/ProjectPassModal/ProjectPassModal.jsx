@@ -82,7 +82,8 @@ const ProjectPassModal = ({
   isOpen,
   onClose,
   source = 'unknown',
-  onSignIn
+  onSignIn,
+  onBuyTokens
 }) => {
   const { currentUser, setCurrentUser } = useAuthContext();
   const t = useSharedMessages();
@@ -239,8 +240,20 @@ const ProjectPassModal = ({
           )}
           {isSubscriber && (
             <p className={styles.signInCopy}>
-              {t('projectPassSubscriberNote')}
+              {t('projectPassSubscriberNote', {
+                tokens: PROJECT_PASS.tokens,
+                days: passDays
+              })}
             </p>
+          )}
+          {isSubscriber && onBuyTokens && (
+            <button
+              type="button"
+              className={styles.backButton}
+              onClick={onBuyTokens}
+            >
+              {t('projectPassSeeTokenPacks')}
+            </button>
           )}
           <div className={styles.packPriceBlock}>
             <span className={styles.packPrice}>
@@ -318,7 +331,9 @@ ProjectPassModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   source: PropTypes.string,
-  onSignIn: PropTypes.func
+  onSignIn: PropTypes.func,
+  // Subscribers mostly want tokens; offered as an alternative to the pass.
+  onBuyTokens: PropTypes.func
 };
 
 export default ProjectPassModal;

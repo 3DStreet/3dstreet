@@ -335,11 +335,17 @@ const SHARED_MESSAGES = {
     fr: "Votre pass est actif jusqu'au {date}. En acheter un autre ajoute {days} jours."
   },
   projectPassSubscriberNote: {
-    en: 'You already have a subscription. The pass does not change it. If you cancel the subscription, Pro continues until the pass ends.',
-    es: 'Ya tienes una suscripción y el pase no la modifica. Si la cancelas, Pro sigue activo hasta que termine el pase.',
+    en: 'You already have Pro through your subscription. This pass adds {tokens} AI tokens now, and keeps Pro for {days} days if you cancel.',
+    es: 'Ya tienes Pro con tu suscripción. Este pase añade {tokens} tokens de IA ahora y mantiene Pro durante {days} días si cancelas.',
     'pt-BR':
-      'Você já tem uma assinatura e o passe não a altera. Se você cancelar a assinatura, o Pro continua até o fim do passe.',
-    fr: "Vous avez déjà un abonnement, et le pass ne le modifie pas. Si vous résiliez l'abonnement, Pro reste actif jusqu'à la fin du pass."
+      'Você já tem o Pro pela sua assinatura. Este passe adiciona {tokens} tokens de IA agora e mantém o Pro por {days} dias se você cancelar.',
+    fr: 'Vous avez déjà Pro avec votre abonnement. Ce pass ajoute {tokens} jetons IA maintenant et garde Pro pendant {days} jours si vous résiliez.'
+  },
+  projectPassSeeTokenPacks: {
+    en: 'Just need tokens? See token packs',
+    es: '¿Solo necesitas tokens? Ver paquetes de tokens',
+    'pt-BR': 'Só precisa de tokens? Ver pacotes de tokens',
+    fr: 'Besoin de jetons uniquement ? Voir les packs de jetons'
   },
   projectPassBuyCta: {
     en: 'Buy {name}',

@@ -16,6 +16,7 @@ import useStore from '@/store';
 const EditorProjectPassModal = () => {
   const modal = useStore((state) => state.modal);
   const setModal = useStore((state) => state.setModal);
+  const startBuyTokens = useStore((state) => state.startBuyTokens);
   const returnToPreviousModal = useStore(
     (state) => state.returnToPreviousModal
   );
@@ -39,6 +40,7 @@ const EditorProjectPassModal = () => {
       onClose={returnToPreviousModal}
       source={source}
       onSignIn={() => setModal('signin', true)}
+      onBuyTokens={() => startBuyTokens('project_pass_subscriber')}
     />
   );
 };
