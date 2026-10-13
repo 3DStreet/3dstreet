@@ -19,7 +19,9 @@
  *                               rare enough at current volumes that we surface
  *                               it as data instead of building a sweep.
  *   emailPrefs/{uid}          — per-stream suppression state, written by
- *                               postmarkSubscriptionWebhook
+ *                               postmarkSubscriptionWebhook; plus
+ *                               `undeliverable`, the address Postmark
+ *                               permanently rejected (see postmark.js)
  *
  * Streams: 'outbound' is transactional (no unsubscribe). 'conversion' and
  * 'lifecycle' are Postmark broadcast streams that double as the category
@@ -33,7 +35,13 @@ const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('../app-check.js');
 const { isUserProInternal } = require('../token-management.js');
-const { sendPostmarkEmail, getUserInfo } = require('./postmark.js');
+const {
+  sendPostmarkEmail,
+  getUserInfo,
+  isPermanentRecipientError,
+  markUndeliverable,
+  isUndeliverable
+} = require('./postmark.js');
 const { evaluateStopRules } = require('./stop-rules.js');
 const {
   DEFAULT_EMAIL_LOCALE,
@@ -102,7 +110,10 @@ const UNSUBSCRIBE = {
  * Idempotent under concurrent triggers (e.g. a retried Stripe webhook): the
  * stop-rule check and the send claim happen in one Firestore transaction on
  * emailLog/{uid}, so only one caller can claim a given send. On a Postmark
- * failure the claim is rolled back so a later sweep can retry.
+ * failure the claim is rolled back so a later sweep can retry — unless the
+ * failure is a permanent recipient rejection, in which case the address is
+ * recorded as undeliverable and later sends to it are skipped without calling
+ * Postmark.
  *
  * @param {Object} p
  * @param {Object} p.db - Firestore instance
@@ -151,6 +162,12 @@ const sendLifecycleEmail = async ({
   // Async pre-checks happen outside the transaction; the transaction re-checks
   // everything that lives in the summary doc.
   const isPro = rules.stopIfPro ? await isUserProInternal(uid) : false;
+
+  // Postmark already permanently rejected this address; retrying would only
+  // produce the same 422. Applies to every stream, transactional included.
+  if (await isUndeliverable(db, uid, userInfo.email)) {
+    return { action: 'skipped', reason: 'undeliverable' };
+  }
 
   // Broadcast sends respect the recipient's stream-level opt-out. Postmark
   // also suppresses server-side; this check just avoids counting a suppressed
@@ -294,13 +311,23 @@ const sendLifecycleEmail = async ({
         prevEntries.category ?? FieldValue.delete()
       )
       .catch(() => {});
+    const permanent = isPermanentRecipientError(err);
     await sendRef
       .update({
-        status: 'error',
+        status: permanent ? 'rejected' : 'error',
         error: String(err?.message || err),
         sentAt: admin.firestore.FieldValue.serverTimestamp()
       })
       .catch(() => {});
+    if (permanent) {
+      // Not an outage: this one address can't receive mail. Remember it so
+      // the daily sweep stops retrying, and report it as a skip, not an error.
+      await markUndeliverable(db, uid, userInfo.email, err).catch(() => {});
+      console.warn(
+        `Lifecycle email ${emailId} rejected for ${uid} (Postmark ${err.postmarkCode}); marked undeliverable`
+      );
+      return { action: 'skipped', reason: 'undeliverable' };
+    }
     console.error(`Lifecycle email ${emailId} failed for ${uid}:`, err);
     return { action: 'error', reason: err?.message || String(err) };
   }
@@ -461,6 +488,10 @@ const postmarkSubscriptionWebhook = functions
           userId: userRecord.uid,
           email: body.Recipient,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          // Reactivation in Postmark also lifts our undeliverable mark.
+          ...(body.SuppressSending === false
+            ? { undeliverable: admin.firestore.FieldValue.delete() }
+            : {}),
           streams: {
             [stream]: {
               suppressed: body.SuppressSending === true,
