@@ -327,12 +327,17 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Entre ou crie uma conta gratuita para comprar o passe.',
     fr: 'Connectez-vous ou créez un compte gratuit pour acheter le pass.'
   },
+  projectPassActiveLead: {
+    en: 'You have an active pass.',
+    es: 'Tienes un pase activo.',
+    'pt-BR': 'Você tem um passe ativo.',
+    fr: 'Vous avez un pass actif.'
+  },
   projectPassActiveUntil: {
-    en: 'Your pass is active until {date}. Buying another adds {days} days.',
-    es: 'Tu pase está activo hasta el {date}. Si compras otro, se suman {days} días.',
-    'pt-BR':
-      'Seu passe está ativo até {date}. Comprar outro adiciona {days} dias.',
-    fr: "Votre pass est actif jusqu'au {date}. En acheter un autre ajoute {days} jours."
+    en: 'It runs until {date}. Buying another adds {days} days.',
+    es: 'Dura hasta el {date}. Si compras otro, se suman {days} días.',
+    'pt-BR': 'Ele vale até {date}. Comprar outro adiciona {days} dias.',
+    fr: "Il est valable jusqu'au {date}. En acheter un autre ajoute {days} jours."
   },
   projectPassSubscriberNote: {
     en: 'You already have Pro through your subscription. This pass adds {tokens} AI tokens now, and keeps Pro for {days} days if you cancel.',

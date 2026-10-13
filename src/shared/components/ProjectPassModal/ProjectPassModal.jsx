@@ -232,6 +232,9 @@ const ProjectPassModal = ({
         <div className={styles.signInPrompt}>
           {hasActivePass && (
             <p className={styles.signInCopy}>
+              <span className={styles.signInCopyLead}>
+                {t('projectPassActiveLead')}
+              </span>{' '}
               {t('projectPassActiveUntil', {
                 date: formatDate(currentUser.proUntil),
                 days: passDays
