@@ -346,6 +346,13 @@ const SHARED_MESSAGES = {
       'Você já tem o Pro pela sua assinatura. Este passe adiciona {tokens} tokens de IA agora e mantém o Pro por {days} dias se você cancelar.',
     fr: 'Vous avez déjà Pro avec votre abonnement. Ce pass ajoute {tokens} jetons IA maintenant et garde Pro pendant {days} jours si vous résiliez.'
   },
+  projectPassTeamNote: {
+    en: 'You already have Pro through your organization ({domain}). A pass would only add {tokens} AI tokens.',
+    es: 'Ya tienes Pro a través de tu organización ({domain}). Un pase solo añadiría {tokens} tokens de IA.',
+    'pt-BR':
+      'Você já tem o Pro pela sua organização ({domain}). Um passe só adicionaria {tokens} tokens de IA.',
+    fr: 'Vous avez déjà Pro grâce à votre organisation ({domain}). Un pass ajouterait seulement {tokens} jetons IA.'
+  },
   projectPassSeeTokenPacks: {
     en: 'Just need tokens? See token packs',
     es: '¿Solo necesitas tokens? Ver paquetes de tokens',

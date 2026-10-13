@@ -78,7 +78,7 @@ export default function RightPanel({ entity }) {
           ? intl.formatMessage(
               {
                 id: 'rightPanel.planTooltipPass',
-                defaultMessage: '3DStreet Pro until {date}'
+                defaultMessage: '3DStreet Pro (Project Pass) until {date}'
               },
               { date: formatDate(authUser?.proUntil) }
             )

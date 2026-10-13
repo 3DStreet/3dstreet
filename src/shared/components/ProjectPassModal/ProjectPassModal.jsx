@@ -108,6 +108,9 @@ const ProjectPassModal = ({
   // isProPass is expiry-checked server-side (and on the cached status).
   const hasActivePass = !!currentUser?.isProPass && !!currentUser?.proUntil;
   const isSubscriber = !!currentUser?.plan;
+  // Pro through an allowlisted email domain (Pro Team): a pass adds nothing
+  // but tokens for them either.
+  const isTeamPro = !isSubscriber && !!currentUser?.isProTeam;
 
   // Reset internal state whenever the modal closes (see BuyTokensModal).
   useEffect(() => {
@@ -249,7 +252,15 @@ const ProjectPassModal = ({
               })}
             </p>
           )}
-          {isSubscriber && onBuyTokens && (
+          {isTeamPro && (
+            <p className={styles.signInCopy}>
+              {t('projectPassTeamNote', {
+                domain: currentUser?.teamDomain || '',
+                tokens: PROJECT_PASS.tokens
+              })}
+            </p>
+          )}
+          {(isSubscriber || isTeamPro) && onBuyTokens && (
             <button
               type="button"
               className={styles.backButton}
