@@ -675,7 +675,9 @@ const grantProPassForCheckout = async ({ checkoutSession, summary }) => {
     console.error(`pro pass grant failed (${outcome.reason}): session=${checkoutSession.id} userId=${userId}`);
     return false;
   }
-  return true;
+  // Truthy for the caller's success check; carries the new end date for the
+  // confirmation email.
+  return { proUntilMs: outcome.proUntilMs ?? null };
 };
 
 // Internal helper function to check if user is pro (for other functions to use)

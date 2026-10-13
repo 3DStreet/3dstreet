@@ -510,6 +510,29 @@ const stripeWebhook = functions
       if (passSummary) {
         const passGranted = await grantProPassForCheckout({ checkoutSession, summary: passSummary });
         if (!passGranted) return res.sendStatus(500);
+        // Same confirmation a code redemption gets. Deduped per session, so a
+        // webhook retry can't send it twice; never fails the webhook.
+        try {
+          const result = await sendLifecycleEmail({
+            db: admin.firestore(),
+            uid: checkoutSession.metadata.userId,
+            emailId: 'passActivated',
+            category: 'transactional',
+            stream: 'outbound',
+            template: EMAIL_TEMPLATES.passActivated,
+            data: {
+              fromName: null,
+              days: passSummary.days,
+              tokens: passSummary.tokens,
+              proUntilMs: passGranted.proUntilMs,
+              purchased: true
+            },
+            dedupeKey: checkoutSession.id
+          });
+          console.log(`passActivated for session ${checkoutSession.id}:`, JSON.stringify(result));
+        } catch (err) {
+          console.error(`passActivated email failed for session ${checkoutSession.id}:`, err);
+        }
       }
       if (packItems.length > 0) {
         const granted = await grantPurchasedTokens({
