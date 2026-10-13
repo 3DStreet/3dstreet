@@ -7,26 +7,24 @@ import { auth } from '@shared/services/firebase';
 import { saveUserProfile } from '@shared/utils/username';
 import { resolveInitialLocale, persistLocale } from './editor/i18n/config';
 import { EMPTY_ASSET_LOAD_SUMMARY } from './asset-load-tracker';
-import { isProjectPassHash, isRedeemHash } from './tested/project-pass-link.js';
+import { isRedeemHash } from './tested/project-pass-link.js';
 
 const firstModal = () => {
   const hash = window.location.hash;
   // A path-form scene URL (/scenes/UUID, #1970) is a deep link like the old
   // hash form: the scene is loading, so no intro modal.
   const isSceneDeepLink = window.location.pathname.startsWith('/scenes/');
-  // `#project-pass` and `#redeem` (#1922) are matched as exact routes first, so they can
-  // never be shadowed by (or shadow) the substring checks below.
-  let modal = isProjectPassHash(hash)
-    ? 'project-pass'
-    : isRedeemHash(hash)
-      ? 'redeem-pass'
-      : hash.includes('payment')
-        ? 'payment'
-        : hash.includes('profile') || hash.includes('/modal/profile')
-          ? 'profile'
-          : !hash.length && !isSceneDeepLink
-            ? 'new'
-            : null;
+  // `#redeem` (Project Pass codes, #1922) is matched as an exact route first,
+  // so it can never be shadowed by (or shadow) the substring checks below.
+  let modal = isRedeemHash(hash)
+    ? 'redeem-pass'
+    : hash.includes('payment')
+      ? 'payment'
+      : hash.includes('profile') || hash.includes('/modal/profile')
+        ? 'profile'
+        : !hash.length && !isSceneDeepLink
+          ? 'new'
+          : null;
   const isStreetMix = hash.includes('streetmix');
   if (isStreetMix) {
     modal = localStorage.getItem('shownIntro') ? null : 'intro';

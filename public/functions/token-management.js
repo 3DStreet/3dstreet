@@ -532,9 +532,8 @@ const grantPurchasedTokens = async ({ checkoutSession, items }) => {
 // (`pass-<idempotencyKey>`). A repeat call with the same key re-reads that
 // row and no-ops, so retries can never double-grant (600 tokens / 180 days
 // for one payment). Callers:
-//   - Stripe checkout (stripe.js → grantProPassForCheckout): key = checkout
-//     session id
-//   - (future) pass-code redemption: key = the redemption id
+//   - pass-code redemption (pass-codes.js): key = the redemption id
+//   - (follow-up) self-serve Stripe checkout: key = the checkout session id
 // Never touches plan claims, so an active subscriber who gets a pass keeps
 // their plan; deleting the subscription later clears only `plan` and leaves
 // proUntil standing.
@@ -546,8 +545,8 @@ const grantPurchasedTokens = async ({ checkoutSession, items }) => {
 // `sessionId` (optional) is appended to tokenProfile.proPassSessionIds for
 // support lookups.
 // Returns { granted: true, alreadyGranted, proUntilMs } when durably
-// recorded, or { granted: false, reason } when the input is unusable — the
-// webhook maps that to non-2xx so Stripe retries.
+// recorded, or { granted: false, reason } when the input is unusable (the
+// caller reports failure; redemption maps it to an 'internal' error).
 const grantPass = async (
   userId,
   { days, tokens = 0, idempotencyKey, source, details = {}, sessionId = null } = {}
@@ -643,41 +642,6 @@ const grantPass = async (
   return { granted: true, ...result };
 };
 
-// Stripe checkout adapter over grantPass: idempotency key = checkout session
-// id; `summary` is summarizePassItems() output. Returns true when durably
-// recorded (including the already-granted retry), false otherwise.
-const grantProPassForCheckout = async ({ checkoutSession, summary }) => {
-  if (!summary || !Array.isArray(summary.items) || summary.items.length === 0) {
-    console.error(`pro pass purchase with no pass items: session=${checkoutSession.id}`);
-    return false;
-  }
-  const userId = checkoutSession.metadata?.userId;
-  const outcome = await grantPass(userId, {
-    days: summary.days,
-    tokens: summary.tokens,
-    idempotencyKey: checkoutSession.id,
-    source: summary.source,
-    sessionId: checkoutSession.id,
-    details: {
-      passes: summary.items.map(({ pass, quantity }) => ({
-        passId: pass.id,
-        passDays: pass.days,
-        passTokens: pass.tokens,
-        quantity
-      })),
-      checkoutSource: checkoutSession.metadata?.source ?? null,
-      amountTotal: checkoutSession.amount_total ?? null, // smallest currency unit (e.g. cents)
-      currency: checkoutSession.currency ?? null,
-      stripeSessionId: checkoutSession.id
-    }
-  });
-  if (!outcome.granted) {
-    console.error(`pro pass grant failed (${outcome.reason}): session=${checkoutSession.id} userId=${userId}`);
-    return false;
-  }
-  return true;
-};
-
 // Internal helper function to check if user is pro (for other functions to use)
 // Same rule as checkUserProStatus (hasProEntitlement): subscription claim OR
 // team domain OR unexpired pass. The pass read is skipped when the cheaper
@@ -701,7 +665,6 @@ module.exports = {
   chargeGenerationTokens,
   grantPurchasedTokens,
   grantPass,
-  grantProPassForCheckout,
   readProUntil,
   validateUserDomain,
   checkUserProStatus,

@@ -1,6 +1,10 @@
 /**
- * `#project-pass` deep link (#1922): opens the one-time Project Pass checkout
- * (ProjectPassModal) instead of loading a scene. An optional channel tag
+ * Project Pass deep links (#1922).
+ *
+ * `#redeem?code=CODE` opens pass-code redemption (RedeemPassModal, wired in
+ * store.firstModal). `#project-pass` is reserved for the self-serve checkout
+ * follow-up and is not routed yet; its helpers below are ready for it:
+ * it opens the one-time Project Pass checkout instead of loading a scene. An optional channel tag
  * rides along for attribution — `#project-pass?src=winback` or
  * `#project-pass&src=winback` — and is passed into the Stripe checkout
  * metadata and the checkout analytics events.
