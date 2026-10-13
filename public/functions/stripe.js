@@ -135,6 +135,17 @@ const createStripeSession = functions
       data.metadata = {};
     }
     data.metadata.userId = userId;
+    // `source` is client-supplied attribution. Hold it to the same contract as
+    // the client parser (SOURCE_RE in src/tested/project-pass-link.js) so a
+    // direct callable can't stuff arbitrary strings into Stripe/Firestore.
+    if ('source' in data.metadata) {
+      const src = data.metadata.source;
+      if (typeof src === 'string' && /^[a-z0-9_-]{1,40}$/i.test(src)) {
+        data.metadata.source = src.toLowerCase();
+      } else {
+        delete data.metadata.source;
+      }
+    }
     // Server-derived product tag (the client may also pass `source`, e.g.
     // 'winback', for channel attribution). Lets Stripe, checkoutSessions and
     // the webhook logs tell a pass from a pack from a subscription.

@@ -534,7 +534,7 @@ const grantPurchasedTokens = async ({ checkoutSession, items }) => {
 // for one payment). Callers:
 //   - Stripe checkout (stripe.js → grantProPassForCheckout): key = checkout
 //     session id
-//   - (future) pass-code redemption: key = the redemption id
+//   - Pass-code redemption (pass-codes.js): key = the redemption id
 // Never touches plan claims, so an active subscriber who gets a pass keeps
 // their plan; deleting the subscription later clears only `plan` and leaves
 // proUntil standing.
