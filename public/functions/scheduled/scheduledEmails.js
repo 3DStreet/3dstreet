@@ -2,7 +2,13 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { assertAppCheck } = require('../app-check.js');
 const { withJobHealth } = require('./job-health.js');
-const { sendPostmarkEmail, getUserInfo } = require('../email/postmark.js');
+const {
+  sendPostmarkEmail,
+  getUserInfo,
+  isPermanentRecipientError,
+  markUndeliverable,
+  isUndeliverable
+} = require('../email/postmark.js');
 const { sendLifecycleEmail } = require('../email/lifecycle-email.js');
 const TEMPLATES = require('../email/templates.js');
 
@@ -433,12 +439,17 @@ const hasLegacyNotifyLogEntry = (notifyLog, notifyLogField) => {
   return true;
 };
 
-// Failure emails older than this are retired unsent (pending cleared, no
-// email). Guards the first deploy against a backfill flood of historic
-// failed jobs whose pending flag never cleared under the old success-only
-// rule, and generally against emailing about a failure the user has long
-// moved past.
-const STALE_FAILURE_CUTOFF_MS = DAY_MS;
+// Outcome emails (success or failure) older than this are retired unsent
+// (pending cleared, no email). A "your generation is ready" or "didn't
+// finish" email a day late is noise, and the cutoff bounds how long a job
+// that keeps failing to send can sit in the sweep. Originally failure-only,
+// to guard the first deploy against a backfill flood of historic failed jobs.
+const STALE_OUTCOME_CUTOFF_MS = DAY_MS;
+
+// Transient send failures (Postmark 5xx/429, network, Auth lookup) restore
+// `notify.pending` for the 10-min sweep to retry, at most this many sends in
+// total. Permanent recipient rejections aren't retried at all.
+const MAX_NOTIFY_ATTEMPTS = 5;
 
 /**
  * Send the outcome email for a single terminal, opted-in job, exactly once:
@@ -455,16 +466,18 @@ const STALE_FAILURE_CUTOFF_MS = DAY_MS;
  *     who's watching.
  *   - Failed jobs with no providerJobId are retired silently: the failure
  *     happened during submit, so the callable returned the error straight to
- *     the still-open tab. Same for failures older than the staleness cutoff.
- *   - On a send failure we restore `notify.pending` so the sweep retries later
- *     (fail-safe: a transient Postmark/Auth error never silently drops the
- *     notification).
+ *     the still-open tab. Any outcome older than the staleness cutoff is
+ *     retired too.
+ *   - On a transient send failure we restore `notify.pending` so the sweep
+ *     retries later, up to MAX_NOTIFY_ATTEMPTS sends. A permanent recipient
+ *     rejection (Postmark 406/300) is final: pending stays cleared and the
+ *     address is marked undeliverable so later jobs skip it up front.
  *
  * The transaction re-checks eligibility against the live doc regardless of
  * what the caller saw. dryRun reports what would send without claiming or
  * sending.
  *
- * @returns {Promise<{action: 'sent'|'suppressed'|'skip'|'no-email'|'would-send'|'error', error?: string}>}
+ * @returns {Promise<{action: 'sent'|'suppressed'|'undeliverable'|'skip'|'no-email'|'would-send'|'error', error?: string}>}
  */
 const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
   const { dryRun = false } = options;
@@ -492,6 +505,10 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
     // for a batch while a sibling may still succeed; only the LAST finisher
     // of an all-failed batch claims it, so the failure-email contract
     // ("didn't finish, tokens refunded") holds for batches too.
+    const doneMs =
+      job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || 0;
+    const stale = doneMs && Date.now() - doneMs > STALE_OUTCOME_CUTOFF_MS;
+
     const batchId = job.notify?.batchId || null;
     if (batchId) {
       batchRef = db
@@ -500,16 +517,13 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
         .collection('notifyBatches')
         .doc(batchId);
       const batchSnap = await tx.get(batchRef);
-      if (batchSnap.exists) {
+      if (batchSnap.exists || stale) {
         outcome = 'suppressed';
         if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
         return;
       }
       if (failed) {
-        // Same submit-time/staleness guards as the single-job failure path.
-        const doneMs =
-          job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || 0;
-        const stale = doneMs && Date.now() - doneMs > STALE_FAILURE_CUTOFF_MS;
+        // Same submit-time guard as the single-job failure path.
         const sibSnap = await tx.get(
           db
             .collection('users')
@@ -522,7 +536,7 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
         const allTerminal = siblings.every((s) =>
           ['succeeded', 'failed', 'canceled'].includes(s.status)
         );
-        if (anySucceeded || !allTerminal || !job.providerJobId || stale) {
+        if (anySucceeded || !allTerminal || !job.providerJobId) {
           outcome = 'suppressed';
           if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
           return;
@@ -572,15 +586,10 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
       if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
       return;
     }
-    if (failed) {
-      const doneMs =
-        job.completedAt?.toMillis?.() || job.createdAt?.toMillis?.() || 0;
-      const stale = doneMs && Date.now() - doneMs > STALE_FAILURE_CUTOFF_MS;
-      if (!job.providerJobId || stale) {
-        outcome = 'suppressed';
-        if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
-        return;
-      }
+    if (stale || (failed && !job.providerJobId)) {
+      outcome = 'suppressed';
+      if (!dryRun) tx.update(jobRef, { 'notify.pending': false });
+      return;
     }
     if (dryRun) {
       outcome = 'would-send';
@@ -595,12 +604,19 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
     return { action: outcome === 'would-send' ? 'would-send' : outcome };
   }
 
+  let userInfo = null;
   try {
-    const userInfo = await getUserInfo(uid);
+    userInfo = await getUserInfo(uid);
     if (!userInfo?.email) {
       // No address on file — pending is already cleared; record why and stop.
       await jobRef.update({ 'notify.error': 'no-email' });
       return { action: 'no-email' };
+    }
+    if (await isUndeliverable(db, uid, userInfo.email)) {
+      // Postmark already permanently rejected this address. Pending is
+      // cleared by the claim; don't spend another send on it.
+      await jobRef.update({ 'notify.error': 'undeliverable' });
+      return { action: 'undeliverable' };
     }
 
     // Kind-aware copy. Project-aware base so a dev/staging email deep-links to
@@ -660,18 +676,48 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
     });
     return { action: 'sent' };
   } catch (err) {
-    // Restore the flag so the backstop sweep retries — never drop it silently.
-    // For a batch claim, also roll the marker back: leaving it would make
-    // every retry (this job's or a sibling's) read "already decided" and the
-    // batch's email would be lost.
+    const errorText = String(err?.message || err);
+    const attempts = (job.notify?.attempts || 0) + 1;
+
+    // Permanent rejection: retrying gives the same 422 forever. Leave pending
+    // cleared (and any batch marker in place, so siblings stay quiet too) and
+    // remember the address so this user's later jobs skip it up front.
+    if (isPermanentRecipientError(err)) {
+      await jobRef
+        .update({
+          'notify.attempts': attempts,
+          'notify.error': `undeliverable: ${errorText}`
+        })
+        .catch(() => {});
+      await markUndeliverable(db, uid, userInfo.email, err).catch(() => {});
+      return { action: 'undeliverable', error: errorText };
+    }
+
+    // Out of retries: give up, keeping the batch marker so siblings don't
+    // each start their own retry run. Still reported as an error this once.
+    if (attempts >= MAX_NOTIFY_ATTEMPTS) {
+      await jobRef
+        .update({
+          'notify.attempts': attempts,
+          'notify.error': `gave up after ${attempts} attempts: ${errorText}`
+        })
+        .catch(() => {});
+      return { action: 'error', error: errorText };
+    }
+
+    // Transient: restore the flag so the backstop sweep retries — never drop
+    // it silently. For a batch claim, also roll the marker back: leaving it
+    // would make every retry (this job's or a sibling's) read "already
+    // decided" and the batch's email would be lost.
     await jobRef
       .update({
         'notify.pending': true,
-        'notify.error': String(err?.message || err)
+        'notify.attempts': attempts,
+        'notify.error': errorText
       })
       .catch(() => {});
     if (batchRef) await batchRef.delete().catch(() => {});
-    return { action: 'error', error: err?.message || String(err) };
+    return { action: 'error', error: errorText };
   }
 };
 
@@ -695,6 +741,7 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
       alreadySent: 0,
       noEmail: 0,
       filtered: 0,
+      undeliverable: 0, // Postmark permanently rejects the address
       error: 0
     }
   };
@@ -797,7 +844,9 @@ const processEmailType = async (db, emailTypeKey, emailType, options = {}) => {
         case 'skipped':
           // 'pro' and 'unsubscribed' are eligibility filters; everything else
           // ('onceEver', cooldowns, dedupe) means a prior send blocked this one.
-          if (result.reason === 'pro' || result.reason === 'unsubscribed') {
+          if (result.reason === 'undeliverable') {
+            results.skipped.undeliverable++;
+          } else if (result.reason === 'pro' || result.reason === 'unsubscribed') {
             results.skipped.filtered++;
           } else {
             results.skipped.alreadySent++;

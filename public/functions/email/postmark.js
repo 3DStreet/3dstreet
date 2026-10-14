@@ -6,6 +6,7 @@
  * sendPostmarkEmail so stream routing and error handling live in one place.
  */
 
+const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 
 const POSTMARK_API_URL = 'https://api.postmarkapp.com/email';
@@ -61,10 +62,58 @@ const sendPostmarkEmail = async (
     console.error(
       `Postmark API error sending to ${toEmail}: status=${response.status}, body=${errorText}`
     );
-    throw new Error(`Postmark API error (${response.status}): ${errorText}`);
+    const err = new Error(`Postmark API error (${response.status}): ${errorText}`);
+    err.status = response.status;
+    try {
+      err.postmarkCode = JSON.parse(errorText).ErrorCode ?? null;
+    } catch {
+      err.postmarkCode = null;
+    }
+    throw err;
   }
 
   return response.json();
+};
+
+// Postmark ErrorCodes that mean "this recipient can never be emailed as-is":
+// 406 = inactive recipient (hard bounce, spam complaint or manual
+// suppression), 300 = invalid email address. Deliberately NOT every 4xx:
+// account/config problems (bad sender signature, unapproved account) also
+// return 422, and treating those as permanent would silently drop every email
+// during a misconfiguration. Those stay retryable, bounded by callers' caps.
+const PERMANENT_RECIPIENT_CODES = new Set([300, 406]);
+
+/** True when a sendPostmarkEmail error will fail the same way on every retry. */
+const isPermanentRecipientError = (err) =>
+  err?.status === 422 && PERMANENT_RECIPIENT_CODES.has(err?.postmarkCode);
+
+// Undeliverable-address memory: emailPrefs/{uid}.undeliverable records the
+// address Postmark permanently rejected, so sweeps skip it up front instead of
+// re-hitting Postmark every run. Keyed to the address, so a user who changes
+// their email is emailable again; postmarkSubscriptionWebhook clears it when
+// Postmark reactivates the recipient.
+const markUndeliverable = async (db, uid, email, err) => {
+  await db
+    .collection('emailPrefs')
+    .doc(uid)
+    .set(
+      {
+        userId: uid,
+        undeliverable: {
+          email,
+          code: err?.postmarkCode ?? null,
+          error: String(err?.message || err),
+          at: admin.firestore.FieldValue.serverTimestamp()
+        }
+      },
+      { merge: true }
+    );
+};
+
+const isUndeliverable = async (db, uid, email) => {
+  const snap = await db.collection('emailPrefs').doc(uid).get();
+  const rec = snap.exists ? snap.data()?.undeliverable : null;
+  return !!rec && rec.email === email;
 };
 
 /**
@@ -89,4 +138,10 @@ const getUserInfo = async (userId) => {
   }
 };
 
-module.exports = { sendPostmarkEmail, getUserInfo };
+module.exports = {
+  sendPostmarkEmail,
+  getUserInfo,
+  isPermanentRecipientError,
+  markUndeliverable,
+  isUndeliverable
+};
