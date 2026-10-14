@@ -279,13 +279,97 @@ const SHARED_MESSAGES = {
     'pt-BR': '{tokens} tokens já estão na sua conta.',
     fr: '{tokens} jetons ont été ajoutés à votre compte.'
   },
-  // Project Pass (#1922) — one-time time-boxed Pro. `projectPassName` is the
-  // product's display name: rename the pass here only.
+  // ProjectPassModal — one-time time-boxed Pro pass (#1922), opened by the
+  // #project-pass deep link. `projectPassName` is the product's display name:
+  // rename the pass here only.
   projectPassName: {
     en: 'Project Pass',
     es: 'Pase de Proyecto',
     'pt-BR': 'Passe de Projeto',
     fr: 'Pass Projet'
+  },
+  projectPassSubtitle: {
+    en: '{months} months of 3DStreet Pro for one payment. No subscription, no auto-renewal.',
+    es: '{months} meses de 3DStreet Pro con un solo pago. Sin suscripción ni renovación automática.',
+    'pt-BR':
+      '{months} meses de 3DStreet Pro com um único pagamento. Sem assinatura e sem renovação automática.',
+    fr: '{months} mois de 3DStreet Pro en un seul paiement. Sans abonnement ni renouvellement automatique.'
+  },
+  projectPassFeatPro: {
+    en: 'All Pro features for {days} days',
+    es: 'Todas las funciones Pro durante {days} días',
+    'pt-BR': 'Todos os recursos Pro por {days} dias',
+    fr: 'Toutes les fonctionnalités Pro pendant {days} jours'
+  },
+  projectPassFeatTokens: {
+    en: '{tokens} AI tokens up front, yours to keep',
+    es: '{tokens} tokens de IA por adelantado, sin vencimiento',
+    'pt-BR': '{tokens} tokens de IA antecipados, que não expiram',
+    fr: "{tokens} jetons IA d'emblée, qui n'expirent pas"
+  },
+  projectPassFeatExports: {
+    en: 'Watermark-free downloads, unlimited geospatial maps and custom model uploads',
+    es: 'Descargas sin marca de agua, mapas geoespaciales ilimitados y carga de modelos personalizados',
+    'pt-BR':
+      "Downloads sem marca d'água, mapas geoespaciais ilimitados e upload de modelos personalizados",
+    fr: 'Téléchargements sans filigrane, cartes géospatiales illimitées et import de modèles personnalisés'
+  },
+  projectPassFeatKeep: {
+    en: 'When it ends you return to the free plan. Your scenes and files stay.',
+    es: 'Al terminar vuelves al plan gratuito. Tus escenas y archivos se conservan.',
+    'pt-BR':
+      'Quando terminar, você volta ao plano gratuito. Suas cenas e arquivos continuam salvos.',
+    fr: 'À la fin, vous revenez au forfait gratuit. Vos scènes et fichiers sont conservés.'
+  },
+  projectPassSignInPrompt: {
+    en: 'Sign in or create a free account to buy the pass.',
+    es: 'Inicia sesión o crea una cuenta gratuita para comprar el pase.',
+    'pt-BR': 'Entre ou crie uma conta gratuita para comprar o passe.',
+    fr: 'Connectez-vous ou créez un compte gratuit pour acheter le pass.'
+  },
+  projectPassActiveLead: {
+    en: 'You have an active pass.',
+    es: 'Tienes un pase activo.',
+    'pt-BR': 'Você tem um passe ativo.',
+    fr: 'Vous avez un pass actif.'
+  },
+  projectPassActiveUntil: {
+    en: 'It runs until {date}. Buying another adds {days} days.',
+    es: 'Dura hasta el {date}. Si compras otro, se suman {days} días.',
+    'pt-BR': 'Ele vale até {date}. Comprar outro adiciona {days} dias.',
+    fr: "Il est valable jusqu'au {date}. En acheter un autre ajoute {days} jours."
+  },
+  projectPassSubscriberNote: {
+    en: 'You already have Pro through your subscription. This pass adds {tokens} AI tokens now, and keeps Pro for {days} days if you cancel.',
+    es: 'Ya tienes Pro con tu suscripción. Este pase añade {tokens} tokens de IA ahora y mantiene Pro durante {days} días si cancelas.',
+    'pt-BR':
+      'Você já tem o Pro pela sua assinatura. Este passe adiciona {tokens} tokens de IA agora e mantém o Pro por {days} dias se você cancelar.',
+    fr: 'Vous avez déjà Pro avec votre abonnement. Ce pass ajoute {tokens} jetons IA maintenant et garde Pro pendant {days} jours si vous résiliez.'
+  },
+  projectPassTeamNote: {
+    en: 'You already have Pro through your organization ({domain}). A pass would only add {tokens} AI tokens.',
+    es: 'Ya tienes Pro a través de tu organización ({domain}). Un pase solo añadiría {tokens} tokens de IA.',
+    'pt-BR':
+      'Você já tem o Pro pela sua organização ({domain}). Um passe só adicionaria {tokens} tokens de IA.',
+    fr: 'Vous avez déjà Pro grâce à votre organisation ({domain}). Un pass ajouterait seulement {tokens} jetons IA.'
+  },
+  projectPassSeeTokenPacks: {
+    en: 'Just need tokens? See token packs',
+    es: '¿Solo necesitas tokens? Ver paquetes de tokens',
+    'pt-BR': 'Só precisa de tokens? Ver pacotes de tokens',
+    fr: 'Besoin de jetons uniquement ? Voir les packs de jetons'
+  },
+  projectPassBuyCta: {
+    en: 'Buy {name}',
+    es: 'Comprar {name}',
+    'pt-BR': 'Comprar {name}',
+    fr: 'Acheter {name}'
+  },
+  projectPassUnavailable: {
+    en: 'The pass is not available yet on this deployment. Please check back soon.',
+    es: 'El pase aún no está disponible en esta versión. Vuelve pronto.',
+    'pt-BR': 'O passe ainda não está disponível nesta versão. Volte em breve.',
+    fr: "Le pass n'est pas encore disponible sur ce déploiement. Revenez bientôt."
   },
   projectPassSuccessTitle: {
     en: 'Pro is unlocked!',

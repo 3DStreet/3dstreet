@@ -1971,7 +1971,7 @@
     "defaultMessage": "Plan: Pro"
   },
   "profileModal.planProPass": {
-    "defaultMessage": "Plan: Pro until {date}"
+    "defaultMessage": "Plan: Pro (Project Pass) until {date}"
   },
   "profileModal.planProTeam": {
     "defaultMessage": "Plan: Pro Team ({domain})"
@@ -2085,7 +2085,7 @@
     "defaultMessage": "3DStreet Max Plan"
   },
   "rightPanel.planTooltipPass": {
-    "defaultMessage": "3DStreet Pro until {date}"
+    "defaultMessage": "3DStreet Pro (Project Pass) until {date}"
   },
   "rightPanel.planTooltipPro": {
     "defaultMessage": "3DStreet Pro Plan"
