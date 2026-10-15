@@ -25,7 +25,7 @@ import {
   cloneSelectedEntity,
   removeSelectedEntity,
   ensureViewerStartAtCurrentView
-} from '../../lib/entity.js';
+} from '../../lib/entity.jsx';
 import { editShortcuts } from '../../lib/editShortcuts.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
@@ -40,6 +40,7 @@ import {
   COMPASS_NORTH_TOLERANCE_DEGREES
 } from '@/editor/lib/nav-experimental/index.js';
 import { captureNavDiscovery } from '@/editor/lib/navAnalytics.js';
+import { beginPlacement } from '@/editor/lib/groups/groupPlacement.js';
 
 // Menu twin of the compass body: "Plan View" when the camera is not
 // top-down, "Point North" once it is, disabled when both top-down and
@@ -126,12 +127,16 @@ const AppMenu = ({ currentUser }) => {
   };
 
   const importAssetFromPicker = () => {
+    // With a group open, the import goes into the group open at the click.
+    const ticket = beginPlacement();
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = FILE_PICKER_ACCEPT;
     input.onchange = async (event) => {
       const file = event.target.files?.[0];
-      if (file) await uploadAndPlaceAsset(file);
+      if (file) {
+        await uploadAndPlaceAsset(file, undefined, undefined, ticket);
+      }
     };
     input.click();
   };
@@ -742,7 +747,8 @@ const AppMenu = ({ currentUser }) => {
               onClick={() => {
                 // The scene's Starting View (viewer-start): where visitors
                 // open the scene and where Start flies. Creates it on first
-                // use, moves it after, and selects it either way.
+                // use, moves it after, and selects it either way unless a
+                // group is open.
                 ensureViewerStartAtCurrentView({ select: true });
                 STREET.notify.successMessage(
                   'Starting View set to current camera view'

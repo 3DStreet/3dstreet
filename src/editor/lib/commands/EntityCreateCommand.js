@@ -1,6 +1,12 @@
 import Events from '../Events';
 import { Command } from '../command.js';
-import { createEntity, createUniqueId } from '../entity.js';
+import { createEntity, createUniqueId } from '../entity.jsx';
+import { isGroupableItem, isSystemItem } from '../groups/groupModel.js';
+import {
+  beginPlacement,
+  notePlacedOutsideOpenGroup,
+  placeDefinition
+} from '../groups/groupPlacement.js';
 
 /**
  * @param editor Editor
@@ -54,7 +60,14 @@ export class EntityCreateCommand extends Command {
       }
     };
     if (args.mixin) payload.mixin = args.mixin;
-    return payload;
+    // The model gives world values; with a group open the entity goes into
+    // it, keeping them, as an entity added from the panel would.
+    const placed = placeDefinition(
+      payload,
+      beginPlacement({ groupable: isGroupableItem(payload) })
+    );
+    if (placed.refusal) throw new Error(placed.refusal);
+    return placed.definition;
   }
 
   constructor(editor, definition, callback = undefined) {
@@ -83,6 +96,20 @@ export class EntityCreateCommand extends Command {
         parentEl: this.definition.parentEl.id
       };
     }
+    // `beforeEl`, the sibling to insert before, is kept by id too, so a redo
+    // puts the entity back in the same place.
+    if (
+      this.definition.beforeEl &&
+      typeof this.definition.beforeEl !== 'string'
+    ) {
+      if (!this.definition.beforeEl.id) {
+        this.definition.beforeEl.id = createUniqueId();
+      }
+      this.definition = {
+        ...this.definition,
+        beforeEl: this.definition.beforeEl.id
+      };
+    }
   }
 
   execute(nextCommandCallback) {
@@ -105,8 +132,16 @@ export class EntityCreateCommand extends Command {
       definition = { ...this.definition, id: this.entityId };
     }
 
+    const firstRun = !this.entityId;
     const entity = createEntity(definition, callback, parentEl);
     this.entityId = entity.id;
+    if (firstRun) {
+      notePlacedOutsideOpenGroup(entity, {
+        requireParent: this.definition.requireParent,
+        groupable: isGroupableItem(this.definition),
+        system: isSystemItem(this.definition)
+      });
+    }
     return entity;
   }
 

@@ -13,11 +13,16 @@ repository root; bare filenames name modules within this subsystem.
 
 **`Inspector.execute` can now refuse.** It returns the `TRANSFORM_REFUSED`
 symbol (`src/editor/lib/transformGuard.js`) instead of running a command that
-would violate a transform-capability marker on the target entity — test for the
-symbol, not for a falsy return, since the success path returns `undefined`. The
-markers are `data-transform-no-scale`, `data-transform-yaw-only` and
-`data-transform-no-reparent`; an entity opts in by carrying the attribute and
-the guard is otherwise entity-type-agnostic. They are **not** the same thing as
+would violate a transform-capability marker on the target entity or the
+hierarchy rules — test for the symbol, not for a falsy return, since the
+success path returns `undefined`. The markers are `data-transform-no-scale`,
+`data-transform-yaw-only`, `data-transform-uniform-scale` and
+`data-transform-no-reparent`; an entity opts in by carrying the attribute (a
+user group implies yaw-only and uniform-scale by its class). The hierarchy
+rules refuse a move to another parent that `canReparent`
+(`src/editor/lib/groups/groupModel.js`) rejects or that could not keep the
+item's world pose, and a create or paste whose `requireParent` parent can no
+longer take the item. The markers are **not** the same thing as
 the far more common `data-no-transform`, which is a UI gate only (it hides the
 properties-panel transform rows and the gizmo) and is enforced nowhere at the
 command layer. Coverage is every command route — properties panel, AI chat,
@@ -71,6 +76,12 @@ and `logdepthbuf` pars/vertex/fragment chunks. Without them its depth is on a
 different scale from every built-in material and it occludes, or is occluded
 by, real geometry at random (#1988, #2009).
 
+**User groups:** entities with the `user-group` class, which users make, open
+for editing (`inspector.groupScope`) and move items into. Which parent an item
+may take is decided only by `canReparent` in `src/editor/lib/groups/groupModel.js`;
+per-frame work that must see final transforms registers in the editor frame
+window (`src/editor/lib/editorFrame.js`). Doc is [docs/groups.md](../groups.md).
+
 **Street gizmos:** always-on viewport handles for managed streets (endpoint
 nodes that rewrite position/rotation/length, segment width bars), additive to
 the standard TransformControls gizmo. Code in `src/editor/lib/gizmos/`; doc is
@@ -90,4 +101,4 @@ scenes (pref also in panelPrefs). Scene graph rows: expand arrow left of the
 name, and a right-justified overlay bar carries passive role badges plus the
 hover-revealed visibility eye (slashed eye stays visible when hidden).
 
-**Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
+**Layer Reordering:** Drag-and-drop reordering of layers in the SceneGraph, within a parent and between the top level and user groups; where groups end, the pointer's x picks the level (`docs/groups.md`). Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.

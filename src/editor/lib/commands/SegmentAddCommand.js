@@ -1,6 +1,6 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
-import { createUniqueId } from '../entity.js';
+import { createUniqueId } from '../entity.jsx';
 import { captureSegmentEdit, SEGMENT_OPS } from '../segmentAnalytics.js';
 
 /**

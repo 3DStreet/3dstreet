@@ -20,6 +20,11 @@ export default class Vec3Widget extends React.Component {
     // by default so position/rotation and other vec3 props keep independent
     // axes.
     linkable: PropTypes.bool,
+    // For a scale that must stay uniform (a user group): the axes are always
+    // linked, the toggle is hidden and the stored link preference is neither
+    // read nor written, so it keeps its value for every other entity. A
+    // scale that is already uneven is shown read-only until reset.
+    forceLinked: PropTypes.bool,
     linkTitle: PropTypes.string,
     unlinkTitle: PropTypes.string,
     // Tooltip while the link is unavailable because the axes differ.
@@ -39,8 +44,11 @@ export default class Vec3Widget extends React.Component {
   // Linking only applies to a uniform scale; a non-uniform one (e.g. after
   // unlinked edits) keeps independent axes until reset makes it uniform.
   isLinkActive() {
+    const { linkable, forceLinked } = this.props;
     return (
-      this.props.linkable && this.state.linked && isUniformScale(this.state)
+      linkable &&
+      (forceLinked || this.state.linked) &&
+      isUniformScale(this.state)
     );
   }
 
@@ -58,6 +66,7 @@ export default class Vec3Widget extends React.Component {
   };
 
   toggleLinked = () => {
+    if (this.props.forceLinked) return;
     const linked = !this.state.linked;
     writeScaleLinked(linked);
     this.setState({ linked });
@@ -75,16 +84,27 @@ export default class Vec3Widget extends React.Component {
   }
 
   render() {
-    const { linkable, linkTitle, unlinkTitle, linkUnavailableTitle } =
-      this.props;
+    const {
+      linkable,
+      forceLinked,
+      linkTitle,
+      unlinkTitle,
+      linkUnavailableTitle
+    } = this.props;
     const { linked } = this.state;
     const uniform = isUniformScale(this.state);
+    const readOnly = !!forceLinked && !uniform;
+    const fieldProps = {
+      onChange: this.onChange,
+      readOnly,
+      title: readOnly ? linkUnavailableTitle : undefined
+    };
     return (
       <div className="vec3">
-        <NumberWidget name="x" value={this.state.x} onChange={this.onChange} />
-        <NumberWidget name="y" value={this.state.y} onChange={this.onChange} />
-        <NumberWidget name="z" value={this.state.z} onChange={this.onChange} />
-        {linkable && (
+        <NumberWidget name="x" {...fieldProps} value={this.state.x} />
+        <NumberWidget name="y" {...fieldProps} value={this.state.y} />
+        <NumberWidget name="z" {...fieldProps} value={this.state.z} />
+        {linkable && !forceLinked && (
           <button
             type="button"
             className={`vec3-tool vec3-link${

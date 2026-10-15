@@ -15,6 +15,7 @@ import { defineMessages, injectIntl } from 'react-intl';
 import { AwesomeIcon } from './AwesomeIcon';
 import { faArrowRotateLeft } from '@fortawesome/free-solid-svg-icons';
 import { areVectorsEqual } from '../../lib/utils.js';
+import { isUserGroup } from '../../lib/groups/groupModel.js';
 
 const messages = defineMessages({
   resetToDefault: {
@@ -199,6 +200,7 @@ class PropertyRow extends React.Component {
           <Vec3Widget
             {...widgetProps}
             linkable={linkable}
+            forceLinked={linkable && isUserGroup(props.entity)}
             linkTitle={props.intl.formatMessage(messages.linkAxes)}
             unlinkTitle={props.intl.formatMessage(messages.unlinkAxes)}
             linkUnavailableTitle={props.intl.formatMessage(

@@ -131,8 +131,11 @@ objects having a "front"), and a double-click **never raises** the camera
 — it descends or stays. Four cases: a **lane** point (drop to eye level
 there), a **building** (frame it, from across the street or the front
 door depending where you start), a **generic object** (frame it at its
-size), or **empty space** (no-op). The hover highlight is fixed to
-preview exactly what a click will select.
+size), or **empty space** (no-op). Content inside a closed user group
+is the exception: the double-click selects and opens the group, and the
+camera stays put (see the repository's `docs/groups.md`). The hover
+highlight is fixed to preview exactly what a click will select, except a
+click that leaves an open group (see the same file).
 
 ## The cross-cutting invariant: stay out of solid geometry
 

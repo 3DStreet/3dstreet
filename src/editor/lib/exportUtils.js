@@ -3,6 +3,7 @@ import useStore from '@/store';
 import { saveBlob } from './utils';
 import { convertToObject, getExportFilename } from './SceneUtils';
 import { expandBatchedMeshesForExport } from '../../batch-models';
+import { withOriginalAppearance } from './groups/scopeFade.js';
 
 const filterHelpers = (scene, visible) => {
   scene.traverse((o) => {
@@ -59,8 +60,12 @@ const filterRiggedEntities = (scene, visible) => {
 // (exportSceneToGLTF) and the Export modal's on-demand preview. No store or
 // notification side effects — callers own the UX. Returns
 // { blob, uvTransformSkipped } so callers can surface the AR-Ready
-// post-processing fallback their own way.
-export const generateGlbBlob = async (arReady) => {
+// post-processing fallback their own way. Exports the scene as it is,
+// without an open group's outside fade.
+export const generateGlbBlob = (arReady) =>
+  withOriginalAppearance(() => buildGlbBlob(arReady));
+
+const buildGlbBlob = async (arReady) => {
   let scene = AFRAME.scenes[0].object3D;
   if (arReady) {
     // only export user layers, not geospatial

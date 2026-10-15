@@ -109,7 +109,7 @@ export class DetachCloneCommand extends MultiCommand {
     }
     // Every door is silent otherwise (a drag, a number field, Delete): say
     // what just happened and that Undo reverses it. Plain text like the
-    // other STREET.notify toasts (entity.js, clipboard.js); redo repeats
+    // other STREET.notify toasts (entity.jsx, clipboard.js); redo repeats
     // it, which is accurate. Reached through the global: notify is an
     // A-Frame component and unit tests have no scene.
     globalThis.STREET?.notify?.successMessage?.(

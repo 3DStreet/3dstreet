@@ -18,6 +18,8 @@ export default class NumberWidget extends React.Component {
     placeholder: PropTypes.string,
     precision: PropTypes.number,
     prefix: PropTypes.string,
+    // Shows the value but ignores typing, dragging and arrow keys.
+    readOnly: PropTypes.bool,
     step: PropTypes.number,
     title: PropTypes.string,
     unit: PropTypes.string,
@@ -76,6 +78,7 @@ export default class NumberWidget extends React.Component {
   };
 
   onMouseDown = (event) => {
+    if (this.props.readOnly) return;
     event.preventDefault();
     this.distance = 0;
     this.onMouseDownValue = this.state.value;
@@ -97,7 +100,7 @@ export default class NumberWidget extends React.Component {
   setValue(value) {
     if (value === this.state.value) return;
 
-    if (value !== undefined) {
+    if (value !== undefined && !this.props.readOnly) {
       if (this.props.precision === 0) {
         value = parseInt(value);
       } else {
@@ -217,6 +220,7 @@ export default class NumberWidget extends React.Component {
           ref={this.input}
           className="number"
           type="text"
+          readOnly={this.props.readOnly}
           placeholder={this.props.placeholder}
           value={this.state.displayValue}
           onKeyDown={this.onKeyDown}
