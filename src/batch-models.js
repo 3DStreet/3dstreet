@@ -100,6 +100,10 @@ export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
 //   LATE_BATCH_THRESHOLD, repackLateUnbatched folds them into the matching group — or builds a
 //   fresh one — reusing parked slots and growing capacity with setInstanceCount only when the
 //   pool is empty, so a long editor session doesn't accrete unbatched draw calls or holes.
+// - Every matrix write or added instance invalidates the BatchedMesh's whole-mesh
+//   boundingSphere/boundingBox (invalidateBatchBounds): three.js computes them once and never
+//   refreshes them, so a moved or late-added member outside the stale sphere would be culled
+//   along with the whole batch (#2101).
 // - Every skip reason is logged with [batch-models] prefix.
 //
 // BVH: BatchedMesh.computeBoundsTree() and ensureOriginalBvh() are no-ops unless three-mesh-
@@ -856,6 +860,18 @@ function computeBatchLocalBbox(materialGroups) {
 // so (maxInstanceCount - instanceCount) is exactly how many addInstance calls fit without
 // growing. At build time capacity is sized exactly, so this never grows there — it only kicks
 // in when repackLateUnbatched folds more members in than the group was originally built for.
+// three.js computes a BatchedMesh's whole-mesh boundingSphere (frustum culling) and
+// boundingBox lazily, once, from the instance matrices at that moment, and setMatrixAt /
+// addInstance never invalidate them (#2101). A group late-built from the first two
+// regenerated clones, then grown by addLateMember, or a member moved off its slot, would keep
+// the stale sphere: once that sphere leaves the view the renderer culls the whole BatchedMesh,
+// so a car dragged away (or folded in later) vanishes. Drop both after every matrix or instance
+// change so the next frustum test recomputes them — one O(instances) pass per changed frame.
+function invalidateBatchBounds(batchedMesh) {
+  batchedMesh.boundingSphere = null;
+  batchedMesh.boundingBox = null;
+}
+
 function ensureInstanceCapacity(batchedMesh, additional) {
   const needed = batchedMesh.instanceCount + additional;
   if (needed > batchedMesh.maxInstanceCount) {
@@ -896,6 +912,7 @@ function addMemberToBatchedMeshes(group, el) {
       batchedMesh._batchIdToEl[instanceId] = el;
       slots.push({ batchedMesh, instanceId, localMatrix, geometry });
     }
+    invalidateBatchBounds(batchedMesh);
   }
 }
 
@@ -1310,6 +1327,7 @@ function syncBatchedSlots(el) {
   for (const { batchedMesh, instanceId, localMatrix } of slots) {
     tmpWorldMatrix.multiplyMatrices(el.object3D.matrixWorld, localMatrix);
     batchedMesh.setMatrixAt(instanceId, tmpWorldMatrix);
+    invalidateBatchBounds(batchedMesh);
   }
 }
 

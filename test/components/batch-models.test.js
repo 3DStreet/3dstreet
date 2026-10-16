@@ -204,6 +204,59 @@ describe('batch-models capacity (tier 3 primitives)', () => {
   });
 });
 
+describe('batch-models culling bounds (#2101)', () => {
+  // Renderer-side frustum test, as WebGLRenderer.projectObject runs it.
+  function inView(bm, camera) {
+    camera.updateMatrixWorld();
+    bm.updateMatrixWorld();
+    const frustum = new THREE.Frustum().setFromProjectionMatrix(
+      new THREE.Matrix4().multiplyMatrices(
+        camera.projectionMatrix,
+        camera.matrixWorldInverse
+      )
+    );
+    return frustum.intersectsObject(bm);
+  }
+
+  function cameraLookingAt(x) {
+    const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+    camera.position.set(x, 0, 10);
+    camera.lookAt(x, 0, 0);
+    return camera;
+  }
+
+  it('keeps a member visible after it is moved away from where the bounds were computed', () => {
+    const { bm, geometryId, geometry } = makeBatchedMesh(2);
+    const group = makeGroup(bm, geometryId, geometry, fakeSceneEl());
+    const m1 = fakeEl();
+    const m2 = fakeEl();
+    for (const m of [m1, m2]) batch._test.addMemberToBatchedMeshes(group, m);
+    // First render computes the whole-mesh sphere around the origin.
+    expect(inView(bm, cameraLookingAt(0))).toBe(true);
+
+    // Drag m2 far down the street and sync its slot, as a gizmo / transform edit does.
+    m2.object3D.position.set(500, 0, 0);
+    batch.syncBatchedSubtree({
+      object3D: m2.object3D,
+      querySelectorAll: () => []
+    });
+    expect(inView(bm, cameraLookingAt(500))).toBe(true);
+  });
+
+  it('keeps a late-added member visible after the bounds were computed', () => {
+    const { bm, geometryId, geometry } = makeBatchedMesh(2);
+    const group = makeGroup(bm, geometryId, geometry, fakeSceneEl());
+    batch._test.addMemberToBatchedMeshes(group, fakeEl());
+    expect(inView(bm, cameraLookingAt(0))).toBe(true);
+
+    const late = fakeEl();
+    late.object3D.position.set(-500, 0, 0);
+    late.object3D.updateMatrixWorld();
+    batch._test.addMemberToBatchedMeshes(group, late);
+    expect(inView(bm, cameraLookingAt(-500))).toBe(true);
+  });
+});
+
 describe('batch-models late-batch tally (tier 3)', () => {
   it('does not track entities carrying a blocking component', () => {
     const sceneEl = fakeSceneEl();
