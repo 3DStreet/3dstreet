@@ -13,6 +13,12 @@
  * subscription resolves to PRO (see warnIfMaxSecretsMissing); the audit warns loudly
  * so a stale/missing secret doesn't silently downgrade MAX subscribers.
  *
+ * One-time Pro passes (#1922) are out of scope by construction: a pass grants
+ * Pro through tokenProfile.proUntil, never a plan claim or a subscription, so
+ * a pass holder appears in neither the paid-claim list nor the active-
+ * subscriber list and is never reported or "fixed". Fix-mode only ever
+ * rewrites the `plan` claim, which can't revoke an unexpired pass either.
+ *
  * ⚠️ FIX-MODE CAVEAT: this only knows about active *subscriptions*. It does NOT
  * account for invoice-based customers or
  * intentional manual comps. Running with fixDiscrepancies=true WILL strip their
@@ -31,6 +37,7 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('../app-check.js');
+const { isPaidPlanClaim } = require('../pro-pass.js');
 
 /**
  * Check if a user has domain-based pro status.
@@ -55,9 +62,9 @@ function isDomainBasedPro(email) {
   }
 }
 
-// Mirror of isPaidPlanClaim in token-management.js — MAX is a superset of PRO,
-// so both are valid paid claims and neither should be treated as a discrepancy.
-const isPaidPlanClaim = (plan) => plan === 'PRO' || plan === 'MAX';
+// isPaidPlanClaim (pro-pass.js): MAX is a superset of PRO, so both are valid
+// paid claims and neither should be treated as a discrepancy. It matches the
+// subscription claim only — never a one-time pass, which has no claim.
 
 // The MAX-tier Stripe price IDs that actually resolve from the configured
 // secrets. Empty when the STRIPE_MAX_*_PRICE_ID secrets are unset.

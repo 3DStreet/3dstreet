@@ -1,14 +1,20 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   DETACHED_LAYER_PREFIX,
+  buildDetachAllCommands,
   buildDetachCommands,
   buildDetachedDefinition,
   findCloneAtSlot,
   getCloneSlot,
+  getDetachAllBlocker,
+  hasGeneratorClones,
   isDetachableClone,
   listCloneSlots,
+  listGeneratorClones,
   poseFromObject3D,
   rememberDetached,
+  requestDetachAll,
+  resolveDetachAllToolArgs,
   resolveDetachToolArgs,
   routeCloneEdit
 } from '../../src/editor/lib/detachClone.js';
@@ -755,6 +761,239 @@ describe('detachClone (#2011)', () => {
       expect(() =>
         resolveDetachToolArgs(addressed({ segmentId: 'nope' }))
       ).toThrow(/not found/);
+    });
+  });
+
+  describe('detach all (#2036)', () => {
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    function mountSegment(options) {
+      const root = document.createElement('a-entity');
+      root.id = 'street-container';
+      root.isEntity = true;
+      const segment = makeSegment(options);
+      segment.id = 'seg-1';
+      segment.isEntity = true;
+      root.appendChild(segment);
+      document.body.appendChild(root);
+      return segment;
+    }
+
+    describe('listGeneratorClones', () => {
+      it('lists the live detachable clones of one generator in slot order', () => {
+        const segment = makeSegment();
+        segment.components['street-generated-stencil__1'] = { data: {} };
+        const c3 = makeClone(segment, { index: 3, key: '0 9' });
+        const c0 = makeClone(segment, { index: 0, key: '0 0' });
+        // another generator's clone, a plain child and an unstamped clone
+        makeClone(segment, {
+          componentName: 'street-generated-stencil__1',
+          index: 0,
+          key: '0 1'
+        });
+        makeClone(segment, { autocreated: false, key: null, index: null });
+        makeClone(segment, { index: 5, key: null });
+        expect(
+          listGeneratorClones(segment, 'street-generated-clones__1')
+        ).toEqual([c0, c3]);
+        expect(listGeneratorClones(null, 'street-generated-clones__1')).toEqual(
+          []
+        );
+        expect(hasGeneratorClones(segment, 'street-generated-clones__1')).toBe(
+          true
+        );
+        expect(hasGeneratorClones(segment, 'street-generated-clones__9')).toBe(
+          false
+        );
+      });
+    });
+
+    describe('getDetachAllBlocker', () => {
+      it('is null for a detachable generator with live clones, else a reason', () => {
+        const segment = makeSegment();
+        segment.components['street-generated-striping__1'] = { data: {} };
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-clones__2')
+        ).toMatchObject({ code: 'missing' });
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-striping__1')
+        ).toMatchObject({ code: 'surface' });
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-clones__1')
+        ).toMatchObject({ code: 'empty' });
+        makeClone(segment);
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-clones__1')
+        ).toBeNull();
+        expect(
+          getDetachAllBlocker(null, 'street-generated-clones__1')
+        ).toMatchObject({
+          code: 'missing'
+        });
+      });
+    });
+
+    describe('buildDetachAllCommands', () => {
+      it('creates one plain entity per clone, then removes the generator', () => {
+        const segment = makeSegment({ skip: ['4 4'] });
+        makeClone(segment, { index: 1, key: '0 -6', mixin: 'tree' });
+        makeClone(segment, { index: 0, key: '0 -12', mixin: 'sedan-rig' });
+        const { clones, commands } = buildDetachAllCommands(
+          segment,
+          'street-generated-clones__1'
+        );
+        expect(clones).toHaveLength(2);
+        expect(commands).toHaveLength(3);
+        expect(commands.map((c) => c[0])).toEqual([
+          'entitycreate',
+          'entitycreate',
+          'componentremove'
+        ]);
+        // slot order, plain Detached Model entities under the segment
+        expect(commands[0][1]).toMatchObject({
+          parentEl: segment,
+          mixin: 'sedan-rig',
+          'data-layer-name': `${DETACHED_LAYER_PREFIX}sedan-rig`,
+          noSelectEntity: true,
+          components: { position: '1.5 0 -12', rotation: '0 180 0' }
+        });
+        expect(commands[1][1].mixin).toBe('tree');
+        expect(commands[0][1].class).toBeUndefined();
+        // the generator goes (skip and all); undo of componentremove restores it
+        expect(commands[2][1]).toEqual({
+          entity: segment,
+          component: 'street-generated-clones__1'
+        });
+      });
+
+      it('throws for a missing, non-detachable or empty generator', () => {
+        const segment = makeSegment();
+        segment.components['street-generated-striping__1'] = { data: {} };
+        expect(() =>
+          buildDetachAllCommands(segment, 'street-generated-clones__2')
+        ).toThrow(/no 'street-generated-clones__2' generator/);
+        expect(() =>
+          buildDetachAllCommands(segment, 'street-generated-striping__1')
+        ).toThrow(/surface generator/);
+        expect(() =>
+          buildDetachAllCommands(segment, 'street-generated-clones__1')
+        ).toThrow(/no live clones/);
+      });
+    });
+
+    describe('requestDetachAll', () => {
+      afterEach(() => {
+        delete globalThis.AFRAME;
+        delete globalThis.STREET;
+      });
+
+      function stubGlobals() {
+        const calls = { execute: [], warnings: [] };
+        globalThis.AFRAME = {
+          INSPECTOR: { execute: (...args) => calls.execute.push(args) }
+        };
+        globalThis.STREET = {
+          notify: { warningMessage: (m) => calls.warnings.push(m) }
+        };
+        return calls;
+      }
+
+      it('runs the command, carrying the clone the user was on', () => {
+        const calls = stubGlobals();
+        const segment = makeSegment();
+        const clone = makeClone(segment);
+        expect(
+          requestDetachAll(segment, 'street-generated-clones__1', {
+            focus: clone
+          })
+        ).toBe(true);
+        expect(requestDetachAll(segment, 'street-generated-clones__1')).toBe(
+          true
+        );
+        expect(calls.execute).toEqual([
+          [
+            'detachallclones',
+            {
+              entity: segment,
+              component: 'street-generated-clones__1',
+              focus: clone
+            }
+          ],
+          [
+            'detachallclones',
+            { entity: segment, component: 'street-generated-clones__1' }
+          ]
+        ]);
+      });
+
+      it('warns instead of running when the clones are gone at click time', () => {
+        const calls = stubGlobals();
+        const segment = makeSegment();
+        expect(requestDetachAll(segment, 'street-generated-clones__1')).toBe(
+          false
+        );
+        expect(calls.execute).toEqual([]);
+        expect(calls.warnings).toHaveLength(1);
+      });
+    });
+
+    describe('resolveDetachAllToolArgs', () => {
+      it('resolves segment + generator to the command payload', () => {
+        const segment = mountSegment();
+        makeClone(segment);
+        expect(
+          resolveDetachAllToolArgs({
+            segmentId: 'seg-1',
+            component: 'street-generated-clones__1'
+          })
+        ).toEqual({ entity: segment, component: 'street-generated-clones__1' });
+      });
+
+      it('names the detachable generators when the component is wrong', () => {
+        const segment = mountSegment();
+        segment.components['street-generated-striping__1'] = { data: {} };
+        expect(() =>
+          resolveDetachAllToolArgs({
+            segmentId: 'seg-1',
+            component: 'street-generated-clones__3'
+          })
+        ).toThrow(
+          /no 'street-generated-clones__3' generator.*street-generated-clones__1/
+        );
+        // omitted or null (function-calling models emit null): a plain
+        // "required" message, never "no 'undefined' component"
+        for (const component of [undefined, null, '']) {
+          expect(() =>
+            resolveDetachAllToolArgs({ segmentId: 'seg-1', component })
+          ).toThrow(
+            /^component is required\. Detachable generators on seg-1: street-generated-clones__1$/
+          );
+        }
+        expect(() =>
+          resolveDetachAllToolArgs({
+            segmentId: 'seg-1',
+            component: 'street-generated-striping__1'
+          })
+        ).toThrow(/surface generator/);
+      });
+
+      it('rejects a generator with nothing left to detach and an unknown segment', () => {
+        mountSegment();
+        expect(() =>
+          resolveDetachAllToolArgs({
+            segmentId: 'seg-1',
+            component: 'street-generated-clones__1'
+          })
+        ).toThrow(/no live clones to detach.*componentRemove/);
+        expect(() =>
+          resolveDetachAllToolArgs({
+            segmentId: 'nope',
+            component: 'street-generated-clones__1'
+          })
+        ).toThrow(/not found/);
+      });
     });
   });
 

@@ -171,18 +171,6 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Uso de tokens:',
     fr: 'Utilisation des jetons :'
   },
-  tipImageGeneration: {
-    en: '1 token = 1 image generation',
-    es: '1 token = 1 generación de imagen',
-    'pt-BR': '1 token = 1 geração de imagem',
-    fr: "1 jeton = 1 génération d'image"
-  },
-  tipVideoGeneration: {
-    en: '2 tokens = 1 second of video generation',
-    es: '2 tokens = 1 segundo de generación de video',
-    'pt-BR': '2 tokens = 1 segundo de geração de vídeo',
-    fr: '2 jetons = 1 seconde de génération de vidéo'
-  },
   tipMapTile: {
     en: '1 token = 1 map tile request',
     es: '1 token = 1 solicitud de mosaico de mapa',
@@ -290,6 +278,201 @@ const SHARED_MESSAGES = {
     es: '{tokens} tokens ya están en tu cuenta.',
     'pt-BR': '{tokens} tokens já estão na sua conta.',
     fr: '{tokens} jetons ont été ajoutés à votre compte.'
+  },
+  // ProjectPassModal — one-time time-boxed Pro pass (#1922), opened by the
+  // #project-pass deep link. `projectPassName` is the product's display name:
+  // rename the pass here only.
+  projectPassName: {
+    en: 'Project Pass',
+    es: 'Pase de Proyecto',
+    'pt-BR': 'Passe de Projeto',
+    fr: 'Pass Projet'
+  },
+  projectPassSubtitle: {
+    en: '{months} months of 3DStreet Pro for one payment. No subscription, no auto-renewal.',
+    es: '{months} meses de 3DStreet Pro con un solo pago. Sin suscripción ni renovación automática.',
+    'pt-BR':
+      '{months} meses de 3DStreet Pro com um único pagamento. Sem assinatura e sem renovação automática.',
+    fr: '{months} mois de 3DStreet Pro en un seul paiement. Sans abonnement ni renouvellement automatique.'
+  },
+  projectPassFeatPro: {
+    en: 'All Pro features for {days} days',
+    es: 'Todas las funciones Pro durante {days} días',
+    'pt-BR': 'Todos os recursos Pro por {days} dias',
+    fr: 'Toutes les fonctionnalités Pro pendant {days} jours'
+  },
+  projectPassFeatTokens: {
+    en: '{tokens} AI tokens up front, yours to keep',
+    es: '{tokens} tokens de IA por adelantado, sin vencimiento',
+    'pt-BR': '{tokens} tokens de IA antecipados, que não expiram',
+    fr: "{tokens} jetons IA d'emblée, qui n'expirent pas"
+  },
+  projectPassFeatExports: {
+    en: 'Watermark-free downloads, unlimited geospatial maps and custom model uploads',
+    es: 'Descargas sin marca de agua, mapas geoespaciales ilimitados y carga de modelos personalizados',
+    'pt-BR':
+      "Downloads sem marca d'água, mapas geoespaciais ilimitados e upload de modelos personalizados",
+    fr: 'Téléchargements sans filigrane, cartes géospatiales illimitées et import de modèles personnalisés'
+  },
+  projectPassFeatKeep: {
+    en: 'When it ends you return to the free plan. Your scenes and files stay.',
+    es: 'Al terminar vuelves al plan gratuito. Tus escenas y archivos se conservan.',
+    'pt-BR':
+      'Quando terminar, você volta ao plano gratuito. Suas cenas e arquivos continuam salvos.',
+    fr: 'À la fin, vous revenez au forfait gratuit. Vos scènes et fichiers sont conservés.'
+  },
+  projectPassSignInPrompt: {
+    en: 'Sign in or create a free account to buy the pass.',
+    es: 'Inicia sesión o crea una cuenta gratuita para comprar el pase.',
+    'pt-BR': 'Entre ou crie uma conta gratuita para comprar o passe.',
+    fr: 'Connectez-vous ou créez un compte gratuit pour acheter le pass.'
+  },
+  projectPassActiveLead: {
+    en: 'You have an active pass.',
+    es: 'Tienes un pase activo.',
+    'pt-BR': 'Você tem um passe ativo.',
+    fr: 'Vous avez un pass actif.'
+  },
+  projectPassActiveUntil: {
+    en: 'It runs until {date}. Buying another adds {days} days.',
+    es: 'Dura hasta el {date}. Si compras otro, se suman {days} días.',
+    'pt-BR': 'Ele vale até {date}. Comprar outro adiciona {days} dias.',
+    fr: "Il est valable jusqu'au {date}. En acheter un autre ajoute {days} jours."
+  },
+  projectPassSubscriberNote: {
+    en: 'You already have Pro through your subscription. This pass adds {tokens} AI tokens now, and keeps Pro for {days} days if you cancel.',
+    es: 'Ya tienes Pro con tu suscripción. Este pase añade {tokens} tokens de IA ahora y mantiene Pro durante {days} días si cancelas.',
+    'pt-BR':
+      'Você já tem o Pro pela sua assinatura. Este passe adiciona {tokens} tokens de IA agora e mantém o Pro por {days} dias se você cancelar.',
+    fr: 'Vous avez déjà Pro avec votre abonnement. Ce pass ajoute {tokens} jetons IA maintenant et garde Pro pendant {days} jours si vous résiliez.'
+  },
+  projectPassTeamNote: {
+    en: 'You already have Pro through your organization ({domain}). A pass would only add {tokens} AI tokens.',
+    es: 'Ya tienes Pro a través de tu organización ({domain}). Un pase solo añadiría {tokens} tokens de IA.',
+    'pt-BR':
+      'Você já tem o Pro pela sua organização ({domain}). Um passe só adicionaria {tokens} tokens de IA.',
+    fr: 'Vous avez déjà Pro grâce à votre organisation ({domain}). Un pass ajouterait seulement {tokens} jetons IA.'
+  },
+  projectPassSeeTokenPacks: {
+    en: 'Just need tokens? See token packs',
+    es: '¿Solo necesitas tokens? Ver paquetes de tokens',
+    'pt-BR': 'Só precisa de tokens? Ver pacotes de tokens',
+    fr: 'Besoin de jetons uniquement ? Voir les packs de jetons'
+  },
+  projectPassBuyCta: {
+    en: 'Buy {name}',
+    es: 'Comprar {name}',
+    'pt-BR': 'Comprar {name}',
+    fr: 'Acheter {name}'
+  },
+  projectPassUnavailable: {
+    en: 'The pass is not available yet on this deployment. Please check back soon.',
+    es: 'El pase aún no está disponible en esta versión. Vuelve pronto.',
+    'pt-BR': 'O passe ainda não está disponível nesta versão. Volte em breve.',
+    fr: "Le pass n'est pas encore disponible sur ce déploiement. Revenez bientôt."
+  },
+  projectPassSuccessTitle: {
+    en: 'Pro is unlocked!',
+    es: '¡Pro está desbloqueado!',
+    'pt-BR': 'O Pro está desbloqueado!',
+    fr: 'Pro est débloqué !'
+  },
+  projectPassSuccessMessage: {
+    en: 'You have Pro until {date}, and {tokens} AI tokens were added to your account.',
+    es: 'Tienes Pro hasta el {date} y se añadieron {tokens} tokens de IA a tu cuenta.',
+    'pt-BR':
+      'Você tem o Pro até {date}, e {tokens} tokens de IA foram adicionados à sua conta.',
+    fr: "Vous avez Pro jusqu'au {date}, et {tokens} jetons IA ont été ajoutés à votre compte."
+  },
+  // RedeemPassModal — redeem a Project Pass code someone else paid for
+  // (#1922 follow-up), opened by the #redeem?code= deep link.
+  redeemPassTitle: {
+    en: 'Redeem your {name}',
+    es: 'Canjea tu {name}',
+    'pt-BR': 'Resgate seu {name}',
+    fr: 'Utilisez votre {name}'
+  },
+  redeemPassSubtitle: {
+    en: 'Your code unlocks {days} days of 3DStreet Pro and {tokens} AI tokens. Your days start when you redeem.',
+    es: 'Tu código desbloquea {days} días de 3DStreet Pro y {tokens} tokens de IA. Los días empiezan a contar cuando lo canjeas.',
+    'pt-BR':
+      'Seu código desbloqueia {days} dias de 3DStreet Pro e {tokens} tokens de IA. Os dias começam a contar quando você resgata.',
+    fr: "Votre code débloque {days} jours de 3DStreet Pro et {tokens} jetons IA. Les jours commencent à courir quand vous l'utilisez."
+  },
+  redeemPassSignInPrompt: {
+    en: 'Sign in or create a free account to redeem your code.',
+    es: 'Inicia sesión o crea una cuenta gratuita para canjear tu código.',
+    'pt-BR': 'Entre ou crie uma conta gratuita para resgatar seu código.',
+    fr: 'Connectez-vous ou créez un compte gratuit pour utiliser votre code.'
+  },
+  redeemPassCodeLabel: {
+    en: 'Code',
+    es: 'Código',
+    'pt-BR': 'Código',
+    fr: 'Code'
+  },
+  redeemPassCta: {
+    en: 'Redeem',
+    es: 'Canjear',
+    'pt-BR': 'Resgatar',
+    fr: 'Valider'
+  },
+  redeemPassRedeeming: {
+    en: 'Redeeming…',
+    es: 'Canjeando…',
+    'pt-BR': 'Resgatando…',
+    fr: 'Validation…'
+  },
+  redeemPassFromLine: {
+    en: '{from} sent you this pass.',
+    es: '{from} te envió este pase.',
+    'pt-BR': '{from} enviou este passe para você.',
+    fr: '{from} vous a envoyé ce pass.'
+  },
+  redeemPassAlreadyRedeemedTitle: {
+    en: 'Already redeemed',
+    es: 'Ya canjeado',
+    'pt-BR': 'Já resgatado',
+    fr: 'Déjà utilisé'
+  },
+  redeemPassAlreadyRedeemed: {
+    en: 'You already redeemed this code, so nothing has changed. You have Pro until {date}.',
+    es: 'Ya canjeaste este código, así que no ha cambiado nada. Tienes Pro hasta el {date}.',
+    'pt-BR':
+      'Você já resgatou este código, então nada mudou. Você tem o Pro até {date}.',
+    fr: "Vous avez déjà utilisé ce code, rien n'a donc changé. Vous avez Pro jusqu'au {date}."
+  },
+  redeemPassErrorInvalid: {
+    en: 'That code is not valid. Check it and try again.',
+    es: 'Ese código no es válido. Revísalo e inténtalo de nuevo.',
+    'pt-BR': 'Esse código não é válido. Confira e tente novamente.',
+    fr: "Ce code n'est pas valide. Vérifiez-le et réessayez."
+  },
+  redeemPassErrorExpired: {
+    en: 'That code has expired or is no longer active.',
+    es: 'Ese código venció o ya no está activo.',
+    'pt-BR': 'Esse código expirou ou não está mais ativo.',
+    fr: "Ce code a expiré ou n'est plus actif."
+  },
+  redeemPassErrorExhausted: {
+    en: 'That code has already been used the maximum number of times. Ask whoever shared it with you.',
+    es: 'Ese código ya alcanzó su número máximo de usos. Consulta a quien te lo compartió.',
+    'pt-BR':
+      'Esse código já atingiu o número máximo de usos. Fale com quem o compartilhou com você.',
+    fr: "Ce code a déjà été utilisé le nombre maximal de fois. Contactez la personne qui vous l'a transmis."
+  },
+  redeemPassErrorAlreadyPro: {
+    en: "You already have 3DStreet Pro, so you don't need this pass. Please pass the code on to someone who doesn't have Pro.",
+    es: 'Ya tienes 3DStreet Pro, así que no necesitas este pase. Comparte el código con alguien que no tenga Pro.',
+    'pt-BR':
+      'Você já tem o 3DStreet Pro, então não precisa deste passe. Compartilhe o código com alguém que não tenha o Pro.',
+    fr: "Vous avez déjà 3DStreet Pro, vous n'avez donc pas besoin de ce pass. Transmettez le code à quelqu'un qui n'a pas Pro."
+  },
+  redeemPassErrorGeneric: {
+    en: 'Something went wrong redeeming your code. Please try again.',
+    es: 'Algo salió mal al canjear tu código. Inténtalo de nuevo.',
+    'pt-BR': 'Algo deu errado ao resgatar seu código. Tente novamente.',
+    fr: "Une erreur s'est produite lors de la validation de votre code. Veuillez réessayer."
   },
   back: {
     en: 'Back',

@@ -13,10 +13,18 @@ import AIModelSelector from '@shared/components/AIModelSelector';
  * @param {Function} options.onChange - Callback when model changes
  * @param {boolean} options.disabled - Whether the selector is disabled
  * @param {boolean} options.hasSourceImage - Whether source image is available (filters fal models when false)
+ * @param {Array} [options.options] - Flat model list replacing the image catalog
+ *   (splat and 3D model tabs): [{ id, name, tokenCost?, tokenCostLabel? }]
  * @returns {Object} - Object with unmount and update functions
  */
 export const mountModelSelector = (container, options) => {
-  const { value, onChange, disabled = false, hasSourceImage = true } = options;
+  const {
+    value,
+    onChange,
+    disabled = false,
+    hasSourceImage = true,
+    options: modelOptions = null
+  } = options;
 
   const root = createRoot(container);
 
@@ -27,6 +35,7 @@ export const mountModelSelector = (container, options) => {
         onChange={props.onChange}
         disabled={props.disabled}
         hasSourceImage={props.hasSourceImage}
+        options={modelOptions}
       />
     );
   };

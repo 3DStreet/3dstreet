@@ -90,3 +90,14 @@ export const TOKEN_PACKS = [
   { id: 'standard', name: 'Standard', tokens: 250, price: 25 },
   { id: 'power', name: 'Power', tokens: 500, price: 50 }
 ];
+
+// One-time time-boxed Pro passes (#1922) — shown only via the #project-pass
+// deep link (ProjectPassModal), deliberately NOT in the UpgradeModal tier grid.
+// A pass is a single payment for `days` of Pro plus a `tokens` lump sum up
+// front; no renewal and no monthly token top-up. Mirrors the server copy in
+// public/functions/pro-pass.js (separate deployment, can't share imports);
+// test/shared/pricing-sync.test.js guards the two against drifting. The
+// display name is the shared message `projectPassName`, so renaming the
+// product is a copy change only.
+export const PRO_PASSES = [{ id: 'project', days: 90, tokens: 300, price: 30 }];
+export const PROJECT_PASS = PRO_PASSES.find((pass) => pass.id === 'project');

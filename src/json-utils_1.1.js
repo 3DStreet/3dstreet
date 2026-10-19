@@ -10,6 +10,10 @@ import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
 import JSONCrush from 'jsoncrush';
 import {
+  DEFLATE_HASH_PREFIX,
+  decodeSceneHash
+} from './tested/scene-hash-codec.js';
+import {
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
   migrateSegmentHatchedSurface,
@@ -18,6 +22,7 @@ import {
 } from './tested/street-segment-utils';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
+import { isProjectPassHash, isRedeemHash } from './tested/project-pass-link.js';
 import {
   getSceneIdFromPathname,
   getSceneIdFromHash,
@@ -365,7 +370,9 @@ STREET.utils.filterJSONstreet = filterJSONstreet;
  */
 function getMixedValue(component, propertyName, source) {
   var value;
-  var reversedMixins = source.mixinEls.reverse();
+  // toReversed: `reverse()` would flip the entity's own mixin list in place
+  // on every serialized component (mixin precedence alternating per call).
+  var reversedMixins = source.mixinEls.toReversed();
   for (var i = 0; value === undefined && i < reversedMixins.length; i++) {
     var mixin = reversedMixins[i];
     /* eslint-disable-next-line no-prototype-builtins */
@@ -938,6 +945,36 @@ AFRAME.registerComponent('set-loader-from-hash', {
       // fetchJSON('asset:….json') below and errors with "Could not fetch scene"
       // / "Could not connect to server."
       if (streetURL.startsWith('asset:')) {
+        return;
+      }
+      // `#project-pass` opens the one-time Project Pass checkout and
+      // `#redeem?code=` the pass-code redemption (#1922, store.firstModal),
+      // not a scene.
+      if (
+        isProjectPassHash(window.location.hash) ||
+        isRedeemHash(window.location.hash)
+      ) {
+        return;
+      }
+      // Deflated scene JSON (Visitor Build's "Open in 3DStreet" handoff,
+      // src/editor/lib/sceneHandoff.js): same result as the crushed form
+      // below, loaded as an unsaved draft, but fast to produce. Async: the
+      // native decompression stream is.
+      if (streetURL.startsWith(DEFLATE_HASH_PREFIX)) {
+        const payload = window.location.hash.substring(
+          1 + DEFLATE_HASH_PREFIX.length
+        );
+        decodeSceneHash(payload)
+          .then((jsonStr) => {
+            const jsonScene = JSON.parse(jsonStr);
+            STREET.utils.newScene(true, false);
+            STREET.utils.createElementsFromJSON(jsonScene, false);
+          })
+          .catch((err) => {
+            console.error('[set-loader-from-hash] bad deflate payload:', err);
+            // Localized toast in React (Main.jsx); this module has no intl.
+            useStore.getState().setSceneLinkError(true);
+          });
         return;
       }
       if (streetURL.startsWith('crushed-3dstreet-json:')) {

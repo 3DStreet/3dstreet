@@ -318,26 +318,100 @@ describe('the sampler and its budget', () => {
     expect(run(SUBSTEP_METRES * 1.1).demanded).toBe(1);
   });
 
-  it('costs a flat span exactly what it costs a broken one', () => {
-    // There is no early stop, so the cost is a function of the frame's length
-    // and of nothing in the scene. This is the check that one has not been
-    // reintroduced.
-    let flatCasts = 0;
-    let brokenCasts = 0;
+  it('settles a level destination on one ray at any frame length', () => {
+    // The endpoint look-ahead (#2059): a destination level with the remembered
+    // support is continuous without sampling the interior, so a fast drag over
+    // level ground costs the same one ray as a slow one. This is the check that
+    // the interior sampling has not crept back onto the flat-ground path.
+    for (const d of [0.5, 1.0, 2.0, (PATH_PROBE_BUDGET + 1) * SUBSTEP_METRES]) {
+      let casts = 0;
+      const result = run(d, () => {
+        casts++;
+        return flat();
+      });
+      expect(result.continuous).toBe(true);
+      expect(result.supportY).toBe(0);
+      expect(result.cast).toBe(0);
+      expect(casts).toBe(1);
+    }
+  });
+
+  it('settles a kerb-height destination on the same one ray', () => {
+    let casts = 0;
     const result = run(1.0, () => {
-      flatCasts++;
-      return flat();
+      casts++;
+      return { below: { y: 0.2 } };
     });
-    const broken = run(1.0, () => {
-      brokenCasts++;
+    expect(result.continuous).toBe(true);
+    expect(result.supportY).toBe(0.2);
+    expect(casts).toBe(1);
+  });
+
+  it('rejects a destination below anything the chain could step down to on one ray', () => {
+    // Five stops at most a step each: nothing sampled under a lower ceiling
+    // can find higher support than the look-ahead did, so the frame is
+    // discontinuous before any interior probe is spent.
+    let casts = 0;
+    const result = run(1.0, () => {
+      casts++;
       return { below: { y: -3 } };
+    });
+    expect(result.continuous).toBe(false);
+    expect(result.supportY).toBe(0);
+    expect(result.cast).toBe(0);
+    expect(casts).toBe(1);
+  });
+
+  it('holds the remembered support on one ray over an empty column', () => {
+    // Off the edge of everything: the chain would only have found misses,
+    // and a miss holds the reference wherever it lands.
+    let casts = 0;
+    const result = run(1.0, () => {
+      casts++;
+      return { below: null };
+    });
+    expect(result.continuous).toBe(true);
+    expect(result.supportY).toBe(0);
+    expect(casts).toBe(1);
+  });
+
+  it('samples the whole interior for a drop of more than a step within reach', () => {
+    // A metre down over five stops could be a followable ramp or a riser.
+    let casts = 0;
+    const result = run(1.0, () => {
+      casts++;
+      return { below: { y: -1 } };
+    });
+    expect(result.continuous).toBe(false);
+    expect(casts).toBe(result.demanded + 2);
+  });
+
+  it('samples the whole interior for a climb of more than a step', () => {
+    // A climb is exactly what the interior exists to judge: a ramp is
+    // followable and a riser is not, and only the pairwise chain tells them
+    // apart. The look-ahead costs one extra ray on top of that chain.
+    let casts = 0;
+    const result = run(1.0, () => {
+      casts++;
+      return { below: { y: 0.5 } };
     });
     expect(result.demanded).toBe(4);
     expect(result.cast).toBe(4);
-    expect(result.continuous).toBe(true);
-    expect(broken.continuous).toBe(false);
-    expect(brokenCasts).toBe(flatCasts);
-    expect(brokenCasts).toBe(result.demanded + 1);
+    expect(result.continuous).toBe(false);
+    expect(casts).toBe(result.demanded + 2);
+  });
+
+  it('holds the look-ahead ceiling to what the chain could have climbed', () => {
+    // Below the reach the destination is offered as level support; above it
+    // the look-ahead is passed a ceiling that excludes it, so the interior
+    // decides whether the climb was a followable ramp.
+    const ceilings = [];
+    run(1.0, (x, z, ceiling) => {
+      ceilings.push(ceiling);
+      return flat();
+    });
+    expect(ceilings).toHaveLength(1);
+    expect(ceilings[0]).toBeCloseTo(5 * STEP_METRES, 9);
   });
 
   it('demands the ceiling of the span over the sub-span, less one', () => {
@@ -347,7 +421,8 @@ describe('the sampler and its budget', () => {
   });
 
   it('places its samples at whole sub-spans from the start, in order', () => {
-    const { samples } = run(1.0);
+    // A climb at the look-ahead is the case that has to sample the interior.
+    const { samples } = run(1.0, () => ({ below: { y: 0.5 } }));
     samples.forEach((s, i) => {
       expect(s.x).toBeCloseTo((i + 1) * SUBSTEP_METRES, 9);
     });
@@ -356,19 +431,31 @@ describe('the sampler and its budget', () => {
     expect(1.0 - last.x).toBeLessThan(SUBSTEP_METRES);
   });
 
-  it('declares an over-budget frame discontinuous with only the endpoint ray', () => {
-    // No interiors; the endpoint is still required for current landing targets.
+  it('settles an over-budget frame on the look-ahead alone', () => {
+    // Over budget there are no interiors either way; level ground follows and
+    // a climb holds, each on the one endpoint ray still required for current
+    // landing targets.
     let casts = 0;
     const counting = (x, z) => {
       casts++;
       return flat(x, z);
     };
-    const result = run((PATH_PROBE_BUDGET + 3) * SUBSTEP_METRES, counting);
-    expect(result.overBudget).toBe(true);
-    expect(result.continuous).toBe(false);
-    expect(result.cast).toBe(0);
+    const level = run((PATH_PROBE_BUDGET + 3) * SUBSTEP_METRES, counting);
+    expect(level.overBudget).toBe(true);
+    expect(level.continuous).toBe(true);
+    expect(level.cast).toBe(0);
     expect(casts).toBe(1);
-    expect(result.supportY).toBe(0);
+
+    casts = 0;
+    const climb = run((PATH_PROBE_BUDGET + 3) * SUBSTEP_METRES, () => {
+      casts++;
+      return { below: { y: 1 } };
+    });
+    expect(climb.overBudget).toBe(true);
+    expect(climb.continuous).toBe(false);
+    expect(climb.cast).toBe(0);
+    expect(casts).toBe(1);
+    expect(climb.supportY).toBe(0);
   });
 
   it('resolves the whole budget band at exactly the sampling spacing', () => {

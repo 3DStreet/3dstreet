@@ -4,7 +4,10 @@ import { OrientedBoxHelper } from '@/editor/lib/viewport.js';
 import Events from '@/editor/lib/Events.js';
 import { entity, mountViewport } from './viewportHarness.js';
 
-vi.mock('@/store', () => ({ default: { subscribe: vi.fn() } }));
+const storeState = vi.hoisted(() => ({ buildSessionActive: false }));
+vi.mock('@/store', () => ({
+  default: { subscribe: vi.fn(), getState: () => storeState }
+}));
 vi.mock('@/editor/lib/cameras', () => ({ copyCameraPosition: vi.fn() }));
 vi.mock('@/editor/lib/raycaster', () => ({
   initRaycaster: () => ({ enable() {}, disable() {} })
@@ -25,6 +28,7 @@ vi.mock('@/editor/lib/nav-experimental/index.js', async () => {
 });
 
 afterEach(() => {
+  storeState.buildSessionActive = false;
   Events.removeAllListeners();
   vi.unstubAllGlobals();
   document.body.replaceChildren();
@@ -142,6 +146,90 @@ describe('the easy gizmo as the default transform control', () => {
       Events.emit('transformmodechange', 'translate');
       expect(inspector.transformMode).toBe('translate');
       expect(stockRoot.controls.object).toBe(el.object3D);
+    } finally {
+      dispose();
+    }
+  });
+});
+
+describe('the easy gizmo in a Visitor Build session', () => {
+  function mountSession() {
+    const mounted = mountViewport();
+    mounted.inspector.cursor = { isPlaying: true };
+    mounted.stock = mounted.inspector.sceneHelpers.children.find(
+      (child) => child.isTransformControlsRoot
+    ).controls;
+    storeState.buildSessionActive = true;
+    return mounted;
+  }
+  const visitorObject = (sceneEl, allowRotate) => {
+    const area = entity(sceneEl);
+    area.components['build-area'] = { data: { allowRotate } };
+    const el = entity(area);
+    el.parentEl = area;
+    el.setAttribute('data-viewer-added', '');
+    return el;
+  };
+  const select = (inspector, el) => {
+    inspector.selectedEntity = el;
+    Events.emit('objectselect', el.object3D);
+  };
+
+  it('holds a visitor object whatever the editor transform mode', () => {
+    const { inspector, sceneEl, stock, dispose } = mountSession();
+    try {
+      Events.emit('transformmodechange', 'translate');
+      const el = visitorObject(sceneEl, true);
+      select(inspector, el);
+      expect(inspector.easyGizmoControls.el).toBe(el);
+      expect(inspector.easyGizmoControls.rotateEnabled).toBe(true);
+      expect(stock.object).toBeUndefined();
+    } finally {
+      dispose();
+    }
+  });
+
+  it('withdraws the rotate arc when the area disallows rotation', () => {
+    const { inspector, sceneEl, dispose } = mountSession();
+    try {
+      select(inspector, visitorObject(sceneEl, false));
+      expect(inspector.easyGizmoControls.rotateEnabled).toBe(false);
+      storeState.buildSessionActive = false;
+      select(inspector, entity(sceneEl));
+      expect(inspector.easyGizmoControls.rotateEnabled).toBe(true);
+    } finally {
+      dispose();
+    }
+  });
+
+  it('attaches nothing to an author entity', () => {
+    const { inspector, sceneEl, stock, dispose } = mountSession();
+    try {
+      select(inspector, entity(sceneEl));
+      expect(inspector.easyGizmoControls.el).toBeUndefined();
+      expect(stock.object).toBeUndefined();
+    } finally {
+      dispose();
+    }
+  });
+
+  it('hands a committed drag to the build area with its start position', () => {
+    const { inspector, sceneEl, dispose } = mountSession();
+    const onGizmoRelease = vi.fn();
+    sceneEl.systems = { 'build-area': { onGizmoRelease } };
+    try {
+      const el = visitorObject(sceneEl, true);
+      inspector.easyGizmoControls.dispatchEvent({
+        type: 'commitDrag',
+        entity: el,
+        name: 'move',
+        changes: [
+          { component: 'position', value: '4 0 1', oldValue: '1 0 1' },
+          { component: 'rotation', value: '0 0 0', oldValue: '0 0 0' }
+        ]
+      });
+      expect(inspector.execute).toHaveBeenCalledTimes(1);
+      expect(onGizmoRelease).toHaveBeenCalledWith(el, { position: '1 0 1' });
     } finally {
       dispose();
     }

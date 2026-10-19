@@ -38,6 +38,7 @@ import {
   forceJobNotifyEmail
 } from '@shared/utils/generationJobs.js';
 import { t } from './i18n/messages.js';
+import { mountModelSelector } from './mount-model-selector.js';
 import { isTokenExhaustedError } from '@shared/utils/tokens.js';
 
 // Shared notice for all vid2scene tiers.
@@ -139,17 +140,23 @@ const SplatTab = {
     FluxUI.tabModules.splat = this;
   },
 
-  modelOptionsHtml() {
+  modelOptions() {
     // One option per model "group": tiered models collapse into a single
-    // dropdown entry (the entry whose id === its tierGroup); the tier itself
-    // is picked with the quality buttons.
+    // dropdown entry (the entry whose id === its tierGroup), badged with the
+    // group's cost range; the tier itself is picked with the quality buttons.
     return Object.entries(SPLAT_MODELS)
       .filter(([id, m]) => !m.tierGroup || id === m.tierGroup)
-      .map(
-        ([id, m]) =>
-          `<option value="${id}"${id === DEFAULT_SPLAT_MODEL ? ' selected' : ''}>${m.groupLabel || m.label}</option>`
-      )
-      .join('');
+      .map(([id, m]) => {
+        const option = { id, name: m.groupLabel || m.label };
+        if (!m.tierGroup) return { ...option, tokenCost: m.tokenCost };
+        const costs = Object.values(SPLAT_MODELS)
+          .filter((tier) => tier.tierGroup === m.tierGroup)
+          .map((tier) => tier.tokenCost);
+        return {
+          ...option,
+          tokenCostLabel: `${Math.min(...costs)}–${Math.max(...costs)}`
+        };
+      });
   },
 
   qualityButtonsHtml() {
@@ -180,11 +187,8 @@ const SplatTab = {
 
           <!-- Model selector -->
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="splat-model-select">${t('splat.modelLabel')}</label>
-            <select id="splat-model-select"
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-indigo-500 focus:border-indigo-500">
-              ${this.modelOptionsHtml()}
-            </select>
+            <label class="block text-sm font-medium text-gray-700 mb-1">${t('splat.modelLabel')}</label>
+            <div id="splat-model-selector-container"></div>
           </div>
 
           <!-- Source Image (image models) -->
@@ -332,7 +336,7 @@ const SplatTab = {
   getElements() {
     const byId = (id) => document.getElementById(id);
     this.elements = {
-      modelSelect: byId('splat-model-select'),
+      modelSelectorContainer: byId('splat-model-selector-container'),
       modelBlurb: byId('splat-model-blurb'),
       modelNotice: byId('splat-model-notice'),
       imageBlock: byId('splat-image-block'),
@@ -375,9 +379,12 @@ const SplatTab = {
   setupEventListeners() {
     const els = this.elements;
 
-    els.modelSelect.addEventListener('change', (e) =>
-      this.selectModel(e.target.value)
-    );
+    // Same dropdown as the image tab, with each model's token cost badged
+    this.modelSelector = mountModelSelector(els.modelSelectorContainer, {
+      value: this.currentModelId,
+      options: this.modelOptions(),
+      onChange: (modelId) => this.selectModel(modelId)
+    });
 
     els.qualityButtons.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-tier-id]');
@@ -458,10 +465,7 @@ const SplatTab = {
     els.modelNotice.innerHTML = model.notice;
     // The dropdown carries one entry per group, valued at the group's default
     // tier id — keep it on that entry while tier buttons change the model.
-    const selectValue = model.tierGroup || modelId;
-    if (els.modelSelect.value !== selectValue) {
-      els.modelSelect.value = selectValue;
-    }
+    this.modelSelector?.update({ value: model.tierGroup || modelId });
 
     this.updateGenerateLabel();
   },
