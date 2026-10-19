@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import posthog from 'posthog-js';
 import { Button } from '../elements';
+import { toDisplay } from './LengthPropertyRow';
 import useStore from '@/store.js';
 import {
   convertStreetValues,
@@ -21,6 +22,7 @@ import {
 const LegacyStreetNotice = ({ entity }) => {
   const intl = useIntl();
   const showConfirm = useStore((state) => state.showConfirm);
+  const units = useStore((state) => state.unitsPreference) || 'metric';
   const [busy, setBusy] = useState(false);
   const streetmixURL = getLegacyStreetmixURL(entity);
 
@@ -63,7 +65,9 @@ const LegacyStreetNotice = ({ entity }) => {
       convert();
       return;
     }
-    const fmt = (m) => intl.formatNumber(m, { maximumFractionDigits: 1 });
+    const fmt = (m) =>
+      intl.formatNumber(toDisplay(m, units), { maximumFractionDigits: 1 }) +
+      (units === 'imperial' ? ' ft' : ' m');
     showConfirm({
       title: intl.formatMessage({
         id: 'legacyStreet.changedTitle',
@@ -73,7 +77,7 @@ const LegacyStreetNotice = ({ entity }) => {
         {
           id: 'legacyStreet.changedMessage',
           defaultMessage:
-            'It was {saved} m wide when you added it and is {fetched} m wide on Streetmix now. Converting loads the latest version from Streetmix. You can undo this.'
+            'It was {saved} wide when you added it and is {fetched} wide on Streetmix now. Converting loads the latest version from Streetmix. You can undo this.'
         },
         { saved: fmt(savedWidth), fetched: fmt(fetchedWidth) }
       ),

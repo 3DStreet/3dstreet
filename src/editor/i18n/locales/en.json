@@ -1701,7 +1701,7 @@
     "defaultMessage": "It has no Streetmix link, so it cannot be converted. Import the street again from Streetmix to get a managed street you can edit here."
   },
   "legacyStreet.changedMessage": {
-    "defaultMessage": "It was {saved} m wide when you added it and is {fetched} m wide on Streetmix now. Converting loads the latest version from Streetmix. You can undo this."
+    "defaultMessage": "It was {saved} wide when you added it and is {fetched} wide on Streetmix now. Converting loads the latest version from Streetmix. You can undo this."
   },
   "legacyStreet.changedTitle": {
     "defaultMessage": "This street has changed on Streetmix"
