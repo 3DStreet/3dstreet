@@ -1155,6 +1155,8 @@ describe('a held press on a group handle when the editor is left', () => {
     h.frame();
     expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.3);
     expect(h.openIds()).toEqual([]);
+    // The return restores the scope as it was at exit (TASK-213).
+    expect(h.inspector.selectedEntity).toBe(g);
   });
 });
 
