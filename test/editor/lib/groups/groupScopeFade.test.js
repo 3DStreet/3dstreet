@@ -624,6 +624,27 @@ describe('entering and leaving', () => {
     ).toHaveLength(1);
   });
 
+  it('listens for a shape rebuilding its meshes only while a group is open, and hears it once (fails if the listener outlives the group, or is missed for an event that does not bubble)', () => {
+    const { G, tree } = simpleScene();
+    const arrived = vi.spyOn(h.groupScope.outsideFade, 'arrived');
+    const rebuilt = () =>
+      tree.dispatchEvent(new CustomEvent('shape-geometry-changed'));
+
+    for (let i = 0; i < 2; i++) {
+      enter(G);
+      h.groupScope.close(null);
+      h.frame();
+    }
+    arrived.mockClear();
+    rebuilt();
+    expect(arrived).not.toHaveBeenCalled();
+
+    enter(G);
+    arrived.mockClear();
+    rebuilt();
+    expect(arrived).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     ['deleting the group', (G) => h.inspector.execute('entityremove', G)],
     ['a new scene', () => h.sceneEl.dispatchEvent(new CustomEvent('newScene'))],

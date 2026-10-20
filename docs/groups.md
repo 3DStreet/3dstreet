@@ -156,21 +156,26 @@ so it has no handles.
 ## Fading the outside
 
 While a group is open, scene content outside it is drawn at a fifth of its own
-opacity (`scopeFade.js`). Editor helpers are drawn normally. Nothing
-saved changes, and visibility is never written.
+opacity (`scopeFade.js`). Editor helpers in the helper scene are drawn
+normally; an outside object's own editor-only parts, such as a shape's
+see-through outline, fade with it. Nothing saved changes, and visibility is
+never written.
 
 - **Meshes** are drawn with a faded copy of their material, swapped in at the
   start of each render and swapped back at its end. Outside the render window
   every material is the original, so batching, exporters and the serializer
   never see a copy. A copy is refreshed when its original changes (a texture
-  arrives, a material is replaced). Copies are transparent, write no depth,
-  and scale a cutout's alpha test with its opacity.
+  arrives, a material is replaced), and follows whether its original draws
+  colour, as a shape's fill does once it is painted. Copies are transparent,
+  write no depth, and scale a cutout's alpha test with its opacity.
 - The shadow pass runs inside the window, so an outside cutout casts a
   slightly wider shadow while a group is open.
 - A shader material with no `opacity` uniform cannot be faded and is drawn as
   it is.
 - Content that arrives while a group is open is classified before it is first
-  drawn.
+  drawn. A shape that is created or redrawn while a group is open is
+  classified as it is rebuilt: it rebuilds its meshes without any A-Frame
+  event, so the fade listens for its own `shape-geometry-changed`.
 - If a render window throws, every swap is undone and fading stops for the
   session; the group stays open.
 - **Captures and exports** see the original appearance. A synchronous render

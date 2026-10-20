@@ -42,6 +42,8 @@ const MAP_LAYERS = ['google-maps-aerial', 'tiled-basemap', 'osm-buildings'];
 // Scene changes that can bring new content, and ones that can take it away.
 const ARRIVALS = ['object3dset', 'child-attached', 'model-loaded'];
 const REMOVALS = ['object3dremove', 'child-detached'];
+// A shape rebuilding its meshes (see onShapeRebuilt).
+const SHAPE_REBUILT = 'shape-geometry-changed';
 
 function isMapLayer(el) {
   return MAP_LAYERS.some(
@@ -166,6 +168,14 @@ export class ScopeFade {
     this.onArrival = (event) => this.arrived(event);
     this.onRemoval = () => {
       this.needsPrune = true;
+    };
+    // A shape rebuilds its meshes with no A-Frame event, only its own
+    // non-bubbling `shape-geometry-changed`. It is heard in the capture phase,
+    // on the way down to the shape; an outside shape's rebuild also removed
+    // meshes without any removal event, so the faded set is pruned.
+    this.onShapeRebuilt = (event) => {
+      if (this.isContentOutside(event.target)) this.needsPrune = true;
+      this.arrived(event);
     };
     this.onNewScene = () => this.newScene();
     sceneEl.addEventListener('newScene', this.onNewScene);
@@ -313,6 +323,7 @@ export class ScopeFade {
     for (const type of REMOVALS) {
       this.sceneEl.addEventListener(type, this.onRemoval);
     }
+    this.sceneEl.addEventListener(SHAPE_REBUILT, this.onShapeRebuilt, true);
   }
 
   unlisten() {
@@ -324,6 +335,8 @@ export class ScopeFade {
     for (const type of REMOVALS) {
       this.sceneEl.removeEventListener(type, this.onRemoval);
     }
+    // Removed with the flag it was added with, or nothing is removed.
+    this.sceneEl.removeEventListener(SHAPE_REBUILT, this.onShapeRebuilt, true);
   }
 
   // ------------------------------------------------------ captures, exports
@@ -386,14 +399,15 @@ export class ScopeFade {
   }
 
   // Record what is drawn under `object`, which is outside the open group,
-  // skipping the group itself and the map layers.
+  // skipping the group itself and the map layers. An outside object's own
+  // editor-only parts (a shape's see-through outline) fade with it; editor
+  // helpers live in the helper scene and are never classified.
   classify(object) {
     const groupObject = this.groupEl.object3D;
     const stack = [object];
     while (stack.length) {
       const node = stack.pop();
       if (node === groupObject) continue;
-      if (node.userData?.source === 'INSPECTOR') continue;
       if (node.el?.object3D === node && isMapLayer(node.el)) continue;
       if (isSplatMesh(node)) {
         this.splats.add(node);
@@ -489,6 +503,9 @@ export class ScopeFade {
     // Values three changes without a new version, which components animate.
     if (original.color) copy.color.copy(original.color);
     if (original.emissive) copy.emissive.copy(original.emissive);
+    // A shape's fill flips this when it is painted or cleared, without a new
+    // version, and a copy made while it was off would otherwise stay invisible.
+    copy.colorWrite = original.colorWrite;
     copy.opacity = original.opacity * OUTSIDE_OPACITY;
     // Keep cutouts' holes: their alpha test is scaled with their opacity.
     copy.alphaTest = original.alphaTest * OUTSIDE_OPACITY;
