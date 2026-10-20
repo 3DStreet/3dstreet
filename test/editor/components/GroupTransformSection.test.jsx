@@ -117,6 +117,16 @@ describe('help under a group in the Transform section', () => {
   });
 });
 
+describe('the Transform section of a group', () => {
+  it('shows position and rotation rows and no scale row (fails if the scale row is gated on the attribute alone)', () => {
+    show(group(root));
+    expect(screen.getByText('position')).toBeTruthy();
+    expect(screen.getByText('rotation')).toBeTruthy();
+    expect(screen.queryByText('scale')).toBeNull();
+    expect(screen.queryByTestId('vec3-link')).toBeNull();
+  });
+});
+
 describe('the Transform section of an ordinary entity', () => {
   it('keeps the link toggle, editable fields and linked scaling', () => {
     const el = entity(root);
