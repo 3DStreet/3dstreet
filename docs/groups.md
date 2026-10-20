@@ -144,6 +144,11 @@ so it has no handles.
 - A white outline around the member box and a scrim darkening the screen
   outside the box's outline appear in the same task as the group opens, so
   they are on screen in the next frame.
+- While the Shape tool draws in the open group, the outline and scrim also take
+  in the drawing (its placed points and the cursor point, each with room for the
+  line's thickness), so what is being drawn is never under the scrim. The
+  group's center, handles and stand point change only when the shape is
+  created: the drawing is not stored in the group's bounds.
 - Fading the outside follows one animation frame after the first render that
   shows the outline. Every change of open group cancels pending work for the
   previous one, and anything that still runs checks the scope generation it
@@ -226,9 +231,12 @@ real `BatchedMesh`.
   Their items land at the top level, and the notice says the item can be
   dragged into the group in the layer panel.
 - The destination is taken when the operation begins (a card click, a file
-  picker opening, a paste) and checked again when the item is committed. If the
-  group has gone, or can no longer take the item, the placement is refused with
-  an explanation; it never falls back to the top level.
+  picker opening, a paste, the Shape tool starting) and checked again when the
+  item is committed. If the group has gone, or can no longer take the item, the
+  placement is refused with an explanation; it never falls back to the top
+  level. The one exception is a shape being drawn: it is the user's work in
+  progress, so it is added at the top level, where it was drawn, with a
+  message. Selecting the new shape there closes every open group.
 - A placement "in view" that finds no ground uses the group's stand point (the
   center, on the bottom of its members; an empty group's center itself),
   never its origin. So does a route with no position of its own (the Assets

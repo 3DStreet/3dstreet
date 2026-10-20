@@ -50,7 +50,22 @@ function tmp() {
   if (!scratch) {
     scratch = {
       positions: new Float32Array(BOX_EDGES.length * 3),
-      parentInverse: new THREE.Matrix4()
+      parentInverse: new THREE.Matrix4(),
+      // For drawnBox: the box it builds, the group's inverse placement, the
+      // half-size of the cube around each point, and the point being carried.
+      drawn: new THREE.Box3(),
+      toLocal: new THREE.Matrix4(),
+      point: new THREE.Vector3(),
+      half: 0,
+      visit: null
+    };
+    const s = scratch;
+    s.visit = (x, y, z) => {
+      s.point.set(x, y, z).applyMatrix4(s.toLocal);
+      s.point.subScalar(s.half);
+      s.drawn.expandByPoint(s.point);
+      s.point.addScalar(2 * s.half);
+      s.drawn.expandByPoint(s.point);
     };
   }
   return scratch;
@@ -83,6 +98,10 @@ export class ScopePresentation {
     this.outline = null;
     this.outlineBox = null;
     this.presented = false;
+    // A drawing in progress that the outline and scrim take in (see
+    // setDrawingExtent). Presentation only: the group's stored bounds, and
+    // so its center and handles, never see it.
+    this.drawingExtent = null;
     // What the scrim was last built from (see recordScrimInputs), and the
     // record reused for it.
     this.drawnFrom = null;
@@ -224,8 +243,8 @@ export class ScopePresentation {
       return;
     }
     this.presented = true;
-    const box = getGroupBounds(groupEl);
     const matrixWorld = groupEl.object3D.matrixWorld;
+    const box = this.drawnBox(groupEl, getGroupBounds(groupEl));
     this.poseOutline(box, matrixWorld);
 
     const rect = this.inspector.container.getBoundingClientRect();
@@ -235,6 +254,51 @@ export class ScopePresentation {
       ? projectBoxSilhouette(box, matrixWorld, camera, rect.width, rect.height)
       : null;
     this.scrim.show(rect, outline);
+  }
+
+  /**
+   * Have the outline and scrim of group `groupId` also take in the points
+   * `forEachPoint(visit)` gives, as `visit(x, y, z)` in world space, each with
+   * a cube of half-size `pad` (world distance) around it: a tool's drawing,
+   * which is not yet a member of the group. Returns a handle for
+   * clearDrawingExtent. Nothing else follows the drawing.
+   */
+  setDrawingExtent(groupId, forEachPoint, pad) {
+    this.drawingExtent = { groupId, forEachPoint, pad };
+    return this.drawingExtent;
+  }
+
+  /** Stop following the drawing `handle` was returned for, if still current. */
+  clearDrawingExtent(handle) {
+    if (handle && this.drawingExtent === handle) this.drawingExtent = null;
+  }
+
+  // The box to draw for the group: its stored bounds, or when a drawing in it
+  // is being followed, those bounds (or an empty box) grown to take in each
+  // point, with a cube of its pad around it. The pad is what gives a lone
+  // point or a flat run of points a volume: the preview's tubes and spheres
+  // have a radius, and a box with no volume has no opening in the scrim. The
+  // result is a scratch box, valid until the next call.
+  drawnBox(groupEl, stored) {
+    const extent = this.drawingExtent;
+    if (!extent || extent.groupId !== groupEl.id) return stored;
+    const matrixWorld = groupEl.object3D.matrixWorld;
+    // Singular placement: keep the stored box, as the bounds do.
+    if (Math.abs(matrixWorld.determinant()) < 1e-12) return stored;
+    const t = tmp();
+    t.toLocal.copy(matrixWorld).invert();
+    // At least `pad` in world on every axis, however the group is scaled.
+    const e = matrixWorld.elements;
+    const smallestScale = Math.min(
+      Math.hypot(e[0], e[1], e[2]),
+      Math.hypot(e[4], e[5], e[6]),
+      Math.hypot(e[8], e[9], e[10])
+    );
+    t.half = extent.pad / smallestScale;
+    if (stored) t.drawn.copy(stored);
+    else t.drawn.makeEmpty();
+    extent.forEachPoint(t.visit);
+    return t.drawn.isEmpty() ? stored : t.drawn;
   }
 
   clear() {

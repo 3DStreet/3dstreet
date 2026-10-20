@@ -16,7 +16,10 @@
 // group, and checked again when the item is committed: an upload, a clipboard
 // read or an asset placement may finish after the group was removed or moved
 // somewhere it can no longer take items. Such a placement is refused with an
-// explanation; it never falls back to the top level.
+// explanation; it never falls back to the top level. The one exception is a
+// shape being drawn, which is the user's work in progress and not an upload
+// that can be tried again: when its group can no longer take it, it is added at
+// the top level with a message.
 
 import {
   BACKDROP_CLASS,
@@ -80,6 +83,27 @@ export function beginPlacement({ groupable = true } = {}) {
   const stack = globalThis.AFRAME?.INSPECTOR?.groupScope?.openStack;
   if (!stack?.length) return null;
   return { parentId: stack[stack.length - 1] };
+}
+
+/**
+ * While a tool draws an item for group `groupId`, have the group's outline and
+ * scrim take in the drawing: `forEachPoint(visit)` calls `visit(x, y, z)` for
+ * each world point drawn so far, and `pad` is the world distance the drawing
+ * extends beyond each. Returns a handle for hideDrawingExtent, or null when
+ * there is no scope to show it (the group's center and handles never follow a
+ * drawing).
+ */
+export function showDrawingExtent(groupId, forEachPoint, pad) {
+  const presentation = globalThis.AFRAME?.INSPECTOR?.groupScope?.presentation;
+  return presentation?.setDrawingExtent(groupId, forEachPoint, pad) ?? null;
+}
+
+/** Stop following the drawing `handle` was returned for. */
+export function hideDrawingExtent(handle) {
+  if (!handle) return;
+  globalThis.AFRAME?.INSPECTOR?.groupScope?.presentation?.clearDrawingExtent(
+    handle
+  );
 }
 
 /** The ticket's group, if it can still take the item; null otherwise. */

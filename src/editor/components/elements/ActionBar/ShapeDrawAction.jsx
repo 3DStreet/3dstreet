@@ -59,6 +59,14 @@ import { ProbeTargets } from '../../../lib/nav-experimental/probeTargets.js';
 import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants.js';
 import { getShapeStyle } from '../../../lib/shapeStyle.js';
 import { nextMoveGizmo } from '../../../lib/transformModes.js';
+import { isGroupableItem } from '../../../lib/groups/groupModel.js';
+import { groupMessage } from '../../../lib/groups/groupMessages.js';
+import {
+  beginPlacement,
+  hideDrawingExtent,
+  placeDefinition,
+  showDrawingExtent
+} from '../../../lib/groups/groupPlacement.js';
 
 // m — reject a click ~on the PREVIOUS vertex. Distinct from the editor's
 // MIN_EDIT_VERTEX_SEPARATION (shapeEditRules.js), which holds the same number
@@ -192,6 +200,14 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     const canvas = scene?.canvas;
     if (!canvas) return undefined;
 
+    // Where the shape goes is fixed now, as the tool starts, like every other
+    // way of adding an item: the innermost group open at this moment, or null
+    // when none is (the shape is then created where it always was).
+    const ticket = beginPlacement({
+      groupable: isGroupableItem({ components: { shape: '' } })
+    });
+    let extentHandle = null;
+
     // --- activate ---------------------------------------------------------
     committingRef.current = false;
     verticesRef.current = [];
@@ -235,6 +251,26 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     });
     scene.appendChild(previewEl);
     previewElRef.current = previewEl;
+
+    // While drawing in an open group, its outline and scrim take in the
+    // drawing, which is not yet a member of the group. From the first placed
+    // point, with the trailing cursor point; the preview sits at the scene
+    // root, so its positions are world positions.
+    if (ticket) {
+      const forEachDrawingPoint = (visit) => {
+        const verts = verticesRef.current;
+        for (let i = 0; i < verts.length; i++) {
+          visit(verts[i].x, verts[i].y, verts[i].z);
+        }
+        const trailing = trailingElRef.current?.object3D?.position;
+        if (verts.length && trailing) visit(trailing.x, trailing.y, trailing.z);
+      };
+      extentHandle = showDrawingExtent(
+        ticket.parentId,
+        forEachDrawingPoint,
+        style.lineWidth
+      );
+    }
 
     // First-vertex close-target marker (manual-close mode): a flat ring shown when
     // the cursor is within CLOSE_PX_TOLERANCE of the first vertex. Tool-owned,
@@ -612,6 +648,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         readoutsRef.current = null;
       }
       if (pEl && pEl.parentNode) pEl.parentNode.removeChild(pEl);
+      // The outline and scrim go back to the group's own bounds, which take in
+      // the shape once it has been built.
+      hideDrawingExtent(extentHandle);
+      extentHandle = null;
       previewElRef.current = null;
       trailingElRef.current = null;
       committedElsRef.current = [];
@@ -630,11 +670,88 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // can be drawn. A future "stay active after commit" change breaks that and
       // would have to move the read.
       //
-      // Vertices are picked in world space, but entitycreate parents the shape
-      // to the editor's default parent (#street-container) and treats child
-      // positions as LOCAL to it. Convert so the committed shape lands exactly
-      // where the world-space preview showed it, even if that parent is offset
-      // (e.g. a geospatial scene).
+      // The definition of a shape through `points`, which are positions in the
+      // frame the entity is created in. The entity sits at their centroid and
+      // each vertex is stored RELATIVE to it — so the entity's origin sits on
+      // the shape (its centre), not at the parent origin far away. That makes
+      // the standard transform gizmo attach on the shape and rotate/scale about
+      // its centre, consistent with other scene elements. (Whole-shape move is
+      // a deliberate later refinement; basic transform controls are fine now.)
+      const definitionThrough = (points) => {
+        const centroid = new THREE.Vector3();
+        points.forEach((p) => centroid.add(p));
+        centroid.multiplyScalar(1 / Math.max(1, points.length));
+        const children = points.map((p) => ({
+          element: 'a-entity',
+          class: 'hideFromSceneGraph',
+          components: {
+            'shape-vertex': '',
+            position: `${p.x - centroid.x} ${p.y - centroid.y} ${p.z - centroid.z}`
+          }
+        }));
+        // All four appearance props are written whether or not the shape
+        // closes: an open polyline has no interior today, but `closed` is
+        // togglable in the panel, and omitting the fill props would make
+        // closing it later reveal a schema-default fill instead of the one it
+        // was drawn with. Writing default-valued props costs nothing in the
+        // saved file — the serializer diffs the live component data against the
+        // schema defaults.
+        //
+        // `closed` is written only when true, so an open shape's saved JSON
+        // keeps no `closed` key (the serializer strips schema defaults).
+        const shapeComponent = {
+          lineColor: style.lineColor,
+          lineWidth: style.lineWidth,
+          fillColor: style.fillColor,
+          fillOpacity: style.fillOpacity,
+          ...(closed ? { closed: true } : {})
+        };
+        const layerNoun = closed ? 'Polygon' : 'Polyline';
+        return {
+          element: 'a-entity',
+          components: {
+            shape: shapeComponent,
+            position: `${centroid.x} ${centroid.y} ${centroid.z}`,
+            'data-layer-name': `Shape • ${layerNoun} ${shapeLayerCounter++}`
+          },
+          children
+        };
+      };
+
+      // With a group open when the tool started, the shape goes into that
+      // group, at the world position it was drawn at. The definition is built
+      // from the world points and re-posed under the group; its vertices stay
+      // world-axis offsets from the centroid, which is right because the
+      // entity's resulting world rotation is the identity.
+      if (ticket) {
+        const worldDefinition = definitionThrough(
+          verts.map((v) => new THREE.Vector3(v.x, v.y, v.z))
+        );
+        const placed = placeDefinition(worldDefinition, ticket);
+        if (!placed.refusal) {
+          AFRAME.INSPECTOR.execute('entitycreate', placed.definition);
+          return;
+        }
+        // The group is gone, or can no longer take the shape without
+        // distorting it. What was drawn is the user's work: it is added at the
+        // top level, where it was drawn, and the user is told.
+        const fallback = placeDefinition(worldDefinition, {
+          parentId: 'street-container'
+        });
+        if (fallback.refusal) {
+          STREET.notify.warningMessage(fallback.refusal);
+          return;
+        }
+        AFRAME.INSPECTOR.execute('entitycreate', fallback.definition);
+        STREET.notify.infoMessage(groupMessage('drawnShapeAtTopLevel'));
+        return;
+      }
+
+      // With no group open, vertices are picked in world space, but
+      // entitycreate parents the shape to the editor's default parent
+      // (#street-container) and treats child positions as LOCAL to it. Convert
+      // so the committed shape lands exactly where the world-space preview
+      // showed it, even if that parent is offset (e.g. a geospatial scene).
       const parentEl = document.getElementById('street-container');
       const parentObj = parentEl && parentEl.object3D;
       if (parentObj) parentObj.updateMatrixWorld();
@@ -642,50 +759,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         const w = new THREE.Vector3(v.x, v.y, v.z);
         return parentObj ? parentObj.worldToLocal(w) : w;
       };
-      const localVerts = verts.map(toLocal);
-      // Place the shape entity at the vertices' centroid and store each vertex
-      // RELATIVE to it — so the entity's origin sits on the shape (its centre),
-      // not at the parent origin far away. That makes the standard transform
-      // gizmo attach on the shape and rotate/scale about its centre, consistent
-      // with other scene elements. (Whole-shape move is a deliberate later
-      // refinement; basic transform controls are fine now.)
-      const centroid = new THREE.Vector3();
-      localVerts.forEach((p) => centroid.add(p));
-      centroid.multiplyScalar(1 / Math.max(1, localVerts.length));
-      const children = localVerts.map((p) => ({
-        element: 'a-entity',
-        class: 'hideFromSceneGraph',
-        components: {
-          'shape-vertex': '',
-          position: `${p.x - centroid.x} ${p.y - centroid.y} ${p.z - centroid.z}`
-        }
-      }));
-      // All four appearance props are written whether or not the shape closes:
-      // an open polyline has no interior today, but `closed` is togglable in
-      // the panel, and omitting the fill props would make closing it later
-      // reveal a schema-default fill instead of the one it was drawn with.
-      // Writing default-valued props costs nothing in the saved file — the
-      // serializer diffs the live component data against the schema defaults.
-      //
-      // `closed` is written only when true, so an open shape's saved JSON keeps
-      // no `closed` key (the serializer strips schema defaults).
-      const shapeComponent = {
-        lineColor: style.lineColor,
-        lineWidth: style.lineWidth,
-        fillColor: style.fillColor,
-        fillOpacity: style.fillOpacity,
-        ...(closed ? { closed: true } : {})
-      };
-      const layerNoun = closed ? 'Polygon' : 'Polyline';
-      AFRAME.INSPECTOR.execute('entitycreate', {
-        element: 'a-entity',
-        components: {
-          shape: shapeComponent,
-          position: `${centroid.x} ${centroid.y} ${centroid.z}`,
-          'data-layer-name': `Shape • ${layerNoun} ${shapeLayerCounter++}`
-        },
-        children
-      });
+      AFRAME.INSPECTOR.execute(
+        'entitycreate',
+        definitionThrough(verts.map(toLocal))
+      );
     }
 
     // Does the shape commit as a closed ring? Only via the first-vertex
