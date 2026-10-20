@@ -22,6 +22,10 @@ import {
 } from './tested/street-segment-utils';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
+import {
+  describeLevelledGroups,
+  levelGroupPoses
+} from './tested/migrate-group-pose';
 import { isProjectPassHash, isRedeemHash } from './tested/project-pass-link.js';
 import {
   getSceneIdFromPathname,
@@ -598,6 +602,10 @@ function createEntities(entitiesData, parentEl) {
   migrateLegacyFlatteningShape(entitiesData);
   migrateMeasureLinesToShapes(entitiesData);
   migrateImplicitStreetAlign(entitiesData);
+  // Unlike the migrations above, this one discards part of a saved transform
+  // (a group's tilt or scale), so it says so.
+  const levelled = levelGroupPoses(entitiesData);
+  if (levelled.length) console.warn(describeLevelledGroups(levelled));
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
   if (BATCHING_ENABLED) {
