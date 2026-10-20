@@ -1,7 +1,7 @@
 /* global STREET */
 import Events from '../Events.js';
 import { Command } from '../command.js';
-import { createUniqueId } from '../entity.js';
+import { createUniqueId } from '../entity.jsx';
 
 /**
  * Convert a legacy `street` + `streetmix-loader` street into a managed street
