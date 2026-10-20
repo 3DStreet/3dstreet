@@ -75,7 +75,12 @@ export class EntityCreateCommand extends Command {
 
     this.type = 'entitycreate';
     this.name = 'Create Entity';
-    this.definition = definition;
+    // A batch that creates many entities (detachallclones) keeps the
+    // selection where it is and lands it once at the end, like the same
+    // option on entityupdate; the flag is not part of the entity definition.
+    const { noSelectEntity, ...entityDefinition } = definition;
+    this.noSelectEntity = !!noSelectEntity;
+    this.definition = entityDefinition;
     this.callback = callback;
     this.entityId = null;
     // If we have parentEl in the definition, be sure it has an id and store the definition with the id
@@ -91,15 +96,27 @@ export class EntityCreateCommand extends Command {
         parentEl: this.definition.parentEl.id
       };
     }
+    // `beforeEl`, the sibling to insert before, is kept by id too, so a redo
+    // puts the entity back in the same place.
+    if (
+      this.definition.beforeEl &&
+      typeof this.definition.beforeEl !== 'string'
+    ) {
+      if (!this.definition.beforeEl.id) {
+        this.definition.beforeEl.id = createUniqueId();
+      }
+      this.definition = {
+        ...this.definition,
+        beforeEl: this.definition.beforeEl.id
+      };
+    }
   }
 
   execute(nextCommandCallback) {
     let definition = this.definition;
     const callback = (entity) => {
       entity.pause();
-      // `noSelectEntity`, as on an entityupdate: leave the selection as it
-      // is. It stays on the definition, so a redo keeps it too.
-      if (!this.definition.noSelectEntity) this.editor.selectEntity(entity);
+      if (!this.noSelectEntity) this.editor.selectEntity(entity);
       this.callback?.(entity);
       nextCommandCallback?.(entity);
     };
@@ -133,7 +150,10 @@ export class EntityCreateCommand extends Command {
     if (entity) {
       entity.parentNode.removeChild(entity);
       Events.emit('entityremoved', entity);
-      this.editor.selectEntity(null);
+      // Never leave a removed element selected, even in a batch.
+      if (!this.noSelectEntity || this.editor.selectedEntity === entity) {
+        this.editor.selectEntity(null);
+      }
       nextCommandCallback?.(entity);
     }
   }

@@ -7,19 +7,24 @@ import { auth } from '@shared/services/firebase';
 import { saveUserProfile } from '@shared/utils/username';
 import { resolveInitialLocale, persistLocale } from './editor/i18n/config';
 import { EMPTY_ASSET_LOAD_SUMMARY } from './asset-load-tracker';
+import { isRedeemHash } from './tested/project-pass-link.js';
 
 const firstModal = () => {
   const hash = window.location.hash;
   // A path-form scene URL (/scenes/UUID, #1970) is a deep link like the old
   // hash form: the scene is loading, so no intro modal.
   const isSceneDeepLink = window.location.pathname.startsWith('/scenes/');
-  let modal = hash.includes('payment')
-    ? 'payment'
-    : hash.includes('profile') || hash.includes('/modal/profile')
-      ? 'profile'
-      : !hash.length && !isSceneDeepLink
-        ? 'new'
-        : null;
+  // `#redeem` (Project Pass codes, #1922) is matched as an exact route first,
+  // so it can never be shadowed by (or shadow) the substring checks below.
+  let modal = isRedeemHash(hash)
+    ? 'redeem-pass'
+    : hash.includes('payment')
+      ? 'payment'
+      : hash.includes('profile') || hash.includes('/modal/profile')
+        ? 'profile'
+        : !hash.length && !isSceneDeepLink
+          ? 'new'
+          : null;
   const isStreetMix = hash.includes('streetmix');
   if (isStreetMix) {
     modal = localStorage.getItem('shownIntro') ? null : 'intro';
@@ -359,6 +364,25 @@ const useStore = create(
         // the system writes it from focusHotspot()/clearFocus().
         focusedHotspot: null,
         setFocusedHotspot: (info) => set({ focusedHotspot: info }),
+        // Visitor Build (build-area, docs/visitor-build.md): true while a
+        // play session in the viewer has a buildable area, mirrored from the
+        // build-area A-Frame system so the palette dock renders and the
+        // viewport re-enables selection + the gizmo for visitor objects.
+        // Never set directly.
+        buildSessionActive: false,
+        setBuildSessionActive: (active) => set({ buildSessionActive: active }),
+        // Visitor-placed objects currently in the scene (dock counter).
+        buildPlacedCount: 0,
+        setBuildPlacedCount: (count) => set({ buildPlacedCount: count }),
+        // A `#deflate-3dstreet-json:` scene link failed to decode
+        // (set-loader-from-hash). Set by the loader, which has no intl;
+        // Main shows the localized toast and clears it.
+        sceneLinkError: false,
+        setSceneLinkError: (sceneLinkError) => set({ sceneLinkError }),
+        // ?embed=true: the viewer with minimal chrome for an <iframe> on a
+        // third-party page (no app switcher, byline or Edit action).
+        isEmbed: false,
+        setIsEmbed: (isEmbed) => set({ isEmbed }),
         isInspectorEnabled: true,
         setIsInspectorEnabled: (newIsInspectorEnabled) => {
           if (newIsInspectorEnabled) {

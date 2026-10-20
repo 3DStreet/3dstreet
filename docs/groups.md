@@ -232,8 +232,13 @@ real `BatchedMesh`.
 - Items the editor makes for the user rather than ones the user adds
   (`isSystemItem`: the Starting View) get no notice, and creating or moving
   one leaves the selection, and so the open group, as it was.
-- **New group** with a group open makes the new group inside it, with its
-  origin at that group's center.
+- **New group** goes where the user is looking (`newGroupPlacement`). With an
+  item selected it goes directly above that item, in the same parent, with its
+  origin at the item's position, so the item can be dropped straight in; a
+  selection inside a street or intersection stands for the whole street. With
+  nothing selected (or a fixed layer) it goes first in the open group, at its
+  center, or first at the top level, at the origin. The create command's
+  `beforeEl` keeps that place across undo and redo.
 - **Paste.** An item copied from inside a group, or pasted into an open group,
   keeps its world pose. Every other paste keeps the copied local pose.
 

@@ -141,4 +141,17 @@ describe('move tools at the toolbar and keyboard', () => {
       'Advanced rotate'
     ]);
   });
+
+  it('reactivates the last move tool from the hand tool before opening the menu', () => {
+    globalThis.AFRAME.INSPECTOR.transformMode = 'rotate';
+    mountBar();
+    fireEvent.click(screen.getByTitle(handTitle));
+    const trigger = screen.getByTitle(menuTitle);
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    expect(modes).toEqual(['rotate']);
+    expect(screen.queryAllByRole('menuitem')).toHaveLength(0);
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+    expect(screen.getAllByRole('menuitem')).toHaveLength(3);
+    expect(modes).toEqual(['rotate']);
+  });
 });

@@ -10,7 +10,7 @@
 
 export const USER_GROUP_CLASS = 'user-group';
 
-const STREET_CONTAINER_ID = 'street-container';
+export const STREET_CONTAINER_ID = 'street-container';
 
 // Items that keep the parent the editor gives them, so they never move into or
 // out of a user group: street segments, shapes, the Starting View and anything

@@ -64,6 +64,48 @@ export const ShapeIcon = () => (
   </svg>
 );
 
+export const GroupIcon = () => (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M3 5C3 4.17 3.67 3.5 4.5 3.5H9.4L11.4 5.8H19.5C20.33 5.8 21 6.47 21 7.3V19C21 19.83 20.33 20.5 19.5 20.5H4.5C3.67 20.5 3 19.83 3 19V5Z"
+      stroke="white"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+// The layer panel's new-group button: the group row's folder with a plus.
+export const FolderPlusIcon = ({ className }) => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+  >
+    <path
+      d="M1.25 3C1.25 2.45 1.7 2 2.25 2H6L7.5 3.6H13.75C14.3 3.6 14.75 4.05 14.75 4.6V13.25C14.75 13.8 14.3 14.25 13.75 14.25H2.25C1.7 14.25 1.25 13.8 1.25 13.25V3Z"
+      stroke="white"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M8 6.7V11.1M5.8 8.9H10.2"
+      stroke="white"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 export const Ruler24Icon = () => (
   <svg
     width="28"

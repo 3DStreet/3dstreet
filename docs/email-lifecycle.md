@@ -281,6 +281,7 @@ Stripe dashboard (dev first, then prod):
 |-------------------|--------|---------|-------|
 | `welcome` | outbound | Firebase Auth `onCreate` (`lifecycle-triggers.js`) — instant, new accounts only, no backfill | `onceEver` |
 | `postUpgradeWelcome` | outbound | `checkout.session.completed` in `stripeWebhook` | `dedupeKey: sessionId` |
+| `passActivated` | outbound | Project Pass code redeemed (`redeemPassCode`, `pass-codes.js`) | `dedupeKey: redemptionId` |
 | `failedPayment` | outbound | **dormant** — dunning uses Stripe's hosted emails instead; `invoice.payment_failed` not enabled on the webhook. Code kept as fallback. | `dedupeKey: invoiceId` |
 | `checkoutAbandoned1h` | conversion | hourly sweep over `checkoutSessions` not `complete`, created >1h ago | `dedupeKey: sessionId`, `categoryNotWithinDays: 7`, `stopIfPro` |
 | `checkoutAbandoned72h` | conversion | same, >72h — **built but disabled** (`ENABLE_ABANDONED_72H` in `lifecycle-sweeps.js`) | same |

@@ -23,10 +23,14 @@ import {
   generateAndSaveUsername
 } from '@shared/utils/username';
 import { commonMessages } from '@/editor/i18n/commonMessages';
+import { formatDate } from '@shared/utils/format';
 
 const ProfileModal = () => {
   const intl = useIntl();
   const { currentUser, setCurrentUser, tokenProfile } = useAuthContext();
+  // Pro only through a one-time pass (#1922): no subscription, no team.
+  const isPassOnly =
+    !!currentUser?.isProPass && !currentUser?.plan && !currentUser?.isProTeam;
   const setModal = useStore((state) => state.setModal);
   const modal = useStore((state) => state.modal);
   const startCheckout = useStore((state) => state.startCheckout);
@@ -282,12 +286,21 @@ const ProfileModal = () => {
                                 },
                                 { domain: currentUser?.teamDomain }
                               )
-                            : intl.formatMessage({
-                                id: 'profileModal.planPro',
-                                defaultMessage: 'Plan: Pro'
-                              })}
+                            : isPassOnly
+                              ? intl.formatMessage(
+                                  {
+                                    id: 'profileModal.planProPass',
+                                    defaultMessage: 'Plan: Pro until {date}'
+                                  },
+                                  { date: formatDate(currentUser?.proUntil) }
+                                )
+                              : intl.formatMessage({
+                                  id: 'profileModal.planPro',
+                                  defaultMessage: 'Plan: Pro'
+                                })}
                       </span>
-                      {!currentUser?.isProTeam && (
+                      {/* A one-time pass (#1922) has no subscription to manage. */}
+                      {!currentUser?.isProTeam && !isPassOnly && (
                         <Button
                           variant="ghost"
                           onClick={manageSubscription}
@@ -332,25 +345,29 @@ const ProfileModal = () => {
                         }}
                       >
                         <TokenDisplayInner showLabel={true} />
-                        <span style={{ fontSize: '13px', color: '#9ca3af' }}>
-                          <FormattedMessage
-                            id="profileModal.nextMonthlyRefill"
-                            defaultMessage="Next monthly refill: {date}"
-                            values={{
-                              // Format in the active locale (react-intl reads
-                              // the IntlProvider locale) so non-US users don't
-                              // get mm/dd ordering.
-                              date: intl.formatDate(
-                                new Date(
-                                  new Date().getFullYear(),
-                                  new Date().getMonth() + 1,
-                                  1
-                                ),
-                                { month: 'short', day: 'numeric' }
-                              )
-                            }}
-                          />
-                        </span>
+                        {/* Pass holders (#1922) get their tokens up front and
+                            no monthly top-up, so there's no refill date. */}
+                        {!isPassOnly && (
+                          <span style={{ fontSize: '13px', color: '#9ca3af' }}>
+                            <FormattedMessage
+                              id="profileModal.nextMonthlyRefill"
+                              defaultMessage="Next monthly refill: {date}"
+                              values={{
+                                // Format in the active locale (react-intl reads
+                                // the IntlProvider locale) so non-US users don't
+                                // get mm/dd ordering.
+                                date: intl.formatDate(
+                                  new Date(
+                                    new Date().getFullYear(),
+                                    new Date().getMonth() + 1,
+                                    1
+                                  ),
+                                  { month: 'short', day: 'numeric' }
+                                )
+                              }}
+                            />
+                          </span>
+                        )}
                       </div>
                     )}
                     <TokenDisplayInner

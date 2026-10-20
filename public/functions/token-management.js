@@ -3,15 +3,38 @@ const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { computeMonthlyRefill } = require('./token-packs.js');
+const {
+  isPaidPlanClaim,
+  toMillis,
+  isProUntilActive,
+  hasProEntitlement,
+  planProPassGrant
+} = require('./pro-pass.js');
 
 const PRO_MONTHLY_ALLOWANCE = 100;
 const MAX_MONTHLY_ALLOWANCE = 500;
 
-// MAX is a superset of PRO: it unlocks every Pro feature, plus higher storage
-// and a larger monthly token allowance. Anywhere we used to check
-// `plan === 'PRO'`, accept either paid tier. Keep this in sync with the plan
-// claims written by the Stripe webhook in index.js.
-const isPaidPlanClaim = (plan) => plan === 'PRO' || plan === 'MAX';
+// isPaidPlanClaim (pro-pass.js): MAX is a superset of PRO — it unlocks every
+// Pro feature, plus higher storage and a larger monthly token allowance.
+// Anywhere we used to check `plan === 'PRO'`, accept either paid tier.
+//
+// Pro *entitlement* is wider than the plan claim: a one-time pass (#1922)
+// grants Pro until tokenProfile.proUntil. Feature gates use
+// hasProEntitlement (via checkUserProStatus / isUserProInternal); the monthly
+// token refill deliberately does NOT — pass holders got their tokens up front.
+
+// Read the pass expiry for a user (tokenProfile/{uid}.proUntil) as epoch ms,
+// or null. A read failure resolves to null (fail closed for the pass only —
+// subscription and team-domain Pro don't depend on this read).
+const readProUntil = async (userId) => {
+  try {
+    const doc = await admin.firestore().collection('tokenProfile').doc(userId).get();
+    return doc.exists ? toMillis(doc.data().proUntil) : null;
+  } catch (error) {
+    console.error(`Error reading proUntil for ${userId}:`, error);
+    return null;
+  }
+};
 
 // Monthly token top-up by plan. Only MAX bumps above the Pro baseline, so
 // domain-based team Pro (no plan claim) correctly resolves to PRO_MONTHLY_ALLOWANCE.
@@ -89,6 +112,8 @@ const checkAndRefillImageTokens = functions
       // Use centralized domain validation
       const { isProDomain } = await validateUserDomain(userRecord.email);
 
+      // Subscription + team only: a one-time pass (proUntil) gets no monthly
+      // top-up — its token lump sum replaces the drip (#1922).
       const isProUser = isPro || isProDomain;
       const monthlyAllowance = monthlyAllowanceForPlan(plan);
 
@@ -217,6 +242,7 @@ const checkAndRefillImageTokensInternal = async (userId) => {
     // Use centralized domain validation
     const { isProDomain } = await validateUserDomain(userRecord.email);
 
+    // Subscription + team only — no monthly top-up for pass holders (#1922).
     const isProUser = isPro || isProDomain;
     const monthlyAllowance = monthlyAllowanceForPlan(plan);
 
@@ -330,7 +356,12 @@ const checkUserProStatus = functions
       // Check domain validation
       const { isProDomain, teamDomain } = await validateUserDomain(userRecord.email);
 
-      const isProUser = isPro || isProDomain;
+      // One-time pass (#1922). Always read, even for subscribers, so the
+      // client can show "Pro until <date>" to someone who holds both.
+      const proUntilMs = await readProUntil(userId);
+      const isProPass = isProUntilActive(proUntilMs);
+
+      const isProUser = hasProEntitlement({ plan, isProDomain, proUntil: proUntilMs });
 
       return {
         isPro: isProUser,
@@ -340,7 +371,13 @@ const checkUserProStatus = functions
         // Actual paid tier ('PRO' | 'MAX' | null). Lets the client distinguish
         // Max from Pro for badge/profile labels; domain-team users have no plan
         // claim so this is null for them (they render as the team label).
+        // Pass holders also have no plan claim — see isProPass.
         plan,
+        // Unexpired one-time pass, and its expiry (ISO string; null when the
+        // user never bought one). proUntil is returned even once expired so
+        // support/UI can say "your pass ended on …".
+        isProPass,
+        proUntil: proUntilMs !== null ? new Date(proUntilMs).toISOString() : null,
         email: userRecord.email
       };
       
@@ -488,13 +525,134 @@ const grantPurchasedTokens = async ({ checkoutSession, items }) => {
   return true;
 };
 
+// Pass fulfilment (#1922) — the ONE server-side entry point for granting
+// time-boxed Pro, whatever paid for it. Credits `tokens` and extends
+// tokenProfile.proUntil = max(now, proUntil) + days, in a single transaction
+// with a tokenLog audit row whose doc id is derived from `idempotencyKey`
+// (`pass-<idempotencyKey>`). A repeat call with the same key re-reads that
+// row and no-ops, so retries can never double-grant (600 tokens / 180 days
+// for one payment). Callers:
+//   - pass-code redemption (pass-codes.js): key = the redemption id
+//   - (follow-up) self-serve Stripe checkout: key = the checkout session id
+// Never touches plan claims, so an active subscriber who gets a pass keeps
+// their plan; deleting the subscription later clears only `plan` and leaves
+// proUntil standing.
+//
+// `idempotencyKey` must be unique per grant and a valid Firestore doc-id
+// fragment (no '/'). `source` labels the grant in tokenLog (e.g.
+// 'pro-pass-project', 'pass-code'). `details` is merged into the audit row
+// (purchase/redemption specifics: amounts, session ids, pass breakdown).
+// `sessionId` (optional) is appended to tokenProfile.proPassSessionIds for
+// support lookups.
+// Returns { granted: true, alreadyGranted, proUntilMs } when durably
+// recorded, or { granted: false, reason } when the input is unusable (the
+// caller reports failure; redemption maps it to an 'internal' error).
+const grantPass = async (
+  userId,
+  { days, tokens = 0, idempotencyKey, source, details = {}, sessionId = null } = {}
+) => {
+  if (!userId) return { granted: false, reason: 'missing-user' };
+  if (!idempotencyKey || String(idempotencyKey).includes('/')) {
+    return { granted: false, reason: 'invalid-idempotency-key' };
+  }
+  if (!Number.isFinite(days) || days <= 0 || !Number.isFinite(tokens) || tokens < 0) {
+    return { granted: false, reason: 'invalid-grant' };
+  }
+
+  const db = admin.firestore();
+  const tokenProfileRef = db.collection('tokenProfile').doc(userId);
+  const logRef = db.collection('tokenLog').doc(`pass-${idempotencyKey}`);
+  let result = null;
+
+  await db.runTransaction(async (transaction) => {
+    // Transaction bodies can re-run on contention; reset per attempt.
+    result = null;
+    const [logDoc, tokenDoc] = await Promise.all([
+      transaction.get(logRef),
+      transaction.get(tokenProfileRef)
+    ]);
+    const plan = planProPassGrant({
+      alreadyGranted: logDoc.exists,
+      tokenProfile: tokenDoc.exists ? tokenDoc.data() : null,
+      summary: { days, tokens },
+      nowMs: Date.now()
+    });
+    if (!plan) {
+      result = { alreadyGranted: true, proUntilMs: toMillis(logDoc.data().proUntilAfter) };
+      return;
+    }
+
+    const { tokensBefore, tokensAfter, proUntilBeforeMs, proUntilAfterMs } = plan;
+    const proUntilAfter = admin.firestore.Timestamp.fromMillis(proUntilAfterMs);
+
+    // Support-visible pass state lives right on tokenProfile: proUntil plus
+    // the session ids that paid for it (tokenLog has the full audit rows).
+    const passFields = {
+      genToken: tokensAfter,
+      proUntil: proUntilAfter,
+      proPassLastGrantedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    if (sessionId) {
+      passFields.proPassSessionIds = admin.firestore.FieldValue.arrayUnion(sessionId);
+    }
+
+    if (tokenDoc.exists) {
+      transaction.update(tokenProfileRef, passFields);
+    } else {
+      transaction.set(tokenProfileRef, {
+        userId,
+        geoToken: 3,
+        lastMonthlyRefill: null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        ...passFields
+      });
+    }
+
+    transaction.set(logRef, {
+      ...details,
+      userId,
+      type: 'purchase',
+      tokensBefore,
+      tokensAfter,
+      tokenCost: null,
+      source: source || 'pro-pass',
+      relatedModel: null,
+      tokensPurchased: tokens,
+      daysPurchased: days,
+      proUntilBefore: proUntilBeforeMs !== null
+        ? admin.firestore.Timestamp.fromMillis(proUntilBeforeMs)
+        : null,
+      proUntilAfter,
+      idempotencyKey: String(idempotencyKey),
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    result = { alreadyGranted: false, proUntilMs: proUntilAfterMs };
+  });
+
+  if (result.alreadyGranted) {
+    console.log(`pass already granted (retry): user=${userId} key=${idempotencyKey}`);
+  } else {
+    console.log(
+      `pass granted: user=${userId} tokens=${tokens} days=${days} source=${source} ` +
+      `proUntil=${new Date(result.proUntilMs).toISOString()} key=${idempotencyKey}`
+    );
+  }
+  return { granted: true, ...result };
+};
+
 // Internal helper function to check if user is pro (for other functions to use)
+// Same rule as checkUserProStatus (hasProEntitlement): subscription claim OR
+// team domain OR unexpired pass. The pass read is skipped when the cheaper
+// checks already answer yes.
 const isUserProInternal = async (userId) => {
   try {
     const userRecord = await getAuth().getUser(userId);
-    const isPro = isPaidPlanClaim(userRecord.customClaims && userRecord.customClaims.plan);
+    const plan = userRecord.customClaims && userRecord.customClaims.plan;
     const { isProDomain } = await validateUserDomain(userRecord.email);
-    return isPro || isProDomain;
+    if (hasProEntitlement({ plan, isProDomain })) return true;
+    return isProUntilActive(await readProUntil(userId));
   } catch (error) {
     console.error('Error checking user pro status:', error);
     return false;
@@ -506,6 +664,8 @@ module.exports = {
   checkAndRefillImageTokensInternal,
   chargeGenerationTokens,
   grantPurchasedTokens,
+  grantPass,
+  readProUntil,
   validateUserDomain,
   checkUserProStatus,
   isUserProInternal

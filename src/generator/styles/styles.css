@@ -94,6 +94,8 @@ input[type='range']::-webkit-slider-thumb:hover {
 }
 
 #notification {
+  /* Above .modal (9999) so sign-in errors show over the open sign-in modal */
+  z-index: 10000;
   transition:
     transform 0.3s ease,
     opacity 0.3s ease;

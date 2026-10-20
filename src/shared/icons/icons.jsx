@@ -392,8 +392,11 @@ export const Translate24Icon = () => (
 );
 
 // The easy move gizmo's own glyph, drawn as the gizmo looks: a square with a
-// marker on each side, inside a ring whose two arrowheads point into the gap
-// at the top.
+// marker on each side, inside a ring whose two arrowheads point up into the
+// gap at the top. Pixel-aligned, with a 1px gap between the square and its
+// markers and bold arrowheads, so it stays legible at 24px on a 1x display
+// (#2064): markers touching the square blur into a bumpy dot there, and small
+// arrowheads vanish into the ring.
 export const EasyTransform24Icon = () => (
   <svg
     width="24"
@@ -402,20 +405,19 @@ export const EasyTransform24Icon = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <path d="M8.5 8.5H15.5V15.5H8.5Z" fill="white" />
-    <path d="M10.8 8.5H13.2L12 6.9Z" fill="white" />
-    <path d="M10.8 15.5H13.2L12 17.1Z" fill="white" />
-    <path d="M8.5 10.8V13.2L6.9 12Z" fill="white" />
-    <path d="M15.5 10.8V13.2L17.1 12Z" fill="white" />
+    <path d="M10 10H14V14H10Z" fill="white" />
+    <path d="M10 9H14L12 6Z" fill="white" />
+    <path d="M10 15H14L12 18Z" fill="white" />
+    <path d="M9 10V14L6 12Z" fill="white" />
+    <path d="M15 10V14L18 12Z" fill="white" />
     <path
-      d="M17 3.34A10 10 0 1 1 7 3.34"
+      d="M20.87 8.6A9.5 9.5 0 1 1 3.13 8.6"
       stroke="white"
-      strokeWidth="1.6"
-      strokeLinecap="round"
+      strokeWidth="2"
       fill="none"
     />
-    <path d="M17.8 1.95L16.2 4.73L15.09 2.24Z" fill="white" />
-    <path d="M6.2 1.95L7.8 4.73L8.91 2.24Z" fill="white" />
+    <path d="M18.11 4.72L18.35 9.71L23.52 7.84Z" fill="white" />
+    <path d="M5.89 4.72L5.65 9.71L0.48 7.84Z" fill="white" />
   </svg>
 );
 
@@ -960,7 +962,7 @@ export const Chevron24Down = ({ className }) => (
   </svg>
 );
 
-export const Plus20Circle = ({ className }) => (
+export const Plus20Circle = ({ className, color = 'white' }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width="16"
@@ -973,13 +975,13 @@ export const Plus20Circle = ({ className }) => (
       fillRule="evenodd"
       clipRule="evenodd"
       d="M8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5898 4.41015 14.5 8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5ZM8 -6.99382e-07C3.58172 -1.08564e-06 1.08564e-06 3.58172 6.99382e-07 8C3.13124e-07 12.4183 3.58172 16 8 16C12.4183 16 16 12.4183 16 8C16 3.58172 12.4183 -3.13124e-07 8 -6.99382e-07Z"
-      fill="white"
+      fill={color}
     />
     <path
       fillRule="evenodd"
       clipRule="evenodd"
       d="M8 12.25C7.58579 12.25 7.25 11.9142 7.25 11.5L7.25 8.75L4.5 8.75C4.08579 8.75 3.75 8.41421 3.75 8C3.75 7.58579 4.08579 7.25 4.5 7.25L7.25 7.25L7.25 4.5C7.25 4.08579 7.58579 3.75 8 3.75C8.41421 3.75 8.75 4.08579 8.75 4.5L8.75 7.25L11.5 7.25C11.9142 7.25 12.25 7.58579 12.25 8C12.25 8.41421 11.9142 8.75 11.5 8.75L8.75 8.75L8.75 11.5C8.75 11.9142 8.41421 12.25 8 12.25Z"
-      fill="white"
+      fill={color}
     />
   </svg>
 );

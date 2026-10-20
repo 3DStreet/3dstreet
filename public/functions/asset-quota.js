@@ -25,6 +25,8 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
+const { readProUntil } = require('./token-management.js');
+const { isProUntilActive } = require('./pro-pass.js');
 
 const MB = 1000 * 1000;
 const GB = 1000 * MB;
@@ -57,6 +59,7 @@ function getMaxFileBytes(tier) {
 
 /**
  * Resolve plan tier via Admin SDK getUser() — always reads fresh custom claims
+ * (plus tokenProfile.proUntil for one-time passes, #1922)
  * server-side. JWT-decoded claims (context.auth.token) are stale between
  * setCustomUserClaims and the next ID-token refresh (~1h auto, or forced via
  * getIdToken(true)), which leaves the assets panel showing the old plan for
@@ -87,6 +90,13 @@ async function resolvePlanForUser(uid) {
           console.error('[asset-quota] Error parsing ALLOWED_PRO_TEAM_DOMAINS secret:', parseError);
         }
       }
+    }
+
+    // Unexpired one-time pass (#1922, tokenProfile.proUntil) = Pro storage.
+    // Checked last so a subscriber or team member who also holds a pass
+    // keeps their (equal or larger) claim-derived tier and membership.
+    if (isProUntilActive(await readProUntil(uid))) {
+      return { tier: 'PRO', membership: 'individual' };
     }
   } catch (err) {
     console.warn('[asset-quota] failed to read user claims', err);

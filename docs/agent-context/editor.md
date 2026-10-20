@@ -46,15 +46,22 @@ on `entityupdate` must unwrap `multi` too, as `refuseGuardedTransform` does).
 `detachclone` appends the clone's `"x z"` placement key to the generator's
 `skip` (a hole; forgotten if the layout stops landing there) and creates the
 plain `Detached Model` entity, as one undo entry composed from `entityupdate`
-
-- `entitycreate`. The easy gizmo commits its drag as one `multi` and is routed
-  like any door; the stock TransformControls gizmo defers its commit to
-  `mouseUp` and calls `detachclone` itself; the clone
-  sidebar header (`CloneSidebarHeader.jsx`) has a Detach pill; the AI chat has
-  the `detachClone` tool (addresses a clone by segment + generator + slot, since
-  clones have no id and are not in the scene state). Predicate, router and
-  payload builders live in `src/editor/lib/detachClone.js`; doc is
-  [docs/per-object-detach.md](../per-object-detach.md).
+and `entitycreate`. The easy gizmo commits its drag as one `multi` and is
+routed like any door; the stock TransformControls gizmo defers its commit to
+`mouseUp` and calls `detachclone` itself; the clone sidebar header
+(`CloneSidebarHeader.jsx`) has a Detach pill; the AI chat has the
+`detachClone` tool (addresses a clone by segment + generator + slot, since
+clones have no id and are not in the scene state). Predicate, router and
+payload builders live in `src/editor/lib/detachClone.js`; doc is
+[docs/per-object-detach.md](../per-object-detach.md). **Detach all (#2036)**
+is the per-generator rung: `detachallclones` (`DetachAllClonesCommand`,
+payload `{ entity: segmentEl, component }`) creates one plain `Detached
+Model` entity per live clone of a generator (`entitycreate` with the
+`noSelectEntity` option) and removes the generator (`componentremove`) as one
+undo entry, selection landing on the segment (or, from a clone's panel, on
+that clone's plain replacement via the payload's `focus`); doors are the Detach all pill
+in the generator header (`StreetSegmentComponent.jsx`), the clone header, and
+the `detachAllClones` AI tool.
 
 **Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
 spans `src/aframe-components/`, `src/editor/components/elements/`, `src/editor/lib/` and

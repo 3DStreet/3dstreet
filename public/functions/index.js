@@ -5,6 +5,7 @@ const { getGeoidHeight } = require('./geoid-height.js');
 const { generateReplicateImage, generateReplicateVideo, generateReplicateSplat, getGenerationJobStatus, setGenerationJobNotify, replicateJobWebhook, modalJobWebhook, falJobWebhook } = require('./replicate.js');
 const { checkAndRefillImageTokens, checkUserProStatus } = require('./token-management.js');
 const { createStripeSession, checkActiveSubscriptions, createStripeBillingPortal, handleSubscriptionWebhook, stripeWebhook } = require('./stripe.js');
+const { redeemPassCode } = require('./pass-codes.js');
 const { generateFalImage } = require('./fal-proxy.js');
 const { generateFalMesh } = require('./fal-3d.js');
 const { assertAppCheck } = require('./app-check.js');
@@ -45,6 +46,9 @@ exports.checkActiveSubscriptions = checkActiveSubscriptions;
 exports.createStripeBillingPortal = createStripeBillingPortal;
 exports.handleSubscriptionWebhook = handleSubscriptionWebhook;
 exports.stripeWebhook = stripeWebhook;
+
+// One-time Project Pass codes (#1922 follow-up) — see pass-codes.js
+exports.redeemPassCode = redeemPassCode;
 
 // Re-export the fal.ai proxy function
 exports.generateFalImage = generateFalImage;

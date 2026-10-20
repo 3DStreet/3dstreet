@@ -17,7 +17,10 @@ import { getEditableEntity } from './commands/llmToolGuards.js';
  * `autocreated` marker so it saves, moves, duplicates and deletes like any
  * hand-placed object. This module holds the pure/DOM-only pieces that
  * DetachCloneCommand, the sidebar Detach button and the viewport's
- * drag-to-detach share. Entry point: docs/per-object-detach.md.
+ * drag-to-detach share, plus the per-generator rung built on them:
+ * "Detach all" (DetachAllClonesCommand, #2036) turns every live clone of one
+ * generator into such a plain entity and removes the generator. Entry point:
+ * docs/per-object-detach.md.
  */
 
 export const DETACHED_LAYER_PREFIX = 'Detached Model • ';
@@ -97,6 +100,122 @@ export function listCloneSlots(segmentEl, componentName) {
     if (Number.isInteger(index) && index >= 0) slots.push(index);
   }
   return slots.sort((a, b) => a - b);
+}
+
+/**
+ * The live clones a generator currently has in the DOM, in creation (slot)
+ * order: the elements a "Detach all" turns into plain entities (#2036).
+ * Only detachable clones count (see getCloneSlot); a generator whose
+ * clones predate slot stamping yields none.
+ */
+export function listGeneratorClones(segmentEl, componentName) {
+  const clones = [];
+  if (!segmentEl) return clones;
+  for (const child of segmentEl.children) {
+    if (child.getAttribute?.('data-parent-component') !== componentName) {
+      continue;
+    }
+    if (getCloneSlot(child)) clones.push(child);
+  }
+  return clones.sort(
+    (a, b) =>
+      Number(a.getAttribute(CLONE_INDEX_ATTR)) -
+      Number(b.getAttribute(CLONE_INDEX_ATTR))
+  );
+}
+
+/** Whether a generator has at least one live detachable clone (early exit). */
+export function hasGeneratorClones(segmentEl, componentName) {
+  if (!segmentEl) return false;
+  for (const child of segmentEl.children) {
+    if (
+      child.getAttribute?.('data-parent-component') === componentName &&
+      getCloneSlot(child)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Why "Detach all" cannot run on this generator, or null when it can: the
+ * one rule set the command builder, the AI tool resolver and the UI gate
+ * share. `code` is 'missing' (no such component on the segment), 'surface'
+ * (a generator whose output is not per-object detachable: striping, rail)
+ * or 'empty' (no live clones left); `message` is readable as is.
+ */
+export function getDetachAllBlocker(segmentEl, componentName) {
+  if (!segmentEl?.components?.[componentName]) {
+    return {
+      code: 'missing',
+      message: `Segment has no '${componentName}' generator`
+    };
+  }
+  if (!isDetachableGenerator(componentName)) {
+    return {
+      code: 'surface',
+      message: `'${componentName}' is a surface generator and cannot be detached per object (only clones, stencil and pedestrians can)`
+    };
+  }
+  if (!hasGeneratorClones(segmentEl, componentName)) {
+    return {
+      code: 'empty',
+      message: `'${componentName}' has no live clones to detach (all detached already, or it places nothing)`
+    };
+  }
+  return null;
+}
+
+/**
+ * The UI door for "Detach all": re-check the live DOM at click time (the
+ * pill is gated by a render-time census, and the clones can be gone before
+ * React re-renders) and say so in a toast instead of letting the command
+ * constructor throw out of the click handler. `focus` is the clone whose
+ * panel the user pressed it in: the selection follows that object to its
+ * plain replacement instead of jumping to the segment.
+ */
+export function requestDetachAll(segmentEl, componentName, { focus } = {}) {
+  const blocker = getDetachAllBlocker(segmentEl, componentName);
+  if (blocker) {
+    globalThis.STREET?.notify?.warningMessage?.(
+      'Nothing to detach: this generator has no objects right now.'
+    );
+    return false;
+  }
+  const payload = { entity: segmentEl, component: componentName };
+  if (focus) payload.focus = focus;
+  AFRAME.INSPECTOR.execute('detachallclones', payload);
+  return true;
+}
+
+/**
+ * Resolve the `detachAllClones` AI tool's arguments to the
+ * `{ entity, component }` payload DetachAllClonesCommand takes, or throw a
+ * readable error the model can correct from: the segment's detachable
+ * generators when `component` is missing, unknown or a surface generator,
+ * or that the generator has no live clones left.
+ */
+export function resolveDetachAllToolArgs(args = {}) {
+  const { segmentId, component } = args;
+  const segmentEl = getEditableEntity(segmentId, { role: 'segment' });
+  const generators = Object.keys(segmentEl.components || {}).filter(
+    isDetachableGenerator
+  );
+  const available = `Detachable generators on ${segmentId}: ${generators.join(', ') || '(none)'}`;
+  // Function-calling models emit null for fields they mean to omit.
+  if (component == null || component === '') {
+    throw new Error(`component is required. ${available}`);
+  }
+  const blocker = getDetachAllBlocker(segmentEl, component);
+  if (blocker) {
+    throw new Error(
+      blocker.code === 'empty'
+        ? `${blocker.message} on ${segmentId}. Use componentRemove to remove the generator itself.`
+        : `${blocker.message}. ${available}`
+    );
+  }
+  return { entity: segmentEl, component };
 }
 
 /**
@@ -475,6 +594,34 @@ export function buildDetachCommands(cloneEl, pose = {}, extra = {}) {
     ]);
   }
   return { slot, commands };
+}
+
+/**
+ * The undoable steps of "Detach all" (#2036), as `[type, payload]` tuples
+ * for MultiCommand: one `entitycreate` per live clone of the generator (the
+ * same plain `Detached Model` entity a per-object detach makes, same mixin,
+ * pose and segment), then a `componentremove` of the generator itself, so
+ * nothing regenerates and its `skip` bookkeeping goes with it. Undo runs
+ * them in reverse: the generator comes back with its previous data (holes
+ * included) and regenerates the clones exactly where they were, and the
+ * plain entities are removed. Throws (getDetachAllBlocker's message) when
+ * the generator is missing, not per-object detachable or has no live clones;
+ * UI doors go through requestDetachAll, which checks first.
+ */
+export function buildDetachAllCommands(segmentEl, componentName) {
+  const blocker = getDetachAllBlocker(segmentEl, componentName);
+  if (blocker) throw new Error(blocker.message);
+  const clones = listGeneratorClones(segmentEl, componentName);
+  const commands = clones.map((cloneEl) => [
+    'entitycreate',
+    // The batch lands the selection on the segment once, at the end.
+    { ...buildDetachedDefinition(cloneEl), noSelectEntity: true }
+  ]);
+  commands.push([
+    'componentremove',
+    { entity: segmentEl, component: componentName }
+  ]);
+  return { clones, commands };
 }
 
 /**

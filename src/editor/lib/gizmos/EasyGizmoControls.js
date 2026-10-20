@@ -385,6 +385,17 @@ class EasyGizmoControls extends GizmoPointerControls {
      */
     this.pathEvaluationEnabled = true;
 
+    /**
+     * Visitor Build (docs/visitor-build.md): the viewport sets `viewerSession`
+     * while a play session in the viewer lets visitors move their own objects.
+     * The gizmo then runs with the editor closed, and holds its object's
+     * height — objects sit on their build area's shape — so the vertical
+     * handle and the landing targets are withdrawn. `rotateEnabled` withdraws
+     * the rotate arc (a build area with Allow rotate off).
+     */
+    this.viewerSession = false;
+    this.rotateEnabled = true;
+
     this._onEntityUpdate = (detail) => {
       if (!this.el || this.isDragging || !this._inspectorOpen()) return;
       // Only an update in this selection's own lineage can move its base or
@@ -978,7 +989,7 @@ class EasyGizmoControls extends GizmoPointerControls {
 
   _inspectorOpen() {
     if (typeof AFRAME === 'undefined') return true;
-    return !!AFRAME.INSPECTOR?.opened;
+    return !!AFRAME.INSPECTOR?.opened || this.viewerSession;
   }
 
   /** The attached entity, one of its ancestors, or one of its descendants. */
@@ -1509,7 +1520,8 @@ class EasyGizmoControls extends GizmoPointerControls {
   // --- picking and emphasis ---------------------------------------------
 
   getPickers() {
-    const pickers = [this.moveGroup, this.arcGroup];
+    const pickers = [this.moveGroup];
+    if (this.arcGroup.visible) pickers.push(this.arcGroup);
     if (this.verticalGroup.visible) pickers.push(this.verticalGroup);
     if (this.landingDownGroup.visible) pickers.push(this.landingDownGroup);
     if (this.landingUpGroup.visible) pickers.push(this.landingUpGroup);
@@ -2122,7 +2134,7 @@ class EasyGizmoControls extends GizmoPointerControls {
    */
   _gateLanding(y, baseY, isUp) {
     const key = isUp ? '_landingUpShown' : '_landingDownShown';
-    if (y === null || y === undefined) {
+    if (y === null || y === undefined || this.viewerSession) {
       this[key] = false;
       return null;
     }
@@ -2369,8 +2381,9 @@ class EasyGizmoControls extends GizmoPointerControls {
     // It stays above the pad in both round and flattened presentations.
     const verticalElevation = Math.abs(this._elevationToDegrees(_centre));
     this.verticalGroup.visible =
-      (this.isDragging && this.axis === 'vertical') ||
-      verticalElevation < VERTICAL_HIDE_ABOVE_DEG;
+      !this.viewerSession &&
+      ((this.isDragging && this.axis === 'vertical') ||
+        verticalElevation < VERTICAL_HIDE_ABOVE_DEG);
     this.verticalGroup.position.set(
       _centre.x,
       _centre.y + S * VERTICAL_CENTRE_ABOVE_PAD_FRAC,
@@ -2397,6 +2410,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     );
 
     // --- rotate arc -----------------------------------------------------
+    this.arcGroup.visible = this.rotateEnabled;
     const radius = S * lerp(ARC_ROUND_RADIUS_FRAC, ARC_FLAT_RADIUS_FRAC, t);
     const tubeWorld = extents.tubeWorld;
     // The flat ring sits in the strip's own plane and would cross it on screen
@@ -3110,7 +3124,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     });
 
     let newY = startY;
-    if (result.continuous && result.supportY !== null) {
+    if (!this.viewerSession && result.continuous && result.supportY !== null) {
       // Track the support, preserving the clearance captured at the press.
       this.dragSupportY = result.supportY;
       newY = startY + (result.supportY + this.dragClearance - baseY);

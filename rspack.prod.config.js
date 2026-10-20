@@ -1,8 +1,7 @@
-const webpack = require('webpack');
+const { rspack } = require('@rspack/core');
 const path = require('path');
 const { execSync } = require('child_process');
 const Dotenv = require('dotenv-webpack');
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
 
@@ -21,17 +20,18 @@ function buildVersion() {
 
 module.exports = {
   performance: {
-    // 4.5 MiB — raised from 4.25 MiB for the OSM streets layer + managed
-    // intersections (#1974; the branch built to 4.246 MiB locally and
-    // 4.26 MiB in CI, so the result had become build-environment noise).
-    // Earlier bumps: 4.0 → 4.25 for the custom street/segment side panels
+    // 4.75 MiB — raised from 4.5 MiB for user groups (the branch built to
+    // 4.52 MiB; the groups code threads through viewport, raycaster and the
+    // gizmos, so it cannot be split out cheaply).
+    // Earlier bumps: 4.25 → 4.5 for the OSM streets layer + managed
+    // intersections (#1974), 4.0 → 4.25 for the custom street/segment side panels
     // (#1960), 3.8 → 4.0 for the experimental nav-controls system.
     // When the budget trips, look for illustration-grade SVGs inlined in JS
     // first (the ~100 KiB icon move to ui_assets, and the lazy SVGLoader in
     // svg-extruder, bought the earlier headroom); the durable fix is
     // code-splitting the editor app + Firebase — tracked in #1624/#1628.
-    maxAssetSize: 4718592, // 4.5 MiB
-    maxEntrypointSize: 4718592, // 4.5 MiB
+    maxAssetSize: 4980736, // 4.75 MiB
+    maxEntrypointSize: 4980736, // 4.75 MiB
     hints: 'error',
     assetFilter: function (assetFilename) {
       // Only check named entry point bundles, not async-loaded chunks.
@@ -43,7 +43,16 @@ module.exports = {
     }
   },
   mode: 'production',
+  // Source maps stay on: Sentry fetches the deployed .map files to resolve
+  // minified stack frames in alert emails.
   devtool: 'source-map',
+  optimization: {
+    minimizer: [
+      // JS only (no CSS minimizer, so copied stylesheets ship as-is), and
+      // license comments extracted to *.LICENSE.txt as Terser did.
+      new rspack.SwcJsMinimizerRspackPlugin({ extractComments: true })
+    ]
+  },
   entry: {
     core: { import: './src/index.js', filename: 'aframe-street-component.js' },
     generator: {
@@ -58,7 +67,7 @@ module.exports = {
   output: {
     clean: true,
     path: path.join(__dirname, 'dist'),
-    libraryTarget: 'umd'
+    library: { type: 'umd' }
   },
   externals: {
     // Stubs out `import ... from 'three'` so it returns `import ... from window.THREE` effectively using THREE global variable that is defined by AFRAME.
@@ -70,16 +79,16 @@ module.exports = {
     // but webpack still resolves them statically and throws UnhandledSchemeError
     // on the `node:` URI scheme. Strip the prefix so the fs/path fallbacks
     // below substitute empty modules instead.
-    new webpack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+    new rspack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
       resource.request = resource.request.replace(/^node:/, '');
     }),
     new Dotenv({
       path: `./config/.env.${DEPLOY_ENV}`
     }),
-    new webpack.DefinePlugin({
+    new rspack.DefinePlugin({
       VERSION: JSON.stringify(buildVersion())
     }),
-    new CopyWebpackPlugin({
+    new rspack.CopyRspackPlugin({
       patterns: [
         { from: 'src/notyf.min.css' },
         { from: 'src/viewer-styles.css' },
@@ -95,9 +104,17 @@ module.exports = {
       {
         test: /\.jsx?$/,
         exclude: /node_modules/,
-        use: {
-          loader: 'babel-loader'
-        }
+        // Rspack's built-in SWC loader replaces Babel (whose only job was JSX).
+        // target esnext: transform JSX only, never downlevel syntax.
+        loader: 'builtin:swc-loader',
+        options: {
+          jsc: {
+            parser: { syntax: 'ecmascript', jsx: true },
+            transform: { react: { runtime: 'automatic' } },
+            target: 'esnext'
+          }
+        },
+        type: 'javascript/auto'
       },
       {
         test: /\.svg$/,
@@ -170,5 +187,11 @@ module.exports = {
       fs: false,
       path: false
     }
+  },
+  // The same Node-only draco branches reference __filename / __dirname.
+  // Mock them silently, as webpack did by default for web builds.
+  node: {
+    __filename: 'mock',
+    __dirname: 'mock'
   }
 };

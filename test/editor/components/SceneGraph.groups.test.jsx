@@ -127,10 +127,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function renderPanel(messages) {
+async function renderPanel(messages, selectedEntity = null) {
   const view = render(
     <IntlProvider locale="en" messages={messages}>
-      <SceneGraph scene={sceneEl} selectedEntity={null} />
+      <SceneGraph scene={sceneEl} selectedEntity={selectedEntity} />
     </IntlProvider>
   );
   await settle();
@@ -846,13 +846,14 @@ describe('a move in progress', () => {
 });
 
 describe('the new-group button', () => {
-  it('creates one user group (not a street-prop holder) at the top level, shows "G+" (not an icon) and is named from its message id', async () => {
+  it('creates one user group (not a street-prop holder) first at the top level, shows the folder-plus icon and is named from its message id', async () => {
+    const existing = makeEntity(root, { id: 'existing', name: 'Existing' });
     await renderPanel({ 'sceneGraph.newGroup': 'Nieuwe groep' });
 
     const button = screen.getByRole('button', { name: 'Nieuwe groep' });
     expect(button.getAttribute('title')).toBe('Nieuwe groep');
-    expect(button.textContent).toBe('G+');
-    expect(button.querySelector('svg')).toBe(null);
+    expect(button.textContent).toBe('');
+    expect(button.querySelector('svg')).not.toBe(null);
     fireEvent.click(button);
 
     const creates = executed.filter(([type]) => type === 'entitycreate');
@@ -860,9 +861,55 @@ describe('the new-group button', () => {
     expect(editor.history.undos).toHaveLength(1);
     const created = root.querySelector('.user-group');
     expect(created.parentNode).toBe(root);
+    expect(created.nextElementSibling).toBe(existing);
     expect([...created.classList]).toEqual(['user-group']);
     expect(created.getAttribute('data-layer-name')).toBe('Group');
-    expect(created.getAttribute('position')).toBe('0 0 0');
+    expect(creates[0][1].components.position).toEqual({ x: 0, y: 0, z: 0 });
+  });
+
+  it('with an item selected, creates the group directly above it, in its parent, at its position; undo and redo keep that place', async () => {
+    const first = makeEntity(root, { id: 'first', name: 'First' });
+    const group = makeEntity(root, { id: 'outer', cls: 'user-group' });
+    makeEntity(group, { id: 'before', name: 'Before' });
+    const item = makeEntity(group, { id: 'item', name: 'Item' });
+    item.object3D.position.set(3, 0, -4);
+    await renderPanel({ 'sceneGraph.newGroup': 'New group' }, item);
+
+    fireEvent.click(screen.getByRole('button', { name: 'New group' }));
+
+    const [[, definition]] = executed.filter(
+      ([type]) => type === 'entitycreate'
+    );
+    expect(definition.components.position).toEqual({ x: 3, y: 0, z: -4 });
+    const order = () => [...group.children].map((el) => el.id || 'new');
+    const created = item.previousElementSibling;
+    expect(created.classList.contains('user-group')).toBe(true);
+    expect(order()).toEqual(['before', created.id, 'item']);
+    expect(root.firstElementChild).toBe(first);
+
+    editor.history.undo();
+    expect(order()).toEqual(['before', 'item']);
+    editor.history.redo();
+    expect(order()).toEqual(['before', created.id, 'item']);
+  });
+
+  it('with a street segment selected, creates the group above the whole street', async () => {
+    const street = makeEntity(root, {
+      id: 'street',
+      attrs: { 'managed-street': '' }
+    });
+    const segment = makeEntity(street, {
+      id: 'segment',
+      attrs: { 'street-segment': '' }
+    });
+    await renderPanel({ 'sceneGraph.newGroup': 'New group' }, segment);
+
+    fireEvent.click(screen.getByRole('button', { name: 'New group' }));
+
+    const created = street.previousElementSibling;
+    expect(created?.classList.contains('user-group')).toBe(true);
+    expect(created.parentNode).toBe(root);
+    expect(street.querySelector('.user-group')).toBe(null);
   });
 
   it('with a group open, creates the new group inside it with its origin at the open group center, not at its origin or at the top level', async () => {

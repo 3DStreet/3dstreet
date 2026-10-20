@@ -85,18 +85,30 @@ const TransformModeMenu = ({
   };
 
   const Icon = ICONS[lastMode];
+  const active = !!ICONS[transformMode];
+
+  // While hand, shape or scale is active, pressing the button switches
+  // straight back to the last move tool; the flyout opens only on a press
+  // made while a move tool is already active.
+  const onOpenChange = (next) => {
+    if (next && !active) {
+      changeTransformMode(lastMode);
+      return;
+    }
+    setOpen(next);
+  };
 
   return (
     // Explicitly non-modal. A modal menu puts pointer-events: none on the rest
     // of the document and consumes the dismissing outside press, so selecting an
     // object while this is open would cost two clicks — and this is the first
     // menu in the editor whose dismissal region is the viewport.
-    <DropdownMenu.Root open={open} onOpenChange={setOpen} modal={false}>
+    <DropdownMenu.Root open={open} onOpenChange={onOpenChange} modal={false}>
       <DropdownMenu.Trigger asChild>
         <Button
           variant="toolbtn"
           className={classNames(styles.menuTrigger, {
-            [styles.active]: !!ICONS[transformMode],
+            [styles.active]: active,
             // Mode is TOOL state, not per-object state: the button stays
             // clickable with a non-transformable entity selected and dims to
             // say the current selection will not be acted on. The gizmo layer

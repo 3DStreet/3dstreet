@@ -12,6 +12,7 @@ import { Button, Tabs } from '../elements';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import AIChatPanel from './AIChatPanel';
 import styles from './RightPanel.module.scss';
+import { formatDate } from '@shared/utils/format';
 
 const TooltipWrapper = ({ children, content, side = 'bottom' }) => (
   <Tooltip.Root delayDuration={0}>
@@ -73,10 +74,18 @@ export default function RightPanel({ entity }) {
             },
             { teamDomain: authUser?.teamDomain }
           )
-        : intl.formatMessage({
-            id: 'rightPanel.planTooltipPro',
-            defaultMessage: '3DStreet Pro Plan'
-          });
+        : authUser?.isProPass && !authUser?.plan
+          ? intl.formatMessage(
+              {
+                id: 'rightPanel.planTooltipPass',
+                defaultMessage: '3DStreet Pro until {date}'
+              },
+              { date: formatDate(authUser?.proUntil) }
+            )
+          : intl.formatMessage({
+              id: 'rightPanel.planTooltipPro',
+              defaultMessage: '3DStreet Pro Plan'
+            });
 
   const handleShare = () => {
     if (authUser && window.STREET?.utils?.getAuthorId?.() === authUser.uid) {

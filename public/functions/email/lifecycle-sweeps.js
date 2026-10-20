@@ -51,7 +51,11 @@ const tally = (t, result) => {
     t.wouldSend.push(result.to);
     t.sent++;
   } else {
-    const key = result.reason || result.action;
+    // Errors carry the provider message as `reason`; bucket them under 'error'
+    // so the summary's `errors` total (and the jobHealth degradedKeys check)
+    // sees them. The message itself is already logged by sendLifecycleEmail.
+    const key =
+      result.action === 'error' ? 'error' : result.reason || result.action;
     t.skipped[key] = (t.skipped[key] || 0) + 1;
   }
 };

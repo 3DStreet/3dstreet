@@ -4,11 +4,12 @@ import capitalize from 'lodash-es/capitalize';
 import Events from './Events';
 import { equal } from './utils';
 import posthog from 'posthog-js';
-import { faBullseye } from '@fortawesome/free-solid-svg-icons';
+import { faBullseye, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { captureFocusPose } from './focusPose.js';
 import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 import { reseededGeneratorAttributes } from '../../tested/generator-seeds.js';
 import { innermostOpenGroup } from './groups/groupPlacement.js';
+import { isUserGroup } from './groups/groupModel.js';
 import {
   GeospatialIcon,
   ManagedStreetIcon,
@@ -21,6 +22,7 @@ import {
   Object24IconCyan,
   Geometry24Icon,
   ShapeIcon,
+  GroupIcon,
   ViewerStartIcon
 } from '@shared/icons';
 
@@ -770,6 +772,9 @@ export function getEntityIcon(entity) {
   if (entity.getAttribute('viewer-start')) {
     return <ViewerStartIcon />;
   }
+  if (isUserGroup(entity)) {
+    return <GroupIcon />;
+  }
 
   // Check for class-based icons
   if (entity.classList.contains('autocreated')) {
@@ -809,6 +814,9 @@ export function getEntityBadges(entity) {
   if (entity.hasAttribute('focus-hotspot')) {
     badges.push({ key: 'focus-hotspot', icon: faBullseye });
   }
+  if (entity.hasAttribute('build-area')) {
+    badges.push({ key: 'build-area', icon: faCubes });
+  }
   return badges;
 }
 
@@ -835,7 +843,13 @@ export function createEntity(definition, cb, parentEl = undefined) {
     { once: true }
   );
 
-  if (parentEl) {
+  // `beforeEl` (an id) inserts before that sibling, when it is still a child
+  // of the parent; otherwise the entity goes at the end.
+  const beforeEl =
+    definition.beforeEl && document.getElementById(definition.beforeEl);
+  if (parentEl && beforeEl?.parentNode === parentEl) {
+    parentEl.insertBefore(entity, beforeEl);
+  } else if (parentEl) {
     parentEl.appendChild(entity);
   } else {
     document
