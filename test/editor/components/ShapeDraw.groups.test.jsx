@@ -15,9 +15,9 @@ import { defineEntityElement } from '../lib/groups/_entityElement.js';
 import { group, mountEditor, solid } from '../lib/groups/_editorHarness.js';
 
 // Drawing a shape while a group is open: the real toolbar, shape tool,
-// commands and scope controller. A shape keeps its place at the top level
-// (shapes never change parent), so it lands outside the group and the user is
-// told so.
+// commands and scope controller. The tool still creates the shape at the top
+// level, so it lands outside the group and the user is told it can be dragged
+// in.
 
 vi.mock('@/editor/lib/cameras', () => ({ copyCameraPosition: vi.fn() }));
 vi.mock('@/editor/lib/navAnalytics.js', () => ({
@@ -123,7 +123,7 @@ describe('drawing a shape with a group open', () => {
     expect(outer.querySelector('[shape]')).toBe(null);
     expect(inspector.history.undos).toHaveLength(1);
     expect(notify.infoMessage).toHaveBeenCalledWith(
-      groupMessage('placedAtTopLevel')
+      groupMessage('routePlacedAtTopLevel')
     );
   });
 });

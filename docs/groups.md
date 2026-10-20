@@ -15,7 +15,7 @@ edited in isolation. The code is in `src/editor/lib/groups/`; the
   zones, by placement and by the command guard: `canReparent` reads it from an
   entity, and `isGroupableItem` from the data of an item about to be created.
   Items the editor keeps under a fixed parent (street segments, generated
-  content, shapes, the Starting View) never enter a group. Nor does a new
+  content, the Starting View) never enter a group. Nor does a new
   360° panorama, which surrounds the whole scene: it carries the saved
   `scene-backdrop` class and stays at the top level on every route. A
   panorama in a scene saved before that class existed has none, and can still
@@ -85,10 +85,12 @@ the elements). The stack is session state only and is never saved.
   empty space does the same, and an item closes the group and is selected.
   Escape leaves one level, selecting the group it left.
   `resolveCanvasClick` in `groupScope.js` decides; the controller applies.
-- **Selection.** The scope follows the selection wherever it comes from:
-  selecting an item opens the groups around it, and selecting a group closes
-  it. A null selection (opening a group, a tool switch, undoing a create)
-  leaves the scope as it is.
+- **Selection.** While the editor is open, the scope follows the selection
+  wherever it comes from: selecting an item opens the groups around it, and
+  selecting a group closes it. A null selection (opening a group, a tool
+  switch, undoing a create) leaves the scope as it is. With the editor closed
+  (a Visitor Build session selects the objects visitors place) a selection
+  leaves the scope as it is, which is empty since the editor closed.
 - **Pruning.** Deleting or hiding an open group closes it and every group
   inside it. Loading a scene and leaving the editor close every group; on
   return, a selection inside a group becomes that group's outermost group,
@@ -236,7 +238,7 @@ real `BatchedMesh`.
   the item's position, or at the center of a selected group, which is where
   the user sees that group. A selection inside a street or intersection
   stands for the whole street. With no such item selected (nothing at all, a
-  fixed layer, a shape, the Starting View or the panorama) it goes first in
+  fixed layer, the Starting View or the panorama) it goes first in
   the open group, at its center, or first at the top level, at the origin.
   The create command's `beforeEl` keeps that place across undo and redo.
 - **Paste.** An item copied from inside a group, or pasted into an open group,

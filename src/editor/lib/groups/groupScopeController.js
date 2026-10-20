@@ -8,7 +8,9 @@
 //
 // The layer panel and the canvas both select through the same event, so the
 // scope follows the selection rather than where a click came from: selecting
-// anything opens exactly the groups that contain it. An open group is never
+// anything opens exactly the groups that contain it, while the editor is open;
+// with it closed (Visitor Build selects the objects visitors place) a
+// selection leaves the scope as it is, which is empty. An open group is never
 // itself selected (inside it the user works on its members), so selecting a
 // group closes it. Opening a group (which clears the selection), leaving one
 // level (which selects the group left) and closing everything are the explicit
@@ -266,8 +268,12 @@ export class GroupScopeController {
 
   // Selecting something opens exactly the groups around it, so a selected
   // group is closed even if it was open. A null selection (opening a group, a
-  // tool switch, undoing a create) leaves the scope as it is.
+  // tool switch, undoing a create) leaves the scope as it is. So does any
+  // selection made while the editor is closed (Visitor Build selects the
+  // objects visitors place): the scope was emptied when the editor closed, and
+  // stays empty until it reopens.
   followSelection() {
+    if (!useStore.getState().isInspectorEnabled) return;
     if (!this.ownSelections) this.drillLatch = false;
     const selected = this.selected();
     // A move replaces the element: the new one is selected once it has loaded.

@@ -5,7 +5,7 @@
 // group open, an item that may live in a group goes into the innermost open
 // group, at the world pose it would have had at the top level: the preview a
 // route shows is where the item lands. An item that may not live in a group
-// (a street segment, a shape, the Starting View, the 360° panorama) keeps its
+// (a street segment, the Starting View, the 360° panorama) keeps its
 // route's destination, and the user is told it landed outside the group.
 // A route that creates its item with a raw `entitycreate` and no ticket keeps
 // its own destination too, even for an item that could be grouped (the
@@ -310,8 +310,8 @@ export function viewCenterPoint(camera) {
 
 // The item a new group made for `selectedEl` goes above: `selectedEl` itself,
 // or, for a selection inside a street or intersection, the whole street, since
-// a group cannot go inside one. Null when that item cannot go into a group (a
-// shape, the Starting View, the 360° panorama, a fixed layer).
+// a group cannot go inside one. Null when that item cannot go into a group
+// (the Starting View, the 360° panorama, a fixed layer).
 function groupAnchor(selectedEl) {
   let anchor = selectedEl;
   while (anchor && !canAcceptChild(anchor.parentNode)) {

@@ -34,7 +34,7 @@ beforeEach(() => {
     legacyStreet: add(root, { attrs: ['street'] }),
     intersection: add(root, { attrs: ['intersection'] }),
     splat: add(root, { attrs: ['splat'] }),
-    shape: add(root, { attrs: ['shape', 'data-transform-no-reparent'] }),
+    shape: add(root, { attrs: ['shape'] }),
     viewerStart: add(root, { attrs: ['viewer-start'] }),
     autocreated: add(root, { cls: 'autocreated' }),
     groupA: add(root, { cls: 'user-group' }),
@@ -97,6 +97,18 @@ describe('cross-parent moves', () => {
     }
   });
 
+  it('lets a drawn shape, including one a street follows, move into a group and back out, but not into a street (fails if shapes keep their parent, or the parent check is dropped)', () => {
+    const pathShape = add(s.root, { attrs: ['shape', 'street-path'] });
+    const inGroup = add(s.groupA, { attrs: ['shape'] });
+    expect([
+      canReparent(s.shape, s.groupA),
+      canReparent(inGroup, s.root),
+      canReparent(s.shape, s.managedStreet),
+      isGroupableItem({ components: { shape: '' } }),
+      canReparent(pathShape, s.groupA)
+    ]).toEqual([true, true, false, true, true]);
+  });
+
   it('lets a member move from one group to another and back out to the top level', () => {
     expect(canReparent(s.memberOfA, s.groupX)).toBe(true);
     expect(canReparent(s.memberOfC, s.groupA)).toBe(true);
@@ -108,7 +120,6 @@ describe('cross-parent moves', () => {
       s.segment,
       s.autocreated,
       s.viewerStart,
-      s.shape,
       s.referenceLayers,
       s.cameraRig,
       s.streetParent,
@@ -138,7 +149,6 @@ describe('an item and its data', () => {
   it('are refused and accepted alike, whether the item exists or is about to be created (fails if the layer panel and placement keep separate lists)', () => {
     const fixedItems = [
       { attrs: ['street-segment'] },
-      { attrs: ['shape'] },
       { attrs: ['viewer-start'] },
       { attrs: ['data-transform-no-reparent'] },
       { cls: 'autocreated' },
@@ -187,7 +197,7 @@ describe('items the editor makes for the user', () => {
     expect(
       isSystemItem({ mixin: 'tree3', components: { position: '1 0 2' } })
     ).toBe(false);
-    // Kept out of groups like the Starting View, but drawn by the user.
+    // Drawn by the user, unlike the Starting View.
     expect(isSystemItem({ components: { shape: '' } })).toBe(false);
     expect(
       isSystemItem({
@@ -230,13 +240,14 @@ describe('items that keep the parent they have', () => {
       referenceLayers: s.referenceLayers,
       cameraRig: s.cameraRig,
       segment: s.segment,
-      shape: s.shape,
       viewerStart: s.viewerStart,
       autocreated: s.autocreated,
+      marked: add(s.root, { attrs: ['data-transform-no-reparent'] }),
       backdrop
     };
     const free = {
       model: s.model,
+      shape: s.shape,
       managedStreet: s.managedStreet,
       intersection: s.intersection,
       group: s.groupA,

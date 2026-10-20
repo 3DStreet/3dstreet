@@ -51,7 +51,11 @@ beforeEach(() => {
 
 afterEach(() => {
   // First, while the editor is still mounted: its store subscribers run.
-  useStore.setState({ isInspectorEnabled: true, osmWayCandidate: null });
+  useStore.setState({
+    isInspectorEnabled: true,
+    buildSessionActive: false,
+    osmWayCandidate: null
+  });
   h.dispose();
   Events.removeAllListeners();
   vi.unstubAllGlobals();
@@ -606,6 +610,32 @@ describe('reconciling the open groups', () => {
     h.inspector.selectEntity(a1);
     expect(h.openIds()).toEqual(['A']);
     useStore.getState().setIsInspectorEnabled(false);
+    expect(h.openIds()).toEqual([]);
+  });
+
+  it('opens no group for the objects visitors place while the editor is closed, through the session and after it ends (fails if a selection opens groups whatever the editor state)', () => {
+    const g = group(h.streetContainer, { id: 'g' });
+    const area = solid(g, [0, 0, 0], [1, 1, 1], { id: 'area' });
+    area.setAttribute('shape', '');
+    const placed = item(area, { id: 'placed' });
+    placed.setAttribute('data-viewer-added', '');
+
+    // The editor open: the selection does reach the scope here.
+    h.inspector.selectEntity(placed);
+    expect(h.openIds()).toEqual(['g']);
+
+    // A session runs with the editor closed.
+    h.inspector.selectEntity(null);
+    useStore.getState().setIsInspectorEnabled(false);
+    useStore.getState().setBuildSessionActive(true);
+    expect(h.openIds()).toEqual([]);
+    h.inspector.selectEntity(placed);
+    expect(h.openIds()).toEqual([]);
+
+    // Stop, as the viewport does.
+    h.inspector.selectEntity(null);
+    useStore.getState().setBuildSessionActive(false);
+    useStore.getState().setIsInspectorEnabled(true);
     expect(h.openIds()).toEqual([]);
   });
 

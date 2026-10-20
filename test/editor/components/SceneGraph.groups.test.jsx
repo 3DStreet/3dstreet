@@ -55,6 +55,7 @@ function composedExecute(type, payload) {
 // an undo).
 const KEPT_ATTRIBUTES = [
   'street-segment',
+  'shape',
   'managed-street',
   'data-transform-no-reparent'
 ];
@@ -290,6 +291,32 @@ describe('layer panel drop zones', () => {
     expect(document.getElementById('tree').parentNode).toBe(group);
   });
 
+  it('drops a drawn shape into a group through the group row middle band, and undo puts it back (fails if shapes keep their parent)', async () => {
+    const group = makeEntity(root, {
+      id: 'g',
+      name: 'Group A',
+      cls: 'user-group'
+    });
+    makeEntity(root, { id: 'shape', name: 'Shape', attrs: { shape: '' } });
+    await renderPanel();
+
+    startDrag('Shape');
+    expect(dragOver(row('Group A'), 0.5)).toBe(true);
+    expect(row('Group A').classList.contains('drop-child')).toBe(true);
+    drop(row('Group A'));
+    fireEvent.dragEnd(row('Group A'));
+
+    expect(reparents().map((move) => move.parentEl)).toEqual(['g']);
+    await finishMove('shape');
+    expect(document.getElementById('shape').parentNode).toBe(group);
+
+    act(() => {
+      editor.history.undo();
+    });
+    await finishMove('shape');
+    expect(document.getElementById('shape').parentNode).toBe(root);
+  });
+
   it('keeps same-parent before/after reorders for a top-level shape, a street-prop holder child and an intersection child, with the payload the reorder helper builds', async () => {
     const shapeA = makeEntity(root, {
       id: 'shape-a',
@@ -388,7 +415,7 @@ describe('layer panel drop zones', () => {
     }
   });
 
-  it('refuses the middle band of a group for a shape that may not change parent, and the guard refuses a forced move', async () => {
+  it('refuses the middle band of a group for a row marked to keep its parent, and the guard refuses a forced move', async () => {
     makeEntity(root, { id: 'g', name: 'Group A', cls: 'user-group' });
     const shape = makeEntity(root, {
       id: 'shape',
@@ -496,7 +523,7 @@ describe('drop levels at a gap where groups end', () => {
     fireEvent.dragEnd(row('Model'));
   });
 
-  it('offers a shape that may not change parent only its own top level at the end of a group, drawn full width, wherever the pointer is (fails if illegal levels are offered or drawn)', async () => {
+  it('offers a row marked to keep its parent only its own top level at the end of a group, drawn full width, wherever the pointer is (fails if illegal levels are offered or drawn)', async () => {
     makeEntity(root, {
       id: 'shape',
       name: 'Shape',

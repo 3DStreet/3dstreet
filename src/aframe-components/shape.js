@@ -333,11 +333,10 @@ AFRAME.registerComponent('shape', {
     // of the shape rather than its footprint, and editing a vertex assumes a
     // horizontal plane to drag on. The marker is what the stock rotate gizmo
     // reads to offer its Y ring alone (viewport.js), and what makes the rule
-    // hold for the properties panel and the AI chat too. Reparenting is
-    // blocked for the same reason: vertex positions
-    // are stored in the shape's own frame, and a new parent moves that frame.
+    // hold for the properties panel and the AI chat too. A reparent keeps the
+    // shape's world pose, so moving it between the top level and a group
+    // does not need blocking.
     this.el.setAttribute('data-transform-yaw-only', '');
-    this.el.setAttribute('data-transform-no-reparent', '');
 
     if (this.data.updateEvent) {
       this.el.addEventListener(this.data.updateEvent, this.requestRederive);
