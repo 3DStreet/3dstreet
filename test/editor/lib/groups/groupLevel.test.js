@@ -258,3 +258,25 @@ describe('removing the scale or rotation of a group with a mixin', () => {
     expect(plain.hasAttribute('scale')).toBe(false);
   });
 });
+
+describe('a group created by a create command', () => {
+  it('is created level, and stays level through undo and redo (fails if the create command does not level its definition)', () => {
+    inspector.execute('entitycreate', {
+      class: 'user-group',
+      parentEl: root,
+      components: { rotation: '10 30 0', scale: '2 2 2' }
+    });
+    const created = root.lastElementChild;
+    expect(created.classList.contains('user-group')).toBe(true);
+    expect(created.getAttribute('rotation')).toEqual({ x: 0, y: 30, z: 0 });
+    expect(created.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+    const id = created.id;
+
+    inspector.history.undo();
+    expect(document.getElementById(id)).toBe(null);
+    inspector.history.redo();
+    const again = document.getElementById(id);
+    expect(again.getAttribute('rotation')).toEqual({ x: 0, y: 30, z: 0 });
+    expect(again.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+  });
+});

@@ -320,3 +320,127 @@ describe('a paste that cannot land where it began', () => {
     );
   });
 });
+
+describe('a group arriving by paste', () => {
+  // Clipboard text from another tab or build: a foreign document, so no
+  // beside-the-source offset applies.
+  function putOnClipboard(data, placement = {}) {
+    clipboardText = JSON.stringify({
+      format: '3dstreet/entity',
+      version: 1,
+      kind: 'entity',
+      documentToken: 'another-document',
+      sourceEntityId: null,
+      data,
+      worldMatrix: null,
+      inUserGroup: false,
+      ...placement
+    });
+  }
+
+  const tiltedScaledGroup = () => ({
+    id: 'pg',
+    class: ['user-group'],
+    components: { position: '4 0 2', rotation: '10 40 5', scale: '2 2 2' },
+    children: [{ id: 'pm', components: { rotation: '0 25 0', scale: '3 3 3' } }]
+  });
+
+  it('loses its tilt and scale and keeps its position and heading, while its member keeps its own (fails if the paste does not level groups)', async () => {
+    putOnClipboard(tiltedScaledGroup());
+    await pasteFromClipboard();
+    const pasted = pastedElement();
+    expect(pasted.parentNode).toBe(scene.root);
+    expect(pasted.getAttribute('position')).toEqual({ x: 4, y: 0, z: 2 });
+    expect(pasted.getAttribute('rotation')).toEqual({ x: 0, y: 40, z: 0 });
+    expect(pasted.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+    const member = pasted.firstElementChild;
+    expect(member.getAttribute('rotation')).toEqual({ x: 0, y: 25, z: 0 });
+    expect(member.getAttribute('scale')).toEqual({ x: 3, y: 3, z: 3 });
+  });
+
+  it('keeps its world position and facing when pasted by world pose into a turned open group (fails if it is levelled before its local pose is worked out)', async () => {
+    const open = entityIn(scene.root, {
+      id: 's',
+      cls: 'user-group',
+      position: '10 0 0',
+      rotation: '0 -30 0'
+    });
+    const deg = THREE.MathUtils.degToRad;
+    const sourceRotation = new THREE.Euler(deg(10), deg(40), deg(5), 'YXZ');
+    const world = new THREE.Matrix4().compose(
+      new THREE.Vector3(4, 0, 2),
+      new THREE.Quaternion().setFromEuler(sourceRotation),
+      new THREE.Vector3(2, 2, 2)
+    );
+    putOnClipboard(tiltedScaledGroup(), {
+      inUserGroup: true,
+      worldMatrix: Array.from(world.elements)
+    });
+    scene.openGroups('s');
+    await pasteFromClipboard();
+
+    const pasted = pastedElement();
+    expect(pasted.parentNode).toBe(open);
+    const local = new THREE.Vector3(4, 0, 2).applyMatrix4(
+      worldOf(open).invert()
+    );
+    const position = pasted.getAttribute('position');
+    expect(position.x).toBeCloseTo(local.x, 6);
+    expect(position.y).toBeCloseTo(local.y, 6);
+    expect(position.z).toBeCloseTo(local.z, 6);
+    const rotation = pasted.getAttribute('rotation');
+    expect(rotation.x).toBe(0);
+    expect(rotation.z).toBe(0);
+    expect(rotation.y).toBeCloseTo(
+      THREE.MathUtils.radToDeg(sourceRotation.y) + 30,
+      6
+    );
+    expect(pasted.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
+  it('levels a group nested inside the pasted one (fails if only the pasted root is levelled)', async () => {
+    putOnClipboard({
+      id: 'po',
+      class: ['user-group'],
+      components: { scale: '2 2 2' },
+      children: [
+        {
+          id: 'pi',
+          class: ['user-group'],
+          components: { rotation: '10 45 0' }
+        }
+      ]
+    });
+    await pasteFromClipboard();
+    const outer = pastedElement();
+    expect(outer.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+    expect(outer.firstElementChild.getAttribute('rotation')).toEqual({
+      x: 0,
+      y: 45,
+      z: 0
+    });
+  });
+
+  it('is removed by undo and comes back level, with the same id, on redo (fails if only the first paste is levelled)', async () => {
+    putOnClipboard(tiltedScaledGroup());
+    await pasteFromClipboard();
+    const id = pastedElement().id;
+    scene.inspector.history.undo();
+    expect(document.getElementById(id)).toBe(null);
+    scene.inspector.history.redo();
+    const again = document.getElementById(id);
+    expect(again.getAttribute('rotation')).toEqual({ x: 0, y: 40, z: 0 });
+    expect(again.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
+  it('leaves a tilted, scaled item that is not a group as copied (fails if items that are not groups are levelled)', async () => {
+    putOnClipboard({
+      id: 'box',
+      components: { position: '1 0 1', rotation: '20 30 10', scale: '2 1 1' }
+    });
+    await pasteFromClipboard();
+    const pasted = pastedElement();
+    expect(pasted.getAttribute('rotation')).toEqual({ x: 20, y: 30, z: 10 });
+    expect(pasted.getAttribute('scale')).toEqual({ x: 2, y: 1, z: 1 });
+  });
+});

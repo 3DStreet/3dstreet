@@ -113,6 +113,18 @@ describe('where a new item is placed', () => {
     ).toEqual({ x: 0.5, y: 1, z: 1 });
   });
 
+  it('refuses a turned item placed into an unscaled group when the street container itself is scaled unevenly (fails without the distortion check)', () => {
+    scene.root.setAttribute('scale', '2 1 1');
+    entityIn(scene.root, { id: 'level', cls: 'user-group' });
+    scene.openGroups('level');
+    expect(
+      placeDefinition(
+        { components: { position: '0 0 0', rotation: '0 30 0' } },
+        beginPlacement()
+      )
+    ).toEqual({ refusal: groupMessage('placementDistorts') });
+  });
+
   it('refuses a placement whose group has gone, rather than placing it at the top level', () => {
     const { inner } = scene.scopeGroups();
     scene.openGroups('outer', 'inner');

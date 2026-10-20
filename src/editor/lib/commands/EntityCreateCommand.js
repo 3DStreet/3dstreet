@@ -2,6 +2,7 @@ import Events from '../Events';
 import { Command } from '../command.js';
 import { createEntity, createUniqueId } from '../entity.jsx';
 import { isGroupableItem, isSystemItem } from '../groups/groupModel.js';
+import { levelGroupPoses } from '@/tested/migrate-group-pose.js';
 import {
   beginPlacement,
   notePlacedOutsideOpenGroup,
@@ -110,6 +111,9 @@ export class EntityCreateCommand extends Command {
         beforeEl: this.definition.beforeEl.id
       };
     }
+    // A group is created level. Done once here, so redo replays the same
+    // definition.
+    levelGroupPoses(this.definition);
   }
 
   execute(nextCommandCallback) {
