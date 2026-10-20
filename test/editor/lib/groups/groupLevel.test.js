@@ -60,6 +60,20 @@ describe('an item made into a group by a class write', () => {
     expect(inspector.history.undos[0].type).toBe('multi');
   });
 
+  it.each([
+    // Past 90 degrees the item faces the other way round.
+    ['170 30 0', -150],
+    // As A-Frame reads a rotation back from radians: float noise.
+    ['10 -149.99999999999997 0', -150]
+  ])(
+    'faces the same way after levelling, written clean: %s (fails if X and Z are zeroed keeping Y, or the heading is not rounded)',
+    (rotation, heading) => {
+      const item = entityIn(root, { id: 'item', rotation });
+      inspector.execute('entityupdate', makeGroup(item));
+      expect(item.getAttribute('rotation')).toEqual({ x: 0, y: heading, z: 0 });
+    }
+  );
+
   it('is undone to its own tilt and scale and redone level again (fails if its own values are recorded without a copy)', () => {
     const item = entityIn(root, {
       id: 'item',
@@ -184,6 +198,81 @@ describe('a mixin given to a group', () => {
   });
 });
 
+describe('a mixin given to a group that shows a tilt and a scale', () => {
+  it('levels both, keeping the heading, and reports what was removed (fails if the mixin rewrite reports nothing or does not level)', () => {
+    const g = entityIn(root, {
+      id: 'g',
+      cls: 'user-group',
+      rotation: '10 30 0',
+      scale: '2 2 2'
+    });
+    const payload = { entity: g, component: 'mixin', value: 'bar' };
+    expect(routeGroupLevel('entityupdate', payload).levelled).toEqual({
+      rotation: { x: 10, y: 30, z: 0 },
+      scale: { x: 2, y: 2, z: 2 },
+      becameGroup: false
+    });
+    inspector.execute('entityupdate', payload);
+    expect(g.getDOMAttribute('rotation')).toEqual({ x: 0, y: 30, z: 0 });
+    expect(g.getDOMAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+  });
+});
+
+describe('a mixin the document defines', () => {
+  function defineMixin(id, attributes) {
+    const mixin = document.createElement('a-mixin');
+    mixin.id = id;
+    for (const [name, value] of Object.entries(attributes)) {
+      mixin.setAttribute(name, value);
+    }
+    document.body.append(mixin);
+  }
+
+  it('is given to a group as a plain write when what it supplies conforms, keeping its heading (fails if every mixin write on a group writes explicit values)', () => {
+    defineMixin('turned', { rotation: '0 90 0', scale: '1 1 1' });
+    const g = entityIn(root, { id: 'g', cls: 'user-group' });
+    const payload = { entity: g, component: 'mixin', value: 'turned' };
+    expect(routeGroupLevel('entityupdate', payload)).toBe(null);
+    inspector.execute('entityupdate', payload);
+    expect(g.hasAttribute('rotation')).toBe(false);
+    expect(g.hasAttribute('scale')).toBe(false);
+  });
+
+  it('has only what does not conform levelled, keeping a heading it supplies (fails if a supplied heading is dropped, or a conforming value written)', () => {
+    defineMixin('tall-turned', { rotation: '10 90 0', scale: '1 3 1' });
+    defineMixin('tall', { scale: '1 3 1' });
+    const g = entityIn(root, { id: 'g', cls: 'user-group' });
+    inspector.execute('entityupdate', {
+      entity: g,
+      component: 'mixin',
+      value: 'tall-turned'
+    });
+    expect(g.getDOMAttribute('rotation')).toEqual({ x: 0, y: 90, z: 0 });
+    expect(g.getDOMAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+
+    const h = entityIn(root, { id: 'h', cls: 'user-group' });
+    inspector.execute('entityupdate', {
+      entity: h,
+      component: 'mixin',
+      value: 'tall'
+    });
+    expect(h.hasAttribute('rotation')).toBe(false);
+    expect(h.getDOMAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
+  it("leaves a removal alone when the group's mixin supplies a conforming value (fails if every removal on a mixin group is rewritten)", () => {
+    defineMixin('turned', { rotation: '0 90 0' });
+    const g = entityIn(root, {
+      id: 'g',
+      cls: 'user-group',
+      rotation: '0 30 0'
+    });
+    g.setAttribute('mixin', 'turned');
+    const payload = { entity: g, component: 'rotation', value: null };
+    expect(routeGroupLevel('entityupdate', payload)).toBe(null);
+  });
+});
+
 describe('writes that do not make a group', () => {
   it('run as plain updates and change no pose (fails if the group condition is dropped)', () => {
     const tilted = entityIn(root, {
@@ -244,6 +333,7 @@ describe('removing the scale or rotation of a group with a mixin', () => {
     inspector.execute('componentremove', { entity: g, component: 'rotation' });
     expect(g.hasAttribute('rotation')).toBe(true);
     expect(g.getAttribute('rotation')).toEqual({ x: 0, y: 0, z: 0 });
+    expect(inspector.history.undos.at(-1).name).toBe('Remove Component');
 
     inspector.execute('entityupdate', {
       entity: g,

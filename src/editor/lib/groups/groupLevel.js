@@ -1,47 +1,42 @@
-// Keeping a group level at the command layer. A user group always has scale 1
-// and no X/Z rotation; data being loaded, pasted or created is levelled by
-// tested/migrate-group-pose.js. This module handles a live entity BECOMING a
-// group (a class or mixin write), which it does by rewriting the command into
-// a batch, so the levelling is part of the same undo step and every write
-// goes through the ordinary update command.
+// Levelling a group at the command layer. A user group always has scale 1 and
+// no X/Z rotation (tested/group-pose.js levels data being loaded, pasted or
+// created). This module handles a live entity BECOMING a group, or a group
+// whose shown pose a command would change, by rewriting the command into a
+// batch: the levelling is part of the same undo step and every write goes
+// through the ordinary update command.
 
 import {
-  POSE_EPS,
-  isLevel,
-  isUnitScale,
-  levelledRotation,
-  parseVec3LikeAFrame
-} from '../../../tested/migrate-group-pose.js';
-import { USER_GROUP_CLASS, isUserGroup } from './groupModel.js';
+  ROTATION_DEFAULT,
+  SCALE_DEFAULT,
+  conforms,
+  levelledValue,
+  parseVec3LikeAFrame,
+  sameFacing
+} from '@/tested/group-pose.js';
+import {
+  USER_GROUP_CLASS,
+  classAfterUpdate,
+  isUserGroup
+} from './groupModel.js';
 
-const ROTATION_DEFAULT = { x: 0, y: 0, z: 0 };
-const SCALE_DEFAULT = { x: 1, y: 1, z: 1 };
 const DEFAULTS = { rotation: ROTATION_DEFAULT, scale: SCALE_DEFAULT };
-const LEVEL_VALUE = { rotation: '0 0 0', scale: '1 1 1' };
-
-/**
- * The class list an `entityupdate` of `class` leaves on the entity, as the
- * editor's updateEntity and the DOM apply it: a null value removes the
- * attribute; any other value is stringified (an array becomes "a,b", one
- * token) and split on whitespace. With a `property`, the DOM receives the
- * property as the value.
- */
-export function classAfterUpdate(payload) {
-  const raw = payload.property ? payload.property : payload.value;
-  if (payload.value === null || payload.value === undefined) return [];
-  return String(raw).split(/\s+/).filter(Boolean);
-}
+const LEVELLED = ['rotation', 'scale'];
 
 function vec3String(v) {
   return `${v.x} ${v.y} ${v.z}`;
 }
 
+function copyVec3(v) {
+  return { x: v.x, y: v.y, z: v.z };
+}
+
 // A copy of the value an entity shows now. A-Frame hands back a live object
 // (the object3D's scale, a reused rotation object), so it must be copied
 // before anything else writes.
-function effectiveValue(entity, name) {
-  const v = parseVec3LikeAFrame(entity.getAttribute(name), DEFAULTS[name]);
-  return { x: v.x, y: v.y, z: v.z };
+function shownValue(entity, name) {
+  return copyVec3(
+    parseVec3LikeAFrame(entity.getAttribute(name), DEFAULTS[name])
+  );
 }
 
 // A copy of the entity's own value, or null when it has none. A-Frame
@@ -55,9 +50,7 @@ function ownValue(entity, name) {
 }
 
 function isDefault(name, v) {
-  return name === 'scale'
-    ? isUnitScale(v)
-    : isLevel(v) && Math.abs(v.y) <= POSE_EPS;
+  return conforms(name, v) && (name === 'scale' || sameFacing(v.y, 0));
 }
 
 // What undo writes back: the own value when there is one; otherwise the value
@@ -67,12 +60,8 @@ function isDefault(name, v) {
 function undoValue(entity, name) {
   const own = ownValue(entity, name);
   if (own !== null) return own;
-  const effective = effectiveValue(entity, name);
-  return isDefault(name, effective) ? null : effective;
-}
-
-function hasMixin(entity) {
-  return !!String(entity.getAttribute('mixin') || '').trim();
+  const shown = shownValue(entity, name);
+  return isDefault(name, shown) ? null : shown;
 }
 
 function levelTuple(entity, name, value) {
@@ -82,68 +71,115 @@ function levelTuple(entity, name, value) {
   ];
 }
 
+function levelledString(name, value) {
+  const levelled = levelledValue(
+    name,
+    parseVec3LikeAFrame(value, DEFAULTS[name])
+  );
+  return vec3String(levelled);
+}
+
+/**
+ * What the AI is told was removed: {rotation?, scale?} holding the values
+ * before (as {x, y, z}), and whether the write made the item a group. Null
+ * when nothing was removed.
+ */
+function levelledRecord(removed, becameGroup) {
+  return removed.rotation || removed.scale ? { ...removed, becameGroup } : null;
+}
+
+/**
+ * The rotation and scale a `mixin` attribute's mixins supply, read from the
+ * <a-mixin> elements in the document (a later mixin wins, as in A-Frame), or
+ * null when one of them cannot be found. A component no mixin sets is absent.
+ */
+export function readMixinPose(mixinAttribute) {
+  const pose = {};
+  for (const id of String(mixinAttribute ?? '').split(/\s+/)) {
+    if (!id) continue;
+    const mixin = document.getElementById(id);
+    if (mixin?.tagName !== 'A-MIXIN') return null;
+    for (const name of LEVELLED) {
+      const value = mixin.getAttribute(name);
+      if (value !== null && value !== undefined && value !== '') {
+        pose[name] = copyVec3(parseVec3LikeAFrame(value, DEFAULTS[name]));
+      }
+    }
+  }
+  return pose;
+}
+
 // A class write that leaves the entity a group: level what it shows now.
 function routeClassWrite(payload) {
   const { entity } = payload;
   if (!classAfterUpdate(payload).includes(USER_GROUP_CLASS)) return null;
-  const rotation = effectiveValue(entity, 'rotation');
-  const scale = effectiveValue(entity, 'scale');
   const tuples = [['entityupdate', payload]];
-  const levelled = { entityId: entity.id };
-  if (!isLevel(rotation)) {
-    tuples.push(
-      levelTuple(entity, 'rotation', vec3String(levelledRotation(rotation)))
-    );
-    levelled.rotation = rotation;
-  }
-  if (!isUnitScale(scale)) {
-    tuples.push(levelTuple(entity, 'scale', '1 1 1'));
-    levelled.scale = scale;
+  const removed = {};
+  for (const name of LEVELLED) {
+    const shown = shownValue(entity, name);
+    if (conforms(name, shown)) continue;
+    tuples.push(levelTuple(entity, name, levelledString(name, shown)));
+    removed[name] = shown;
   }
   if (tuples.length === 1) return null;
-  return { cmdName: 'multi', payload: tuples, levelled };
-}
-
-// A mixin write on a group: the incoming mixin's scale or tilt cannot be read
-// before it is applied, and an own value outranks it, so the group always
-// gets explicit level values.
-function routeMixinWrite(payload) {
-  const { entity } = payload;
-  if (!isUserGroup(entity)) return null;
-  const ownRotation = ownValue(entity, 'rotation');
-  const ownScale = ownValue(entity, 'scale');
-  const levelled = { entityId: entity.id };
-  if (ownRotation !== null && !isLevel(ownRotation)) {
-    levelled.rotation = effectiveValue(entity, 'rotation');
-  }
-  if (ownScale !== null && !isUnitScale(ownScale)) {
-    levelled.scale = effectiveValue(entity, 'scale');
-  }
-  const rotation =
-    ownRotation === null
-      ? LEVEL_VALUE.rotation
-      : vec3String(
-          levelledRotation(parseVec3LikeAFrame(ownRotation, ROTATION_DEFAULT))
-        );
   return {
     cmdName: 'multi',
-    payload: [
-      ['entityupdate', payload],
-      levelTuple(entity, 'rotation', rotation),
-      levelTuple(entity, 'scale', LEVEL_VALUE.scale)
-    ],
-    levelled: levelled.rotation || levelled.scale ? levelled : null
+    payload: tuples,
+    levelled: levelledRecord(removed, !isUserGroup(entity))
   };
 }
 
-// Removing a group's scale or rotation while it has a mixin would let the
-// mixin's value show; make the reset explicit instead.
+// A mixin write on a group. What the group will show is its own value, else
+// the incoming mixins' value, else the default; whatever of that does not
+// conform is levelled, keeping its facing. When the incoming mixins cannot be
+// read, both values are written explicitly, since an own value outranks a
+// mixin's.
+function routeMixinWrite(payload) {
+  const { entity } = payload;
+  if (!isUserGroup(entity)) return null;
+  const incoming = payload.property ? null : readMixinPose(payload.value);
+  const tuples = [['entityupdate', payload]];
+  const removed = {};
+  for (const name of LEVELLED) {
+    const own = ownValue(entity, name);
+    const shown =
+      own ?? (incoming ? (incoming[name] ?? DEFAULTS[name]) : DEFAULTS[name]);
+    const fits = conforms(name, shown);
+    if (fits && (incoming || own !== null)) continue;
+    tuples.push(levelTuple(entity, name, levelledString(name, shown)));
+    if (!fits) {
+      removed[name] = copyVec3(parseVec3LikeAFrame(shown, DEFAULTS[name]));
+    }
+  }
+  if (tuples.length === 1) return null;
+  return {
+    cmdName: 'multi',
+    payload: tuples,
+    levelled: levelledRecord(removed, false)
+  };
+}
+
+// Removing a group's scale or rotation while it has a mixin lets the mixin's
+// value show. Left alone when that value conforms; otherwise the removal is
+// written as the levelled value (or, when the mixins cannot be read, as the
+// explicit default).
 function routeRemoval(entity, component) {
-  if (!(component in LEVEL_VALUE)) return null;
-  if (!isUserGroup(entity) || !hasMixin(entity)) return null;
+  if (!LEVELLED.includes(component)) return null;
+  if (!isUserGroup(entity)) return null;
+  const mixinAttribute = String(entity.getAttribute('mixin') || '').trim();
+  if (!mixinAttribute) return null;
+  const pose = readMixinPose(mixinAttribute);
+  const supplied = pose ? pose[component] : DEFAULTS[component];
+  if (pose && (supplied === undefined || conforms(component, supplied))) {
+    return null;
+  }
   return {
     cmdName: 'entityupdate',
-    payload: { entity, component, value: LEVEL_VALUE[component] },
+    payload: {
+      entity,
+      component,
+      value: levelledString(component, supplied)
+    },
     levelled: null
   };
 }
@@ -158,33 +194,31 @@ function routeDetach(payload) {
   }
   const clone = payload.entity;
   const pose = payload.pose || {};
-  const rotation = parseVec3LikeAFrame(
-    pose.rotation !== undefined
-      ? pose.rotation
-      : clone.getAttribute('rotation'),
-    ROTATION_DEFAULT
-  );
-  const scale = parseVec3LikeAFrame(
-    pose.scale !== undefined ? pose.scale : clone.getAttribute('scale'),
-    SCALE_DEFAULT
-  );
-  const levelled = {};
-  if (!isLevel(rotation)) levelled.rotation = { ...rotation };
-  if (!isUnitScale(scale)) levelled.scale = { ...scale };
+  const removed = {};
+  const levelledPose = {};
+  for (const name of LEVELLED) {
+    const shown = copyVec3(
+      parseVec3LikeAFrame(
+        pose[name] !== undefined ? pose[name] : clone.getAttribute(name),
+        DEFAULTS[name]
+      )
+    );
+    if (!conforms(name, shown)) removed[name] = shown;
+    // Written even when it conforms: the plain entity keeps the clone's
+    // mixin, and an own value outranks the mixin's.
+    levelledPose[name] = levelledString(name, shown);
+  }
   return {
     cmdName: 'detachclone',
-    payload: {
-      ...payload,
-      pose: {
-        ...pose,
-        rotation: vec3String(levelledRotation(rotation)),
-        scale: LEVEL_VALUE.scale
-      }
-    },
-    levelled: levelled.rotation || levelled.scale ? levelled : null
+    payload: { ...payload, pose: { ...pose, ...levelledPose } },
+    levelled: levelledRecord(removed, true)
   };
 }
 
+// A batch is rewritten member by member. Each member is a tuple
+// [type, payload, callback]; a member that expands into a batch keeps its
+// callback on its own (first) tuple. Only the first levelled member is
+// reported: no caller sends a batch that levels more than one group.
 function routeMulti(tuples) {
   if (!Array.isArray(tuples)) return null;
   let changed = false;
@@ -198,8 +232,12 @@ function routeMulti(tuples) {
     }
     changed = true;
     levelled ??= routed.levelled;
-    if (routed.cmdName === 'multi') out.push(...routed.payload);
-    else out.push([routed.cmdName, routed.payload, tuple[2]]);
+    if (routed.cmdName === 'multi') {
+      const [first, ...rest] = routed.payload;
+      out.push([first[0], first[1], tuple[2]], ...rest);
+    } else {
+      out.push([routed.cmdName, routed.payload, tuple[2]]);
+    }
   }
   return changed ? { cmdName: 'multi', payload: out, levelled } : null;
 }
@@ -207,8 +245,8 @@ function routeMulti(tuples) {
 /**
  * Rewrite a command that would leave a user group tilted or scaled, the same
  * shape as routeCloneEdit: null leaves the command alone, otherwise
- * {cmdName, payload, levelled}. `levelled` — {entityId, rotation?, scale?},
- * the values that were removed, or null — is what the AI is told.
+ * {cmdName, payload, levelled}, where `levelled` is what was removed (see
+ * levelledRecord), or null.
  *
  * Fires for a class write that leaves the entity a group, a mixin write on a
  * group, a removal of a group's scale or rotation while it has a mixin, a
@@ -220,7 +258,9 @@ export function routeGroupLevel(cmdName, payload) {
   const entity = payload?.entity;
   if (!entity?.hasAttribute) return null;
   if (cmdName === 'componentremove') {
-    return routeRemoval(entity, payload.component);
+    const routed = routeRemoval(entity, payload.component);
+    // Named as the removal it was asked for, not as the update it became.
+    return routed && { ...routed, name: 'Remove Component' };
   }
   if (cmdName !== 'entityupdate') return null;
   if (payload.component === 'class') return routeClassWrite(payload);
@@ -237,27 +277,38 @@ export function routeGroupLevel(cmdName, payload) {
 const GROUP_RULE =
   'groups turn only about the vertical axis and are never scaled.';
 
-/** The sentence the AI is told when a command levelled what became a group. */
-export function describeDroppedPose(levelled) {
-  if (!levelled || (!levelled.rotation && !levelled.scale)) return null;
-  const { rotation, scale } = levelled;
-  const tilt = rotation && `tilt (rotation x ${rotation.x}, z ${rotation.z})`;
-  const scalePart = scale && `scale (${scale.x} ${scale.y} ${scale.z})`;
-  const removed =
-    tilt && scalePart
-      ? `${tilt} and ${scalePart} were removed`
-      : `${tilt || scalePart} was removed`;
-  let ending = 'Its heading and position are unchanged.';
-  if (rotation) {
-    const newY = levelledRotation(rotation).y;
-    if (!sameFacing(newY, rotation.y)) {
-      ending = `It faces the same way and its position is unchanged; its rotation is now 0 ${newY} 0.`;
-    }
-  }
-  return `The item is now a group, so its ${removed}; ${GROUP_RULE} ${ending}`;
+// A value read back from A-Frame carries float noise (10 comes back as
+// 10.000000000000002); the sentence shows it to six decimals.
+const tidy = (n) => Math.round(n * 1e6) / 1e6;
+
+function removedParts({ rotation, scale }) {
+  const tilt =
+    rotation && `tilt (rotation x ${tidy(rotation.x)}, z ${tidy(rotation.z)})`;
+  const scalePart =
+    scale && `scale (${tidy(scale.x)} ${tidy(scale.y)} ${tidy(scale.z)})`;
+  return tilt && scalePart
+    ? `${tilt} and ${scalePart} were removed`
+    : `${tilt || scalePart} was removed`;
 }
 
-function sameFacing(a, b) {
-  const d = (((a - b) % 360) + 360) % 360;
-  return d <= POSE_EPS || 360 - d <= POSE_EPS;
+function endingFor({ rotation, scale }) {
+  const newY = rotation && levelledValue('rotation', rotation).y;
+  const facing =
+    rotation && !sameFacing(newY, rotation.y)
+      ? `It faces the same way and its position is unchanged; its rotation is now 0 ${newY} 0.`
+      : 'Its heading and position are unchanged.';
+  return scale ? `${facing} The items in it keep their own sizes.` : facing;
+}
+
+/**
+ * The sentence the AI is told when a command levelled a group, from a
+ * levelledRecord. English on purpose, like every tool result: it is read by
+ * the model, never shown in the UI.
+ */
+export function describeLevelledPose(levelled) {
+  if (!levelled) return null;
+  const subject = levelled.becameGroup
+    ? 'The item is now a group, so its'
+    : "This group's";
+  return `${subject} ${removedParts(levelled)}; ${GROUP_RULE} ${endingFor(levelled)}`;
 }

@@ -1,10 +1,12 @@
 // A user group always has scale 1 and X/Z rotation 0: it turns about the
-// vertical axis only and is never scaled. This module levels entity data that
-// breaks that rule — a scene saved before the rule existed, clipboard text from
-// another build, a create definition — before any entity is minted from it.
+// vertical axis only and is never scaled. "Levelling" a group means bringing it
+// back to that, keeping the direction it faces.
 //
-// It also holds the one reading of a vec3 value that the command guard shares,
-// so the guard, this pass and A-Frame agree on what a value means.
+// This module holds what every route that levels a group shares: one reading
+// of a vec3 value, so the command guard, the levelling and A-Frame agree on
+// what a value means; what counts as level and unit; and the levelling of
+// entity data — a scene being loaded, clipboard text, a create definition —
+// before any entity is minted from it.
 //
 // Pure data: no AFRAME, no DOM, no logging, so it can be unit-tested directly.
 
@@ -13,13 +15,22 @@
 // tolerance anyone should rely on.
 export const POSE_EPS = 1e-3;
 
-// The class a saved scene carries on a user group (groups/groupModel.js names
-// the same string; a test keeps the two equal).
-export const GROUP_CLASS = 'user-group';
+// The class a saved scene carries on a user group. The same constant as
+// groups/groupModel.js's; declared again because this module imports nothing
+// from the editor, and a test keeps the two equal.
+export const USER_GROUP_CLASS = 'user-group';
 
-const ROTATION_DEFAULT = { x: 0, y: 0, z: 0 };
-const SCALE_DEFAULT = { x: 1, y: 1, z: 1 };
+export const ROTATION_DEFAULT = Object.freeze({ x: 0, y: 0, z: 0 });
+export const SCALE_DEFAULT = Object.freeze({ x: 1, y: 1, z: 1 });
+const DEFAULTS = { rotation: ROTATION_DEFAULT, scale: SCALE_DEFAULT };
 const AXES = ['x', 'y', 'z'];
+
+// Below this |cos X| the forward vector points straight up or down, and the
+// facing is taken from the right vector instead.
+const VERTICAL_COS = 1e-6;
+// A heading is rounded to this many steps per degree: a facing read back from
+// A-Frame's radians (30 comes back as 29.999999999999996) then prints clean.
+const HEADING_STEPS_PER_DEGREE = 1e6;
 
 function parseIfString(value) {
   return typeof value === 'string' ? parseFloat(value) : value;
@@ -63,24 +74,37 @@ export function parseVec3LikeAFrame(value, defaults) {
   return out;
 }
 
-// Degrees into (-180, 180].
+// Degrees into (-180, 180]; NaN stays NaN.
 function normaliseAngle(degrees) {
-  const n = ((degrees % 360) + 360) % 360 || 0;
+  const n = (((degrees % 360) + 360) % 360) + 0;
   return n > 180 ? n - 360 : n;
 }
 
-function nearlyZeroAngle(degrees) {
-  return Math.abs(normaliseAngle(degrees)) <= POSE_EPS;
+/**
+ * Is this angle 0, within POSE_EPS, counting whole turns (360 is 0)? Anything
+ * that is not a finite number is not: A-Frame would apply it as NaN.
+ */
+export function isZeroAngle(degrees) {
+  return (
+    typeof degrees === 'number' &&
+    Number.isFinite(degrees) &&
+    Math.abs(normaliseAngle(degrees)) <= POSE_EPS
+  );
+}
+
+/** Do two Y angles face the same way, within POSE_EPS, counting whole turns? */
+export function sameFacing(a, b) {
+  return isZeroAngle(a - b);
 }
 
 function finiteOr(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
-/** Are X and Z both 0 (within POSE_EPS)? */
+/** Are X and Z both 0 (within POSE_EPS, counting whole turns)? */
 export function isLevel(rotation) {
   const r = parseVec3LikeAFrame(rotation, ROTATION_DEFAULT);
-  return nearlyZeroAngle(r.x) && nearlyZeroAngle(r.z);
+  return isZeroAngle(r.x) && isZeroAngle(r.z);
 }
 
 /** Is every axis 1 (within POSE_EPS)? */
@@ -89,8 +113,18 @@ export function isUnitScale(scale) {
   return AXES.every((axis) => Math.abs(s[axis] - 1) <= POSE_EPS);
 }
 
+/** Does `value` already conform for a group's `component` (rotation or scale)? */
+export function conforms(component, value) {
+  return component === 'scale' ? isUnitScale(value) : isLevel(value);
+}
+
 const toRad = (degrees) => (degrees * Math.PI) / 180;
 const toDeg = (radians) => (radians * 180) / Math.PI;
+
+function roundHeading(degrees) {
+  const steps = HEADING_STEPS_PER_DEGREE;
+  return normaliseAngle(Math.round(degrees * steps) / steps);
+}
 
 // The direction a rotation faces, as a rotation about Y alone. A-Frame applies
 // rotation in YXZ order, so the rotated forward vector is
@@ -103,15 +137,16 @@ function headingOf(r) {
   const y = finiteOr(r.y, 0);
   const z = toRad(finiteOr(r.z, 0));
   const cosX = Math.cos(x);
-  if (cosX > 1e-6) return normaliseAngle(y);
-  if (cosX < -1e-6) return normaliseAngle(y + 180);
+  if (cosX > VERTICAL_COS) return roundHeading(y);
+  if (cosX < -VERTICAL_COS) return roundHeading(y + 180);
   const yr = toRad(y);
   const rightX =
     Math.cos(yr) * Math.cos(z) + Math.sin(yr) * Math.sin(z) * Math.sin(x);
   const rightZ =
     -Math.sin(yr) * Math.cos(z) + Math.cos(yr) * Math.sin(z) * Math.sin(x);
-  const heading = toDeg(Math.atan2(rightX, rightZ)) - 90;
-  return normaliseAngle(Math.round(heading * 1e6) / 1e6);
+  // An unturned item's right vector points along +X, an azimuth of 90°, so the
+  // facing is the right vector's azimuth less 90°.
+  return roundHeading(toDeg(Math.atan2(rightX, rightZ)) - 90);
 }
 
 /**
@@ -125,8 +160,13 @@ export function levelledRotation(rotation) {
     : `0 ${heading} 0`;
 }
 
-function unitScaleLike(scale) {
-  return scale && typeof scale === 'object' ? { x: 1, y: 1, z: 1 } : '1 1 1';
+/**
+ * The value that levels `value` for `component`, in the same form: the level
+ * rotation facing the same way, or unit scale.
+ */
+export function levelledValue(component, value) {
+  if (component === 'rotation') return levelledRotation(value);
+  return value && typeof value === 'object' ? { x: 1, y: 1, z: 1 } : '1 1 1';
 }
 
 function classListOf(node) {
@@ -139,46 +179,43 @@ function classListOf(node) {
 }
 
 function isGroupNode(node) {
-  return classListOf(node).includes(GROUP_CLASS);
+  return classListOf(node).includes(USER_GROUP_CLASS);
 }
 
-function sameFacing(a, b) {
-  return Math.abs(normaliseAngle(a - b)) <= POSE_EPS;
-}
-
-// Level one group's own data. Returns its change record, or null when its own
-// values already conformed.
-function levelNode(node) {
+// Level one group's own data. Returns its change record, or null when nothing
+// it shows had to change.
+function levelNode(node, mixinPose) {
   const components = node.components ?? {};
   const change = { id: node.id, name: node['data-layer-name'] };
   let changed = false;
+  const hasMixin = typeof node.mixin === 'string' && node.mixin.trim() !== '';
+  // A mixin's scale or rotation shows on an entity with no value of its own.
+  // When the mixins can be read, what they supply is judged like an own value;
+  // when they cannot, both are written explicitly (an own value outranks a
+  // mixin's), level and unit, unreported since the old value is unknown.
+  const fromMixin = hasMixin && mixinPose ? mixinPose(node.mixin) : undefined;
 
-  const rotation = components.rotation;
-  if (rotation !== undefined && !isLevel(rotation)) {
-    const levelled = levelledRotation(rotation);
-    components.rotation = levelled;
-    change.rotation = rotation;
-    const savedY = parseVec3LikeAFrame(rotation, ROTATION_DEFAULT).y;
-    const newY = parseVec3LikeAFrame(levelled, ROTATION_DEFAULT).y;
-    if (!sameFacing(finiteOr(savedY, 0), newY)) change.newY = newY;
-    changed = true;
-  }
-
-  const scale = components.scale;
-  if (scale !== undefined && !isUnitScale(scale)) {
-    components.scale = unitScaleLike(scale);
-    change.scale = scale;
-    changed = true;
-  }
-
-  // A mixin's scale or tilt applies to an entity with no value of its own, and
-  // an own value outranks it, so a group with a mixin always carries explicit
-  // ones. Not reported: whether the mixin had anything to override is unknown
-  // here, so a report could name a value nobody set.
-  if (typeof node.mixin === 'string' && node.mixin.trim()) {
-    if (components.scale === undefined) components.scale = '1 1 1';
-    if (components.rotation === undefined) components.rotation = '0 0 0';
+  for (const component of ['rotation', 'scale']) {
+    let shown = components[component];
+    if (shown === undefined && hasMixin) {
+      if (!fromMixin) {
+        components[component] = levelledValue(component, null);
+        node.components = components;
+        continue;
+      }
+      shown = fromMixin[component];
+    }
+    if (shown === undefined || conforms(component, shown)) continue;
+    const levelled = levelledValue(component, shown);
+    components[component] = levelled;
     node.components = components;
+    change[component] = shown;
+    changed = true;
+    if (component === 'rotation') {
+      const savedY = parseVec3LikeAFrame(shown, ROTATION_DEFAULT).y;
+      const newY = parseVec3LikeAFrame(levelled, ROTATION_DEFAULT).y;
+      if (!sameFacing(finiteOr(savedY, 0), newY)) change.newY = newY;
+    }
   }
 
   return changed ? change : null;
@@ -190,17 +227,20 @@ function levelNode(node) {
  * any scale and any X/Z rotation and keep their facing; members' values are
  * never touched, and a nested group is levelled in its own frame.
  *
- * Returns one record per group whose own saved values changed, in document
- * order (parent before child): {id, name, rotation?, newY?, scale?}, holding
- * the values as they were, plus the new Y rotation when the facing had to be
+ * `mixinPose(mixinAttribute)`, when given, returns the {rotation?, scale?} a
+ * group's mixins supply, or null when they cannot be read; see levelNode.
+ *
+ * Returns one record per group whose shown values changed, in document order
+ * (parent before child): {id, name, rotation?, newY?, scale?}, holding the
+ * values as they were, plus the new Y rotation when the facing had to be
  * rewritten to a different Y.
  */
-export function levelGroupPoses(nodes) {
+export function levelGroupPoses(nodes, { mixinPose } = {}) {
   const changes = [];
   const walk = (node) => {
     if (!node || typeof node !== 'object') return;
     if (isGroupNode(node)) {
-      const change = levelNode(node);
+      const change = levelNode(node, mixinPose);
       if (change) changes.push(change);
     }
     if (Array.isArray(node.children)) node.children.forEach(walk);
@@ -213,13 +253,13 @@ export function levelGroupPoses(nodes) {
 function describeChange(change) {
   const parts = [];
   if (change.rotation !== undefined) {
-    const r = parseVec3LikeAFrame(change.rotation, ROTATION_DEFAULT);
+    const r = parseVec3LikeAFrame(change.rotation, DEFAULTS.rotation);
     let part = `rotation x ${r.x}, z ${r.z}`;
     if (change.newY !== undefined) part += `, now facing y ${change.newY}`;
     parts.push(part);
   }
   if (change.scale !== undefined) {
-    const s = parseVec3LikeAFrame(change.scale, SCALE_DEFAULT);
+    const s = parseVec3LikeAFrame(change.scale, DEFAULTS.scale);
     parts.push(`scale ${s.x} ${s.y} ${s.z}`);
   }
   const label = change.name || change.id;

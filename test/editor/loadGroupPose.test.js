@@ -8,6 +8,8 @@ import {
   it,
   vi
 } from 'vitest';
+// A-Frame's own parsers, which the loader calls through AFRAME.utils. The
+// package exports only its built bundle, so they are reached by path.
 import * as styleParser from '../../node_modules/aframe/src/utils/styleParser.js';
 import * as coordinates from '../../node_modules/aframe/src/utils/coordinates.js';
 import * as THREE from 'three';
@@ -87,7 +89,7 @@ const groupsToLevel = () => [
 ];
 
 // The same scene with nothing to level: a level group holding a turned,
-// stretched member, and the same box.
+// stretched member, a group whose mixin turns it about Y, and the same box.
 const groupsConforming = () => [
   {
     id: 'street-container',
@@ -112,6 +114,13 @@ const groupsConforming = () => [
             }
           }
         ]
+      },
+      {
+        id: 'mixin-group',
+        class: ['user-group'],
+        mixin: 'turned-mixin',
+        'data-layer-name': 'Group with a turning mixin',
+        components: { position: '4 0 -6' }
       },
       tiltedBox()
     ]
@@ -142,6 +151,11 @@ beforeAll(async () => {
   sceneEl.emit = vi.fn();
   sceneEl.object3D = new THREE.Scene();
   document.body.append(sceneEl);
+  const mixin = document.createElement('a-mixin');
+  mixin.id = 'turned-mixin';
+  mixin.setAttribute('rotation', '0 90 0');
+  mixin.setAttribute('scale', '1 1 1');
+  document.body.append(mixin);
   globalThis.AFRAME = {
     registerComponent() {},
     utils: { styleParser, coordinates },
@@ -222,7 +236,7 @@ describe('loading a scene levels its groups', () => {
     expect(warn).toHaveBeenCalledWith(WARNING);
   });
 
-  it('says nothing for a scene whose groups already conform, and loads it as saved (fails if the warning is unconditional)', () => {
+  it('says nothing for a scene whose groups already conform, mixin included, and loads it as saved (fails if the warning is unconditional, or a conforming mixin group gets values written)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     STREET.utils.createEntities(groupsConforming(), sceneEl);
     expect(warn).not.toHaveBeenCalled();
@@ -232,6 +246,9 @@ describe('loading a scene levels its groups', () => {
       z: 0
     });
     expect(byId('level-group').hasAttribute('scale')).toBe(false);
+    expect(byId('mixin-group').getAttribute('mixin')).toBe('turned-mixin');
+    expect(byId('mixin-group').hasAttribute('rotation')).toBe(false);
+    expect(byId('mixin-group').hasAttribute('scale')).toBe(false);
     expect(byId('level-member').getAttribute('rotation')).toEqual({
       x: 15,
       y: 0,

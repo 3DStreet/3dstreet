@@ -3,42 +3,40 @@ import { routeCloneEdit } from './detachClone.js';
 import { routeGroupLevel } from './groups/groupLevel.js';
 import { refuseGuardedTransform } from './transformGuard.js';
 
-// The outcome of the first command resolved while a tool call is armed (see
-// beginCommandOutcome), so the AI can be told why it was refused or what was
-// levelled. Nothing is recorded outside an armed call.
-let outcomeArmed = false;
-let outcomeRecorded = false;
-let outcome = null;
+// While a tool call runs (withCommandOutcome), the first command it resolves
+// records why it was refused or what it levelled, so the AI can be told.
+// null: no call running. Otherwise {recorded, value}.
+let outcomeSlot = null;
 
 /**
- * Arm the outcome slot for one tool call. The next resolveCommand records
- * {refusal, levelled}; commands it causes in turn cannot overwrite it.
+ * Run `execute` with the outcome slot armed, and return {result, outcome}:
+ * what `execute` returned, and the {refusal, levelled} of the first command it
+ * resolved (null if none). `execute` must be synchronous: a command resolved
+ * after it returns is not this call's.
  */
-export function beginCommandOutcome() {
-  outcome = null;
-  outcomeArmed = true;
-  outcomeRecorded = false;
-}
-
-/** The armed call's outcome, or null; disarms the slot. */
-export function takeCommandOutcome() {
-  const taken = outcome;
-  outcome = null;
-  outcomeArmed = false;
-  outcomeRecorded = false;
-  return taken;
+export function withCommandOutcome(execute) {
+  outcomeSlot = { recorded: false, value: null };
+  try {
+    const result = execute();
+    return { result, outcome: outcomeSlot.value };
+  } finally {
+    outcomeSlot = null;
+  }
 }
 
 /**
  * Work out what a command request will actually run, without running it: the
- * routing Inspector.execute applies, the command class for the routed request,
- * and the guard's verdict on it. Pure apart from what the routers read; it
- * neither notifies nor touches History, so tests can drive the same pipeline.
+ * routing (generated clones, then group levelling), the command class for the
+ * routed request, and the guard's verdict on it. Inspector.execute is this
+ * plus the refusal notice and History; test harnesses call it to run the same
+ * pipeline. It neither notifies nor touches History; its one side effect is
+ * recording the outcome of the first call while a tool call runs
+ * (withCommandOutcome).
  *
  * Returns {Cmd, cmdName, payload, optionalName, callback, refusal, levelled}.
  * `Cmd` is undefined for an unknown command; `refusal` is the reason to show,
- * or null; `levelled` is what a group-making write removed (routeGroupLevel),
- * or null.
+ * or null; `levelled` is what a group-levelling rewrite removed
+ * (routeGroupLevel), or null.
  */
 export function resolveCommand(cmdName, payload, optionalName, callback) {
   // A generated street clone is an editable object whose first edit
@@ -63,6 +61,7 @@ export function resolveCommand(cmdName, payload, optionalName, callback) {
     cmdName = levelling.cmdName;
     payload = levelling.payload;
     levelled = levelling.levelled;
+    if (optionalName === undefined) optionalName = levelling.name;
   }
 
   // Looked up after both rewrites, so the class matches what will run.
@@ -74,9 +73,9 @@ export function resolveCommand(cmdName, payload, optionalName, callback) {
   // undo walks through silently.
   const refusal = Cmd ? refuseGuardedTransform(cmdName, payload) : null;
 
-  if (outcomeArmed && !outcomeRecorded) {
-    outcome = { refusal, levelled };
-    outcomeRecorded = true;
+  if (outcomeSlot && !outcomeSlot.recorded) {
+    outcomeSlot.value = { refusal, levelled };
+    outcomeSlot.recorded = true;
   }
 
   return { Cmd, cmdName, payload, optionalName, callback, refusal, levelled };

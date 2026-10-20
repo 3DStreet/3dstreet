@@ -5,7 +5,8 @@ import { createUniqueId } from '../entity.jsx';
 import { isGroupableItem } from '../groups/groupModel.js';
 import { notePlacedOutsideOpenGroup } from '../groups/groupPlacement.js';
 import { migrateImplicitStreetAlign } from '@/tested/migrate-street-align.js';
-import { levelGroupPoses } from '@/tested/migrate-group-pose.js';
+import { levelGroupPoses } from '@/tested/group-pose.js';
+import { readMixinPose } from '../groups/groupLevel.js';
 
 /**
  * Pastes a serialized entity (STREET.utils.getElementData format) into a
@@ -69,7 +70,7 @@ export class EntityPasteCommand extends Command {
     // It can also come from a build that let groups be scaled or tilted. The
     // pose is already local to the destination, so this keeps the pasted
     // group's position and heading there.
-    levelGroupPoses(entityData);
+    levelGroupPoses(entityData, { mixinPose: readMixinPose });
 
     const entity = STREET.utils.createEntityFromObj(
       entityData,

@@ -12,7 +12,6 @@ import { isGroupableItem } from '@/editor/lib/groups/groupModel.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
 import { dispatchToolCall } from '@/editor/lib/commands/registry.js';
-import { takeCommandOutcome } from '@/editor/lib/resolveCommand.js';
 import { ensureViewerStartAtCurrentView } from '@/editor/lib/entity.jsx';
 import { createReplayEntityFromManifest } from '@/editor/components/elements/AddLayerPanel/createLayerFunctions.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
@@ -566,7 +565,8 @@ describe('where the New group button puts a group', () => {
 describe('what the AI assistant is told about a group edit', () => {
   const NO_SCALE = 'Scaling is not available for this element.';
   const RULE = 'groups turn only about the vertical axis and are never scaled.';
-  const BOTH = `entityupdate executed. The item is now a group, so its tilt (rotation x 10, z 5) and scale (2 2 2) were removed; ${RULE} Its heading and position are unchanged.`;
+  const SIZES = 'The items in it keep their own sizes.';
+  const BOTH = `entityupdate executed. The item is now a group, so its tilt (rotation x 10, z 5) and scale (2 2 2) were removed; ${RULE} Its heading and position are unchanged. ${SIZES}`;
 
   function groupWithMember() {
     const group = entityIn(scene.root, { id: 'g', cls: 'user-group' });
@@ -604,28 +604,45 @@ describe('what the AI assistant is told about a group edit', () => {
   });
 
   it.each([
-    ['a tilt and a scale', { rotation: '10 30 5', scale: '2 2 2' }, null, BOTH],
+    [
+      'a tilt and a scale',
+      { rotation: '10 30 5', scale: '2 2 2' },
+      null,
+      BOTH,
+      30
+    ],
     [
       'a tilt',
       { rotation: '10 30 5' },
       null,
-      `entityupdate executed. The item is now a group, so its tilt (rotation x 10, z 5) was removed; ${RULE} Its heading and position are unchanged.`
+      `entityupdate executed. The item is now a group, so its tilt (rotation x 10, z 5) was removed; ${RULE} Its heading and position are unchanged.`,
+      30
     ],
     [
       'a scale its mixin gave it',
       {},
       { scale: '2 2 2' },
-      `entityupdate executed. The item is now a group, so its scale (2 2 2) was removed; ${RULE} Its heading and position are unchanged.`
+      `entityupdate executed. The item is now a group, so its scale (2 2 2) was removed; ${RULE} Its heading and position are unchanged. ${SIZES}`,
+      null
     ],
     [
       'a tilt past 90 degrees',
       { rotation: '170 30 0' },
       null,
-      `entityupdate executed. The item is now a group, so its tilt (rotation x 170, z 0) was removed; ${RULE} It faces the same way and its position is unchanged; its rotation is now 0 -150 0.`
+      `entityupdate executed. The item is now a group, so its tilt (rotation x 170, z 0) was removed; ${RULE} It faces the same way and its position is unchanged; its rotation is now 0 -150 0.`,
+      -150
+    ],
+    [
+      // As A-Frame reads a rotation back from radians.
+      'a tilt read back with float noise',
+      { rotation: '10.000000000000002 -149.99999999999997 5' },
+      null,
+      `entityupdate executed. The item is now a group, so its tilt (rotation x 10, z 5) was removed; ${RULE} Its heading and position are unchanged.`,
+      -150
     ]
   ])(
-    'tells it what was removed when an item with %s becomes a group (fails without the note, or if it is built from a read that was not copied)',
-    async (_, pose, mixin, expected) => {
+    'tells it what was removed when an item with %s becomes a group, and levels it facing the same way (fails without the note, if it is built from a read that was not copied, or if X and Z are zeroed keeping Y)',
+    async (_, pose, mixin, expected, expectedY) => {
       const item = entityIn(scene.root, { id: 'item', ...pose });
       if (mixin) setFixtureMixin(item, mixin);
       await expect(
@@ -636,9 +653,10 @@ describe('what the AI assistant is told about a group edit', () => {
         })
       ).resolves.toBe(expected);
       const r = item.getAttribute('rotation');
-      if (r) {
-        expect(r.x).toBe(0);
-        expect(r.z).toBe(0);
+      if (expectedY === null) {
+        expect(r).toBe(null);
+      } else {
+        expect(r).toEqual({ x: 0, y: expectedY, z: 0 });
       }
       // An item with no scale of its own shows the default.
       const scale = item.getAttribute('scale') ?? { x: 1, y: 1, z: 1 };
@@ -709,7 +727,26 @@ describe('what the AI assistant is told about a group edit', () => {
     ).resolves.toBe(BOTH);
   });
 
-  it('leaves nothing behind for the next command when one throws, and records nothing outside a tool call (fails without the try/finally, or if an unarmed command records)', async () => {
+  it('tells it when a group it already had was levelled, without calling it newly a group (fails if every note says the item is now a group)', async () => {
+    const g = entityIn(scene.root, {
+      id: 'tilted-group',
+      cls: 'user-group',
+      rotation: '10 30 0',
+      scale: '2 2 2'
+    });
+    await expect(
+      dispatchToolCall('entityUpdate', {
+        entityId: 'tilted-group',
+        component: 'mixin',
+        value: 'bar'
+      })
+    ).resolves.toBe(
+      `entityupdate executed. This group's tilt (rotation x 10, z 0) and scale (2 2 2) were removed; ${RULE} Its heading and position are unchanged. ${SIZES}`
+    );
+    expect(g.getAttribute('rotation')).toEqual({ x: 0, y: 30, z: 0 });
+  });
+
+  it('leaves nothing behind for the next tool call when one throws, and a command run outside a tool call does not colour the next one', async () => {
     const { member } = groupWithMember();
     const history = scene.inspector.history;
     vi.spyOn(history, 'execute').mockImplementationOnce(() => {
@@ -722,7 +759,6 @@ describe('what the AI assistant is told about a group edit', () => {
         value: '1 0 0'
       })
     ).rejects.toThrow('the command failed');
-    expect(takeCommandOutcome()).toBe(null);
 
     const tilted = entityIn(scene.root, {
       id: 'tilted',
@@ -733,7 +769,6 @@ describe('what the AI assistant is told about a group edit', () => {
       component: 'class',
       value: 'user-group'
     });
-    expect(takeCommandOutcome()).toBe(null);
 
     await expect(
       dispatchToolCall('entityUpdate', {

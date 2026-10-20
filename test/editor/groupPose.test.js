@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  GROUP_CLASS,
   POSE_EPS,
+  USER_GROUP_CLASS as SAVED_GROUP_CLASS,
   describeLevelledGroups,
   levelGroupPoses,
+  levelledRotation,
   parseVec3LikeAFrame
-} from '../../src/tested/migrate-group-pose.js';
+} from '../../src/tested/group-pose.js';
 import { USER_GROUP_CLASS } from '../../src/editor/lib/groups/groupModel.js';
 
 const group = (id, components, extra = {}) => ({
@@ -200,7 +201,7 @@ describe('levelGroupPoses', () => {
     expect(bare.components).toBeUndefined();
   });
 
-  it('gives a group with a mixin explicit unit scale and level rotation without reporting it (fails if mixin groups are skipped or listed)', () => {
+  it('gives a group whose mixins cannot be read explicit unit scale and level rotation, without reporting it (fails if such groups are skipped or listed)', () => {
     const bare = { id: 'p', class: ['user-group'], mixin: 'palm-tree' };
     const turned = {
       id: 'q',
@@ -208,10 +209,64 @@ describe('levelGroupPoses', () => {
       mixin: 'palm-tree',
       components: { rotation: '0 40 0' }
     };
-    expect(levelGroupPoses([bare, turned])).toEqual([]);
+    const mixinPose = () => null;
+    expect(levelGroupPoses([bare, turned], { mixinPose })).toEqual([]);
     expect(bare.components).toEqual({ scale: '1 1 1', rotation: '0 0 0' });
     expect(turned.components).toEqual({ rotation: '0 40 0', scale: '1 1 1' });
+    // With no way to read mixins at all, the same.
+    const again = { id: 'r', class: ['user-group'], mixin: 'palm-tree' };
+    levelGroupPoses([again]);
+    expect(again.components).toEqual({ scale: '1 1 1', rotation: '0 0 0' });
   });
+
+  it('leaves a group alone when what its mixins supply already conforms, keeping a mixin heading (fails if every mixin group gets explicit values)', () => {
+    const turned = { id: 't', class: ['user-group'], mixin: 'turned' };
+    const mixinPose = (mixin) =>
+      mixin === 'turned' ? { rotation: { x: 0, y: 90, z: 0 } } : null;
+    expect(levelGroupPoses([turned], { mixinPose })).toEqual([]);
+    expect(turned.components).toBeUndefined();
+  });
+
+  it('levels what a mixin supplies when it does not conform, keeping its heading, and reports it (fails if the mixin value is ignored or its heading dropped)', () => {
+    const node = { id: 'm', class: ['user-group'], mixin: 'odd' };
+    const mixinPose = () => ({
+      rotation: { x: 10, y: 90, z: 0 },
+      scale: { x: 1, y: 1.5, z: 1 }
+    });
+    expect(levelGroupPoses([node], { mixinPose })).toEqual([
+      {
+        id: 'm',
+        name: undefined,
+        rotation: { x: 10, y: 90, z: 0 },
+        scale: { x: 1, y: 1.5, z: 1 }
+      }
+    ]);
+    expect(node.components).toEqual({
+      rotation: { x: 0, y: 90, z: 0 },
+      scale: { x: 1, y: 1, z: 1 }
+    });
+  });
+
+  it.each(['360 30 0', '0 30 -360', '720 30 360'])(
+    'counts whole turns on X and Z as level: %s (fails if angles are compared without whole turns)',
+    (rotation) => {
+      const data = [group('g', { rotation })];
+      expect(levelGroupPoses(data)).toEqual([]);
+      expect(data[0].components.rotation).toBe(rotation);
+    }
+  );
+
+  it.each([
+    ['abc 30 0', '0 30 0'],
+    ['0 30 xyz', '0 30 0']
+  ])(
+    'levels an X or Z that is not a number, as A-Frame would apply it as NaN: %s (fails if NaN counts as level)',
+    (rotation, expected) => {
+      const data = [group('g', { rotation })];
+      expect(levelGroupPoses(data)).toHaveLength(1);
+      expect(data[0].components.rotation).toBe(expected);
+    }
+  );
 
   it('keeps the facing when X is past 90 degrees and reports the new Y (fails if X and Z are zeroed and Y kept, if a half-turn pair counts as level, or if values are read with Number)', () => {
     const past90 = [group('a', { rotation: '170 30 0' })];
@@ -244,6 +299,16 @@ describe('levelGroupPoses', () => {
     const degrees = [group('d', { rotation: '10° 30 0' })];
     levelGroupPoses(degrees);
     expect(degrees[0].components.rotation).toBe('0 30 0');
+  });
+
+  it('writes a clean heading from a rotation read back from radians (fails if the heading is not rounded)', () => {
+    expect(levelledRotation('10 29.999999999999996 5')).toBe('0 30 0');
+    expect(levelledRotation('170 29.999999999999996 0')).toBe('0 -150 0');
+    expect(levelledRotation({ x: 10, y: -150.00000000000003, z: 0 })).toEqual({
+      x: 0,
+      y: -150,
+      z: 0
+    });
   });
 
   it('does not report a facing written as another turn of the same angle as a change of Y', () => {
@@ -283,7 +348,7 @@ describe('describeLevelledGroups', () => {
 
 describe('the saved group class', () => {
   it('is the class the editor treats as a group (fails if either is renamed)', () => {
-    expect(GROUP_CLASS).toBe(USER_GROUP_CLASS);
+    expect(SAVED_GROUP_CLASS).toBe(USER_GROUP_CLASS);
   });
 });
 

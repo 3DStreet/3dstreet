@@ -358,7 +358,7 @@ describe('a group arriving by paste', () => {
     expect(member.getAttribute('scale')).toEqual({ x: 3, y: 3, z: 3 });
   });
 
-  it('keeps its world position and facing when pasted by world pose into a turned open group (fails if it is levelled before its local pose is worked out)', async () => {
+  it('keeps its world position and facing when pasted by world pose into a turned open group', async () => {
     const open = entityIn(scene.root, {
       id: 's',
       cls: 'user-group',

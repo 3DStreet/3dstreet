@@ -125,7 +125,10 @@ export function worldMatrixOf(components, out) {
 /**
  * `worldMatrix` as position, rotation (degrees, A-Frame's YXZ order) and scale
  * under `parentEl`, or null when that pose would need a shear (the parent is
- * scaled differently along its axes).
+ * scaled differently along its axes). A group is never scaled through a
+ * command, so this fires when the street container itself is scaled
+ * unevenly, or for a group scaled by a route the command guard does not see
+ * (a direct setAttribute, an animation).
  */
 export function localPoseUnder(parentEl, worldMatrix) {
   const t = tmp();

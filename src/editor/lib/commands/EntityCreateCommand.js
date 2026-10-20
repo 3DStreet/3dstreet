@@ -2,7 +2,8 @@ import Events from '../Events';
 import { Command } from '../command.js';
 import { createEntity, createUniqueId } from '../entity.jsx';
 import { isGroupableItem, isSystemItem } from '../groups/groupModel.js';
-import { levelGroupPoses } from '@/tested/migrate-group-pose.js';
+import { levelGroupPoses } from '@/tested/group-pose.js';
+import { readMixinPose } from '../groups/groupLevel.js';
 import {
   beginPlacement,
   notePlacedOutsideOpenGroup,
@@ -113,7 +114,8 @@ export class EntityCreateCommand extends Command {
     }
     // A group is created level. Done once here, so redo replays the same
     // definition.
-    levelGroupPoses(this.definition);
+    this.definition = withOwnComponents(this.definition);
+    levelGroupPoses(this.definition, { mixinPose: readMixinPose });
   }
 
   execute(nextCommandCallback) {
@@ -161,4 +163,16 @@ export class EntityCreateCommand extends Command {
       nextCommandCallback?.(entity);
     }
   }
+}
+
+// A copy of an entity definition whose `components` (and its children's) can
+// be changed without changing the caller's.
+function withOwnComponents(definition) {
+  return {
+    ...definition,
+    ...(definition.components && { components: { ...definition.components } }),
+    ...(Array.isArray(definition.children) && {
+      children: definition.children.map(withOwnComponents)
+    })
+  };
 }

@@ -259,6 +259,21 @@ describe('values are judged as A-Frame applies them', () => {
 });
 
 describe('levelling a tilted group is always allowed', () => {
+  it('counts whole turns on X and Z as level, as a scene load does (fails if the guard compares angles without whole turns)', () => {
+    const g = withId(group(root));
+    g.setAttribute('rotation', '0 30 0');
+    const rotate = (value) =>
+      refuseGuardedTransform('entityupdate', {
+        entity: g,
+        component: 'rotation',
+        value
+      });
+    expect(rotate('360 30 0')).toBe(null);
+    expect(rotate('0 30 -360')).toBe(null);
+    expect(rotate('370 30 0')).toBe(YAW_ONLY);
+    expect(rotate('350 30 0')).toBe(YAW_ONLY);
+  });
+
   it('accepts a write that brings X or Z to 0, and still refuses one that keeps or changes a tilt (fails if the yaw-only check only compares with the current value, or allows any X/Z write)', () => {
     const g = withId(group(root));
     g.setAttribute('rotation', '10 30 0');

@@ -1038,7 +1038,8 @@ describe('detachClone (#2011)', () => {
       });
       expect(levelled.levelled).toEqual({
         rotation: { x: 5, y: 30, z: 0 },
-        scale: { x: 1, y: 1.5, z: 1 }
+        scale: { x: 1, y: 1.5, z: 1 },
+        becameGroup: true
       });
 
       const definition = buildDetachedDefinition(
@@ -1071,6 +1072,57 @@ describe('detachClone (#2011)', () => {
       expect(resolved.cmdName).toBe('detachclone');
       expect(resolved.optionalName).toBeUndefined();
       expect(resolved.refusal).toBe(null);
+    });
+
+    it('levels the detach a class write on a clone becomes, so the clone route runs before the group route (fails if the two routes run in the other order)', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      clone.setAttribute('rotation', '170 30 0');
+      const resolved = resolveCommand('entityupdate', {
+        entity: clone,
+        component: 'class',
+        value: 'user-group'
+      });
+      expect(resolved.cmdName).toBe('detachclone');
+      expect(resolved.payload.pose).toEqual({
+        rotation: '0 -150 0',
+        scale: '1 1 1'
+      });
+      expect(resolved.levelled.becameGroup).toBe(true);
+    });
+  });
+
+  describe('a batch holding a write that makes a group', () => {
+    it('is rewritten member by member, keeping each member callback on its own member (fails if batches are not rewritten, or a callback is lost)', () => {
+      const item = document.createElement('a-entity');
+      item.setAttribute('rotation', '10 30 0');
+      const other = document.createElement('a-entity');
+      const first = () => {};
+      const second = () => {};
+      const classWrite = {
+        entity: item,
+        component: 'class',
+        value: 'user-group'
+      };
+      const move = { entity: other, component: 'position', value: '1 0 0' };
+      const routed = routeGroupLevel('multi', [
+        ['entityupdate', classWrite, first],
+        ['entityupdate', move, second]
+      ]);
+      expect(routed.cmdName).toBe('multi');
+      expect(
+        routed.payload.map(([type, payload, callback]) => [
+          type,
+          payload.component,
+          payload.value,
+          callback
+        ])
+      ).toEqual([
+        ['entityupdate', 'class', 'user-group', first],
+        ['entityupdate', 'rotation', '0 30 0', undefined],
+        ['entityupdate', 'position', '1 0 0', second]
+      ]);
+      expect(routed.levelled.rotation).toEqual({ x: 10, y: 30, z: 0 });
     });
   });
 });

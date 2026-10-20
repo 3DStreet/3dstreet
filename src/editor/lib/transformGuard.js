@@ -32,26 +32,28 @@
 // or scripted command can still transform an entity carrying it. The three
 // markers above are the command-layer family.
 //
-// What this covers is every COMMAND route: the properties panel, the AI chat,
-// the transform gizmo and layers-panel reparenting all go through
-// Inspector.execute, and both updating a component and adding one are judged.
-// A direct setAttribute — from scene load, from generator code, or from an
-// animation component — bypasses it, as does a scene authored before the
-// markers existed. Scene load levels groups itself (tested/migrate-group-pose.js).
+// Every command that goes through Inspector.execute is judged, whether it
+// updates a component or adds one. A direct setAttribute is not — from scene
+// load, generator code or an animation component — nor is a scene authored
+// before the markers existed. Scene load levels groups itself
+// (tested/group-pose.js).
 
 import {
   USER_GROUP_CLASS,
   canAcceptChild,
   canReparent,
+  classAfterUpdate,
   isUserGroup
 } from './groups/groupModel.js';
-import { classAfterUpdate } from './groups/groupLevel.js';
 import { groupMessage } from './groups/groupMessages.js';
 import { localPoseFromWorld } from './groups/groupTransformMath.js';
 import {
   POSE_EPS,
+  ROTATION_DEFAULT,
+  SCALE_DEFAULT,
+  isZeroAngle,
   parseVec3LikeAFrame
-} from '../../tested/migrate-group-pose.js';
+} from '@/tested/group-pose.js';
 
 // Refuse a repeat notice for the same entity and reason within this window: the
 // panel's number fields are drag-scrubbers that fire a command per pointer
@@ -61,10 +63,7 @@ const NOTIFY_DEDUP_MS = 1500;
 let lastRefusalKey = null;
 let lastRefusalAt = 0;
 
-const VEC3_DEFAULTS = {
-  rotation: { x: 0, y: 0, z: 0 },
-  scale: { x: 1, y: 1, z: 1 }
-};
+const VEC3_DEFAULTS = { rotation: ROTATION_DEFAULT, scale: SCALE_DEFAULT };
 
 // The axis values a transform write will apply, read as A-Frame reads them,
 // in whichever form the write arrives: a "x y z" string (the AI chat), a whole
@@ -90,7 +89,8 @@ function departsFrom(axes, target, names) {
 }
 
 // A named X or Z that changes the current tilt, unless it brings that axis
-// back to 0: levelling an entity is always allowed.
+// back to 0 (a whole turn counts as 0, as it does when a scene loads):
+// levelling an entity is always allowed.
 function tiltsAwayFromCurrent(entity, axes, names) {
   const current = parseVec3LikeAFrame(
     entity.getAttribute?.('rotation'),
@@ -100,7 +100,7 @@ function tiltsAwayFromCurrent(entity, axes, names) {
     (axis) =>
       axes[axis] !== undefined &&
       departsBy(axes[axis], current[axis]) &&
-      departsBy(axes[axis], 0)
+      !isZeroAngle(axes[axis])
   );
 }
 
@@ -119,7 +119,10 @@ export function hasTransformMarker(entity, marker) {
 
 let poseScratch = null;
 
-// Can `entity` keep its world pose as a child of `newParent`?
+// Can `entity` keep its world pose as a child of `newParent`? Only a parent
+// scaled unevenly can make this fail, and a group is never scaled through a
+// command; the check stays for the routes the guard does not see (a direct
+// setAttribute, an animation).
 function poseRepresentableUnder(entity, newParent) {
   const child = entity.object3D;
   const parent = newParent.object3D;
