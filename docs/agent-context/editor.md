@@ -16,9 +16,12 @@ symbol (`src/editor/lib/transformGuard.js`) instead of running a command that
 would violate a transform-capability marker on the target entity or the
 hierarchy rules — test for the symbol, not for a falsy return, since the
 success path returns `undefined`. The markers are `data-transform-no-scale`,
-`data-transform-yaw-only`, `data-transform-uniform-scale` and
-`data-transform-no-reparent`; an entity opts in by carrying the attribute (a
-user group implies yaw-only and uniform-scale by its class). The hierarchy
+`data-transform-yaw-only` and `data-transform-no-reparent`; an entity opts in
+by carrying the attribute (a user group implies yaw-only and no-scale by its
+class). Removing the `user-group` class from a group with members is refused,
+and a command that makes an entity a group rewrites itself to level it
+(`routeGroupLevel`, which `Inspector.execute` runs after `routeCloneEdit`,
+through `resolveCommand`). The hierarchy
 rules refuse a move to another parent that `canReparent`
 (`src/editor/lib/groups/groupModel.js`) rejects or that could not keep the
 item's world pose, and a create or paste whose `requireParent` parent can no
@@ -27,7 +30,7 @@ the far more common `data-no-transform`, which is a UI gate only (it hides the
 properties-panel transform rows and the gizmo) and is enforced nowhere at the
 command layer. Coverage is every command route — properties panel, AI chat,
 gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
-or component code. The stock rotate gizmo ("Advanced rotate") shows all three
+or component code (scene load levels groups itself; see `docs/groups.md`). The stock rotate gizmo ("Advanced rotate") shows all three
 rings, since yaw-only rotation is the easy gizmo's job; on a
 `data-transform-yaw-only` entity it offers its Y ring alone
 (`applyStockGizmoAxes` in `src/editor/lib/viewport.js`), so it never starts a
