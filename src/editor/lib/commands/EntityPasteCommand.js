@@ -7,6 +7,7 @@ import { notePlacedOutsideOpenGroup } from '../groups/groupPlacement.js';
 import { migrateImplicitStreetAlign } from '@/tested/migrate-street-align.js';
 import { levelGroupPoses } from '@/tested/group-pose.js';
 import { readMixinPose } from '../groups/groupLevel.js';
+import { retargetStreetPath } from '@/tested/copied-street-path.js';
 
 /**
  * Pastes a serialized entity (STREET.utils.getElementData format) into a
@@ -36,9 +37,12 @@ export class EntityPasteCommand extends Command {
     // ids it carries can never be trusted. Regenerating in the constructor
     // (not execute) means undo/redo reuse the same ids, so follow-up commands
     // holding a ref to the pasted entity survive an undo/redo cycle — same
-    // rationale as EntityCloneCommand's detachedClone.
+    // rationale as EntityCloneCommand's detachedClone. The same goes for
+    // pointing a pasted street at the copy of its path.
     this.entityData = JSON.parse(JSON.stringify(payload.entityData));
-    regenerateIds(this.entityData);
+    const idMap = new Map();
+    regenerateIds(this.entityData, true, idMap);
+    retargetStreetPaths(this.entityData, idMap);
     this.entityId = this.entityData.id;
     this.parentId = payload.parentId;
     this.index = payload.index;
@@ -115,13 +119,36 @@ export class EntityPasteCommand extends Command {
  * get a fresh id when they carried one (an id-less child can't collide, and
  * the root always needs one so undo can find the pasted entity).
  */
-function regenerateIds(entityData, isRoot = true) {
+function regenerateIds(entityData, isRoot, idMap) {
   if (isRoot || entityData.id) {
+    const oldId = entityData.id;
     entityData.id = createUniqueId();
+    // Recorded old id -> new id, for retargetStreetPaths.
+    if (oldId) idMap.set(oldId, entityData.id);
   }
   if (entityData.children) {
     for (const child of entityData.children) {
-      regenerateIds(child, false);
+      regenerateIds(child, false, idMap);
+    }
+  }
+}
+
+/**
+ * Point each pasted street at the copy of the path shape it follows, when the
+ * paste holds that shape (a street pasted without its path keeps following
+ * the original, if it is still there).
+ */
+function retargetStreetPaths(entityData, idMap) {
+  const components = entityData.components;
+  if (components && components['managed-street'] !== undefined) {
+    components['managed-street'] = retargetStreetPath(
+      components['managed-street'],
+      idMap
+    );
+  }
+  if (entityData.children) {
+    for (const child of entityData.children) {
+      retargetStreetPaths(child, idMap);
     }
   }
 }
