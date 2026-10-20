@@ -710,17 +710,19 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
           fillOpacity: style.fillOpacity,
           ...(closed ? { closed: true } : {})
         };
-        const layerNoun = closed ? 'Polygon' : 'Polyline';
         return {
           element: 'a-entity',
           components: {
             shape: shapeComponent,
             position: `${centroid.x} ${centroid.y} ${centroid.z}`,
-            'data-layer-name': `Shape • ${layerNoun} ${shapeLayerCounter++}`
+            'data-layer-name': layerName
           },
           children
         };
       };
+      // Named once, so a shape that falls back to the top level keeps the
+      // number it was given.
+      const layerName = `Shape • ${closed ? 'Polygon' : 'Polyline'} ${shapeLayerCounter++}`;
 
       // With a group open when the tool started, the shape goes into that
       // group, at the world position it was drawn at. The definition is built
@@ -744,8 +746,9 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         atTopLevel = true;
       }
 
-      // With no group open (or the fallback above), vertices are picked in world space, but
-      // entitycreate parents the shape to the editor's default parent
+      // With no group open, or after the fallback above, vertices are picked
+      // in world space, but entitycreate parents the shape to the editor's
+      // default parent
       // (#street-container) and treats child positions as LOCAL to it. Convert
       // so the committed shape lands exactly where the world-space preview
       // showed it, even if that parent is offset (e.g. a geospatial scene).
