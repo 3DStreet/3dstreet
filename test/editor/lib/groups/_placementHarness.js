@@ -1,12 +1,11 @@
 import { vi } from 'vitest';
 import * as THREE from 'three';
 import { History } from '@/editor/lib/history.js';
-import { commandsByType } from '@/editor/lib/commands/index.js';
 import {
   TRANSFORM_REFUSED,
-  notifyRefusal,
-  refuseGuardedTransform
+  notifyRefusal
 } from '@/editor/lib/transformGuard.js';
+import { resolveCommand } from '@/editor/lib/resolveCommand.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import { boxMesh } from './_groupFixtures.js';
 import { defineEntityElement } from './_entityElement.js';
@@ -52,18 +51,18 @@ export function mountPlacementScene() {
     selectEntity(el) {
       this.selectedEntity = el;
     },
-    // The editor's execute (index.jsx): the guard, then History.
+    // The editor's execute (index.jsx): the real routing and guard, then
+    // History.
     execute(type, payload, name, callback) {
       executed.push([type, payload]);
-      const refusal = refuseGuardedTransform(type, payload);
-      if (refusal) {
-        notifyRefusal(payload?.entity, refusal);
+      const r = resolveCommand(type, payload, name, callback);
+      if (r.refusal) {
+        notifyRefusal(r.payload?.entity, r.refusal);
         return TRANSFORM_REFUSED;
       }
-      const Cmd = commandsByType.get(type);
-      const cmd = new Cmd(this, payload, callback);
-      this.history.execute(cmd, name);
-      if (type === 'entitycreate') {
+      const cmd = new r.Cmd(this, r.payload, r.callback);
+      this.history.execute(cmd, r.optionalName);
+      if (r.cmdName === 'entitycreate') {
         document
           .getElementById(cmd.entityId)
           ?.dispatchEvent(new Event('loaded'));

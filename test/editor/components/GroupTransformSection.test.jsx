@@ -2,8 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { IntlProvider } from 'react-intl';
 import { History } from '@/editor/lib/history.js';
-import { commandsByType } from '@/editor/lib/commands/index.js';
-import { refuseGuardedTransform } from '@/editor/lib/transformGuard.js';
+import { resolveCommand } from '@/editor/lib/resolveCommand.js';
 import { SCALE_LINK_STORAGE_KEY } from '@/editor/lib/linkedScale.js';
 import CommonComponents from '@/editor/components/elements/CommonComponents.jsx';
 import { entity, group, scene } from '../lib/groups/_groupFixtures.js';
@@ -45,13 +44,12 @@ beforeEach(() => {
   refusals = [];
   editor.execute = (type, payload) => {
     executed.push([type, payload]);
-    const refusal = refuseGuardedTransform(type, payload);
-    if (refusal) {
-      refusals.push(refusal);
+    const r = resolveCommand(type, payload);
+    if (r.refusal) {
+      refusals.push(r.refusal);
       return;
     }
-    const Cmd = commandsByType.get(type);
-    editor.history.execute(new Cmd(editor, payload));
+    editor.history.execute(new r.Cmd(editor, r.payload));
   };
   vi.stubGlobal('AFRAME', {
     components: {

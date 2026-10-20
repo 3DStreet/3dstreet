@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { History } from '@/editor/lib/history.js';
-import { commandsByType } from '@/editor/lib/commands/index.js';
+import { resolveCommand } from '@/editor/lib/resolveCommand.js';
 import {
   hasTransformMarker,
   refuseGuardedTransform
@@ -18,12 +18,9 @@ function makeEditor() {
 }
 
 function execute(editor, type, payload) {
-  const refusal = refuseGuardedTransform(type, payload);
-  if (!refusal) {
-    const Cmd = commandsByType.get(type);
-    editor.history.execute(new Cmd(editor, payload));
-  }
-  return refusal;
+  const r = resolveCommand(type, payload);
+  if (!r.refusal) editor.history.execute(new r.Cmd(editor, r.payload));
+  return r.refusal;
 }
 
 let sceneEl;

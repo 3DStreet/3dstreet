@@ -14,13 +14,8 @@ import { Shortcuts } from './lib/shortcuts';
 import { Viewport } from './lib/viewport';
 import './style/index.scss';
 import { initPostHog } from '@shared/analytics/posthog';
-import { commandsByType } from './lib/commands/index.js';
-import {
-  TRANSFORM_REFUSED,
-  notifyRefusal,
-  refuseGuardedTransform
-} from './lib/transformGuard.js';
-import { routeCloneEdit } from './lib/detachClone.js';
+import { TRANSFORM_REFUSED, notifyRefusal } from './lib/transformGuard.js';
+import { resolveCommand } from './lib/resolveCommand.js';
 import { LocaleProvider } from './i18n/LocaleProvider';
 import useStore from '@/store';
 import { initializeLocationSync } from './lib/location-sync';
@@ -256,34 +251,19 @@ Inspector.prototype = {
   },
 
   execute: function (cmdName, payload, optionalName, callback = undefined) {
-    // A generated street clone is an editable object whose first edit
-    // detaches it (#2011): re-route the edit here, before the command is
-    // built, so every door behaves the same.
-    const routed = routeCloneEdit(cmdName, payload);
-    if (routed) {
-      // A caller's label names the command it asked for ("Move"); once the
-      // edit has become a detach, the detach's own name is the true one.
-      if (routed.cmdName !== cmdName) optionalName = undefined;
-      cmdName = routed.cmdName;
-      payload = routed.payload;
-      // A batch that folded to one member carries that member's callback.
-      if (routed.callback && !callback) callback = routed.callback;
-    }
-    const Cmd = commandsByType.get(cmdName);
-    if (!Cmd) {
-      console.error(`Command ${cmdName} not found`);
+    const resolved = resolveCommand(cmdName, payload, optionalName, callback);
+    if (!resolved.Cmd) {
+      console.error(`Command ${resolved.cmdName} not found`);
       return;
     }
-    // Transform-capability markers are enforced here rather than inside a
-    // command, because History pushes a command onto the undo stack BEFORE
-    // running it — a command that no-oped itself would leave a dead entry that
-    // undo walks through silently.
-    const refusal = refuseGuardedTransform(cmdName, payload);
-    if (refusal) {
-      notifyRefusal(payload?.entity, refusal);
+    if (resolved.refusal) {
+      notifyRefusal(resolved.payload?.entity, resolved.refusal);
       return TRANSFORM_REFUSED;
     }
-    return this.history.execute(new Cmd(this, payload, callback), optionalName);
+    return this.history.execute(
+      new resolved.Cmd(this, resolved.payload, resolved.callback),
+      resolved.optionalName
+    );
   },
 
   undo: function () {
