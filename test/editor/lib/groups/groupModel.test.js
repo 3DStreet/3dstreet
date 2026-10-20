@@ -6,6 +6,7 @@ import {
   isHiddenInHierarchy,
   isSystemItem,
   isUserGroup,
+  keepsItsParent,
   userGroupAncestors
 } from '@/editor/lib/groups/groupModel.js';
 
@@ -135,7 +136,7 @@ describe('cross-parent moves', () => {
 
 describe('an item and its data', () => {
   it('are refused and accepted alike, whether the item exists or is about to be created (fails if the layer panel and placement keep separate lists)', () => {
-    const keepsItsParent = [
+    const fixedItems = [
       { attrs: ['street-segment'] },
       { attrs: ['shape'] },
       { attrs: ['viewer-start'] },
@@ -143,7 +144,7 @@ describe('an item and its data', () => {
       { cls: 'autocreated' },
       { cls: 'scene-backdrop' }
     ];
-    for (const { attrs = [], cls } of keepsItsParent) {
+    for (const { attrs = [], cls } of fixedItems) {
       const el = add(s.root, { attrs, cls });
       const data = {
         components: Object.fromEntries(attrs.map((name) => [name, ''])),
@@ -216,5 +217,38 @@ describe('visibility in hierarchy', () => {
     s.groupB.object3D.visible = false;
     expect(isHiddenInHierarchy(s.memberOfC)).toBe(true);
     expect(isHiddenInHierarchy(s.groupA)).toBe(false);
+  });
+});
+
+describe('items that keep the parent they have', () => {
+  it('are the fixed layers, the camera rig and the marked items (fails if one of these items gains or loses its fixed parent)', () => {
+    const backdrop = add(s.root, { cls: 'scene-backdrop' });
+    const environment = add(scene, { id: 'environment' });
+    const kept = {
+      root: s.root,
+      environment,
+      referenceLayers: s.referenceLayers,
+      cameraRig: s.cameraRig,
+      segment: s.segment,
+      shape: s.shape,
+      viewerStart: s.viewerStart,
+      autocreated: s.autocreated,
+      backdrop
+    };
+    const free = {
+      model: s.model,
+      managedStreet: s.managedStreet,
+      intersection: s.intersection,
+      group: s.groupA,
+      memberOfA: s.memberOfA,
+      customChild: s.customChild
+    };
+
+    for (const [name, el] of Object.entries(kept)) {
+      expect([name, keepsItsParent(el)]).toEqual([name, true]);
+    }
+    for (const [name, el] of Object.entries(free)) {
+      expect([name, keepsItsParent(el)]).toEqual([name, false]);
+    }
   });
 });

@@ -24,6 +24,8 @@ import {
   canAcceptChild,
   isGroupableItem,
   isStreetContainer,
+  isUserGroup,
+  keepsItsParent,
   userGroupAncestors
 } from './groupModel.js';
 import { groupMessage } from './groupMessages.js';
@@ -303,27 +305,44 @@ export function viewCenterPoint(camera) {
   return point ? point.clone() : groupStandPoint(groupEl);
 }
 
+// The item a new group made for `selectedEl` goes above: `selectedEl` itself,
+// or, for a selection inside a street or intersection, the whole street, since
+// a group cannot go inside one. Null when that item cannot go into a group (a
+// shape, the Starting View, the 360° panorama, a fixed layer).
+function groupAnchor(selectedEl) {
+  let anchor = selectedEl;
+  while (anchor && !canAcceptChild(anchor.parentNode)) {
+    anchor = anchor.parentElement;
+  }
+  return anchor?.object3D && !keepsItsParent(anchor) ? anchor : null;
+}
+
 /**
- * Where a new group made with the layer panel's button goes, so it shows up
- * where the user is looking rather than at the end of a long list.
+ * Where a new group made for `selectedEl` goes, so it shows up where the user
+ * is looking rather than at the end of a long list.
  *
- * With an item selected, the group goes directly above it, in the same parent,
- * with its origin at the item's position: the user can drop the item straight
- * in. A selection inside a street or intersection stands for the whole street,
- * since a group cannot go inside one. With nothing selected (or a fixed layer
- * such as the environment), the group goes first in the innermost open group,
- * at its center, or first at the top level, at the origin.
+ * With a selection that has an anchor (see groupAnchor), the group goes
+ * directly above that anchor, in the same parent, so the anchor can be
+ * dropped straight in. Its origin is at the anchor's position, or at the
+ * center of an anchor that is a group, which is where the user sees that
+ * group. Otherwise the group goes first in the innermost open group, at its
+ * center, or first at the top level, at the origin.
  *
  * Returns `{ parentEl, beforeEl, position }`; `beforeEl` may be null when the
  * parent is empty.
  */
 export function newGroupPlacement(selectedEl) {
-  let anchor = selectedEl;
-  while (anchor && !canAcceptChild(anchor.parentNode)) {
-    anchor = anchor.parentElement;
-  }
-  if (anchor?.object3D && anchor.id !== 'cameraRig') {
-    const { x, y, z } = anchor.object3D.position;
+  const anchor = groupAnchor(selectedEl);
+  if (anchor) {
+    let point = anchor.object3D.position;
+    if (isUserGroup(anchor)) {
+      // The center is in the group's own frame; the new group is its sibling.
+      anchor.object3D.updateMatrix();
+      point = getGroupCenter(anchor, new THREE.Vector3()).applyMatrix4(
+        anchor.object3D.matrix
+      );
+    }
+    const { x, y, z } = point;
     return {
       parentEl: anchor.parentNode,
       beforeEl: anchor,

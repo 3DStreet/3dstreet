@@ -5,6 +5,7 @@ import { auth } from '@shared/services/firebase.js';
 import * as assetUpload from '@shared/asset-upload';
 import {
   beginPlacement,
+  newGroupPlacement,
   placeDefinition
 } from '@/editor/lib/groups/groupPlacement.js';
 import { isGroupableItem } from '@/editor/lib/groups/groupModel.js';
@@ -451,4 +452,96 @@ it('keeps the world matrix of a placed item exactly, rotation and scale included
   const inGroup = entityIn(inner, placed.components);
   const atTop = entityIn(scene.root, components);
   expectMatrixClose(expect, worldOf(inGroup), worldOf(atTop));
+});
+
+describe('where the New group button puts a group', () => {
+  it("with a turned, scaled group selected inside an open turned group, at the selected group's center in its parent's frame (fails if the origin, the world frame, the scale or the open group's center is used)", () => {
+    const parent = entityIn(scene.root, {
+      id: 'parent',
+      cls: 'user-group',
+      position: '-7 2 5',
+      rotation: '0 -35 0'
+    });
+    // Elsewhere in the open group, so its center is not the selected group's.
+    memberWithBox(parent, [-30, 0, -30], [-26, 2, -26], { id: 'other' });
+    const g = entityIn(parent, {
+      id: 'g',
+      cls: 'user-group',
+      position: '40 0 -10',
+      rotation: '0 50 0',
+      scale: '2 2 2'
+    });
+    memberWithBox(g, [6, 0, 8], [10, 2, 12]);
+    scene.openGroups('parent');
+    g.object3D.updateMatrix();
+    const expected = new THREE.Vector3(8, 1, 10).applyMatrix4(
+      g.object3D.matrix
+    );
+
+    const { parentEl, beforeEl, position } = newGroupPlacement(g);
+
+    expect(parentEl).toBe(parent);
+    expect(beforeEl).toBe(g);
+    expect(position.x).toBeCloseTo(expected.x, 9);
+    expect(position.y).toBeCloseTo(expected.y, 9);
+    expect(position.z).toBeCloseTo(expected.z, 9);
+  });
+
+  it('with an ordinary item selected, directly above it at its position, and for a street segment above the whole street (fails if the anchor rule changed)', () => {
+    const model = entityIn(scene.root, { id: 'model', position: '3 0 -2' });
+    const street = entityIn(scene.root, { id: 'street', position: '5 0 9' });
+    street.setAttribute('managed-street', '');
+    const segment = entityIn(street, { id: 'segment' });
+    segment.setAttribute('street-segment', '');
+
+    expect(newGroupPlacement(model)).toEqual({
+      parentEl: scene.root,
+      beforeEl: model,
+      position: { x: 3, y: 0, z: -2 }
+    });
+    expect(newGroupPlacement(segment)).toEqual({
+      parentEl: scene.root,
+      beforeEl: street,
+      position: { x: 5, y: 0, z: 9 }
+    });
+  });
+
+  it('with the Starting View, the panorama or generated content selected, first at the top level at the origin (fails if any of them anchors the group)', () => {
+    const first = entityIn(scene.root, { id: 'first' });
+    const start = entityIn(scene.root, { id: 'start', position: '0 30 40' });
+    start.setAttribute('viewer-start', '');
+    const backdrop = entityIn(scene.root, {
+      id: 'pano',
+      cls: 'scene-backdrop'
+    });
+    const generated = entityIn(scene.root, {
+      id: 'generated',
+      cls: 'autocreated',
+      position: '8 0 8'
+    });
+
+    for (const el of [start, backdrop, generated]) {
+      expect(newGroupPlacement(el)).toEqual({
+        parentEl: scene.root,
+        beforeEl: first,
+        position: { x: 0, y: 0, z: 0 }
+      });
+    }
+  });
+
+  it('with an item that cannot go into a group selected inside the open group, first in that group at its center (fails if the item anchors the group)', () => {
+    const open = entityIn(scene.root, { id: 'open', cls: 'user-group' });
+    const member = memberWithBox(open, [2, 0, 2], [4, 2, 4], { id: 'm' });
+    const pinned = entityIn(open, { id: 'pinned', position: '9 0 9' });
+    pinned.setAttribute('data-transform-no-reparent', '');
+    scene.openGroups('open');
+
+    const { parentEl, beforeEl, position } = newGroupPlacement(pinned);
+
+    expect(parentEl).toBe(open);
+    expect(beforeEl).toBe(member);
+    expect(position.x).toBeCloseTo(3, 9);
+    expect(position.y).toBeCloseTo(1, 9);
+    expect(position.z).toBeCloseTo(3, 9);
+  });
 });
