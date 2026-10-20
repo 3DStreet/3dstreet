@@ -24,6 +24,8 @@
 import { commandsByType } from './index.js';
 import { nonCommandTools } from './nonCommandTools.js';
 import { TRANSFORM_REFUSED } from '../transformGuard.js';
+import { beginCommandOutcome, takeCommandOutcome } from '../resolveCommand.js';
+import { describeDroppedPose } from '../groups/groupLevel.js';
 import { getEditableEntity } from './llmToolGuards.js';
 
 // class → command type string. Built once from commandsByType.
@@ -126,15 +128,29 @@ export async function dispatchToolCall(toolName, args, currentUser) {
     payload = entry.transformLLMArgs(payload, { entity });
   }
   payload = resolveIdRefs(payload, targetOptions);
-  const result = AFRAME.INSPECTOR.execute(entry.commandType, payload);
+  // The outcome slot records why the command was refused, or what it
+  // levelled. Arm, execute and take run in one synchronous stretch; do not add
+  // an `await` between them, or a concurrent tool call could read this one's
+  // outcome.
+  let result;
+  let outcome;
+  beginCommandOutcome();
+  try {
+    result = AFRAME.INSPECTOR.execute(entry.commandType, payload);
+  } finally {
+    outcome = takeCommandOutcome();
+  }
   if (result === TRANSFORM_REFUSED) {
     // This function reports success unconditionally, so a refusal has to be
     // raised here or the model would tell the user it made an edit it did not.
-    throw new Error(
-      `${entry.commandType} refused: the target does not permit this transform`
-    );
+    const reason =
+      outcome?.refusal ?? 'the target does not permit this transform';
+    throw new Error(`${entry.commandType} refused: ${reason}`);
   }
-  return `${entry.commandType} executed`;
+  const note = describeDroppedPose(outcome?.levelled);
+  return note
+    ? `${entry.commandType} executed. ${note}`
+    : `${entry.commandType} executed`;
 }
 
 /**
