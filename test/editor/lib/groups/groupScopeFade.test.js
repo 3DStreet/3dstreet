@@ -669,7 +669,7 @@ describe('entering and leaving', () => {
     expect(restore).not.toHaveBeenCalled();
   });
 
-  it('fades the outside again after each return from the viewer, and never while away (TASK-213)', () => {
+  it('fades the outside again after each return from the viewer, and never while away', () => {
     const { G, member, treeMesh } = simpleScene();
     h.inspector.selectEntity(member);
     enter(G);
@@ -692,7 +692,7 @@ describe('entering and leaving', () => {
     expect(drawnWith(treeMesh)[0]).toBe(treeMesh.material);
   });
 
-  it('shows nothing of a scope forgotten by a scene load while away (TASK-213)', () => {
+  it('shows nothing of a scope forgotten by a scene load while away', () => {
     const { G, member, treeMesh } = simpleScene();
     h.inspector.selectEntity(member);
     enter(G);

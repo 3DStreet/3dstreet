@@ -24,14 +24,13 @@ export const Shortcuts = {
     default: {},
     modules: {}
   },
-  // Escape acts on key-up, but only for a press whose key-down reached the
-  // editor. The viewer returns to the editor on Escape's key-down, and the
+  // Escape acts on key-up, but only for a press whose key-down the editor
+  // accepted. The viewer returns to the editor on Escape's key-down, and the
   // key-up of that same press must not then also leave a group level or
   // clear the selection.
   escapeDown: false,
   onKeyUp: function (event) {
-    // Read and cleared before any gating, so a gated or swallowed press
-    // cannot leave it set.
+    // Cleared before the gate below, so a gated key-up does not leave it set.
     const escapeDown = this.escapeDown;
     if (event.keyCode === 27) this.escapeDown = false;
 
@@ -251,7 +250,6 @@ export const Shortcuts = {
     this.enabled = false;
   },
   onBlur: function () {
-    // The key-up of a press may never arrive here once focus has left.
     this.escapeDown = false;
   },
   checkModuleShortcutCollision: function (keyCode, moduleName, mustBeActive) {

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { restorableScope } from '@/editor/lib/groups/groupScope.js';
 
 // What of the open groups and selection remembered on leaving the editor is
-// restored on returning from the viewer (TASK-213). Plain elements: hiding is
+// restored on returning from the viewer. Plain elements: hiding is
 // read from an object3D where one is given.
 
 function add(parent, { id, group = false } = {}) {

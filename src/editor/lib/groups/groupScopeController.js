@@ -322,9 +322,10 @@ export class GroupScopeController {
     const away = this.away || { groups: NO_GROUPS, selected: this.selected() };
     this.away = null;
     const restored = restorableScope(away.groups, away.selected);
-    this.setStack(restored.groups.map(ensureGroupId));
-    // Only reasserts the selection: the stack above already matches it.
-    this.select(restored.selected);
+    // Remembered from the open stack, so every group has an id.
+    this.setStack(restored.groups.map((el) => el.id));
+    // The stack above already matches the selection.
+    if (restored.selected !== this.selected()) this.select(restored.selected);
   }
 
   // ------------------------------------------------------------ canvas input

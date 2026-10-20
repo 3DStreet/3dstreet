@@ -357,13 +357,8 @@ function spyExecute() {
   return calls;
 }
 
-// A whole press: the editor acts on Escape's key-up only after its key-down.
 function escape() {
-  for (const type of ['keydown', 'keyup']) {
-    const event = new KeyboardEvent(type, { key: 'Escape', bubbles: true });
-    Object.defineProperty(event, 'keyCode', { value: 27 });
-    document.body.dispatchEvent(event);
-  }
+  h.escape();
 }
 
 // ------------------------------------------------------------------ tests
@@ -1155,7 +1150,7 @@ describe('a held press on a group handle when the editor is left', () => {
     h.frame();
     expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.3);
     expect(h.openIds()).toEqual([]);
-    // The return restores the scope as it was at exit (TASK-213).
+    // The return restores the scope as it was at exit.
     expect(h.inspector.selectedEntity).toBe(g);
   });
 });

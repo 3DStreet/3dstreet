@@ -642,7 +642,7 @@ describe('reconciling the open groups', () => {
   });
 });
 
-// TASK-213: the viewer shows no isolation; back in the editor the open groups
+// The viewer shows no isolation; back in the editor the open groups
 // and the selection are as they were, as far as the scene still allows.
 describe('a round trip through the viewer', () => {
   const leave = () => useStore.getState().setIsInspectorEnabled(false);
@@ -663,14 +663,16 @@ describe('a round trip through the viewer', () => {
     expect(selected()).toBe(C);
   });
 
-  it('restores the groups when the selection is unchanged and no selection event fires (fails if restoring relies on objectselect)', () => {
+  it('restores the groups when the selection is unchanged, announcing no selection (fails if restoring relies on a selection event)', () => {
     const { tree } = nestedScene();
     h.inspector.selectEntity(tree);
     leave();
     const onSelect = vi.fn();
     Events.on('objectselect', onSelect);
+    const selectEntity = vi.spyOn(h.inspector, 'selectEntity');
     back();
     expect(onSelect).not.toHaveBeenCalled();
+    expect(selectEntity).not.toHaveBeenCalled();
     expect(h.openIds()).toEqual(['A', 'B', 'C']);
   });
 
@@ -814,14 +816,21 @@ describe('the Escape that returns from the viewer', () => {
     expect(selected()).toBe(tree);
   });
 
-  it('is not left armed by a press in a text field, or by losing focus', () => {
+  it('is not armed by a press in a text field', () => {
     const { tree } = nestedScene();
     h.inspector.selectEntity(tree);
     const input = document.createElement('input');
     document.body.append(input);
     h.escapeKey('keydown', {}, input);
-    h.escapeKey('keyup', {}, input);
+    // Focus leaves the field before the key-up.
     h.escapeKey('keyup');
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(tree);
+  });
+
+  it('is disarmed by losing focus between key-down and key-up', () => {
+    const { tree } = nestedScene();
+    h.inspector.selectEntity(tree);
     h.escapeKey('keydown');
     window.dispatchEvent(new Event('blur'));
     h.escapeKey('keyup');
