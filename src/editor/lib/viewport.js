@@ -1409,7 +1409,6 @@ export function Viewport(inspector) {
     // to, so its detach is idempotent; so are the group's.
     easyGizmoControls.detach();
     groupStockGesture.detach();
-    inspector.groupScope.affordances.setScalePlaceholder(null);
   }
 
   // Which handles the stock gizmo offers for the current mode and selection.
@@ -1437,7 +1436,9 @@ export function Viewport(inspector) {
       return;
     }
     // Selecting a no-scale entity while in scale mode: fall back to
-    // translate so the gizmo never scales it.
+    // translate so the gizmo never scales it. A user group is left out on
+    // purpose: its handles are a separate control, so the shared item control
+    // stays in Scale for the next item selected.
     if (
       transformControls.mode === 'scale' &&
       el.hasAttribute('data-transform-no-scale')
@@ -1494,17 +1495,18 @@ export function Viewport(inspector) {
       return;
     }
     // A user group gets no handles while it is hidden. Otherwise: the easy
-    // gizmo in easy mode; in Advanced move and rotate, its own stock control
-    // at its center, rotating about Y only; in scale mode, which a group only
-    // does uniformly (in the properties panel), a placeholder on its marker.
+    // gizmo in easy mode; in Advanced, its own stock control at its center,
+    // rotating about Y only. A group is never scaled, so scale mode gives it
+    // the move control, as it does a managed street.
     if (isUserGroup(el)) {
       if (isHiddenInHierarchy(el)) return;
       if (transformMode === 'easy') {
         easyGizmoControls.attach(el, groupGizmoPolicy);
-      } else if (transformMode === 'scale') {
-        inspector.groupScope.affordances.setScalePlaceholder(el);
       } else {
-        groupStockGesture.attach(el, transformMode);
+        groupStockGesture.attach(
+          el,
+          transformMode === 'scale' ? 'translate' : transformMode
+        );
       }
       return;
     }
@@ -1528,10 +1530,7 @@ export function Viewport(inspector) {
     const el = inspector.selectedEntity;
     if (!isUserGroup(el)) return;
     // The handles belong on a shown group and not on a hidden one.
-    const attached =
-      easyGizmoControls.el === el ||
-      groupStockGesture.el === el ||
-      inspector.groupScope.affordances.scalePlaceholderGroup === el;
+    const attached = easyGizmoControls.el === el || groupStockGesture.el === el;
     const hidden = isHiddenInHierarchy(el);
     if (attached ? hidden : !hidden) attachControlsForSelection();
   }
@@ -1552,6 +1551,9 @@ export function Viewport(inspector) {
     // Some entities opt out of scale (`data-transform-no-scale`) — shapes and
     // managed streets, whose size is owned by their own editing affordances
     // (vertex handles; segment widths). Fall back to translate for those.
+    // A user group is left out on purpose: its handles are a separate
+    // control, so the shared item control stays in Scale for the next item
+    // selected.
     if (
       mode === 'scale' &&
       inspector.selectedEntity?.hasAttribute?.('data-transform-no-scale')
