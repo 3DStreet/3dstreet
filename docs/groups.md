@@ -27,7 +27,9 @@ edited in isolation. The code is in `src/editor/lib/groups/`; the
   loaded scene, a paste, a class added by a command — loses any X/Z rotation
   and any scale; its heading and position are kept, and its members keep
   their own values. Loading a scene that held such a group logs a `[groups]`
-  warning.
+  warning. A mixin's rotation or scale counts as the group's own when the
+  group has none. A direct `setAttribute` — from an animation component or
+  the console — is not checked or levelled.
 
 ## Bounds, center and origin
 
