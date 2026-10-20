@@ -84,10 +84,17 @@ the elements). The stack is session state only and is never saved.
   it. A null selection (opening a group, a tool switch, undoing a create)
   leaves the scope as it is.
 - **Pruning.** Deleting or hiding an open group closes it and every group
-  inside it. Loading a scene and leaving the editor close every group; on
-  return, a selection inside a group becomes that group's outermost group,
-  selected and closed. A group being moved stays in the stack while the move
-  settles; the move then selects it, which closes it.
+  inside it. Loading a scene closes every group. A group being moved stays in
+  the stack while the move settles; the move then selects it, which closes it.
+- **Viewer and Play.** The viewer shows no isolation: leaving the editor closes
+  every group, remembering them and the selection. Back in the editor (Edit,
+  Escape, or Stop after Play from the editor) they are restored, as far as the
+  scene allows: the open groups are kept up to the first that is gone, hidden or
+  no longer inside the one before it, and the selection only if the groups
+  around it are exactly those. A scene loaded meanwhile forgets them.
+  `restorableScope` in `groupScope.js` decides. The Escape that returns from the
+  viewer does nothing more: the editor acts on an Escape key-up only after
+  seeing its key-down (`shortcuts.js`).
 - **Pick targets.** The selected group's box, the markers and the open group's
   volume are ray/box tests, not scene objects, so camera navigation and
   placement never land on them.

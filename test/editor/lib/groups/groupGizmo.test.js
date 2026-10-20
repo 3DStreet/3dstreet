@@ -357,10 +357,13 @@ function spyExecute() {
   return calls;
 }
 
+// A whole press: the editor acts on Escape's key-up only after its key-down.
 function escape() {
-  const event = new KeyboardEvent('keyup', { key: 'Escape', bubbles: true });
-  Object.defineProperty(event, 'keyCode', { value: 27 });
-  document.body.dispatchEvent(event);
+  for (const type of ['keydown', 'keyup']) {
+    const event = new KeyboardEvent(type, { key: 'Escape', bubbles: true });
+    Object.defineProperty(event, 'keyCode', { value: 27 });
+    document.body.dispatchEvent(event);
+  }
 }
 
 // ------------------------------------------------------------------ tests

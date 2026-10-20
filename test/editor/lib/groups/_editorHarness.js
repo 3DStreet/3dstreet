@@ -342,13 +342,20 @@ export function mountEditor({ gizmo = false, cursorFirst = false } = {}) {
       );
       panel.remove();
     },
+    /** A whole press: the editor acts on Escape's key-up only after its key-down. */
     escape() {
-      const event = new KeyboardEvent('keyup', {
+      harness.escapeKey('keydown');
+      harness.escapeKey('keyup');
+    },
+    /** One Escape key event; `init` adds e.g. `{ repeat: true }`. */
+    escapeKey(type, init = {}, target = document.body) {
+      const event = new KeyboardEvent(type, {
         key: 'Escape',
-        bubbles: true
+        bubbles: true,
+        ...init
       });
       Object.defineProperty(event, 'keyCode', { value: 27 });
-      document.body.dispatchEvent(event);
+      target.dispatchEvent(event);
     },
     /** One editor frame in the renderer's order; `between` sees what it draws. */
     frame(between) {
