@@ -98,11 +98,6 @@ function typeInto(input, text) {
   fireEvent.blur(input);
 }
 
-const scaleUpdates = () =>
-  executed.filter(
-    ([type, p]) => type === 'entityupdate' && p.component === 'scale'
-  );
-
 describe('help under a group in the Transform section', () => {
   it('shows the sentence through its react-intl id for a group and not for an ordinary item', () => {
     const g = group(root);
@@ -121,56 +116,6 @@ describe('help under a group in the Transform section', () => {
     show(entity(root));
     expect(screen.queryByText(HINT)).toBeNull();
     expect(document.querySelector('.group-origin-hint')).toBeNull();
-  });
-});
-
-describe('a group scale edited in the panel', () => {
-  it('stays uniform even when the stored link preference is off, and leaves that preference alone', () => {
-    localStorage.setItem(SCALE_LINK_STORAGE_KEY, 'false');
-    const g = group(root);
-    show(g);
-
-    expect(screen.queryByTestId('vec3-link')).toBeNull();
-    typeInto(scaleField('x'), '3');
-
-    expect(refusals).toEqual([]);
-    expect(editor.history.undos).toHaveLength(1);
-    expect(g.getAttribute('scale')).toEqual({ x: 3, y: 3, z: 3 });
-    expect(localStorage.getItem(SCALE_LINK_STORAGE_KEY)).toBe('false');
-  });
-
-  it('leaves the preference as it was after a group is shown and then an ordinary item', () => {
-    localStorage.setItem(SCALE_LINK_STORAGE_KEY, 'false');
-    const first = show(group(root));
-    first.unmount();
-    show(entity(root));
-
-    expect(localStorage.getItem(SCALE_LINK_STORAGE_KEY)).toBe('false');
-    expect(screen.getByTestId('vec3-link').getAttribute('aria-pressed')).toBe(
-      'false'
-    );
-  });
-
-  it('shows an imported uneven group read-only, refuses edits, and resets it to uniform', () => {
-    const g = group(root, { scale: [1, 2, 1] });
-    g.setAttribute('scale', '1 2 1');
-    show(g);
-
-    for (const axis of ['x', 'y', 'z']) {
-      expect(scaleField(axis).readOnly).toBe(true);
-    }
-    expect(scaleField('y').value).toBe('2.000');
-
-    typeInto(scaleField('x'), '5');
-    fireEvent.keyDown(scaleField('x'), { keyCode: 38 });
-    expect(scaleUpdates()).toEqual([]);
-    expect(g.getAttribute('scale')).toEqual({ x: 1, y: 2, z: 1 });
-
-    const reset = within(scaleRow()).getByTestId('vec3-reset');
-    expect(reset.disabled).toBe(false);
-    fireEvent.click(reset);
-    expect(refusals).toEqual([]);
-    expect(g.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
   });
 });
 

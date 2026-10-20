@@ -5,17 +5,20 @@
 //
 //   data-transform-no-scale       scale must stay unit
 //   data-transform-yaw-only       rotation may change about Y alone: the X and
-//                                 Z angles must stay as they are
-//   data-transform-uniform-scale  scale must stay the same on every axis
+//                                 Z angles must stay as they are, or be
+//                                 brought back to 0
 //   data-transform-no-reparent    the entity may not change parent (reordering
 //                                 WITHIN its current parent is still allowed —
 //                                 the layers panel does that through the same
 //                                 reparent command)
 //
-// A user group carries yaw-only and uniform-scale by its class rather than as
+// A user group carries yaw-only and no-scale by its class rather than as
 // attributes (hasTransformMarker): data-* attributes are not saved with the
 // scene, and a class needs no editor code to have run for an AI command to see
-// it. A group scaled unevenly could only hold a turned member by shearing it.
+// it. Removing that class from a group that still has members is refused.
+//
+// Values are judged as A-Frame will apply them (parseVec3LikeAFrame), so a
+// string such as "10° 30 0" or "2,2,2" is read the way it would take effect.
 //
 // Two further refusals keep the hierarchy sound: a move to another parent must
 // be legal for the group model (groups/groupModel.js) and must be able to keep
@@ -31,23 +34,24 @@
 //
 // What this covers is every COMMAND route: the properties panel, the AI chat,
 // the transform gizmo and layers-panel reparenting all go through
-// Inspector.execute. A direct setAttribute — from scene load, from generator
-// code, or from an animation component — bypasses it, as does a scene authored
-// before the markers existed.
+// Inspector.execute, and both updating a component and adding one are judged.
+// A direct setAttribute — from scene load, from generator code, or from an
+// animation component — bypasses it, as does a scene authored before the
+// markers existed. Scene load levels groups itself (tested/migrate-group-pose.js).
 
 import {
+  USER_GROUP_CLASS,
   canAcceptChild,
   canReparent,
   isUserGroup
 } from './groups/groupModel.js';
+import { classAfterUpdate } from './groups/groupLevel.js';
 import { groupMessage } from './groups/groupMessages.js';
 import { localPoseFromWorld } from './groups/groupTransformMath.js';
-
-// A scale within this of 1, or a rotation within this many degrees of 0, is
-// treated as unchanged. Both guard against float noise in a round-trip through
-// the panel's string values rather than expressing a tolerance anyone should
-// rely on.
-const UNIT_EPS = 1e-3;
+import {
+  POSE_EPS,
+  parseVec3LikeAFrame
+} from '../../tested/migrate-group-pose.js';
 
 // Refuse a repeat notice for the same entity and reason within this window: the
 // panel's number fields are drag-scrubbers that fire a command per pointer
@@ -57,70 +61,52 @@ const NOTIFY_DEDUP_MS = 1500;
 let lastRefusalKey = null;
 let lastRefusalAt = 0;
 
-// Read the axis values a transform write is asking for, in whichever of the
-// three forms it arrives: a "x y z" string (the AI chat), a whole {x, y, z}
-// object (the properties panel's vec3 rows), or a single axis named by
-// `property`. Axes the write does not mention come back undefined.
-function requestedAxes(payload) {
-  const value = payload.value;
+const VEC3_DEFAULTS = {
+  rotation: { x: 0, y: 0, z: 0 },
+  scale: { x: 1, y: 1, z: 1 }
+};
+
+// The axis values a transform write will apply, read as A-Frame reads them,
+// in whichever form the write arrives: a "x y z" string (the AI chat), a whole
+// {x, y, z} object (the properties panel's vec3 rows), or a single axis named
+// by `property`, which is merged into the current value. An axis the write
+// leaves as it is comes back undefined; one that is not a number, NaN.
+function requestedAxes(payload, component) {
   if (payload.property) {
-    return { [payload.property]: finite(value) };
+    const axes = parseVec3LikeAFrame({ [payload.property]: payload.value }, {});
+    return { [payload.property]: axes[payload.property] };
   }
-  if (typeof value === 'string') {
-    const parts = value.trim().split(/\s+/);
-    return { x: finite(parts[0]), y: finite(parts[1]), z: finite(parts[2]) };
-  }
-  if (value && typeof value === 'object') {
-    return { x: finite(value.x), y: finite(value.y), z: finite(value.z) };
-  }
-  return {};
+  return parseVec3LikeAFrame(payload.value, VEC3_DEFAULTS[component]);
 }
 
-function finite(raw) {
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : undefined;
+function departsBy(value, target) {
+  return typeof value !== 'number' || !(Math.abs(value - target) <= POSE_EPS);
 }
 
 function departsFrom(axes, target, names) {
   return names.some(
-    (axis) =>
-      axes[axis] !== undefined && Math.abs(axes[axis] - target) > UNIT_EPS
+    (axis) => axes[axis] !== undefined && departsBy(axes[axis], target)
   );
 }
 
-// The entity's current value of a vec3 component, with `fallback` for an axis
-// it does not set.
-function currentAxes(entity, component, fallback) {
-  const axes = requestedAxes({ value: entity.getAttribute?.(component) });
-  return {
-    x: axes.x ?? fallback,
-    y: axes.y ?? fallback,
-    z: axes.z ?? fallback
-  };
-}
-
-function departsFromCurrent(entity, component, axes, names) {
-  const current = currentAxes(entity, component, 0);
+// A named X or Z that changes the current tilt, unless it brings that axis
+// back to 0: levelling an entity is always allowed.
+function tiltsAwayFromCurrent(entity, axes, names) {
+  const current = parseVec3LikeAFrame(
+    entity.getAttribute?.('rotation'),
+    VEC3_DEFAULTS.rotation
+  );
   return names.some(
     (axis) =>
       axes[axis] !== undefined &&
-      Math.abs(axes[axis] - current[axis]) > UNIT_EPS
+      departsBy(axes[axis], current[axis]) &&
+      departsBy(axes[axis], 0)
   );
-}
-
-function leavesScaleUneven(entity, axes) {
-  const current = currentAxes(entity, 'scale', 1);
-  const x = axes.x ?? current.x;
-  const y = axes.y ?? current.y;
-  const z = axes.z ?? current.z;
-  const tolerance =
-    UNIT_EPS * Math.max(1, Math.abs(x), Math.abs(y), Math.abs(z));
-  return Math.abs(x - y) > tolerance || Math.abs(y - z) > tolerance;
 }
 
 const IMPLIED_BY_USER_GROUP = new Set([
   'data-transform-yaw-only',
-  'data-transform-uniform-scale'
+  'data-transform-no-scale'
 ]);
 
 /** Does `entity` carry `marker`, as an attribute or implied by its class? */
@@ -162,6 +148,34 @@ function requiredParentGone(commandType, payload) {
   return !canAcceptChild(parent);
 }
 
+// A scale or rotation write, whether it updates the component or adds it.
+function refuseVec3Write(entity, component, payload) {
+  if (
+    component === 'scale' &&
+    hasTransformMarker(entity, 'data-transform-no-scale') &&
+    departsFrom(requestedAxes(payload, 'scale'), 1, ['x', 'y', 'z'])
+  ) {
+    return 'Scaling is not available for this element.';
+  }
+  if (
+    component === 'rotation' &&
+    hasTransformMarker(entity, 'data-transform-yaw-only') &&
+    tiltsAwayFromCurrent(entity, requestedAxes(payload, 'rotation'), ['x', 'z'])
+  ) {
+    return 'This element can only be rotated about the vertical axis.';
+  }
+  return null;
+}
+
+// A group's members cannot be left in something that is no longer a group.
+function wouldUngroupWithMembers(entity, payload) {
+  return (
+    isUserGroup(entity) &&
+    entity.children.length > 0 &&
+    !classAfterUpdate(payload).includes(USER_GROUP_CLASS)
+  );
+}
+
 /**
  * Would this command violate one of the transform markers on its target?
  * Returns the reason to show the user, or null to let the command through.
@@ -189,28 +203,18 @@ export function refuseGuardedTransform(commandType, payload) {
   const entity = payload?.entity;
   if (!entity || !entity.hasAttribute) return null;
 
+  if (commandType === 'componentadd') {
+    return refuseVec3Write(entity, payload.component, payload);
+  }
+
   if (commandType === 'entityupdate') {
-    if (payload.component === 'scale') {
-      const axes = requestedAxes(payload);
-      if (
-        hasTransformMarker(entity, 'data-transform-no-scale') &&
-        departsFrom(axes, 1, ['x', 'y', 'z'])
-      ) {
-        return 'Scaling is not available for this element.';
-      }
-      if (
-        hasTransformMarker(entity, 'data-transform-uniform-scale') &&
-        leavesScaleUneven(entity, axes)
-      ) {
-        return groupMessage('nonUniformScale');
-      }
-    }
+    const reason = refuseVec3Write(entity, payload.component, payload);
+    if (reason) return reason;
     if (
-      payload.component === 'rotation' &&
-      hasTransformMarker(entity, 'data-transform-yaw-only') &&
-      departsFromCurrent(entity, 'rotation', requestedAxes(payload), ['x', 'z'])
+      payload.component === 'class' &&
+      wouldUngroupWithMembers(entity, payload)
     ) {
-      return 'This element can only be rotated about the vertical axis.';
+      return groupMessage('ungroupWithMembers');
     }
     return null;
   }
