@@ -7,7 +7,7 @@ import {
 } from '@/editor/lib/transformGuard.js';
 import { resolveCommand } from '@/editor/lib/resolveCommand.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
-import { boxMesh } from './_groupFixtures.js';
+import { boxMesh, vec3Components } from './_groupFixtures.js';
 import { defineEntityElement } from './_entityElement.js';
 
 // A scene for placement tests: real commands, guard and History behind the
@@ -77,7 +77,11 @@ export function mountPlacementScene() {
     warningMessage: vi.fn(),
     infoMessage: vi.fn()
   };
-  vi.stubGlobal('AFRAME', { INSPECTOR: inspector, scenes: [sceneEl] });
+  vi.stubGlobal('AFRAME', {
+    INSPECTOR: inspector,
+    scenes: [sceneEl],
+    components: vec3Components()
+  });
   vi.stubGlobal('STREET', { notify });
   useCurrentUploadStore.getState().clear();
 

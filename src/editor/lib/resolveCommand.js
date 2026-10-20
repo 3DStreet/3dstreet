@@ -1,6 +1,33 @@
 import { commandsByType } from './commands/index.js';
 import { routeCloneEdit } from './detachClone.js';
+import { routeGroupLevel } from './groups/groupLevel.js';
 import { refuseGuardedTransform } from './transformGuard.js';
+
+// The outcome of the first command resolved while a tool call is armed (see
+// beginCommandOutcome), so the AI can be told why it was refused or what was
+// levelled. Nothing is recorded outside an armed call.
+let outcomeArmed = false;
+let outcomeRecorded = false;
+let outcome = null;
+
+/**
+ * Arm the outcome slot for one tool call. The next resolveCommand records
+ * {refusal, levelled}; commands it causes in turn cannot overwrite it.
+ */
+export function beginCommandOutcome() {
+  outcome = null;
+  outcomeArmed = true;
+  outcomeRecorded = false;
+}
+
+/** The armed call's outcome, or null; disarms the slot. */
+export function takeCommandOutcome() {
+  const taken = outcome;
+  outcome = null;
+  outcomeArmed = false;
+  outcomeRecorded = false;
+  return taken;
+}
 
 /**
  * Work out what a command request will actually run, without running it: the
@@ -8,8 +35,10 @@ import { refuseGuardedTransform } from './transformGuard.js';
  * and the guard's verdict on it. Pure apart from what the routers read; it
  * neither notifies nor touches History, so tests can drive the same pipeline.
  *
- * Returns {Cmd, cmdName, payload, optionalName, callback, refusal}. `Cmd` is
- * undefined for an unknown command; `refusal` is the reason to show, or null.
+ * Returns {Cmd, cmdName, payload, optionalName, callback, refusal, levelled}.
+ * `Cmd` is undefined for an unknown command; `refusal` is the reason to show,
+ * or null; `levelled` is what a group-making write removed (routeGroupLevel),
+ * or null.
  */
 export function resolveCommand(cmdName, payload, optionalName, callback) {
   // A generated street clone is an editable object whose first edit
@@ -26,7 +55,17 @@ export function resolveCommand(cmdName, payload, optionalName, callback) {
     if (routed.callback && !callback) callback = routed.callback;
   }
 
-  // Looked up after routing, so the class matches what will run.
+  // A write that leaves a user group tilted or scaled is rewritten to level
+  // it in the same undo step.
+  let levelled = null;
+  const levelling = routeGroupLevel(cmdName, payload);
+  if (levelling) {
+    cmdName = levelling.cmdName;
+    payload = levelling.payload;
+    levelled = levelling.levelled;
+  }
+
+  // Looked up after both rewrites, so the class matches what will run.
   const Cmd = commandsByType.get(cmdName);
 
   // Transform-capability markers are enforced here rather than inside a
@@ -35,5 +74,10 @@ export function resolveCommand(cmdName, payload, optionalName, callback) {
   // undo walks through silently.
   const refusal = Cmd ? refuseGuardedTransform(cmdName, payload) : null;
 
-  return { Cmd, cmdName, payload, optionalName, callback, refusal };
+  if (outcomeArmed && !outcomeRecorded) {
+    outcome = { refusal, levelled };
+    outcomeRecorded = true;
+  }
+
+  return { Cmd, cmdName, payload, optionalName, callback, refusal, levelled };
 }

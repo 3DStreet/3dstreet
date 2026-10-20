@@ -18,6 +18,8 @@ import {
   resolveDetachToolArgs,
   routeCloneEdit
 } from '../../src/editor/lib/detachClone.js';
+import { routeGroupLevel } from '../../src/editor/lib/groups/groupLevel.js';
+import { resolveCommand } from '../../src/editor/lib/resolveCommand.js';
 
 // A segment element with a live generator component (the shape
 // getCloneSlot/buildDetachCommands read: `components[name]` present and
@@ -1009,6 +1011,66 @@ describe('detachClone (#2011)', () => {
         rotation: '0 180 0',
         scale: '1 1 1'
       });
+    });
+  });
+
+  describe('a class write that makes a clone a group', () => {
+    it('detaches it level, with an explicit unit scale outranking its mixin (fails if the group rewrite ignores a detach)', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      clone.setAttribute('rotation', '5 30 0');
+      const nativeGetAttribute = clone.getAttribute.bind(clone);
+      // The scale its mixin gives it.
+      clone.getAttribute = (name) =>
+        name === 'scale' ? { x: 1, y: 1.5, z: 1 } : nativeGetAttribute(name);
+
+      const routed = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'class',
+        value: 'user-group'
+      });
+      expect(routed.cmdName).toBe('detachclone');
+      const levelled = routeGroupLevel(routed.cmdName, routed.payload);
+      expect(levelled.cmdName).toBe('detachclone');
+      expect(levelled.payload.pose).toEqual({
+        rotation: '0 30 0',
+        scale: '1 1 1'
+      });
+      expect(levelled.levelled).toEqual({
+        rotation: { x: 5, y: 30, z: 0 },
+        scale: { x: 1, y: 1.5, z: 1 }
+      });
+
+      const definition = buildDetachedDefinition(
+        clone,
+        levelled.payload.pose,
+        levelled.payload
+      );
+      expect(definition.components.rotation).toBe('0 30 0');
+      expect(definition.components.scale).toBe('1 1 1');
+      expect(definition.components.class).toBe('user-group');
+
+      const notAGroup = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'class',
+        value: 'foo'
+      });
+      expect(routeGroupLevel(notAGroup.cmdName, notAGroup.payload)).toBe(null);
+    });
+  });
+
+  describe('resolveCommand', () => {
+    it('routes a pose write on a clone to a detach and drops the caller label, as the editor does (fails if the clone route is not part of the resolver)', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const resolved = resolveCommand(
+        'entityupdate',
+        { entity: clone, component: 'position', value: '2 0 -12' },
+        'Move'
+      );
+      expect(resolved.cmdName).toBe('detachclone');
+      expect(resolved.optionalName).toBeUndefined();
+      expect(resolved.refusal).toBe(null);
     });
   });
 });

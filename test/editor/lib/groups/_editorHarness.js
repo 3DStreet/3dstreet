@@ -6,7 +6,7 @@ import { Shortcuts } from '@/editor/lib/shortcuts.js';
 import { History } from '@/editor/lib/history.js';
 import { TRANSFORM_REFUSED } from '@/editor/lib/transformGuard.js';
 import { resolveCommand } from '@/editor/lib/resolveCommand.js';
-import { boxMesh, entity } from './_groupFixtures.js';
+import { boxMesh, entity, vec3Components } from './_groupFixtures.js';
 
 // The editor's canvas input, mounted for real on a bare scene: the viewport,
 // its raycaster, the group scope controller and the keyboard shortcuts. Only
@@ -196,7 +196,7 @@ export function mountEditor({ gizmo = false, cursorFirst = false } = {}) {
   };
   const aframe = {
     INSPECTOR: inspector,
-    components: {},
+    components: vec3Components(),
     scenes: [{ systems: {}, camera }]
   };
   if (gizmo) {

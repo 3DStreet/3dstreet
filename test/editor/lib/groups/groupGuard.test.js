@@ -7,7 +7,7 @@ import {
   refuseGuardedTransform
 } from '@/editor/lib/transformGuard.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
-import { entity, group, scene } from './_groupFixtures.js';
+import { entity, group, scene, vec3Components } from './_groupFixtures.js';
 
 // The editor's execute path without React: the real guard, then the real
 // History running the real command. A refusal must leave history untouched.
@@ -38,7 +38,7 @@ beforeEach(() => {
   root = entity(sceneEl);
   root.id = 'street-container';
   editor = makeEditor();
-  vi.stubGlobal('AFRAME', { components: {}, INSPECTOR: editor });
+  vi.stubGlobal('AFRAME', { components: vec3Components(), INSPECTOR: editor });
   vi.stubGlobal('STREET', {
     utils: {
       getElementData: () => ({}),
