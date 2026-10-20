@@ -109,6 +109,19 @@ describe('an item made into a group by a class write', () => {
     inspector.execute('entityupdate', makeGroup(tilted));
     inspector.history.undo();
     expect(tilted.hasAttribute('scale')).toBe(false);
+
+    // A write that always levels both values (a mixin on a group) over a
+    // group showing the plain defaults: undo removes them again.
+    const bare = entityIn(root, { id: 'bare', cls: 'user-group' });
+    inspector.execute('entityupdate', {
+      entity: bare,
+      component: 'mixin',
+      value: 'bar'
+    });
+    expect(bare.hasAttribute('scale')).toBe(true);
+    inspector.history.undo();
+    expect(bare.hasAttribute('scale')).toBe(false);
+    expect(bare.hasAttribute('rotation')).toBe(false);
   });
 
   it('levels a group that is already tilted when a class write keeps it a group (fails if only a newly gained class triggers the rewrite)', () => {
