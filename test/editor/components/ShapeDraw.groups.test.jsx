@@ -410,7 +410,7 @@ describe('the outline and scrim while drawing in an open group', () => {
     return g;
   }
 
-  it('takes in each point as it is placed and the cursor after it, lets go of the cursor when it leaves the canvas or the point is removed, and never moves the group center or bounds (fails if the world points are unioned without the group frame, are fed into the stored bounds, or the cursor is left out)', () => {
+  it('takes in each point and the cursor, lets go of the cursor when it leaves the canvas or a point is removed, and leaves the stored center and bounds alone (fails if the group frame is skipped, the stored bounds are fed, or the cursor is left out)', () => {
     const g = populatedGroup();
     const storedBox = getGroupBounds(g).clone();
     const storedCenter = getGroupCenter(g, new THREE.Vector3()).clone();
@@ -453,6 +453,32 @@ describe('the outline and scrim while drawing in an open group', () => {
     editor.frame();
     expect(contains(presentation().outlineBox, cursorLocal)).toBe(false);
     expect(contains(presentation().outlineBox, pLocal)).toBe(true);
+
+    // A point is removed while the cursor is far away: the cursor lets go too,
+    // by Backspace and by undo alike.
+    for (const remove of [
+      () => pressKey('Backspace'),
+      () =>
+        act(() => {
+          document.body.dispatchEvent(
+            new KeyboardEvent('keydown', {
+              key: 'z',
+              ctrlKey: true,
+              bubbles: true
+            })
+          );
+        })
+    ]) {
+      click(canvasOf(), SPOTS[1][0], SPOTS[1][1]);
+      moveTo(900, 260);
+      editor.frame();
+      expect(contains(presentation().outlineBox, cursorLocal)).toBe(true);
+      remove();
+      editor.frame();
+      expect(drawnPoints()).toHaveLength(1);
+      expect(contains(presentation().outlineBox, cursorLocal)).toBe(false);
+      expect(contains(presentation().outlineBox, pLocal)).toBe(true);
+    }
 
     // The only point is removed.
     pressKey('Backspace');

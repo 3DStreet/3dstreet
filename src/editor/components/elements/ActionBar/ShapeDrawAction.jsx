@@ -59,7 +59,10 @@ import { ProbeTargets } from '../../../lib/nav-experimental/probeTargets.js';
 import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants.js';
 import { getShapeStyle } from '../../../lib/shapeStyle.js';
 import { nextMoveGizmo } from '../../../lib/transformModes.js';
-import { isGroupableItem } from '../../../lib/groups/groupModel.js';
+import {
+  isGroupableItem,
+  STREET_CONTAINER_ID
+} from '../../../lib/groups/groupModel.js';
 import { groupMessage } from '../../../lib/groups/groupMessages.js';
 import {
   beginPlacement,
@@ -585,6 +588,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
         removeLastVertex();
+        collapseTrailing();
         // Clear any red/armed preview state — the removed vertex changed the
         // candidate-edge set; the next pointermove recomputes it.
         setInvalid(false);
@@ -601,6 +605,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         e.preventDefault();
         e.stopPropagation();
         removeLastVertex();
+        collapseTrailing();
         // Clear any red/armed preview state — the removed vertex changed the
         // candidate-edge set; the next pointermove recomputes it.
         setInvalid(false);
@@ -669,14 +674,13 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // is keyed on isActive — so it re-runs and re-reads before another shape
       // can be drawn. A future "stay active after commit" change breaks that and
       // would have to move the read.
-      //
+
       // The definition of a shape through `points`, which are positions in the
       // frame the entity is created in. The entity sits at their centroid and
       // each vertex is stored RELATIVE to it — so the entity's origin sits on
       // the shape (its centre), not at the parent origin far away. That makes
       // the standard transform gizmo attach on the shape and rotate/scale about
-      // its centre, consistent with other scene elements. (Whole-shape move is
-      // a deliberate later refinement; basic transform controls are fine now.)
+      // its centre, consistent with other scene elements.
       const definitionThrough = (points) => {
         const centroid = new THREE.Vector3();
         points.forEach((p) => centroid.add(p));
@@ -723,6 +727,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // from the world points and re-posed under the group; its vertices stay
       // world-axis offsets from the centroid, which is right because the
       // entity's resulting world rotation is the identity.
+      let atTopLevel = false;
       if (ticket) {
         const worldDefinition = definitionThrough(
           verts.map((v) => new THREE.Vector3(v.x, v.y, v.z))
@@ -735,33 +740,34 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         // The group is gone, or can no longer take the shape without
         // distorting it. What was drawn is the user's work: it is added at the
         // top level, where it was drawn, and the user is told.
-        const fallback = placeDefinition(worldDefinition, {
-          parentId: 'street-container'
-        });
-        if (fallback.refusal) {
-          STREET.notify.warningMessage(fallback.refusal);
-          return;
-        }
-        AFRAME.INSPECTOR.execute('entitycreate', fallback.definition);
         STREET.notify.infoMessage(groupMessage('drawnShapeAtTopLevel'));
-        return;
+        atTopLevel = true;
       }
 
-      // With no group open, vertices are picked in world space, but
+      // With no group open (or the fallback above), vertices are picked in world space, but
       // entitycreate parents the shape to the editor's default parent
       // (#street-container) and treats child positions as LOCAL to it. Convert
       // so the committed shape lands exactly where the world-space preview
       // showed it, even if that parent is offset (e.g. a geospatial scene).
-      const parentEl = document.getElementById('street-container');
+      const parentEl = document.getElementById(STREET_CONTAINER_ID);
       const parentObj = parentEl && parentEl.object3D;
       if (parentObj) parentObj.updateMatrixWorld();
       const toLocal = (v) => {
         const w = new THREE.Vector3(v.x, v.y, v.z);
         return parentObj ? parentObj.worldToLocal(w) : w;
       };
+      const definition = definitionThrough(verts.map(toLocal));
       AFRAME.INSPECTOR.execute(
         'entitycreate',
-        definitionThrough(verts.map(toLocal))
+        // The user was told where the shape went, so no second notice about it
+        // being outside the open group.
+        atTopLevel
+          ? {
+              ...definition,
+              parentEl: STREET_CONTAINER_ID,
+              requireParent: true
+            }
+          : definition
       );
     }
 

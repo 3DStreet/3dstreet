@@ -207,7 +207,7 @@ export function cloneEntity(entity) {
 }
 
 // Gives the element and its descendants new ids. `idMap` records old id -> new
-// id for every element that had one, for retargetCopiedStreetPaths.
+// id for every element that had one, for retargetStreetPathsInClone.
 function recursivelyRegenerateId(element, idMap) {
   if (element.id) {
     const oldId = element.id;
@@ -229,7 +229,7 @@ function recursivelyRegenerateId(element, idMap) {
  * original. Written as the raw attribute on the detached copy, like the
  * reseeding below.
  */
-function retargetCopiedStreetPaths(element, idMap) {
+function retargetStreetPathsInClone(element, idMap) {
   if (element.nodeType !== Node.ELEMENT_NODE) return;
   const value = element.getAttribute('managed-street');
   if (typeof value === 'string') {
@@ -239,7 +239,7 @@ function retargetCopiedStreetPaths(element, idMap) {
     }
   }
   for (const child of element.childNodes) {
-    retargetCopiedStreetPaths(child, idMap);
+    retargetStreetPathsInClone(child, idMap);
   }
 }
 
@@ -274,7 +274,7 @@ export function cloneEntityImpl(entity) {
   if (clone !== null) {
     const idMap = new Map();
     recursivelyRegenerateId(clone, idMap);
-    retargetCopiedStreetPaths(clone, idMap);
+    retargetStreetPathsInClone(clone, idMap);
     recursivelyReseedGenerators(clone);
     const nextName = getUniqueLayerName(clone.getAttribute('data-layer-name'));
     if (nextName) clone.setAttribute('data-layer-name', nextName);

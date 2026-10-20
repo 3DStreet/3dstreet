@@ -38,7 +38,7 @@ const streetOf = (copy) =>
   copy.querySelector('[managed-street]').getAttribute('managed-street');
 
 describe('duplicating a group that holds a street', () => {
-  it('points the copied street at the copied path only when the copy holds it, changing nothing else in its value (fails with no retarget, a rewrite that keeps only the path or re-spaces the rest, retargeting every path, or an id match not anchored at its end)', () => {
+  it('points the copied street at the copied path only when the copy holds it, changing nothing else (fails with no retarget, a rewrite that keeps only the path, retargeting every path, or an unanchored id match)', () => {
     // (a) The street and its path are both in the group.
     const group = groupIn(document.body, 'g');
     entity(group, 'street', { 'managed-street': STREET });
@@ -79,7 +79,7 @@ describe('pasting a group that holds a street', () => {
       .entityData;
   const streetValue = (data) => data.children[0].components['managed-street'];
 
-  it('points the pasted street at the pasted path only when the paste holds it, as a style string and as an object, changing nothing else (fails with no retarget, a rewrite of only the path, one that reads only strings, retargeting every path, or an id match not anchored at its end)', () => {
+  it('points the pasted street at the pasted path only when the paste holds it, as a string or an object (fails with no retarget, a rewrite of only the path, string-only reading, retargeting every path, or an unanchored id match)', () => {
     // (a) The street and its path are both in the paste.
     const asString = paste(tree(STREET, [shape('p1')]));
     expect(asString.children[1].id).not.toBe('p1');

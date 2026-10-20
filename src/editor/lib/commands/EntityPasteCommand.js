@@ -42,7 +42,7 @@ export class EntityPasteCommand extends Command {
     this.entityData = JSON.parse(JSON.stringify(payload.entityData));
     const idMap = new Map();
     regenerateIds(this.entityData, true, idMap);
-    retargetStreetPaths(this.entityData, idMap);
+    retargetStreetPathsInData(this.entityData, idMap);
     this.entityId = this.entityData.id;
     this.parentId = payload.parentId;
     this.index = payload.index;
@@ -119,11 +119,11 @@ export class EntityPasteCommand extends Command {
  * get a fresh id when they carried one (an id-less child can't collide, and
  * the root always needs one so undo can find the pasted entity).
  */
-function regenerateIds(entityData, isRoot, idMap) {
+function regenerateIds(entityData, isRoot = true, idMap) {
   if (isRoot || entityData.id) {
     const oldId = entityData.id;
     entityData.id = createUniqueId();
-    // Recorded old id -> new id, for retargetStreetPaths.
+    // Recorded old id -> new id, for retargetStreetPathsInData.
     if (oldId) idMap.set(oldId, entityData.id);
   }
   if (entityData.children) {
@@ -138,7 +138,7 @@ function regenerateIds(entityData, isRoot, idMap) {
  * paste holds that shape (a street pasted without its path keeps following
  * the original, if it is still there).
  */
-function retargetStreetPaths(entityData, idMap) {
+function retargetStreetPathsInData(entityData, idMap) {
   const components = entityData.components;
   if (components && components['managed-street'] !== undefined) {
     components['managed-street'] = retargetStreetPath(
@@ -148,7 +148,7 @@ function retargetStreetPaths(entityData, idMap) {
   }
   if (entityData.children) {
     for (const child of entityData.children) {
-      retargetStreetPaths(child, idMap);
+      retargetStreetPathsInData(child, idMap);
     }
   }
 }

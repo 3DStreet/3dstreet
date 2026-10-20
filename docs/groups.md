@@ -236,7 +236,9 @@ real `BatchedMesh`.
   placement is refused with an explanation; it never falls back to the top
   level. The one exception is a shape being drawn: it is the user's work in
   progress, so it is added at the top level, where it was drawn, with a
-  message. Selecting the new shape there closes every open group.
+  message. Selecting the new shape there closes every open group. A group that
+  is only closed while the shape is drawn still receives it, and is opened
+  again when the shape is selected.
 - A placement "in view" that finds no ground uses the group's stand point (the
   center, on the bottom of its members; an empty group's center itself),
   never its origin. So does a route with no position of its own (the Assets
