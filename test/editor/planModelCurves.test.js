@@ -144,3 +144,48 @@ describe('plan model: curve-styled drawn shape', () => {
     expect(line.points).toHaveLength(3);
   });
 });
+
+describe('plan model: drawn shape inside a moved and turned parent', () => {
+  it('exports the vertices where they stand in the world, not in the parent', () => {
+    const local = [
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(4, 0, 0),
+      new THREE.Vector3(4, 0, 6)
+    ];
+    const vertEls = local.map((p) => ({ object3D: { position: p.clone() } }));
+    const parent = makeEntity('a-entity');
+    parent.object3D.position.set(10, 0, 5);
+    parent.object3D.rotation.set(0, Math.PI / 2, 0);
+    const shapeEl = makeEntity(
+      'a-entity',
+      { shape: {} },
+      {
+        shape: {
+          getVertexEls: () => vertEls,
+          data: { closed: false, curveType: 'linear' }
+        }
+      }
+    );
+    parent.object3D.add(shapeEl.object3D);
+    parent.appendChild(shapeEl);
+    document.body.appendChild(parent);
+
+    const model = buildStreetPlanModel({
+      includeIntersections: false,
+      includeSegments: false
+    });
+    const line = model.polylines.find((p) => p.layer === 'C-ANNO');
+    // A quarter turn about Y sends local (x, z) to world (z, -x) before the
+    // parent's offset; the plan is (x, -z) of the world position.
+    const expected = [
+      [10, -5],
+      [10, -1],
+      [16, -1]
+    ];
+    expect(line.points).toHaveLength(3);
+    line.points.forEach(([x, y], i) => {
+      expect(x).toBeCloseTo(expected[i][0], 9);
+      expect(y).toBeCloseTo(expected[i][1], 9);
+    });
+  });
+});
