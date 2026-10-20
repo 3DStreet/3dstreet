@@ -64,7 +64,9 @@ describe('an item made into a group by a class write', () => {
     // Past 90 degrees the item faces the other way round.
     ['170 30 0', -150],
     // As A-Frame reads a rotation back from radians: float noise.
-    ['10 -149.99999999999997 0', -150]
+    ['10 -149.99999999999997 0', -150],
+    // A heading that is not a whole degree.
+    ['10 30.1 0', 30.1]
   ])(
     'faces the same way after levelling, written clean: %s (fails if X and Z are zeroed keeping Y, or the heading is not rounded)',
     (rotation, heading) => {
@@ -381,5 +383,30 @@ describe('a group created by a create command', () => {
     const again = document.getElementById(id);
     expect(again.getAttribute('rotation')).toEqual({ x: 0, y: 30, z: 0 });
     expect(again.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
+  it("is created as defined when its mixin supplies a conforming heading, and leaves the caller's definition as it was (fails if create does not read mixins, or levels the caller's own components)", () => {
+    const mixin = document.createElement('a-mixin');
+    mixin.id = 'turned-mixin';
+    mixin.setAttribute('rotation', '0 90 0');
+    document.body.append(mixin);
+    inspector.execute('entitycreate', {
+      class: 'user-group',
+      mixin: 'turned-mixin',
+      parentEl: root,
+      components: { position: '1 0 0' }
+    });
+    const created = root.lastElementChild;
+    expect(created.getAttribute('mixin')).toBe('turned-mixin');
+    expect(created.hasAttribute('rotation')).toBe(false);
+    expect(created.hasAttribute('scale')).toBe(false);
+
+    const components = { rotation: '10 30 0', scale: '2 2 2' };
+    inspector.execute('entitycreate', {
+      class: 'user-group',
+      parentEl: root,
+      components
+    });
+    expect(components).toEqual({ rotation: '10 30 0', scale: '2 2 2' });
   });
 });

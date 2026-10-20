@@ -87,6 +87,19 @@ describe("the editor's execute", () => {
     expect(inspector.history.undos[0].name).toBe('Make group');
   });
 
+  it("hands the caller's callback to the command it runs (fails if execute drops it)", () => {
+    const callback = vi.fn();
+    inspector.execute(
+      'entitycreate',
+      { parentEl: root, noSelectEntity: true, components: {} },
+      undefined,
+      callback
+    );
+    const created = root.lastElementChild;
+    created.dispatchEvent(new Event('loaded'));
+    expect(callback).toHaveBeenCalledWith(created);
+  });
+
   it('refuses a group scale: returns the refusal, records nothing and tells the user why (fails if it runs the command, returns nothing, or does not notify)', () => {
     const g = entityIn(root, { id: 'g', cls: 'user-group' });
     const result = inspector.execute('entityupdate', {

@@ -295,7 +295,7 @@ function endingFor({ rotation, scale }) {
   const newY = rotation && levelledValue('rotation', rotation).y;
   const facing =
     rotation && !sameFacing(newY, rotation.y)
-      ? `It faces the same way and its position is unchanged; its rotation is now 0 ${newY} 0.`
+      ? `It faces the same way and its position is unchanged; its rotation is now 0 ${tidy(newY)} 0.`
       : 'Its heading and position are unchanged.';
   return scale ? `${facing} The items in it keep their own sizes.` : facing;
 }

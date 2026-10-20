@@ -433,6 +433,23 @@ describe('a group arriving by paste', () => {
     expect(again.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
   });
 
+  it('is pasted as copied when its mixin supplies a conforming heading (fails if paste does not read mixins)', async () => {
+    const mixin = document.createElement('a-mixin');
+    mixin.id = 'turned-mixin';
+    mixin.setAttribute('rotation', '0 90 0');
+    document.body.append(mixin);
+    putOnClipboard({
+      id: 'mg',
+      class: ['user-group'],
+      mixin: 'turned-mixin',
+      components: { position: '1 0 1' }
+    });
+    await pasteFromClipboard();
+    const pasted = pastedElement();
+    expect(pasted.hasAttribute('rotation')).toBe(false);
+    expect(pasted.hasAttribute('scale')).toBe(false);
+  });
+
   it('leaves a tilted, scaled item that is not a group as copied (fails if items that are not groups are levelled)', async () => {
     putOnClipboard({
       id: 'box',

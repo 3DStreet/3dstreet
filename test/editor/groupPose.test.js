@@ -304,6 +304,10 @@ describe('levelGroupPoses', () => {
   it('writes a clean heading from a rotation read back from radians (fails if the heading is not rounded)', () => {
     expect(levelledRotation('10 29.999999999999996 5')).toBe('0 30 0');
     expect(levelledRotation('170 29.999999999999996 0')).toBe('0 -150 0');
+    // A heading that is not a whole degree, on both sides of the wrap.
+    expect(levelledRotation('10 30.1 0')).toBe('0 30.1 0');
+    expect(levelledRotation('10 -0.1 0')).toBe('0 -0.1 0');
+    expect(levelledRotation('170 30.1 0')).toBe('0 -149.9 0');
     expect(levelledRotation({ x: 10, y: -150.00000000000003, z: 0 })).toEqual({
       x: 0,
       y: -150,

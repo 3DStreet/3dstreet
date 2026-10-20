@@ -121,9 +121,12 @@ export function conforms(component, value) {
 const toRad = (degrees) => (degrees * Math.PI) / 180;
 const toDeg = (radians) => (radians * 180) / Math.PI;
 
+// Wrapped into (-180, 180] first and rounded last: wrapping adds a whole turn,
+// which is not exact for a fractional angle.
 function roundHeading(degrees) {
   const steps = HEADING_STEPS_PER_DEGREE;
-  return normaliseAngle(Math.round(degrees * steps) / steps);
+  const rounded = Math.round(normaliseAngle(degrees) * steps) / steps;
+  return rounded === -180 ? 180 : rounded;
 }
 
 // The direction a rotation faces, as a rotation about Y alone. A-Frame applies
