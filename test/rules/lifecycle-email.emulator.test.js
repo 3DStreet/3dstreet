@@ -56,6 +56,15 @@ const failFetch = () =>
     text: async () => 'postmark 500'
   }));
 
+// Postmark's 422 for a suppressed recipient (hard bounce / spam complaint).
+const inactiveRecipientFetch = () =>
+  vi.fn(async () => ({
+    ok: false,
+    status: 422,
+    text: async () =>
+      JSON.stringify({ ErrorCode: 406, Message: 'Inactive recipient' })
+  }));
+
 let uidCounter = 0;
 const makeUser = async () => {
   const uid = `lifecycle-test-${++uidCounter}`;
@@ -248,6 +257,73 @@ describe('sendLifecycleEmail (emulator)', () => {
       'in_100',
       'in_200'
     ]);
+  });
+
+  it('permanent rejection marks the address undeliverable and stops retries', async () => {
+    const uid = await makeUser();
+    const args = {
+      db,
+      uid,
+      emailId: 'failedPayment',
+      category: 'transactional',
+      stream: 'outbound',
+      template: TEMPLATE
+    };
+
+    vi.stubGlobal('fetch', inactiveRecipientFetch());
+    const rejected = await sendLifecycleEmail({ ...args, dedupeKey: 'in_1' });
+    expect(rejected).toEqual({ action: 'skipped', reason: 'undeliverable' });
+
+    // Claim rolled back (so a fixed address can still get it), audit says why.
+    expect((await summaryDoc(uid))?.emails?.failedPayment).toBeUndefined();
+    const sends = await sendRecords(uid);
+    expect(sends.map((s) => s.status)).toEqual(['rejected']);
+    const prefs = (await db.collection('emailPrefs').doc(uid).get()).data();
+    expect(prefs.undeliverable.email).toBe(`${uid}@example.test`);
+    expect(prefs.undeliverable.code).toBe(406);
+
+    // Next attempt never reaches Postmark.
+    const fetchSpy = okFetch();
+    vi.stubGlobal('fetch', fetchSpy);
+    const again = await sendLifecycleEmail({ ...args, dedupeKey: 'in_2' });
+    expect(again).toEqual({ action: 'skipped', reason: 'undeliverable' });
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    // A changed address is emailable again.
+    await admin.auth().updateUser(uid, { email: `${uid}-new@example.test` });
+    expect(
+      (await sendLifecycleEmail({ ...args, dedupeKey: 'in_3' })).action
+    ).toBe('sent');
+  });
+
+  it('account-level 422s stay retryable errors, not undeliverable', async () => {
+    const uid = await makeUser();
+    // ErrorCode 400 = sender signature not found: a config problem that
+    // affects every recipient, so it must not mark anyone undeliverable.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: false,
+        status: 422,
+        text: async () =>
+          JSON.stringify({
+            ErrorCode: 400,
+            Message: 'Sender signature not found'
+          })
+      }))
+    );
+    const result = await sendLifecycleEmail({
+      db,
+      uid,
+      emailId: 'failedPayment',
+      category: 'transactional',
+      stream: 'outbound',
+      template: TEMPLATE
+    });
+    expect(result.action).toBe('error');
+    expect((await db.collection('emailPrefs').doc(uid).get()).exists).toBe(
+      false
+    );
   });
 
   it('concurrent onceEver sends: exactly one email goes out', async () => {

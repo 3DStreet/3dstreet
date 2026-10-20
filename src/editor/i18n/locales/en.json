@@ -1730,6 +1730,30 @@
   "jobHealthModal.title": {
     "defaultMessage": "System Health"
   },
+  "legacyStreet.body": {
+    "defaultMessage": "Convert it to a managed street to edit its lanes, widths and objects right here. Converting loads this street from Streetmix; objects you moved or changed inside it will not carry over."
+  },
+  "legacyStreet.bodyNoSource": {
+    "defaultMessage": "It has no Streetmix link, so it cannot be converted. Import the street again from Streetmix to get a managed street you can edit here."
+  },
+  "legacyStreet.changedMessage": {
+    "defaultMessage": "It was {saved} wide when you added it and is {fetched} wide on Streetmix now. Converting loads the latest version from Streetmix. You can undo this."
+  },
+  "legacyStreet.changedTitle": {
+    "defaultMessage": "This street has changed on Streetmix"
+  },
+  "legacyStreet.checking": {
+    "defaultMessage": "Checking Streetmix…"
+  },
+  "legacyStreet.convert": {
+    "defaultMessage": "Convert to managed street"
+  },
+  "legacyStreet.fetchFailed": {
+    "defaultMessage": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted."
+  },
+  "legacyStreet.title": {
+    "defaultMessage": "This is a classic street"
+  },
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
   },
@@ -2007,7 +2031,7 @@
     "defaultMessage": "Plan: Pro"
   },
   "profileModal.planProPass": {
-    "defaultMessage": "Plan: Pro until {date}"
+    "defaultMessage": "Plan: Pro (Project Pass) until {date}"
   },
   "profileModal.planProTeam": {
     "defaultMessage": "Plan: Pro Team ({domain})"
@@ -2121,7 +2145,7 @@
     "defaultMessage": "3DStreet Max Plan"
   },
   "rightPanel.planTooltipPass": {
-    "defaultMessage": "3DStreet Pro until {date}"
+    "defaultMessage": "3DStreet Pro (Project Pass) until {date}"
   },
   "rightPanel.planTooltipPro": {
     "defaultMessage": "3DStreet Pro Plan"

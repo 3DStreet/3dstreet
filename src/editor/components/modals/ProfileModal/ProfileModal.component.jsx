@@ -290,7 +290,8 @@ const ProfileModal = () => {
                               ? intl.formatMessage(
                                   {
                                     id: 'profileModal.planProPass',
-                                    defaultMessage: 'Plan: Pro until {date}'
+                                    defaultMessage:
+                                      'Plan: Pro (Project Pass) until {date}'
                                   },
                                   { date: formatDate(currentUser?.proUntil) }
                                 )

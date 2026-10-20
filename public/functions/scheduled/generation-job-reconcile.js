@@ -445,7 +445,7 @@ async function reconcile({ dryRun }) {
 // happy path no longer waits on this 10-min sweep. This sweep only catches
 // jobs the webhook missed: a dropped webhook where the user also closed the
 // tab (no client ack), or a transient send failure that restored
-// `notify.pending`. It queries opted-in, terminal, still-pending jobs and
+// `notify.pending` (capped at MAX_NOTIFY_ATTEMPTS in the helper). It queries opted-in, terminal, still-pending jobs and
 // delegates each to the shared, idempotent send helper — so it can't
 // double-send against a racing webhook, and the helper (not this query)
 // decides failure eligibility (skips submit-time failures and failures past
@@ -463,6 +463,7 @@ async function sendReadyNotifications({ dryRun }) {
     scanned: snap.size,
     sent: 0,
     suppressed: 0,
+    undeliverable: 0,
     waiting: 0,
     errored: 0,
     dryRun,
@@ -501,6 +502,12 @@ async function sendReadyNotifications({ dryRun }) {
         break;
       case 'suppressed':
         summary.suppressed++;
+        break;
+      case 'undeliverable':
+        // Postmark permanently rejects this recipient; the job is retired,
+        // not retried. Counted apart from errors so it can't turn the job
+        // health YELLOW.
+        summary.undeliverable++;
         break;
       case 'no-email':
       case 'error':

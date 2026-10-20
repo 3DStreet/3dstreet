@@ -27,15 +27,22 @@ trigger (sweep / webhook / event)
 `sendLifecycleEmail` does, in order:
 
 1. **Suppression check** — broadcast streams only: skip if the recipient
-   unsubscribed from this stream (`emailPrefs/{uid}`).
+   unsubscribed from this stream (`emailPrefs/{uid}`). All streams: skip if
+   Postmark previously rejected this exact address permanently
+   (`emailPrefs/{uid}.undeliverable`, reason `undeliverable`).
 2. **Stop-rules + claim** — inside one Firestore transaction on the
    `emailLog/{uid}` summary doc: evaluate the rules against live state and, if
    allowed, claim the send (idempotent under concurrent triggers, e.g. a
    retried Stripe webhook — only one caller wins).
 3. **Postmark send** — on the requested message stream.
 4. **Audit** — an `emailLog/{uid}/sends/{id}` record tracks every attempt
-   (`pending` → `sent` / `error`). On a Postmark failure the claim is rolled
-   back so a later retry isn't blocked.
+   (`pending` → `sent` / `error` / `rejected`). On a Postmark failure the
+   claim is rolled back so a later retry isn't blocked. A permanent recipient
+   rejection (422 with ErrorCode 406 inactive / 300 invalid) is recorded as
+   `rejected`, marks the address undeliverable, and returns
+   `skipped`/`undeliverable` instead of `error`, so daily sweeps stop retrying
+   it. Postmark reactivating the recipient (Subscription Change webhook with
+   `SuppressSending: false`) clears the mark.
 
 Triggers own only *when* and *to whom*; the service owns suppression,
 frequency, delivery, and bookkeeping. That's the reusability contract: a new

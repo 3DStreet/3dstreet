@@ -1047,7 +1047,9 @@ ${words.signIn('3dstreet.app')}
 ${words.after}`;
     },
     ctaLabel: words.cta,
-    footnote: words.footnote
+    // data.purchased: bought through checkout rather than redeemed as a code.
+    footnote: (data) =>
+      data && data.purchased ? words.footnotePurchased : words.footnote
   };
 };
 
@@ -1072,7 +1074,9 @@ const passActivated = defineTemplate(
         'When the pass ends, your account returns to the free plan. Your scenes and files stay, and so do any unused tokens. Nothing renews and you will not be charged.',
       cta: 'Open 3DStreet',
       footnote:
-        'You received this email because you redeemed a Project Pass code on 3DStreet. Questions? Just reply to this email.'
+        'You received this email because you redeemed a Project Pass code on 3DStreet. Questions? Just reply to this email.',
+      footnotePurchased:
+        'You received this email because you bought a Project Pass on 3DStreet. Questions? Just reply to this email.'
     }),
     es: passActivatedCopy('es', {
       subjectFrom: (from, name) => `${from} te envió un ${name} de 3DStreet`,
@@ -1094,7 +1098,9 @@ const passActivated = defineTemplate(
         'Cuando termine el pase, tu cuenta volverá al plan gratuito. Tus escenas y archivos se conservan, igual que los tokens que no hayas usado. No hay renovación ni se te cobrará nada.',
       cta: 'Abrir 3DStreet',
       footnote:
-        'Recibes este correo porque canjeaste un código de Pase de Proyecto en 3DStreet. ¿Tienes preguntas? Simplemente responde a este correo.'
+        'Recibes este correo porque canjeaste un código de Pase de Proyecto en 3DStreet. ¿Tienes preguntas? Simplemente responde a este correo.',
+      footnotePurchased:
+        'Recibes este correo porque compraste un Pase de Proyecto en 3DStreet. ¿Tienes preguntas? Simplemente responde a este correo.'
     }),
     'pt-BR': passActivatedCopy('pt-BR', {
       subjectFrom: (from, name) => `${from} enviou para você um ${name} do 3DStreet`,
@@ -1116,7 +1122,9 @@ const passActivated = defineTemplate(
         'Quando o passe terminar, sua conta volta ao plano gratuito. Suas cenas e arquivos continuam salvos, assim como os tokens que você não usou. Nada é renovado e você não será cobrado.',
       cta: 'Abrir o 3DStreet',
       footnote:
-        'Você recebeu este e-mail porque resgatou um código de Passe de Projeto no 3DStreet. Dúvidas? É só responder a este e-mail.'
+        'Você recebeu este e-mail porque resgatou um código de Passe de Projeto no 3DStreet. Dúvidas? É só responder a este e-mail.',
+      footnotePurchased:
+        'Você recebeu este e-mail porque comprou um Passe de Projeto no 3DStreet. Dúvidas? É só responder a este e-mail.'
     }),
     fr: passActivatedCopy('fr', {
       subjectFrom: (from, name) => `${from} vous a envoyé un ${name} 3DStreet`,
@@ -1138,7 +1146,9 @@ const passActivated = defineTemplate(
         "À la fin du pass, votre compte repasse au forfait gratuit. Vos scènes et fichiers sont conservés, tout comme les jetons non utilisés. Rien n'est renouvelé et rien ne vous sera facturé.",
       cta: 'Ouvrir 3DStreet',
       footnote:
-        'Vous recevez cet e-mail parce que vous avez utilisé un code Pass Projet sur 3DStreet. Des questions ? Répondez simplement à cet e-mail.'
+        'Vous recevez cet e-mail parce que vous avez utilisé un code Pass Projet sur 3DStreet. Des questions ? Répondez simplement à cet e-mail.',
+      footnotePurchased:
+        'Vous recevez cet e-mail parce que vous avez acheté un Pass Projet sur 3DStreet. Des questions ? Répondez simplement à cet e-mail.'
     })
   },
   { ctaUrl: (content) => `${APP_BASE}/?${utm('pass_activated', content)}` }
