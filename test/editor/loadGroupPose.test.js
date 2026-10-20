@@ -1,3 +1,4 @@
+/* global STREET */
 import {
   afterEach,
   beforeAll,
