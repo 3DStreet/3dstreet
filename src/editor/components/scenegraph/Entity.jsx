@@ -316,10 +316,11 @@ class Entity extends React.Component {
         />
       );
 
-    // Expand/collapse children arrow: left-justified before the name (#1980).
-    // Rows without children reserve no space — the name shifts left, an
-    // accepted inconsistency for a tighter row.
-    let collapse = null;
+    // Expand/collapse children arrow, left of the name (#1980). Every row
+    // reserves its slot, so names at one depth line up whether or not the row
+    // has children; a row without children leaves it empty, and a click there
+    // is a click on the row.
+    let collapse = <span className="collapsespace" aria-hidden="true" />;
     if (entity.children.length > 0 && !isFiltering) {
       collapse = (
         <span

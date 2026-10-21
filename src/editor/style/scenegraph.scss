@@ -505,9 +505,10 @@
     color: variables.$lightgray-600;
   }
 
-  // Expand/collapse children arrow: left-justified before the entity name
-  // (#1980). Rows without children reserve no space, so names there sit
-  // further left — an accepted inconsistency.
+  // Expand/collapse children arrow, left of the entity name (#1980). Every
+  // row reserves the slot, so names at one depth line up whether or not the
+  // row has children. The slot is tucked 4px into the empty right edge of the
+  // drag handle, whose grip is narrower than the handle, to keep the row tight.
   .collapsespace {
     color: variables.$white !important;
     display: inline-flex;
@@ -515,6 +516,7 @@
     justify-content: center;
     flex: none;
     width: 16px;
+    margin-left: -4px;
     margin-right: 0;
   }
 
