@@ -153,14 +153,15 @@ async function click(name, init) {
 }
 
 // A double-click on a row as the browser is specified to deliver it (UI
-// Events: a click carrying each click count, then dblclick). No browser
-// trace of a layer row backs this; the manual double-click checks do. Each
-// event goes to the row shown under the pointer at that moment: the first
-// click can re-render the list (a group's rows are rebuilt when it expands),
-// and the browser sends the later events to whatever is under the pointer.
+// Events: a press and a click carrying each click count, then dblclick).
+// Each event goes to the row shown under the pointer at that moment, as in
+// the browser: each top-level block of rows is keyed by its last row's
+// index, so the first click remounts the block when it expands a group.
 async function doubleClick(name) {
-  fireEvent.click(findRow(name), { detail: 1 });
-  fireEvent.click(findRow(name), { detail: 2 });
+  for (const detail of [1, 2]) {
+    fireEvent.mouseDown(findRow(name), { detail });
+    fireEvent.click(findRow(name), { detail });
+  }
   fireEvent.dblClick(findRow(name), { detail: 2 });
   await settle();
 }
@@ -249,6 +250,30 @@ describe('the layer panel showing the open group', () => {
     act(() => h.groupScope.open(B));
     await flushRows();
     await waitForScroll();
+    expect(scrolled).toEqual(['sgnode1']);
+  });
+
+  it('expands and reveals a group opened again after it was closed and its row collapsed (fails if the group last shown is not forgotten when it closes)', async () => {
+    const { B } = buildScene();
+    stubLayout({ sgnode1: BELOW_VIEW });
+    await renderPanel();
+    vi.useFakeTimers();
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
+    // Leave it (which selects it), collapse its row, and clear the selection.
+    act(() => h.groupScope.escape());
+    fireEvent.click(findRow('Group B').querySelector('.collapsespace'));
+    act(() => h.inspector.selectEntity(null));
+    await flushRows();
+    await waitForScroll();
+    expect(listed('Tree')).toBe(false);
+    scrolled.length = 0;
+
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
+    expect(listed('Tree')).toBe(true);
     expect(scrolled).toEqual(['sgnode1']);
   });
 
@@ -608,6 +633,29 @@ describe('a double-click on a layer row', () => {
     expect(selected()?.id).toBe('tree');
     expect(focused).toEqual([tree.object3D]);
   });
+
+  it("on a row's expand arrow after that row's click left a level still moves the camera (fails if the skip outlives the click that set it)", async () => {
+    const { B, C } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(C));
+    // Group B's row is faded: its click leaves Group C, and Group B's row is
+    // then the open group's.
+    await click('Group B');
+    expect(h.openIds()).toEqual(['B']);
+
+    // The arrow's clicks toggle the row and stop there; its dblclick reaches
+    // the row.
+    for (const detail of [1, 2]) {
+      const arrow = findRow('Group B').querySelector('.collapsespace');
+      fireEvent.mouseDown(arrow, { detail });
+      fireEvent.click(arrow, { detail });
+    }
+    fireEvent.dblClick(findRow('Group B').querySelector('.collapsespace'), {
+      detail: 2
+    });
+    await settle();
+    expect(focused).toEqual([B.object3D]);
+  });
 });
 
 describe('the arrow keys with groups open', () => {
@@ -651,6 +699,25 @@ describe('renaming a group from its menu', () => {
     // A click with no press first, so a guard left set would swallow it.
     await click('Planters');
     expect(h.openIds()).toEqual(['B']);
+  });
+
+  it('ends with a press on another row, whose click then selects that row (fails if the guard swallows a press on any row while something is renamed)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.inspector.selectEntity(B));
+    fireEvent.contextMenu(findRow('Group B'));
+    await settle();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    await settle();
+    const input = findRowInput();
+    fireEvent.change(input, { target: { value: 'Planters' } });
+
+    fireEvent.mouseDown(findRow('Lamp'));
+    fireEvent.blur(input);
+    fireEvent.click(findRow('Lamp'));
+    await settle();
+    expect(B.getAttribute('data-layer-name')).toBe('Planters');
+    expect(selected()?.id).toBe('lamp');
   });
 });
 

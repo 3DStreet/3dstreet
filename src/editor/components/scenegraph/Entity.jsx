@@ -167,9 +167,17 @@ class Entity extends React.Component {
     });
   };
 
+  // Neither the open group's row (it is being worked inside) nor a row
+  // outside it can be dragged.
+  canDrag() {
+    return (
+      this.props.canBeDragged(this.props.entity) && !this.props.openGroupRole
+    );
+  }
+
   // Drag and drop handlers
   onDragStart = (e) => {
-    if (!this.props.canBeDragged(this.props.entity)) {
+    if (!this.canDrag()) {
       e.preventDefault();
       return;
     }
@@ -312,7 +320,7 @@ class Entity extends React.Component {
     // Check if entity can be dragged. Suspended while the row's label is in
     // inline-rename mode so drag-start can't swallow text selection there.
     const isRenaming = this.props.renamingEntity === entity;
-    const canBeDragged = this.props.canBeDragged(entity) && !isRenaming;
+    const canBeDragged = this.canDrag() && !isRenaming;
 
     // Clone and remove buttons if not a-scene.
     const cloneButton =

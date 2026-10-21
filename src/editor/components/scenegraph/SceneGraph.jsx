@@ -157,8 +157,8 @@ class SceneGraph extends React.Component {
       (panelsVisible) => this.setState({ panelsVisible })
     );
     Events.on('groupscopechanged', this.onGroupScopeChanged);
-    // The panel is unmounted while the editor is closed, so groups opened
-    // before it mounts (on return from the viewer) are shown here.
+    // The panel is unmounted while the editor is closed and misses scope
+    // changes made then, so it shows whatever is open when it mounts.
     this.showOpenGroup();
   }
 
@@ -184,8 +184,7 @@ class SceneGraph extends React.Component {
   // The open groups as elements, outermost first, read from the scope
   // controller each time rather than kept: a moved group keeps its id in the
   // scope but is a new element.
-  openGroups = () =>
-    globalThis.AFRAME?.INSPECTOR?.groupScope?.openElements?.() ?? [];
+  openGroups = () => AFRAME.INSPECTOR.groupScope?.openElements?.() ?? [];
 
   innermostOpenGroup = () => {
     const openGroups = this.openGroups();
@@ -294,7 +293,7 @@ class SceneGraph extends React.Component {
     // it left).
     if (event.detail > 1) return;
     this.skipFocusFor = null;
-    const scope = globalThis.AFRAME?.INSPECTOR?.groupScope;
+    const scope = AFRAME.INSPECTOR.groupScope;
     const result = resolveRowClick(entity, {
       selected: this.props.selectedEntity,
       openGroups: this.openGroups()
@@ -314,11 +313,17 @@ class SceneGraph extends React.Component {
   };
 
   doubleClickRow = (entity) => {
-    if (this.skipFocusFor === entity) {
-      this.skipFocusFor = null;
-      return;
-    }
-    Events.emit('objectfocus', entity.object3D);
+    const skip = this.skipFocusFor === entity;
+    this.skipFocusFor = null;
+    if (!skip) Events.emit('objectfocus', entity.object3D);
+  };
+
+  // The first press of a new click run ends any camera skip a row's step out
+  // left, so it only ever applies to that click's own double-click, never to
+  // a later one (such as a double-click on the row's expand arrow, whose
+  // clicks do not reach the row).
+  onListMouseDown = (event) => {
+    if (event.detail <= 1) this.skipFocusFor = null;
   };
 
   includeInSceneGraph = (element) => {
@@ -339,10 +344,7 @@ class SceneGraph extends React.Component {
       !entity.classList.contains('autocreated') &&
       // Pinned to the top of the list (see rebuildEntityOptions).
       !entity.hasAttribute('viewer-start') &&
-      !isReparentInFlight(entity.id) &&
-      // Neither the open group, which is being worked inside, nor anything
-      // outside it.
-      !openGroupRole(entity, this.innermostOpenGroup())
+      !isReparentInFlight(entity.id)
     );
   };
 
@@ -996,7 +998,10 @@ class SceneGraph extends React.Component {
                       </button>
                     </div>
                   ) : (
-                    <div className="layers-list">
+                    <div
+                      className="layers-list"
+                      onMouseDown={this.onListMouseDown}
+                    >
                       {this.renderEntities()}
                       {this.renderDropStrip()}
                       {this.renderDropLine()}
