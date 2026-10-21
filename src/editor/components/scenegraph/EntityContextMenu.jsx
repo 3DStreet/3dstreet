@@ -20,7 +20,13 @@ import { commonMessages } from '@/editor/i18n/commonMessages';
  * menu — target the row that was right-clicked. Reuses the AppMenu's Menubar
  * classes so both menus look identical, keyboard hints included.
  */
-const EntityContextMenu = ({ entity, onSelectEntity, onRename, children }) => {
+const EntityContextMenu = ({
+  entity,
+  disabled = false,
+  onSelectEntity,
+  onRename,
+  children
+}) => {
   // Cloud-asset entities rename like any other row: the rename writes a
   // per-instance data-layer-name, which EntityLabel shows in place of the
   // shared Firestore asset name (#2000).
@@ -31,7 +37,13 @@ const EntityContextMenu = ({ entity, onSelectEntity, onRename, children }) => {
 
   return (
     <ContextMenu.Root>
-      <ContextMenu.Trigger asChild onContextMenu={onSelectEntity}>
+      {/* Disabled, the trigger opens no menu, by right-click or long-press,
+          but still calls onContextMenu. */}
+      <ContextMenu.Trigger
+        asChild
+        disabled={disabled}
+        onContextMenu={onSelectEntity}
+      >
         {children}
       </ContextMenu.Trigger>
       <ContextMenu.Portal>
@@ -122,6 +134,7 @@ const EntityContextMenu = ({ entity, onSelectEntity, onRename, children }) => {
 
 EntityContextMenu.propTypes = {
   entity: PropTypes.object.isRequired,
+  disabled: PropTypes.bool,
   onSelectEntity: PropTypes.func.isRequired,
   onRename: PropTypes.func.isRequired,
   children: PropTypes.node.isRequired

@@ -29,6 +29,7 @@ import {
   lineIndentPx,
   pickLevel
 } from './dropLevels.js';
+import { openGroupRole, resolveRowClick } from './openGroupRows.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
@@ -155,6 +156,10 @@ class SceneGraph extends React.Component {
       (state) => state.panelsVisible,
       (panelsVisible) => this.setState({ panelsVisible })
     );
+    Events.on('groupscopechanged', this.onGroupScopeChanged);
+    // The panel is unmounted while the editor is closed, so groups opened
+    // before it mounts (on return from the viewer) are shown here.
+    this.showOpenGroup();
   }
 
   componentWillUnmount() {
@@ -173,7 +178,38 @@ class SceneGraph extends React.Component {
       this.onChildAttachedDetached
     );
     this.unsubscribePanels?.();
+    Events.off('groupscopechanged', this.onGroupScopeChanged);
   }
+
+  // The open groups as elements, outermost first, read from the scope
+  // controller each time rather than kept: a moved group keeps its id in the
+  // scope but is a new element.
+  openGroups = () =>
+    globalThis.AFRAME?.INSPECTOR?.groupScope?.openElements?.() ?? [];
+
+  innermostOpenGroup = () => {
+    const openGroups = this.openGroups();
+    return openGroups[openGroups.length - 1] ?? null;
+  };
+
+  // Expand the innermost open group (its own members only, and the groups
+  // around it as far as its row) and, when nothing is selected, bring its
+  // row into view, unless it is the one already shown.
+  showOpenGroup = () => {
+    const openGroup = this.innermostOpenGroup();
+    if (openGroup && openGroup !== this.shownOpenGroup) {
+      this.state.expandedElements.set(openGroup, true);
+      this.expandToRoot(openGroup);
+      this.scrollToRowSoon(openGroup, () => !this.props.selectedEntity);
+    }
+    this.shownOpenGroup = openGroup;
+  };
+
+  onGroupScopeChanged = () => {
+    this.showOpenGroup();
+    // The rows read the open groups when they render.
+    this.forceUpdate();
+  };
 
   // Expand state is keyed by element, and a move replaces the moved subtree's
   // elements with new ones carrying the same ids.
@@ -211,22 +247,7 @@ class SceneGraph extends React.Component {
       const entityOption = this.state.entities[i];
       if (entityOption.entity === entity) {
         this.setState({ selectedIndex: i });
-        setTimeout(() => {
-          // wait 100ms to allow React to update the UI and create the node we're interested in
-          const node = document.getElementById('sgnode' + i);
-          const scrollableContainer = document.querySelector(
-            '#scenegraph .layers'
-          );
-          if (!node || !scrollableContainer) return;
-          const containerRect = scrollableContainer.getBoundingClientRect();
-          const nodeRect = node.getBoundingClientRect();
-          const isVisible =
-            nodeRect.top >= containerRect.top &&
-            nodeRect.bottom <= containerRect.bottom;
-          if (!isVisible) {
-            node.scrollIntoView({ behavior: 'smooth' });
-          }
-        }, 100);
+        this.scrollToRowSoon(entity);
         // Make sure selected value is visible in scenegraph
         this.expandToRoot(entity);
         posthog.capture('entity_selected', {
@@ -241,6 +262,63 @@ class SceneGraph extends React.Component {
     if (!found) {
       this.setState({ selectedIndex: -1 });
     }
+  };
+
+  // After 100 ms, by when React has rendered the row, scroll the entity's row
+  // into view if it is not fully in view and `shouldScroll()` still agrees.
+  // The row is looked up then, not now: the list may not be built yet, or may
+  // have been rebuilt meanwhile.
+  scrollToRowSoon = (entity, shouldScroll = () => true) => {
+    setTimeout(() => {
+      if (!shouldScroll()) return;
+      const i = this.state.entities.findIndex((o) => o.entity === entity);
+      const node = i >= 0 ? document.getElementById('sgnode' + i) : null;
+      const scrollableContainer = document.querySelector('#scenegraph .layers');
+      if (!node || !scrollableContainer) return;
+      const containerRect = scrollableContainer.getBoundingClientRect();
+      const nodeRect = node.getBoundingClientRect();
+      const isVisible =
+        nodeRect.top >= containerRect.top &&
+        nodeRect.bottom <= containerRect.bottom;
+      if (!isVisible) {
+        node.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  // A click on a row opens the selected group, leaves an open group or
+  // selects the row (see resolveRowClick).
+  clickRow = (entity, event) => {
+    // The later clicks of a double-click do nothing: they would act on what
+    // the first click changed (open the group it selected, reopen the group
+    // it left).
+    if (event.detail > 1) return;
+    this.skipFocusFor = null;
+    const scope = globalThis.AFRAME?.INSPECTOR?.groupScope;
+    const result = resolveRowClick(entity, {
+      selected: this.props.selectedEntity,
+      openGroups: this.openGroups()
+    });
+    if (result.action === 'open' && scope) {
+      scope.open(result.group);
+      return;
+    }
+    if (result.action === 'exit' && scope) {
+      scope.exitOneLevel();
+      // The clicked row was only a way out: a double-click on it does not
+      // move the camera there.
+      this.skipFocusFor = entity;
+      return;
+    }
+    this.selectEntity(entity);
+  };
+
+  doubleClickRow = (entity) => {
+    if (this.skipFocusFor === entity) {
+      this.skipFocusFor = null;
+      return;
+    }
+    Events.emit('objectfocus', entity.object3D);
   };
 
   includeInSceneGraph = (element) => {
@@ -261,7 +339,10 @@ class SceneGraph extends React.Component {
       !entity.classList.contains('autocreated') &&
       // Pinned to the top of the list (see rebuildEntityOptions).
       !entity.hasAttribute('viewer-start') &&
-      !isReparentInFlight(entity.id)
+      !isReparentInFlight(entity.id) &&
+      // Neither the open group, which is being worked inside, nor anything
+      // outside it.
+      !openGroupRole(entity, this.innermostOpenGroup())
     );
   };
 
@@ -709,6 +790,7 @@ class SceneGraph extends React.Component {
     const entityOptions = this.state.entities.filter((entityOption) =>
       this.isVisibleInSceneGraph(entityOption.entity)
     );
+    const openGroup = this.innermostOpenGroup();
     let children = [];
     for (let i = 0; i < entityOptions.length; i++) {
       const entityOption = entityOptions[i];
@@ -721,7 +803,10 @@ class SceneGraph extends React.Component {
           isFiltering={!!this.state.filter}
           isExpanded={this.isExpanded(entityOption.entity)}
           isSelected={this.props.selectedEntity === entityOption.entity}
+          openGroupRole={openGroupRole(entityOption.entity, openGroup)}
           selectEntity={this.selectEntity}
+          onRowClick={this.clickRow}
+          onRowDoubleClick={this.doubleClickRow}
           toggleExpandedCollapsed={this.toggleExpandedCollapsed}
           // Drag and drop props
           draggedEntity={this.state.draggedEntity}
