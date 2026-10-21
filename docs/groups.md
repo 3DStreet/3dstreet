@@ -107,23 +107,22 @@ the elements). The stack is session state only and is never saved.
 - **Touch.** The A-Frame cursor acts on a tap only when it hits an entity. On a
   touch device, taps on empty space, on the empty inside of a group's box and
   on an empty group's marker do nothing, and tapping an outside object leaves
-  the group. In the layer panel a tap does what a click does there (see Layer
-  panel): a tap on the selected group's row opens it, a tap on the open
-  group's row leaves it, and a tap on a faded row leaves one level, or with
-  one group open closes it and selects the row.
+  the group. In the layer panel a tap does what a click does (see Layer
+  panel).
 - **Layer panel.** While a group is open, the rows outside it are faded and
   the open group's row is outlined in white; that row is expanded, and
   scrolled into view when nothing is selected. A click on the selected
-  group's row opens it, and a click on the open group's row leaves it,
-  selecting it. A click on a faded row leaves one level when groups are open
-  inside each other, selecting the group it left; with one group open it
-  closes the group and selects the row. Neither the open group's row nor a
-  faded row can be dragged, though a faded row can still be dropped onto. On
-  a faded row the menu is off and the eye and badges do nothing: a click on
-  them is a click on the row, and a hidden row keeps its slashed eye as a
-  marker. The second click of a double-click never opens, leaves or selects;
-  the double-click moves the camera to the row, except after a faded row's
-  click that left a level. `resolveRowClick` in `openGroupRows.js` decides.
+  group's row opens it (a hidden group cannot be opened), and a click on the
+  open group's row leaves it, selecting it. A click on a faded row leaves one
+  level when groups are open inside each other, selecting the group it left;
+  with one group open it closes the group and selects the row.
+  `resolveRowClick` in `openGroupRows.js` decides a click. Neither the open
+  group's row nor a faded row can be dragged, though a faded row can still be
+  dropped onto. On a faded row the menu is off and the eye and badges do
+  nothing: a click on them is a click on the row, and a hidden row keeps its
+  slashed eye as a marker. The second click of a double-click never opens,
+  leaves or selects; the double-click moves the camera to the row, except
+  after a faded row's click that left a level.
 
 ## Handles
 
