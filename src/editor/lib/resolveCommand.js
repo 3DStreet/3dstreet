@@ -1,6 +1,6 @@
 import { commandsByType } from './commands/index.js';
 import { routeCloneEdit } from './detachClone.js';
-import { routeGroupLevel } from './groups/groupLevel.js';
+import { routeTransformLevel } from './groups/groupLevel.js';
 import { refuseGuardedTransform } from './transformGuard.js';
 
 // While a tool call runs (withCommandOutcome), the first command it resolves
@@ -26,8 +26,8 @@ export function withCommandOutcome(execute) {
 
 /**
  * Work out what a command request will actually run, without running it: the
- * routing (generated clones, then group levelling), the command class for the
- * routed request, and the guard's verdict on it. Inspector.execute is this
+ * routing (generated clones, then levelling constrained items), the command
+ * class for the routed request, and the guard's verdict on it. Inspector.execute is this
  * plus the refusal notice and History; test harnesses call it to run the same
  * pipeline. It neither notifies nor touches History; its one side effect is
  * recording the outcome of the first call while a tool call runs
@@ -35,8 +35,8 @@ export function withCommandOutcome(execute) {
  *
  * Returns {Cmd, cmdName, payload, optionalName, callback, refusal, levelled}.
  * `Cmd` is undefined for an unknown command; `refusal` is the reason to show,
- * or null; `levelled` is what a group-levelling rewrite removed
- * (routeGroupLevel), or null.
+ * or null; `levelled` is what a levelling rewrite removed
+ * (routeTransformLevel), or null.
  */
 export function resolveCommand(cmdName, payload, optionalName, callback) {
   // A generated street clone is an editable object whose first edit
@@ -53,10 +53,10 @@ export function resolveCommand(cmdName, payload, optionalName, callback) {
     if (routed.callback && !callback) callback = routed.callback;
   }
 
-  // A write that leaves a user group tilted or scaled is rewritten to level
-  // it in the same undo step.
+  // A write that makes an item a constrained kind, or would leave one outside
+  // its kind's limits, is rewritten to level it in the same undo step.
   let levelled = null;
-  const levelling = routeGroupLevel(cmdName, payload);
+  const levelling = routeTransformLevel(cmdName, payload);
   if (levelling) {
     cmdName = levelling.cmdName;
     payload = levelling.payload;

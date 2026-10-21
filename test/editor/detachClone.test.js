@@ -18,7 +18,7 @@ import {
   resolveDetachToolArgs,
   routeCloneEdit
 } from '../../src/editor/lib/detachClone.js';
-import { routeGroupLevel } from '../../src/editor/lib/groups/groupLevel.js';
+import { routeTransformLevel } from '../../src/editor/lib/groups/groupLevel.js';
 import { resolveCommand } from '../../src/editor/lib/resolveCommand.js';
 
 // A segment element with a live generator component (the shape
@@ -1030,7 +1030,7 @@ describe('detachClone (#2011)', () => {
         value: 'user-group'
       });
       expect(routed.cmdName).toBe('detachclone');
-      const levelled = routeGroupLevel(routed.cmdName, routed.payload);
+      const levelled = routeTransformLevel(routed.cmdName, routed.payload);
       expect(levelled.cmdName).toBe('detachclone');
       expect(levelled.payload.pose).toEqual({
         rotation: '0 30 0',
@@ -1039,7 +1039,8 @@ describe('detachClone (#2011)', () => {
       expect(levelled.levelled).toEqual({
         rotation: { x: 5, y: 30, z: 0 },
         scale: { x: 1, y: 1.5, z: 1 },
-        becameGroup: true
+        became: true,
+        kind: 'group'
       });
 
       const definition = buildDetachedDefinition(
@@ -1056,7 +1057,67 @@ describe('detachClone (#2011)', () => {
         component: 'class',
         value: 'foo'
       });
-      expect(routeGroupLevel(notAGroup.cmdName, notAGroup.payload)).toBe(null);
+      expect(routeTransformLevel(notAGroup.cmdName, notAGroup.payload)).toBe(
+        null
+      );
+    });
+  });
+
+  describe('a component write that makes a clone a managed street or a shape', () => {
+    function tiltedTallClone() {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      clone.setAttribute('rotation', '5 30 0');
+      const nativeGetAttribute = clone.getAttribute.bind(clone);
+      // The scale its mixin gives it.
+      clone.getAttribute = (name) =>
+        name === 'scale' ? { x: 1, y: 1.5, z: 1 } : nativeGetAttribute(name);
+      return clone;
+    }
+
+    it('detaches a managed street at unit scale with its tilt, and a shape level and unit (fails if the detach is levelled only for a class, or writes every component into the pose)', () => {
+      const clone = tiltedTallClone();
+      const street = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'managed-street',
+        value: ''
+      });
+      const levelledStreet = routeTransformLevel(
+        street.cmdName,
+        street.payload
+      );
+      expect(levelledStreet.cmdName).toBe('detachclone');
+      expect(levelledStreet.payload.pose.scale).toBe('1 1 1');
+      expect(levelledStreet.payload.pose.rotation).toBeUndefined();
+      const definition = buildDetachedDefinition(
+        clone,
+        levelledStreet.payload.pose,
+        levelledStreet.payload
+      );
+      expect(definition.components.rotation).toBe('5 30 0');
+      expect(definition.components.scale).toBe('1 1 1');
+      expect(levelledStreet.levelled).toEqual({
+        scale: { x: 1, y: 1.5, z: 1 },
+        became: true,
+        kind: 'managed street'
+      });
+
+      const shape = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'shape',
+        value: ''
+      });
+      const levelledShape = routeTransformLevel(shape.cmdName, shape.payload);
+      expect(levelledShape.payload.pose).toEqual({
+        rotation: '0 30 0',
+        scale: '1 1 1'
+      });
+      expect(levelledShape.levelled).toEqual({
+        rotation: { x: 5, y: 30, z: 0 },
+        scale: { x: 1, y: 1.5, z: 1 },
+        became: true,
+        kind: 'shape'
+      });
     });
   });
 
@@ -1088,7 +1149,7 @@ describe('detachClone (#2011)', () => {
         rotation: '0 -150 0',
         scale: '1 1 1'
       });
-      expect(resolved.levelled.becameGroup).toBe(true);
+      expect(resolved.levelled.became).toBe(true);
     });
   });
 
@@ -1105,7 +1166,7 @@ describe('detachClone (#2011)', () => {
         value: 'user-group'
       };
       const move = { entity: other, component: 'position', value: '1 0 0' };
-      const routed = routeGroupLevel('multi', [
+      const routed = routeTransformLevel('multi', [
         ['entityupdate', classWrite, first],
         ['entityupdate', move, second]
       ]);
