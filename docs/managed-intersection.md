@@ -82,7 +82,7 @@ and 5+ arm intersections all come out of the same edge-intersection walk.
   `managed-intersection: ...` + `geo-flatten` (attached in init like
   managed-street, so intersections flatten 3D-tiles terrain too).
 - The entity carries `data-transform-no-scale` (its size IS the connected
-  streets' geometry).
+  streets' geometry); a saved scale is dropped on load.
 
 ## Street snapping (`snapStreets`, default on)
 
