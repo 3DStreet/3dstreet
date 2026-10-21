@@ -16,6 +16,7 @@ import { SegmentUpdateCommand } from './SegmentUpdateCommand.js';
 import { ShapeVertexInsertCommand } from './ShapeVertexInsertCommand.js';
 import { ShapeVertexMoveCommand } from './ShapeVertexMoveCommand.js';
 import { ShapeVertexRemoveCommand } from './ShapeVertexRemoveCommand.js';
+import { StreetConvertToManagedCommand } from './StreetConvertToManagedCommand.js';
 import { StreetConvertToShapesCommand } from './StreetConvertToShapesCommand.js';
 import { StreetReloadCommand } from './StreetReloadCommand.js';
 
@@ -38,5 +39,6 @@ commandsByType.set('segmentupdate', SegmentUpdateCommand);
 commandsByType.set('shapevertexinsert', ShapeVertexInsertCommand);
 commandsByType.set('shapevertexmove', ShapeVertexMoveCommand);
 commandsByType.set('shapevertexremove', ShapeVertexRemoveCommand);
+commandsByType.set('streetconverttomanaged', StreetConvertToManagedCommand);
 commandsByType.set('streetconverttoshapes', StreetConvertToShapesCommand);
 commandsByType.set('streetreload', StreetReloadCommand);

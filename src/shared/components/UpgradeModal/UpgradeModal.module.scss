@@ -492,6 +492,12 @@ $green: #10b981;
   text-align: center;
 }
 
+// Brighter opening sentence inside a .signInCopy paragraph.
+.signInCopyLead {
+  color: #fff;
+  font-weight: 500;
+}
+
 // Pass-code input (RedeemPassModal, #1922 follow-up).
 .codeInput {
   width: 100%;

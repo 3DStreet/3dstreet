@@ -937,8 +937,16 @@
     "buildArea.experimentalWarning": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it.",
     "shapeSidebar.sectionTitle": "Shape",
     "shapeSidebar.styleTitle": "Style",
-    "profileModal.planProPass": "Plan: Pro until {date}",
-    "rightPanel.planTooltipPass": "3DStreet Pro until {date}"
+    "profileModal.planProPass": "Plan: Pro (Project Pass) until {date}",
+    "rightPanel.planTooltipPass": "3DStreet Pro (Project Pass) until {date}",
+    "legacyStreet.body": "Convert it to a managed street to edit its lanes, widths and objects right here. Converting loads this street from Streetmix; objects you moved or changed inside it will not carry over.",
+    "legacyStreet.bodyNoSource": "It has no Streetmix link, so it cannot be converted. Import the street again from Streetmix to get a managed street you can edit here.",
+    "legacyStreet.changedMessage": "It was {saved} wide when you added it and is {fetched} wide on Streetmix now. Converting loads the latest version from Streetmix. You can undo this.",
+    "legacyStreet.changedTitle": "This street has changed on Streetmix",
+    "legacyStreet.checking": "Checking Streetmix…",
+    "legacyStreet.convert": "Convert to managed street",
+    "legacyStreet.fetchFailed": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted.",
+    "legacyStreet.title": "This is a classic street"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1878,8 +1886,16 @@
     "buildArea.experimentalWarning": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it.",
     "shapeSidebar.sectionTitle": "Shape",
     "shapeSidebar.styleTitle": "Style",
-    "profileModal.planProPass": "Plan: Pro until {date}",
-    "rightPanel.planTooltipPass": "3DStreet Pro until {date}"
+    "profileModal.planProPass": "Plan: Pro (Project Pass) until {date}",
+    "rightPanel.planTooltipPass": "3DStreet Pro (Project Pass) until {date}",
+    "legacyStreet.body": "Convert it to a managed street to edit its lanes, widths and objects right here. Converting loads this street from Streetmix; objects you moved or changed inside it will not carry over.",
+    "legacyStreet.bodyNoSource": "It has no Streetmix link, so it cannot be converted. Import the street again from Streetmix to get a managed street you can edit here.",
+    "legacyStreet.changedMessage": "It was {saved} wide when you added it and is {fetched} wide on Streetmix now. Converting loads the latest version from Streetmix. You can undo this.",
+    "legacyStreet.changedTitle": "This street has changed on Streetmix",
+    "legacyStreet.checking": "Checking Streetmix…",
+    "legacyStreet.convert": "Convert to managed street",
+    "legacyStreet.fetchFailed": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted.",
+    "legacyStreet.title": "This is a classic street"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2819,7 +2835,15 @@
     "buildArea.experimentalWarning": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it.",
     "shapeSidebar.sectionTitle": "Shape",
     "shapeSidebar.styleTitle": "Style",
-    "profileModal.planProPass": "Plan: Pro until {date}",
-    "rightPanel.planTooltipPass": "3DStreet Pro until {date}"
+    "profileModal.planProPass": "Plan: Pro (Project Pass) until {date}",
+    "rightPanel.planTooltipPass": "3DStreet Pro (Project Pass) until {date}",
+    "legacyStreet.body": "Convert it to a managed street to edit its lanes, widths and objects right here. Converting loads this street from Streetmix; objects you moved or changed inside it will not carry over.",
+    "legacyStreet.bodyNoSource": "It has no Streetmix link, so it cannot be converted. Import the street again from Streetmix to get a managed street you can edit here.",
+    "legacyStreet.changedMessage": "It was {saved} wide when you added it and is {fetched} wide on Streetmix now. Converting loads the latest version from Streetmix. You can undo this.",
+    "legacyStreet.changedTitle": "This street has changed on Streetmix",
+    "legacyStreet.checking": "Checking Streetmix…",
+    "legacyStreet.convert": "Convert to managed street",
+    "legacyStreet.fetchFailed": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted.",
+    "legacyStreet.title": "This is a classic street"
   }
 }

@@ -72,15 +72,23 @@ export function canReparent(child, newParent) {
   if (child.parentNode === newParent) return true;
   if (!canAcceptChild(newParent)) return false;
   if (!canAcceptChild(child.parentNode)) return false;
-  if (
-    isContainer(child) ||
-    child.id === 'cameraRig' ||
-    KEEPS_ITS_PARENT_CLASSES.some((name) => child.classList.contains(name)) ||
-    KEEPS_ITS_PARENT.some((name) => child.hasAttribute(name))
-  ) {
-    return false;
-  }
+  if (keepsItsParent(child)) return false;
   return newParent !== child && !child.contains(newParent);
+}
+
+/**
+ * Does `el` keep the parent it has, whatever the destination? The part of
+ * canReparent's rule that looks only at the item: the fixed layers, the camera
+ * rig, and items marked by KEEPS_ITS_PARENT_CLASSES or KEEPS_ITS_PARENT.
+ * isGroupableItem checks the same markers on an item's data.
+ */
+export function keepsItsParent(el) {
+  return (
+    isContainer(el) ||
+    el.id === 'cameraRig' ||
+    KEEPS_ITS_PARENT_CLASSES.some((name) => el.classList.contains(name)) ||
+    KEEPS_ITS_PARENT.some((name) => el.hasAttribute(name))
+  );
 }
 
 /**

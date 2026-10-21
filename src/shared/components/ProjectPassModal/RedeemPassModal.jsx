@@ -94,7 +94,7 @@ const RedeemPassModal = ({ isOpen, onClose, initialCode = '', onSignIn }) => {
         });
 
         // Push the new Pro status into the auth context so every Pro gate
-        // flips without a reload.
+        // flips without a reload (same as ProjectPassModal).
         const firebaseUser = auth.currentUser;
         if (firebaseUser) {
           const status = await isUserPro(firebaseUser);
