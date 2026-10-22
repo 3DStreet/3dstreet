@@ -275,8 +275,9 @@
     // The open group's block (its row and the rows listed inside it): one
     // white box just inside the rows' borders, as the canvas outlines the
     // open group. Each row draws its own part; rows sit flush, so the parts
-    // join. Not the border itself, which marks a drop into a group and whose
-    // width the drop levels count.
+    // join: each part reaches over its row's transparent border, so the side
+    // lines run unbroken. Not the border itself, which marks a drop into a
+    // group and whose width the drop levels count.
     &.open-block-first,
     &.open-block-middle,
     &.open-block-last,
@@ -284,7 +285,7 @@
       &::after {
         content: '';
         position: absolute;
-        inset: 0 1px;
+        inset: -2px 1px;
         border: 0 solid variables.$white;
         border-left-width: 1px;
         border-right-width: 1px;
