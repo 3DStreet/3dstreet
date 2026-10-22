@@ -344,8 +344,11 @@ class SceneGraph extends React.Component {
   };
 
   // A click on the panel below the rows closes every open group, selecting
-  // nothing, as a click on a row outside them closes them all.
+  // nothing, as a click on a row outside them closes them all. A row's context
+  // menu is portalled out of the panel, but its clicks still bubble here
+  // through the React tree; they are not clicks on the panel.
   clickBelowRows = (event) => {
+    if (!event.currentTarget.contains(event.target)) return;
     if (event.target.closest('.entity') || !this.openGroups().length) return;
     AFRAME.INSPECTOR.groupScope?.close(null);
   };

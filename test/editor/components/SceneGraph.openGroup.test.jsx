@@ -732,4 +732,17 @@ describe('a click on the panel below the rows', () => {
     expect(selected()?.id).toBe('cone');
     expect(h.openIds()).toEqual(['B', 'C']);
   });
+
+  it("is not reached by a click in a row's context menu, which is portalled out of the panel (fails if Rename from the menu closes the open group)", async () => {
+    const { C } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(C));
+    await click('Cone');
+    fireEvent.contextMenu(findRow('Cone'));
+    await settle();
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename' }));
+    await settle();
+    expect(h.openIds()).toEqual(['B', 'C']);
+    expect(selected()?.id).toBe('cone');
+  });
 });
