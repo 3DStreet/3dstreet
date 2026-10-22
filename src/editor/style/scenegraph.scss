@@ -316,7 +316,9 @@
     margin-right: 0;
     display: inline-flex;
     align-items: center;
-    width: 16px; // Fixed width to ensure consistent spacing
+    // Fixed width to ensure consistent spacing; as narrow as the grip, so
+    // names start as far left as they can.
+    width: 12px;
     justify-content: center;
 
     &.draggable {
@@ -544,8 +546,8 @@
 
   // Expand/collapse children arrow, left of the entity name (#1980). Every
   // row reserves the slot, so names at one depth line up whether or not the
-  // row has children. The slot is tucked 4px into the empty right edge of the
-  // drag handle, whose grip is narrower than the handle, to keep the row tight.
+  // row has children. The slot overlaps the drag handle by 4px, into the
+  // empty edges of the grip and caret glyphs, to keep the row tight.
   .collapsespace {
     color: variables.$white !important;
     display: inline-flex;
