@@ -429,12 +429,12 @@ describe('a click on a layer row with groups', () => {
     expect(document.querySelectorAll('.outside-open-group')).toHaveLength(0);
   });
 
-  it('on a faded row of a nested open group leaves one level and selects the group left, then with one level left selects the row (fails if the nested click selects the row, or the rule outlives the nesting)', async () => {
+  it('on a faded row of a nested open group selects the row, and the open groups follow it (fails if the click only leaves one level)', async () => {
     const { C } = buildScene();
     await renderPanel();
     await run(() => h.groupScope.open(C));
     await click('Tree');
-    expect(selected()?.id).toBe('C');
+    expect(selected()?.id).toBe('tree');
     expect(h.openIds()).toEqual(['B']);
     for (const name of ['Tree', 'Group C']) {
       expect(has(name, 'outside-open-group')).toBe(false);
@@ -488,67 +488,42 @@ describe("the open group's row", () => {
     expect(h.openIds()).toEqual([]);
   });
 
-  it('cannot be dragged, nor can a faded row, while a row inside the group can (fails if dragging ignores the open group)', async () => {
+  it('cannot be dragged, while a faded row and a row inside the group can (fails if dragging ignores the open group, or faded rows cannot be dragged in)', async () => {
     const { B } = buildScene();
     await renderPanel();
     await run(() => h.groupScope.open(B));
     expect(findRow('Group B').getAttribute('draggable')).toBe('false');
-    expect(findRow('Lamp').getAttribute('draggable')).toBe('false');
+    expect(findRow('Lamp').getAttribute('draggable')).toBe('true');
     expect(findRow('Tree').getAttribute('draggable')).toBe('true');
   });
 });
 
 describe('a faded row', () => {
-  it("has no menu and keeps the browser's own from showing, and a right-click changes nothing (fails if the menu is not disabled, or the default is not prevented)", async () => {
-    const { B } = buildScene();
-    await renderPanel();
-    await run(() => h.groupScope.open(B));
-    for (const name of ['Lamp', 'Street']) {
-      expect(findRow(name).hasAttribute('data-disabled')).toBe(true);
-    }
-    for (const name of ['Group B', 'Tree', 'Group C']) {
-      expect(findRow(name).hasAttribute('data-disabled')).toBe(false);
-    }
-    expect(fireEvent.contextMenu(findRow('Lamp'))).toBe(false);
-    await settle();
-    expect(screen.queryByRole('menu')).toBe(null);
-    expect(selected()).toBe(null);
-    expect(h.openIds()).toEqual(['B']);
-  });
-
-  it('treats a click on its eye or badge as a click on the row (fails if they keep their own actions)', async () => {
+  it('acts like any row: its menu opens on the row it selects, and its eye works (fails if a faded row is made inert)', async () => {
     const { B, lamp } = buildScene();
-    lamp.setAttribute('focus-hotspot', '');
-    lamp.setAttribute('visible', false);
     await renderPanel();
     await run(() => h.groupScope.open(B));
+    expect(findRow('Lamp').hasAttribute('data-disabled')).toBe(false);
     fireEvent.click(findRow('Lamp').querySelector('.entityVisibilityToggle'));
     await settle();
     expect(lamp.object3D.visible).toBe(false);
-    expect(selected()?.id).toBe('lamp');
-    expect(h.openIds()).toEqual([]);
+    expect(selected()).toBe(null);
+    expect(h.openIds()).toEqual(['B']);
 
-    await run(() => h.inspector.selectEntity(B));
-    await run(() => h.groupScope.open(B));
-    fireEvent.click(findRow('Lamp').querySelector('.entityBadge'));
+    fireEvent.contextMenu(findRow('Lamp'));
     await settle();
-    expect(focused).toEqual([]);
     expect(selected()?.id).toBe('lamp');
     expect(h.openIds()).toEqual([]);
+    expect(screen.getByRole('menu')).not.toBe(null);
   });
 
-  it('leaves its eye and badges out of the tab order (fails if they stay focusable, or every row loses them)', async () => {
-    const { B, lamp } = buildScene();
-    lamp.setAttribute('focus-hotspot', '');
-    lamp.setAttribute('visible', false);
+  it('can be dragged into the open group (fails if a faded row cannot be dragged)', async () => {
+    const { B } = buildScene();
     await renderPanel();
     await run(() => h.groupScope.open(B));
-    const lampRow = findRow('Lamp');
-    expect(lampRow.querySelector('.entityVisibilityToggle').tabIndex).toBe(-1);
-    expect(lampRow.querySelector('.entityBadge').tabIndex).toBe(-1);
-    expect(
-      findRow('Tree').querySelector('.entityVisibilityToggle').tabIndex
-    ).not.toBe(-1);
+    fireEvent.dragStart(row('Lamp'), { dataTransfer: dataTransfer() });
+    expect(dragOver(row('Group B'), 0.5)).toBe(true);
+    expect(has('Group B', 'drop-child')).toBe(true);
   });
 
   it('can still be dropped onto (fails if faded rows ignore drags)', async () => {
@@ -615,47 +590,14 @@ describe('a double-click on a layer row', () => {
     expect(focused).toEqual([lamp.object3D]);
   });
 
-  it('on a faded row of a nested open group only leaves one level, with no camera move, and a later double-click on the row works as usual (fails if the camera moves, the second click selects the row, or the skip outlives the next click)', async () => {
+  it('on a faded row of a nested open group selects the row and moves the camera to it (fails if the click only leaves a level)', async () => {
     const { C, tree } = buildScene();
     await renderPanel();
     await run(() => h.groupScope.open(C));
     await doubleClick('Tree');
-    expect(selected()?.id).toBe('C');
-    expect(h.openIds()).toEqual(['B']);
-    expect(focused).toEqual([]);
-
-    // A single click that leaves a level, then a double-click on the row,
-    // now inside the open group.
-    await run(() => h.groupScope.open(C));
-    await click('Tree');
-    expect(selected()?.id).toBe('C');
-    expect(h.openIds()).toEqual(['B']);
-    await doubleClick('Tree');
     expect(selected()?.id).toBe('tree');
-    expect(focused).toEqual([tree.object3D]);
-  });
-
-  it("on a row's expand arrow after that row's click left a level still moves the camera (fails if the skip outlives the click that set it)", async () => {
-    const { B, C } = buildScene();
-    await renderPanel();
-    await run(() => h.groupScope.open(C));
-    // Group B's row is faded: its click leaves Group C, and Group B's row is
-    // then the open group's.
-    await click('Group B');
     expect(h.openIds()).toEqual(['B']);
-
-    // The arrow's clicks toggle the row and stop there; its dblclick reaches
-    // the row.
-    for (const detail of [1, 2]) {
-      const arrow = findRow('Group B').querySelector('.collapsespace');
-      fireEvent.mouseDown(arrow, { detail });
-      fireEvent.click(arrow, { detail });
-    }
-    fireEvent.dblClick(findRow('Group B').querySelector('.collapsespace'), {
-      detail: 2
-    });
-    await settle();
-    expect(focused).toEqual([B.object3D]);
+    expect(focused).toEqual([tree.object3D]);
   });
 });
 

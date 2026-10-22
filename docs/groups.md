@@ -112,17 +112,15 @@ the elements). The stack is session state only and is never saved.
 - **Layer panel.** While a group is open, the rows outside it are faded and
   the open group's row is outlined in white; that row is expanded, and
   scrolled into view when nothing is selected. A click on the selected
-  group's row opens it (a hidden group cannot be opened), and a click on the
-  open group's row leaves it, selecting it. A click on a faded row leaves one
-  level when groups are open inside each other, selecting the group it left;
-  with one group open it closes the group and selects the row.
-  `resolveRowClick` in `openGroupRows.js` decides a click. Neither the open
-  group's row nor a faded row can be dragged, though a faded row can still be
-  dropped onto. On a faded row the menu is off and the eye and badges do
-  nothing: a click on them is a click on the row, and a hidden row keeps its
-  slashed eye as a marker. The second click of a double-click never opens,
-  leaves or selects; the double-click moves the camera to the row, except
-  after a faded row's click that left a level.
+  group's row opens it (a hidden group cannot be opened). Every other click
+  selects its row, and the scope follows the selection: a click on the open
+  group's row leaves it, selecting it, and a click on a faded row closes the
+  open groups and selects that row, opening any group around it. A faded row
+  is faded only and otherwise acts as it does with no group open, so an
+  outside item can be dragged into the open group. The open group's row cannot
+  be dragged. `resolveRowClick` in `openGroupRows.js` decides a click. The
+  second click of a double-click never opens, leaves or selects; the
+  double-click moves the camera to the row.
 
 ## Handles
 

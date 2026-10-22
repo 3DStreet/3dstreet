@@ -280,20 +280,10 @@
       outline-offset: -3px;
     }
 
-    // Rows outside the open group, faded as the canvas fades the outside. A
-    // click anywhere on one is a click on the row, so its eye and badges let
-    // the pointer through, and the hover eye is not offered (a hidden row's
-    // slashed eye still shows).
+    // Rows outside the open group, faded as the canvas fades the outside.
+    // Faded only: they act as they do with no group open.
     &.outside-open-group {
       opacity: 0.5;
-
-      .entityRowBar button {
-        pointer-events: none;
-      }
-
-      .entityVisibilityToggle:not(.is-entity-hidden) {
-        visibility: hidden;
-      }
     }
   }
 

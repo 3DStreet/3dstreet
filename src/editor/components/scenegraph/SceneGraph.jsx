@@ -285,14 +285,13 @@ class SceneGraph extends React.Component {
     }, 100);
   };
 
-  // A click on a row opens the selected group, leaves an open group or
-  // selects the row (see resolveRowClick).
+  // A click on a row opens the selected group or selects the row (see
+  // resolveRowClick).
   clickRow = (entity, event) => {
     // The later clicks of a double-click do nothing: they would act on what
     // the first click changed (open the group it selected, reopen the group
     // it left).
     if (event.detail > 1) return;
-    this.skipFocusFor = null;
     const scope = AFRAME.INSPECTOR.groupScope;
     const result = resolveRowClick(entity, {
       selected: this.props.selectedEntity,
@@ -302,28 +301,11 @@ class SceneGraph extends React.Component {
       scope.open(result.group);
       return;
     }
-    if (result.action === 'exit' && scope) {
-      scope.exitOneLevel();
-      // The clicked row was only a way out: a double-click on it does not
-      // move the camera there.
-      this.skipFocusFor = entity;
-      return;
-    }
     this.selectEntity(entity);
   };
 
   doubleClickRow = (entity) => {
-    const skip = this.skipFocusFor === entity;
-    this.skipFocusFor = null;
-    if (!skip) Events.emit('objectfocus', entity.object3D);
-  };
-
-  // The first press of a new click clears skipFocusFor, so the skip applies
-  // only to the double-click of the click that set it, not to a later one
-  // such as a double-click on the row's expand arrow, whose clicks do not
-  // reach the row.
-  onListMouseDown = (event) => {
-    if (event.detail <= 1) this.skipFocusFor = null;
+    Events.emit('objectfocus', entity.object3D);
   };
 
   includeInSceneGraph = (element) => {
@@ -998,10 +980,7 @@ class SceneGraph extends React.Component {
                       </button>
                     </div>
                   ) : (
-                    <div
-                      className="layers-list"
-                      onMouseDown={this.onListMouseDown}
-                    >
+                    <div className="layers-list">
                       {this.renderEntities()}
                       {this.renderDropStrip()}
                       {this.renderDropLine()}

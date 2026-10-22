@@ -20,21 +20,16 @@ export function openGroupRole(el, openGroup) {
  * Decide a click on the row of `el`, given the selection and the open groups
  * as elements, outermost first. Returns one of
  * `{action: 'open', group}` — open the selected closed group;
- * `{action: 'exit'}` — leave the innermost open group, selecting it;
  * `{action: 'select', el}` — select the row's entity.
  *
- * As on the canvas, a click outside a nested open group only leaves one
- * level. With one group open, selecting an outside row closes the group by
- * itself (the scope follows the selection), and selecting the open group's
- * own row leaves it, so both are plain selections.
+ * Every other click is a plain selection, and the open groups follow it: a
+ * row outside the open groups closes them and opens any around it, and the
+ * open group's own row leaves it. A faded row is faded only; it acts like any
+ * other row.
  */
 export function resolveRowClick(el, { selected, openGroups }) {
   if (isSelectedClosedGroup(el, selected, openGroups)) {
     return { action: 'open', group: el };
-  }
-  const openGroup = openGroups[openGroups.length - 1];
-  if (openGroups.length > 1 && openGroupRole(el, openGroup) === 'outside') {
-    return { action: 'exit' };
   }
   return { action: 'select', el };
 }

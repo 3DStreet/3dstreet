@@ -53,19 +53,11 @@ describe('a click on a layer row', () => {
     ).toEqual({ action: 'select', el: groupB });
   });
 
-  it('outside a nested open group leaves one level, and inside it or on its own row selects the row (fails if the nested rule reaches the open row or an inside row)', () => {
+  it('selects any row that is not the selected closed group, faded or nested alike (fails if a faded row is a way out rather than a row)', () => {
     const state = { selected: null, openGroups: [groupB, groupC] };
-    for (const el of [tree, lamp, groupB]) {
-      expect(resolveRowClick(el, state)).toEqual({ action: 'exit' });
+    for (const el of [tree, lamp, groupB, groupC, cone]) {
+      expect(resolveRowClick(el, state)).toEqual({ action: 'select', el });
     }
-    expect(resolveRowClick(cone, state)).toEqual({
-      action: 'select',
-      el: cone
-    });
-    expect(resolveRowClick(groupC, state)).toEqual({
-      action: 'select',
-      el: groupC
-    });
   });
 
   it('outside a single open group, or on its own row, selects the row (fails if one open level is left like a nested one)', () => {

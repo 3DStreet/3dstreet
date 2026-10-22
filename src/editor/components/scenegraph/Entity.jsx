@@ -125,14 +125,8 @@ class Entity extends React.Component {
   };
 
   // Select the row being right-clicked before the context menu opens, so the
-  // menu's selection-based actions (cut/copy/paste target) apply to it. A row
-  // outside the open group has no menu (the menu is disabled), and the
-  // browser's own is kept from showing in its place.
-  onContextMenu = (event) => {
-    if (this.props.openGroupRole === 'outside') {
-      event.preventDefault();
-      return;
-    }
+  // menu's selection-based actions (cut/copy/paste target) apply to it.
+  onContextMenu = () => {
     if (!this.props.isSelected) {
       this.props.selectEntity(this.props.entity);
     }
@@ -167,11 +161,12 @@ class Entity extends React.Component {
     });
   };
 
-  // Neither the open group's row (it is being worked inside) nor a row
-  // outside it can be dragged.
+  // The open group's row cannot be dragged: it is being worked inside. A row
+  // outside it can, into the open group among other places.
   canDrag() {
     return (
-      this.props.canBeDragged(this.props.entity) && !this.props.openGroupRole
+      this.props.canBeDragged(this.props.entity) &&
+      this.props.openGroupRole !== 'open'
     );
   }
 
@@ -372,13 +367,6 @@ class Entity extends React.Component {
       );
     }
 
-    // A row outside the open group is faded, and a click anywhere on it is a
-    // click on the row: its eye and badges do nothing of their own and are
-    // left out of the tab order (the stylesheet lets the pointer through
-    // them).
-    const outside = this.props.openGroupRole === 'outside';
-    const stopDoubleClick = (event) => event.stopPropagation();
-
     // Visibility toggle: eye icon in the row's right-justified badge bar,
     // revealed on hover — except a hidden entity's slashed eye, which stays
     // visible as the row's state indicator.
@@ -393,9 +381,8 @@ class Entity extends React.Component {
         className={
           'entityVisibilityToggle' + (visible ? '' : ' is-entity-hidden')
         }
-        onClick={outside ? undefined : this.toggleVisibility}
-        onDoubleClick={outside ? undefined : stopDoubleClick}
-        tabIndex={outside ? -1 : undefined}
+        onClick={this.toggleVisibility}
+        onDoubleClick={(event) => event.stopPropagation()}
       >
         <AwesomeIcon icon={visible ? faEye : faEyeSlash} size={12} />
       </button>
@@ -429,13 +416,8 @@ class Entity extends React.Component {
             type="button"
             className="entityBadge"
             title={intl.formatMessage(BADGE_TITLES[badge.key])}
-            onClick={
-              outside
-                ? undefined
-                : (event) => this.onBadgeClick(event, badge.key)
-            }
-            onDoubleClick={outside ? undefined : stopDoubleClick}
-            tabIndex={outside ? -1 : undefined}
+            onClick={(event) => this.onBadgeClick(event, badge.key)}
+            onDoubleClick={(event) => event.stopPropagation()}
           >
             <AwesomeIcon icon={badge.icon} size={12} />
           </button>
@@ -469,13 +451,13 @@ class Entity extends React.Component {
       // The open group's mark gives way to a drop into it, whose border
       // marks the same row.
       'open-group': this.props.openGroupRole === 'open' && !isDropChild,
-      'outside-open-group': outside
+      // Faded only: the row acts as it does with no group open.
+      'outside-open-group': this.props.openGroupRole === 'outside'
     });
 
     return (
       <EntityContextMenu
         entity={entity}
-        disabled={outside}
         onSelectEntity={this.onContextMenu}
         onRename={() => this.props.setRenamingEntity(entity)}
       >
