@@ -29,7 +29,11 @@ import {
   lineIndentPx,
   pickLevel
 } from './dropLevels.js';
-import { openGroupRole, resolveRowClick } from './openGroupRows.js';
+import {
+  openBlockParts,
+  openGroupRole,
+  resolveRowClick
+} from './openGroupRows.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
 import AssetsPanel from './AssetsPanel';
@@ -775,6 +779,15 @@ class SceneGraph extends React.Component {
       this.isVisibleInSceneGraph(entityOption.entity)
     );
     const openGroup = this.innermostOpenGroup();
+    // The open group's outline gives way to a drop into the group, whose
+    // border marks its row.
+    const dropIntoOpen =
+      !!openGroup &&
+      this.state.insertionInfo?.position === 'child' &&
+      this.state.insertionInfo?.ref === openGroup;
+    const blockParts = dropIntoOpen
+      ? []
+      : openBlockParts(entityOptions, openGroup);
     let children = [];
     for (let i = 0; i < entityOptions.length; i++) {
       const entityOption = entityOptions[i];
@@ -788,6 +801,7 @@ class SceneGraph extends React.Component {
           isExpanded={this.isExpanded(entityOption.entity)}
           isSelected={this.props.selectedEntity === entityOption.entity}
           openGroupRole={openGroupRole(entityOption.entity, openGroup)}
+          openBlockPart={blockParts[i] ?? null}
           selectEntity={this.selectEntity}
           onRowClick={this.clickRow}
           onRowDoubleClick={this.doubleClickRow}

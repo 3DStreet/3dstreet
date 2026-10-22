@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  openBlockParts,
   openGroupRole,
   resolveRowClick
 } from '@/editor/components/scenegraph/openGroupRows.js';
@@ -70,5 +71,35 @@ describe('a click on a layer row', () => {
       action: 'select',
       el: groupB
     });
+  });
+});
+
+describe("the open group's outlined block", () => {
+  it('runs from the open row through the rows listed inside it (fails if it stops early or takes in the row after the group)', () => {
+    const rows = [street, groupB, tree, groupC, cone, lamp].map((entity) => ({
+      entity
+    }));
+    expect(openBlockParts(rows, groupB)).toEqual([
+      null,
+      'first',
+      'middle',
+      'middle',
+      'last',
+      null
+    ]);
+    expect(openBlockParts(rows, groupC)).toEqual([
+      null,
+      null,
+      null,
+      'first',
+      'last',
+      null
+    ]);
+    expect(openBlockParts(rows, null)).toEqual(rows.map(() => null));
+  });
+
+  it('is one row when the group lists nothing under it (fails if a lone row gets an open bottom)', () => {
+    const rows = [groupB, lamp].map((entity) => ({ entity }));
+    expect(openBlockParts(rows, groupB)).toEqual(['only', null]);
   });
 });

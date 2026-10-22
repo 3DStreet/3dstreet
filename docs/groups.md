@@ -110,7 +110,8 @@ the elements). The stack is session state only and is never saved.
   the group. In the layer panel a tap does what a click does (see Layer
   panel).
 - **Layer panel.** While a group is open, the rows outside it are faded and
-  the open group's row is outlined in white; that row is expanded, and
+  the open group's row and the rows listed inside it are outlined in white
+  as one block; that row is expanded, and
   scrolled into view when nothing is selected. A click on the selected
   group's row opens it (a hidden group cannot be opened). Every other click
   selects its row, and the scope follows the selection: a click on the open

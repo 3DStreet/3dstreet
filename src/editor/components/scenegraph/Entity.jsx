@@ -80,6 +80,9 @@ class Entity extends React.Component {
     // 'open' for the open group's own row, 'outside' for a row outside it
     // (see openGroupRows.js).
     openGroupRole: PropTypes.oneOf(['open', 'outside']),
+    // Where the row sits in the open group's outlined block, if it does
+    // (see openBlockParts).
+    openBlockPart: PropTypes.oneOf(['first', 'middle', 'last', 'only']),
     toggleExpandedCollapsed: PropTypes.func,
     // Drag and drop props
     draggedEntity: PropTypes.object,
@@ -448,9 +451,7 @@ class Entity extends React.Component {
       // Drag and drop classes
       dragging: isDragging,
       'drop-child': isDropChild,
-      // The open group's mark gives way to a drop into it, whose border
-      // marks the same row.
-      'open-group': this.props.openGroupRole === 'open' && !isDropChild,
+      [`open-block-${this.props.openBlockPart}`]: !!this.props.openBlockPart,
       // Faded only: the row acts as it does with no group open.
       'outside-open-group': this.props.openGroupRole === 'outside'
     });

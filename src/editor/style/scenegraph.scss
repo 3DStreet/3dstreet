@@ -272,12 +272,35 @@
       border-color: variables.$blue-100;
     }
 
-    // The open group's row: a white line just inside the row's border, as
-    // the canvas outlines the open group. Not the border itself, which marks
-    // a drop into a group and whose width the drop levels count.
-    &.open-group {
-      outline: 1px solid variables.$white;
-      outline-offset: -3px;
+    // The open group's block (its row and the rows listed inside it): one
+    // white box just inside the rows' borders, as the canvas outlines the
+    // open group. Each row draws its own part; rows sit flush, so the parts
+    // join. Not the border itself, which marks a drop into a group and whose
+    // width the drop levels count.
+    &.open-block-first,
+    &.open-block-middle,
+    &.open-block-last,
+    &.open-block-only {
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 0 1px;
+        border: 0 solid variables.$white;
+        border-left-width: 1px;
+        border-right-width: 1px;
+        pointer-events: none;
+        z-index: 1;
+      }
+    }
+    &.open-block-first::after,
+    &.open-block-only::after {
+      top: 1px;
+      border-top-width: 1px;
+    }
+    &.open-block-last::after,
+    &.open-block-only::after {
+      bottom: 1px;
+      border-bottom-width: 1px;
     }
 
     // Rows outside the open group, faded as the canvas fades the outside.

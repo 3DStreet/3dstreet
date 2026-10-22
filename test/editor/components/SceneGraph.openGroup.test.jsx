@@ -140,6 +140,13 @@ function buildScene() {
 
 const selected = () => h.inspector.selectedEntity;
 const has = (name, cls) => findRow(name).classList.contains(cls);
+// The row's part in the open group's outlined block, or null.
+const blockPart = (name) =>
+  ['first', 'middle', 'last', 'only'].find((p) =>
+    has(name, `open-block-${p}`)
+  ) ?? null;
+// The open group's own row: the top of its block.
+const openMark = (name) => ['first', 'only'].includes(blockPart(name));
 const listed = (name) => screen.queryByText(name) !== null;
 
 async function run(action) {
@@ -223,17 +230,21 @@ describe('the layer panel showing the open group', () => {
     expect(h.openIds()).toEqual(['B']);
     expect(selected()).toBe(null);
 
-    expect(has('Group B', 'open-group')).toBe(true);
+    expect(openMark('Group B')).toBe(true);
     expect(has('Group B', 'outside-open-group')).toBe(false);
     for (const name of ['Street', 'Lamp']) {
       expect(has(name, 'outside-open-group')).toBe(true);
     }
     for (const name of ['Tree', 'Group C']) {
-      expect(has(name, 'open-group')).toBe(false);
+      expect(openMark(name)).toBe(false);
       expect(has(name, 'outside-open-group')).toBe(false);
     }
     expect(listed('Cone')).toBe(false);
     expect(document.querySelectorAll('.entity.active')).toHaveLength(0);
+    // One box round the group's row and the rows listed inside it.
+    expect(
+      ['Street', 'Group B', 'Tree', 'Group C', 'Lamp'].map(blockPart)
+    ).toEqual([null, 'first', 'middle', 'last', null]);
   });
 
   it("scrolls the opened group's row into view when it is out of view (fails if opening does not scroll)", async () => {
@@ -329,20 +340,20 @@ describe('the layer panel showing the open group', () => {
     expect(listed('Group C')).toBe(false);
     await run(() => h.groupScope.open(C));
     expect(h.openIds()).toEqual(['B', 'C']);
-    expect(has('Group C', 'open-group')).toBe(true);
+    expect(openMark('Group C')).toBe(true);
     expect(listed('Tree')).toBe(true);
     expect(listed('Cone')).toBe(true);
     expect(has('Group B', 'outside-open-group')).toBe(true);
     expect(has('Tree', 'outside-open-group')).toBe(true);
-    expect(has('Group B', 'open-group')).toBe(false);
+    expect(openMark('Group B')).toBe(false);
 
     // Leaving a level collapses nothing.
     await run(() => h.groupScope.escape());
     expect(h.openIds()).toEqual(['B']);
     expect(listed('Cone')).toBe(true);
     expect(listed('Tree')).toBe(true);
-    expect(has('Group B', 'open-group')).toBe(true);
-    expect(has('Group C', 'open-group')).toBe(false);
+    expect(openMark('Group B')).toBe(true);
+    expect(openMark('Group C')).toBe(false);
     expect(has('Group C', 'outside-open-group')).toBe(false);
   });
 
@@ -350,7 +361,7 @@ describe('the layer panel showing the open group', () => {
     const { B, C } = buildScene();
     act(() => h.groupScope.open(C));
     await renderPanel();
-    expect(has('Group C', 'open-group')).toBe(true);
+    expect(openMark('Group C')).toBe(true);
     expect(listed('Tree')).toBe(true);
     expect(listed('Cone')).toBe(true);
     expect(has('Street', 'outside-open-group')).toBe(true);
@@ -392,7 +403,7 @@ describe('a click on a layer row with groups', () => {
     await click('Group B');
     expect(h.openIds()).toEqual(['B']);
     expect(selected()).toBe(null);
-    expect(has('Group B', 'open-group')).toBe(true);
+    expect(openMark('Group B')).toBe(true);
 
     await click('Tree');
     expect(selected()?.id).toBe('tree');
@@ -546,7 +557,8 @@ describe('the open mark during a drag', () => {
     fireEvent.dragStart(row('Cone'), { dataTransfer: dataTransfer() });
     expect(dragOver(row('Group B'), 0.5)).toBe(true);
     expect(has('Group B', 'drop-child')).toBe(true);
-    expect(has('Group B', 'open-group')).toBe(false);
+    expect(openMark('Group B')).toBe(false);
+    expect(document.querySelectorAll('[class*="open-block-"]')).toHaveLength(0);
   });
 });
 
