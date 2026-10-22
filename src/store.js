@@ -27,7 +27,7 @@ const firstModal = () => {
           : !hash.length && !isSceneDeepLink
             ? 'new'
             : null;
-  const isStreetMix = hash.includes('streetmix');
+  const isStreetMix = hash.includes('streetmix') || hash.includes('coastmix');
   if (isStreetMix) {
     modal = localStorage.getItem('shownIntro') ? null : 'intro';
   }

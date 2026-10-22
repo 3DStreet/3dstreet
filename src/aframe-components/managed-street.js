@@ -1179,11 +1179,11 @@ AFRAME.registerComponent('managed-street', {
       this.el.setAttribute('managed-street', 'showBoundaries', showBoundaries);
     }
     const data = this.data;
-    // Normally rewrite a streetmix.net user URL to its API endpoint. If the
+    // Normally rewrite a Streetmix (or coastmix) user URL to its API endpoint. If the
     // sourceValue is some other URL (e.g. a locally served Streetmix-shaped
     // fixture under /test/parity/fixtures), fetch it directly — it is already
     // in the API response shape this loader expects.
-    const streetmixAPIURL = streetmixURL.includes('streetmix.net')
+    const streetmixAPIURL = streetmixUtils.isStreetmixURL(streetmixURL)
       ? streetmixUtils.streetmixUserToAPI(streetmixURL)
       : streetmixURL;
     console.log(

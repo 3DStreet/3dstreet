@@ -1,12 +1,25 @@
 import { CURB_HEIGHT, levelToElevation } from './street-segment-utils.js';
 
+// Hosts that serve the Streetmix street API (coastmix is a Streetmix fork).
+const STREETMIX_HOSTS = ['streetmix.net', 'coastmix.org'];
+
+export function isStreetmixURL(urlString) {
+  try {
+    const host = new URL(urlString).hostname.replace(/^www\./, '');
+    return STREETMIX_HOSTS.includes(host);
+  } catch {
+    return false;
+  }
+}
+
 export function streetmixUserToAPI(userURL) {
   // this takes in a user facing Streetmix.net URL like https://streetmix.net/kfarr/3/a-frame-city-builder-street-only
   // and turns it into the API redirect URL like https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr
-  var pathArray = new URL(userURL).pathname.split('/');
+  const url = new URL(userURL);
+  var pathArray = url.pathname.split('/');
   const creatorId = decodeURIComponent(pathArray[1]);
   const namespacedId = pathArray[2];
-  const baseUrl = 'https://streetmix.net';
+  const baseUrl = url.origin;
 
   if (creatorId === '-') {
     return baseUrl + '/api/v1/streets?namespacedId=' + namespacedId;
@@ -45,14 +58,15 @@ export function streetmixAPIToUser(APIURL) {
     }
     console.log('Query variable %s not found', variable);
   }
-  var queryString = new URL(APIURL).search.substring(1);
+  const url = new URL(APIURL);
+  var queryString = url.search.substring(1);
   var namespacedId = getQueryVariable(queryString, 'namespacedId');
   var creatorId = getQueryVariable(queryString, 'creatorId');
   if (typeof creatorId === 'undefined') {
     creatorId = '-';
   }
 
-  return 'https://streetmix.net/' + creatorId + '/' + namespacedId;
+  return url.origin + '/' + creatorId + '/' + namespacedId;
 }
 
 // Convert metric elevation to the nearest integer level. Kept only for the
