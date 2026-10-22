@@ -4,12 +4,9 @@ import Events from '@/editor/lib/Events.js';
 import { Viewport } from '@/editor/lib/viewport.js';
 import { Shortcuts } from '@/editor/lib/shortcuts.js';
 import { History } from '@/editor/lib/history.js';
-import { commandsByType } from '@/editor/lib/commands/index.js';
-import {
-  TRANSFORM_REFUSED,
-  refuseGuardedTransform
-} from '@/editor/lib/transformGuard.js';
-import { boxMesh, entity } from './_groupFixtures.js';
+import { TRANSFORM_REFUSED } from '@/editor/lib/transformGuard.js';
+import { resolveCommand } from '@/editor/lib/resolveCommand.js';
+import { boxMesh, entity, vec3Components } from './_groupFixtures.js';
 
 // The editor's canvas input, mounted for real on a bare scene: the viewport,
 // its raycaster, the group scope controller and the keyboard shortcuts. Only
@@ -186,16 +183,20 @@ export function mountEditor({ gizmo = false, cursorFirst = false } = {}) {
       this.opened = false;
     }
   };
-  // Composed execute: the real guard, then the real History and command.
+  // Composed execute: the real routing and guard, then the real History and
+  // command.
   inspector.history = new History(inspector);
-  inspector.execute = (type, payload) => {
-    if (refuseGuardedTransform(type, payload)) return TRANSFORM_REFUSED;
-    const Cmd = commandsByType.get(type);
-    return inspector.history.execute(new Cmd(inspector, payload));
+  inspector.execute = (type, payload, name, callback) => {
+    const r = resolveCommand(type, payload, name, callback);
+    if (r.refusal) return TRANSFORM_REFUSED;
+    return inspector.history.execute(
+      new r.Cmd(inspector, r.payload, r.callback),
+      r.optionalName
+    );
   };
   const aframe = {
     INSPECTOR: inspector,
-    components: {},
+    components: vec3Components(),
     scenes: [{ systems: {}, camera }]
   };
   if (gizmo) {

@@ -1,8 +1,8 @@
 # User groups
 
 A user group is an entity the user makes with the layer panel's **New group**
-button to hold other items, so they can be moved, turned and scaled together
-and edited in isolation. The code is in `src/editor/lib/groups/`; the
+button to hold other items, so they can be moved and turned together and
+edited in isolation. The code is in `src/editor/lib/groups/`; the
 `group-center` component is in `src/aframe-components/`.
 
 ## What a group is
@@ -20,10 +20,16 @@ and edited in isolation. The code is in `src/editor/lib/groups/`; the
   `scene-backdrop` class and stays at the top level on every route. A
   panorama in a scene saved before that class existed has none, and can still
   be pasted or dragged into a group.
-- A group turns about Y only and scales by the same amount on every axis. The
-  command guard (`transformGuard.js`) reads both from the class, so an AI
-  command sees them with no editor code having run. A group scaled unevenly
-  could only hold a turned member by shearing it.
+- A group turns about Y only and is never scaled. The command guard
+  (`transformGuard.js`) reads both from the class, so an AI command sees them
+  with no editor code having run. Removing the class from a group that still
+  has members is refused. Whatever becomes a group, or arrives as one — a
+  loaded scene, a paste, a class added by a command — loses any X/Z rotation
+  and any scale; its heading and position are kept, and its members keep
+  their own values. Loading a scene that held such a group logs a `[groups]`
+  warning. A mixin's rotation or scale counts as the group's own when the
+  group has none. A direct `setAttribute` — from an animation component or
+  the console — is not checked or levelled.
 
 ## Bounds, center and origin
 
@@ -124,8 +130,7 @@ change of the anchor is mapped onto the group. Move shows every axis; rotate
 shows only the vertical ring, and turns about the center. Its press is owned by
 `gizmos/claimedPress.js`, the easy gizmo's press protocol as a unit. A drag is
 one undo step, and Escape, blur or a cancelled pointer put the group back
-exactly. Scale mode shows a placeholder on the center marker, a wire cube with
-nothing to drag: a group scales only uniformly, in the properties panel.
+exactly. Scale mode moves a group, as it does a managed street.
 
 A press on a group's handle is held until the pointer has moved 2 CSS pixels.
 Released sooner, it is a click: over the selected closed group's box it opens
@@ -235,7 +240,8 @@ real `BatchedMesh`.
   the open group, at its center, or first at the top level, at the origin.
   The create command's `beforeEl` keeps that place across undo and redo.
 - **Paste.** An item copied from inside a group, or pasted into an open group,
-  keeps its world pose. Every other paste keeps the copied local pose.
+  keeps its world pose. Every other paste keeps the copied local pose. A
+  pasted group loses its tilt and scale, as above.
 
 ## Moving items between groups
 

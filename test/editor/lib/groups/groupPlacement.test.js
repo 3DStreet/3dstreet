@@ -21,7 +21,11 @@ import {
   memberWithBox,
   mountPlacementScene
 } from './_placementHarness.js';
-import { expectMatrixClose, worldOf } from './_entityElement.js';
+import {
+  expectMatrixClose,
+  setFixtureMixin,
+  worldOf
+} from './_entityElement.js';
 
 vi.mock('@shared/asset-upload', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -111,6 +115,18 @@ describe('where a new item is placed', () => {
       placeDefinition({ components: { position: '0 0 0' } }, beginPlacement())
         .definition.components.scale
     ).toEqual({ x: 0.5, y: 1, z: 1 });
+  });
+
+  it('refuses a turned item placed into an unscaled group when the street container itself is scaled unevenly (fails without the distortion check)', () => {
+    scene.root.setAttribute('scale', '2 1 1');
+    entityIn(scene.root, { id: 'level', cls: 'user-group' });
+    scene.openGroups('level');
+    expect(
+      placeDefinition(
+        { components: { position: '0 0 0', rotation: '0 30 0' } },
+        beginPlacement()
+      )
+    ).toEqual({ refusal: groupMessage('placementDistorts') });
   });
 
   it('refuses a placement whose group has gone, rather than placing it at the top level', () => {
@@ -543,5 +559,232 @@ describe('where the New group button puts a group', () => {
     expect(position.x).toBeCloseTo(3, 9);
     expect(position.y).toBeCloseTo(1, 9);
     expect(position.z).toBeCloseTo(3, 9);
+  });
+});
+
+describe('what the AI assistant is told about a group edit', () => {
+  const NO_SCALE = 'Scaling is not available for this element.';
+  const RULE = 'groups turn only about the vertical axis and are never scaled.';
+  const SIZES = 'The items in it keep their own sizes.';
+  const BOTH = `entityupdate executed. The item is now a group, so its tilt (rotation x 10, z 5) and scale (2 2 2) were removed; ${RULE} Its heading and position are unchanged. ${SIZES}`;
+
+  function groupWithMember() {
+    const group = entityIn(scene.root, { id: 'g', cls: 'user-group' });
+    const member = entityIn(group, { id: 'm', scale: '1 2 1' });
+    return { group, member };
+  }
+
+  it('is refused with the reason the editor showed, by chat and by MCP alike, and nothing changes (fails if the recorded reason is not passed out)', async () => {
+    const { group } = groupWithMember();
+    const args = { entityId: 'g', component: 'scale', value: '2 2 2' };
+    await expect(dispatchToolCall('entityUpdate', args)).rejects.toThrow(
+      `entityupdate refused: ${NO_SCALE}`
+    );
+    const { callToolAsMCPContent } =
+      await import('@/editor/lib/mcp/dispatch.js');
+    await expect(callToolAsMCPContent('entityUpdate', args)).rejects.toThrow(
+      `entityupdate refused: ${NO_SCALE}`
+    );
+    expect(group.hasAttribute('scale')).toBe(false);
+    expect(scene.inspector.history.undos).toHaveLength(0);
+  });
+
+  it('scales a member of a group as before, with no note, and one undo restores it exactly (fails if a member is treated as a group)', async () => {
+    const { member } = groupWithMember();
+    await expect(
+      dispatchToolCall('entityUpdate', {
+        entityId: 'm',
+        component: 'scale',
+        value: '2 2 2'
+      })
+    ).resolves.toBe('entityupdate executed');
+    expect(member.getAttribute('scale')).toEqual({ x: 2, y: 2, z: 2 });
+    scene.inspector.history.undo();
+    expect(member.getAttribute('scale')).toEqual({ x: 1, y: 2, z: 1 });
+  });
+
+  it.each([
+    [
+      'a tilt and a scale',
+      { rotation: '10 30 5', scale: '2 2 2' },
+      null,
+      BOTH,
+      30
+    ],
+    [
+      'a tilt',
+      { rotation: '10 30 5' },
+      null,
+      `entityupdate executed. The item is now a group, so its tilt (rotation x 10, z 5) was removed; ${RULE} Its heading and position are unchanged.`,
+      30
+    ],
+    [
+      'a scale its mixin gave it',
+      {},
+      { scale: '2 2 2' },
+      `entityupdate executed. The item is now a group, so its scale (2 2 2) was removed; ${RULE} Its heading and position are unchanged. ${SIZES}`,
+      null
+    ],
+    [
+      'a tilt past 90 degrees',
+      { rotation: '170 30 0' },
+      null,
+      `entityupdate executed. The item is now a group, so its tilt (rotation x 170, z 0) was removed; ${RULE} It faces the same way and its position is unchanged; its rotation is now 0 -150 0.`,
+      -150
+    ],
+    [
+      // As A-Frame reads a rotation back from radians.
+      'a tilt read back with float noise',
+      { rotation: '10.000000000000002 -149.99999999999997 5' },
+      null,
+      `entityupdate executed. The item is now a group, so its tilt (rotation x 10, z 5) was removed; ${RULE} Its heading and position are unchanged.`,
+      -150
+    ]
+  ])(
+    'tells it what was removed when an item with %s becomes a group, and levels it facing the same way (fails without the note, if it is built from a read that was not copied, or if X and Z are zeroed keeping Y)',
+    async (_, pose, mixin, expected, expectedY) => {
+      const item = entityIn(scene.root, { id: 'item', ...pose });
+      if (mixin) setFixtureMixin(item, mixin);
+      await expect(
+        dispatchToolCall('entityUpdate', {
+          entityId: 'item',
+          component: 'class',
+          value: 'user-group'
+        })
+      ).resolves.toBe(expected);
+      const r = item.getAttribute('rotation');
+      if (expectedY === null) {
+        expect(r).toBe(null);
+      } else {
+        expect(r).toEqual({ x: 0, y: expectedY, z: 0 });
+      }
+      // An item with no scale of its own shows the default.
+      const scale = item.getAttribute('scale') ?? { x: 1, y: 1, z: 1 };
+      expect(scale).toEqual({ x: 1, y: 1, z: 1 });
+    }
+  );
+
+  it('adds no note to an ordinary turn of a group, nor to one within the tolerance (fails if every group edit gets a note)', async () => {
+    groupWithMember();
+    for (const value of ['0 50 0', '0.0005 50 0']) {
+      await expect(
+        dispatchToolCall('entityUpdate', {
+          entityId: 'g',
+          component: 'rotation',
+          value
+        })
+      ).resolves.toBe('entityupdate executed');
+    }
+  });
+
+  it('is told why removing the class from a group with members was refused', async () => {
+    groupWithMember();
+    await expect(
+      dispatchToolCall('entityUpdate', {
+        entityId: 'g',
+        component: 'class',
+        value: ''
+      })
+    ).rejects.toThrow(
+      `entityupdate refused: ${groupMessage('ungroupWithMembers')}`
+    );
+  });
+
+  it('is refused adding a scale component to a group (fails if adding a component is not judged)', async () => {
+    groupWithMember();
+    await expect(
+      dispatchToolCall('componentAdd', {
+        entityId: 'g',
+        component: 'scale',
+        value: '2 2 2'
+      })
+    ).rejects.toThrow(`componentadd refused: ${NO_SCALE}`);
+  });
+
+  it('reports the outcome of its own command, not of one run while it executes', async () => {
+    const { group } = groupWithMember();
+    entityIn(scene.root, { id: 'item', rotation: '10 30 5', scale: '2 2 2' });
+    const history = scene.inspector.history;
+    const original = history.execute.bind(history);
+    let nested = false;
+    vi.spyOn(history, 'execute').mockImplementation((cmd, name) => {
+      if (!nested) {
+        nested = true;
+        scene.inspector.execute('entityupdate', {
+          entity: group,
+          component: 'scale',
+          value: '2 2 2'
+        });
+      }
+      return original(cmd, name);
+    });
+    await expect(
+      dispatchToolCall('entityUpdate', {
+        entityId: 'item',
+        component: 'class',
+        value: 'user-group'
+      })
+    ).resolves.toBe(BOTH);
+  });
+
+  it('tells it when a group it already had was levelled, without calling it newly a group (fails if every note says the item is now a group)', async () => {
+    const g = entityIn(scene.root, {
+      id: 'tilted-group',
+      cls: 'user-group',
+      rotation: '10 30 0',
+      scale: '2 2 2'
+    });
+    await expect(
+      dispatchToolCall('entityUpdate', {
+        entityId: 'tilted-group',
+        component: 'mixin',
+        value: 'bar'
+      })
+    ).resolves.toBe(
+      `entityupdate executed. This group's tilt (rotation x 10, z 0) and scale (2 2 2) were removed; ${RULE} Its heading and position are unchanged. ${SIZES}`
+    );
+    expect(g.getAttribute('rotation')).toEqual({ x: 0, y: 30, z: 0 });
+  });
+
+  it('leaves nothing behind for the next tool call when one throws, and a command run outside a tool call does not colour the next one', async () => {
+    const { member } = groupWithMember();
+    const history = scene.inspector.history;
+    vi.spyOn(history, 'execute').mockImplementationOnce(() => {
+      throw new Error('the command failed');
+    });
+    await expect(
+      dispatchToolCall('entityUpdate', {
+        entityId: 'm',
+        component: 'position',
+        value: '1 0 0'
+      })
+    ).rejects.toThrow('the command failed');
+
+    const tilted = entityIn(scene.root, {
+      id: 'tilted',
+      rotation: '10 30 5'
+    });
+    scene.inspector.execute('entityupdate', {
+      entity: tilted,
+      component: 'class',
+      value: 'user-group'
+    });
+
+    await expect(
+      dispatchToolCall('entityUpdate', {
+        entityId: 'm',
+        component: 'position',
+        value: '2 0 0'
+      })
+    ).resolves.toBe('entityupdate executed');
+    expect(member.getAttribute('position')).toEqual({ x: 2, y: 0, z: 0 });
+
+    await expect(
+      dispatchToolCall('componentAdd', {
+        entityId: 'g',
+        component: 'scale',
+        value: '2 2 2'
+      })
+    ).rejects.toThrow(`componentadd refused: ${NO_SCALE}`);
   });
 });
