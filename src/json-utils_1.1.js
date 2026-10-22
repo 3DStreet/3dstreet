@@ -20,6 +20,7 @@ import {
   migratePedestriansDirection,
   migrateShowBuildingsFlag
 } from './tested/street-segment-utils';
+import { isStreetmixURL } from './tested/streetmix-utils.js';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
 import {
@@ -1198,7 +1199,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
         }, 1000);
         return;
       }
-      if (streetURL.includes('//streetmix.net')) {
+      if (isStreetmixURL(streetURL)) {
         console.log(
           '[set-loader-from-hash]',
           'Create new street with Streetmix URL',
