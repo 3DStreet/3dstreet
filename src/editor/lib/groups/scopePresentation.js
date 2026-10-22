@@ -5,17 +5,9 @@
 // members' bounds (whatever is selected inside it has its own selection box)
 // and a scrim darkens the scene outside the box's outline on screen. Both
 // appear in the same task as the change of open group, so they are on screen
-// in the next frame. Fading what is outside the group (`outsideFade`) is
-// costlier and follows: it is enabled after the first render that shows the
-// outline and scrim, one animation frame later. A switch between open groups
-// keeps the outside faded throughout: the new group's fade replaces the old
-// one's in the same task.
-// Every change of open group makes pending work for the previous one
-// obsolete: it is cancelled, and anything that still runs checks the scope
-// generation it was scheduled for.
-//
-// Each step leaves a `performance` mark carrying that generation, so how long
-// entry takes can be measured in any build.
+// in the next frame. The scene itself is drawn as it is: nothing outside the
+// group is faded, which would cost a blended draw of the whole outside every
+// frame.
 
 import Events from '../Events';
 import { FRAME_ORDER, PER_ITEM_PASS_MAX_THROWS } from '../editorFrame.js';
@@ -25,18 +17,6 @@ import { getGroupBounds } from './groupBounds.js';
 import { isHiddenInHierarchy, isUserGroup } from './groupModel.js';
 import { projectBoxSilhouette } from './projectBox.js';
 import { ScopeScrim } from './scopeScrim.js';
-
-export const SCOPE_MARKS = Object.freeze({
-  open: 'group-scope:open',
-  outlinedFrame: 'group-scope:outlined-frame',
-  fadeEnabled: 'group-scope:fade-enabled',
-  firstFadedFrame: 'group-scope:first-faded-frame'
-});
-const ALL_MARKS = Object.values(SCOPE_MARKS);
-
-function mark(name, generation) {
-  performance.mark(name, { detail: { generation } });
-}
 
 const OUTLINE_COLOR = 0xffffff;
 // Corner pairs of a box's twelve edges; corner i has max x when i & 1, max y
@@ -84,8 +64,7 @@ function writeBoxEdges(box, out) {
 function noRaycast() {}
 
 /**
- * The outline and scrim of the open group, and the schedule of its outside
- * fade. `lines` supplies the viewport's screen-space line helpers:
+ * The outline and scrim of the open group. `lines` supplies the viewport's screen-space line helpers:
  * `createLineMaterial(color)` and `setLinePositions(lines, positions)`.
  */
 export class ScopePresentation {
@@ -111,21 +90,11 @@ export class ScopePresentation {
       group: new THREE.Matrix4(),
       box: new THREE.Box3()
     };
-    // The scope generation the last render window presented.
-    this.windowGeneration = null;
-    // Entry work scheduled for the current scope, until it has run.
-    this.pending = null;
-    // The fade of what is outside the open group, a ScopeFade (see
-    // scopeFade.js). None until one is provided.
-    this.outsideFade = null;
 
-    this.onScopeChanged = (detail) => this.scopeChanged(detail.generation);
+    this.onScopeChanged = () => this.scopeChanged();
     Events.on('groupscopechanged', this.onScopeChanged);
     this.unregisterFrame = editorFrame.register(
-      (context) => {
-        this.present(context.camera);
-        this.windowGeneration = this.controller.generation;
-      },
+      (context) => this.present(context.camera),
       // After the bounds and the markers, so the outline and the scrim use
       // this frame's box. Placing catches nothing per item, so a persistent
       // defect is dropped after a few frames rather than the first.
@@ -137,7 +106,6 @@ export class ScopePresentation {
   }
 
   dispose() {
-    this.cancelPending();
     Events.off('groupscopechanged', this.onScopeChanged);
     this.unregisterFrame();
     this.scrim.dispose();
@@ -161,76 +129,17 @@ export class ScopePresentation {
 
   // -------------------------------------------------------------- entry
 
-  scopeChanged(generation) {
-    this.cancelPending();
+  scopeChanged() {
     const groupEl = this.shownInnermostGroup();
     if (!groupEl) {
-      this.outsideFade?.close();
       this.clear();
       return;
     }
-    for (const name of ALL_MARKS) performance.clearMarks(name);
-    mark(SCOPE_MARKS.open, generation);
-
     // Show the outline and scrim now, from the camera and group as they are.
     const camera = this.inspector.camera;
     camera.updateMatrixWorld();
     groupEl.object3D.updateWorldMatrix(true, false);
     this.present(camera);
-
-    // A switch from one open group to another, with the outside already
-    // faded: fade the new outside in the same step, so nothing outside is
-    // ever drawn at full strength in between.
-    if (this.outsideFade?.enabled) {
-      this.outsideFade.switchTo(groupEl, generation);
-      mark(SCOPE_MARKS.fadeEnabled, generation);
-      return;
-    }
-    this.outsideFade?.restore();
-
-    const pending = { generation, unregisterAfter: null, frameRequest: null };
-    pending.unregisterAfter = this.editorFrame.register(
-      () => this.afterRender(pending),
-      { phase: 'after', order: FRAME_ORDER.openGroupEntry }
-    );
-    this.pending = pending;
-  }
-
-  // At the end of a render: once one has shown the innermost open group's
-  // outline and scrim, the outside fade is due on the next animation frame.
-  afterRender(pending) {
-    if (this.windowGeneration !== pending.generation) return;
-    pending.unregisterAfter();
-    pending.unregisterAfter = null;
-    mark(SCOPE_MARKS.outlinedFrame, pending.generation);
-    pending.frameRequest = requestAnimationFrame(() =>
-      this.enableFade(pending.generation)
-    );
-  }
-
-  enableFade(generation) {
-    // Scheduled for a scope that has since changed: obsolete.
-    if (generation !== this.controller.generation) return;
-    const groupEl = this.shownInnermostGroup();
-    if (!groupEl) return;
-    this.pending = null;
-    this.outsideFade?.apply(groupEl, generation);
-    mark(SCOPE_MARKS.fadeEnabled, generation);
-  }
-
-  /** The first render drawn with the outside faded has ended. */
-  firstFadedFrame(generation) {
-    mark(SCOPE_MARKS.firstFadedFrame, generation);
-  }
-
-  cancelPending() {
-    const pending = this.pending;
-    if (!pending) return;
-    this.pending = null;
-    pending.unregisterAfter?.();
-    if (pending.frameRequest !== null) {
-      cancelAnimationFrame(pending.frameRequest);
-    }
   }
 
   // -------------------------------------------------------------- drawing

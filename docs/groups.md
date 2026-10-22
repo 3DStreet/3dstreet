@@ -59,9 +59,7 @@ every tick has run (including a gizmo drag) and three has updated every
 transforms and land before the frame is drawn. `FRAME_ORDER` in the same file
 names where each piece of the groups code runs: the bounds, then the
 selection and hover boxes of a group that moved or turned as a whole, the
-center markers, the outline and scrim, and the fading of the outside; after the
-render, the fading is undone before the step of opening a group that waits for
-that render.
+center markers, and the outline and scrim.
 
 - Anything a callback poses after three's matrix update calls that object's
   own `updateMatrixWorld(true)`.
@@ -180,73 +178,11 @@ so it has no handles.
   line's thickness), so what is being drawn is never under the scrim. The
   group's center, handles and stand point change only when the shape is
   created: the drawing is not stored in the group's bounds.
-- Fading the outside follows one animation frame after the first render that
-  shows the outline. Every change of open group cancels pending work for the
-  previous one, and anything that still runs checks the scope generation it
-  was scheduled for.
-- Each step leaves a `performance` mark (`group-scope:open`,
-  `group-scope:outlined-frame`, `group-scope:fade-enabled`,
-  `group-scope:first-faded-frame`) carrying the generation, so entry time
-  can be measured in any build.
-
-## Fading the outside
-
-While a group is open, scene content outside it is drawn at a fifth of its own
-opacity (`scopeFade.js`). Editor helpers in the helper scene are drawn
-normally; an outside object's own editor-only parts, such as a shape's
-see-through outline, fade with it. Nothing saved changes, and visibility is
-never written.
-
-- **Meshes** are drawn with a faded copy of their material, swapped in at the
-  start of each render and swapped back at its end. Outside the render window
-  every material is the original, so batching, exporters and the serializer
-  never see a copy. A copy is refreshed when its original changes (a texture
-  arrives, a material is replaced), and follows whether its original draws
-  colour, as a shape's fill does once it is painted. Copies are transparent,
-  write no depth, and scale a cutout's alpha test with its opacity.
-- The shadow pass runs inside the window, so an outside cutout casts a
-  slightly wider shadow while a group is open.
-- A shader material with no `opacity` uniform cannot be faded and is drawn as
-  it is.
-- Content that arrives while a group is open is classified before it is first
-  drawn. A shape that is created or redrawn while a group is open is
-  classified as it is rebuilt: it rebuilds its meshes without any A-Frame
-  event, so the fade listens for its own `shape-geometry-changed`.
-- If a render window throws, every swap is undone and fading stops for the
-  session; the group stays open.
-- **Captures and exports** see the original appearance. A synchronous render
-  that is read back runs inside `withOriginalAppearanceSync`; an export that
-  reads materials across awaits runs inside `withOriginalAppearance`. A new
-  capture or export path needs one of them. While an export runs, the viewport
-  shows the outside unfaded.
-
-### Batches
-
-A batch (`batch-models.js`) can hold instances on both sides of the group, so
-it is split per instance for each render (`fadeBatches.js`). The batch
-keeps only its inside instances for the window's camera and everything for any
-other camera, so shadows are unchanged. A second `BatchedMesh`, attached as
-its child for the render, draws the outside instances with a faded material.
-
-That second mesh shares the batch's data through fields private to three.js
-(`SHARED_FIELDS`), re-bound from the batch at every render, so it never
-depends on when three replaces them. It never calls `dispose()`, which would
-free data it borrows. At run time the fields and `THREE.REVISION` are checked
-against `SUPPORTED_THREE_REVISION`; a batch that does not fit keeps its outside
-instances unfaded and logs one warning. After a three.js upgrade, check the
-fields against `BatchedMesh` and update the revision;
-`test/components/group-fade-real-three.test.js` runs the split against the
-real `BatchedMesh`.
-
-### Map layers and splats
-
-- Google 3D Tiles, the 2D basemap and OSM buildings fade through their own
-  opacity path, because their tile materials must keep their identity. Each
-  multiplies a presentation factor (`src/tested/reference-layer-presentation.js`)
-  into its opacity; the saved `opacity` never changes. They keep depth writes,
-  as the layer opacity policy requires.
-- A Gaussian splat fades through its own `opacity`, restored on exit unless
-  something else has set it meanwhile.
+- The scene itself is drawn as it is: nothing outside the group is faded,
+  and nothing saved or rendered changes. A fade of the outside was tried and
+  dropped (PR #2094): drawing the whole outside blended each frame halved the
+  frame rate on integrated graphics, and the scrim already marks what is
+  outside.
 
 ## Adding items while a group is open
 

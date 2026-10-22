@@ -30,21 +30,12 @@ const installed = new WeakMap();
  * - `groupMarkers`: place the center markers at this frame's centers.
  * - `openGroupOutline`: pose the open group's outline and scrim around this
  *   frame's box.
- * - `outsideFade`: swap the faded materials in, last before drawing.
- *
- * After the render:
- * - `outsideFadeEnd`: swap the original materials back, before
- * - `openGroupEntry`: the step of opening a group that waits for the first
- *   render showing the outline.
  */
 export const FRAME_ORDER = Object.freeze({
   groupBounds: 20,
   groupHelpers: 25,
   groupMarkers: 30,
-  openGroupOutline: 40,
-  outsideFade: 50,
-  outsideFadeEnd: -10,
-  openGroupEntry: 0
+  openGroupOutline: 40
 });
 
 /**

@@ -26,7 +26,6 @@ import { FRAME_ORDER, PER_ITEM_PASS_MAX_THROWS } from '../editorFrame.js';
 import { ensureId } from '../entity';
 import { isReparentInFlight } from '../commands/EntityReparentCommand.js';
 import { GroupAffordances } from './groupAffordances.js';
-import { ScopeFade } from './scopeFade.js';
 import { ScopePresentation } from './scopePresentation.js';
 import {
   isHiddenInHierarchy,
@@ -87,13 +86,6 @@ export function installGroupScope(inspector, editorFrame, { lines }) {
     editorFrame,
     lines
   );
-  controller.outsideFade = new ScopeFade({
-    sceneEl: inspector.sceneEl,
-    editorFrame,
-    onFirstFadedFrame: (generation) =>
-      controller.presentation.firstFadedFrame(generation)
-  });
-  controller.presentation.outsideFade = controller.outsideFade;
   inspector.groupScope = controller;
   return controller;
 }
@@ -157,7 +149,6 @@ export class GroupScopeController {
     this.unregisterFrame?.();
     this.affordances.dispose();
     this.presentation?.dispose();
-    this.outsideFade?.dispose();
   }
 
   // ------------------------------------------------------------ read-only state

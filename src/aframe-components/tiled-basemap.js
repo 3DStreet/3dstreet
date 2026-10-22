@@ -6,10 +6,6 @@ import {
   XYZTilesOverlay
 } from '3d-tiles-renderer/plugins';
 import { applyReferenceLayerOpacity } from '../tested/transparent-layering.js';
-import {
-  getPresentationFactor,
-  subscribePresentationFactor
-} from '../tested/reference-layer-presentation.js';
 
 // Web Mercator equatorial circumference in meters. GeneratedSurfacePlugin's
 // planar mode emits the whole world as a 1×1 normalized square centered at
@@ -71,7 +67,7 @@ AFRAME.registerComponent('tiled-basemap', {
     this.onLoadModel = ({ scene }) => {
       // Apply opacity per tile as it loads — no per-frame traversal and no
       // flash of opaque tiles popping in (same pattern as google3d).
-      if (this.effectiveOpacity() < 1) {
+      if (this.data.opacity < 1) {
         this.applyOpacityToObject(scene);
       }
     };
@@ -91,11 +87,6 @@ AFRAME.registerComponent('tiled-basemap', {
     document.addEventListener('visibilitychange', this.onVisibilityChange);
 
     this.createTiles();
-
-    // The editor fades the map while a group is open for editing.
-    this.unsubscribePresentation = subscribePresentationFactor(() =>
-      this.applyOpacityToLoadedTiles()
-    );
 
     if (AFRAME.INSPECTOR && AFRAME.INSPECTOR.opened) {
       // emit play event to start loading tiles in aframe-inspector
@@ -178,12 +169,7 @@ AFRAME.registerComponent('tiled-basemap', {
   // alpha blending below it (same as google-maps-aerial). While translucent
   // the tiles are overlays drawn after the splats (#1754).
   applyOpacityToObject: function (object) {
-    applyReferenceLayerOpacity(object, this.effectiveOpacity());
-  },
-
-  // The layer's opacity as drawn: its own, times the presentation factor.
-  effectiveOpacity: function () {
-    return this.data.opacity * getPresentationFactor();
+    applyReferenceLayerOpacity(object, this.data.opacity);
   },
 
   applyOpacityToLoadedTiles: function () {
@@ -245,8 +231,6 @@ AFRAME.registerComponent('tiled-basemap', {
   },
 
   remove: function () {
-    this.unsubscribePresentation?.();
-    this.unsubscribePresentation = null;
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
     this.disposeTiles();
   }

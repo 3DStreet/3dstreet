@@ -8,10 +8,6 @@ import {
   ReorientationPlugin
 } from '3d-tiles-renderer/plugins';
 import { applyReferenceLayerOpacity } from '../tested/transparent-layering.js';
-import {
-  getPresentationFactor,
-  subscribePresentationFactor
-} from '../tested/reference-layer-presentation.js';
 
 // The pre-0.5.0 setLatLonToYUp() oriented the tileset with +Y altitude,
 // +X north, +Z east. ReorientationPlugin's default frame is +X west,
@@ -116,7 +112,7 @@ AFRAME.registerComponent('google-maps-aerial', {
     this.tiles.addEventListener('load-model', ({ scene }) => {
       // Apply opacity to each tile as it loads, before its first render —
       // no per-frame traversal, and no flash of opaque tiles popping in.
-      if (this.effectiveOpacity() < 1) {
+      if (this.data.opacity < 1) {
         this.applyOpacityToObject(scene);
       }
 
@@ -157,16 +153,6 @@ AFRAME.registerComponent('google-maps-aerial', {
       }
     };
     document.addEventListener('visibilitychange', this.onVisibilityChange);
-
-    // The editor fades the map while a group is open for editing.
-    this.unsubscribePresentation = subscribePresentationFactor(() =>
-      this.applyOpacityToLoadedTiles()
-    );
-  },
-
-  // The layer's opacity as drawn: its own, times the presentation factor.
-  effectiveOpacity: function () {
-    return this.data.opacity * getPresentationFactor();
   },
 
   // Set opacity on every material under `object`, once — tiles keep their
@@ -175,7 +161,7 @@ AFRAME.registerComponent('google-maps-aerial', {
   // translucent the tiles are overlays drawn after the splats, so they blend
   // over them instead of hiding them (#1754).
   applyOpacityToObject: function (object) {
-    applyReferenceLayerOpacity(object, this.effectiveOpacity());
+    applyReferenceLayerOpacity(object, this.data.opacity);
   },
 
   applyOpacityToLoadedTiles: function () {
@@ -372,8 +358,6 @@ AFRAME.registerComponent('google-maps-aerial', {
   },
 
   remove: function () {
-    this.unsubscribePresentation?.();
-    this.unsubscribePresentation = null;
     if (this.onVisibilityChange) {
       document.removeEventListener('visibilitychange', this.onVisibilityChange);
       this.onVisibilityChange = null;
