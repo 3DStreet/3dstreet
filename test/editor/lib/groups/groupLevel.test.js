@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Events from '@/editor/lib/Events.js';
 import { TRANSFORM_REFUSED } from '@/editor/lib/transformGuard.js';
-import { routeGroupLevel } from '@/editor/lib/groups/groupLevel.js';
+import { routeKindLimits } from '@/editor/lib/groups/groupLevel.js';
 import { entityIn, mountPlacementScene } from './_placementHarness.js';
 import { setFixtureMixin } from './_entityElement.js';
 
@@ -191,7 +191,7 @@ describe('a mixin given to a group', () => {
       rotation: '0 40 0'
     });
     const payload = { entity: g, component: 'mixin', value: 'bar' };
-    expect(routeGroupLevel('entityupdate', payload).levelled).toBe(null);
+    expect(routeKindLimits('entityupdate', payload).levelled).toBe(null);
 
     inspector.execute('entityupdate', payload);
     expect(g.getAttribute('mixin')).toBe('bar');
@@ -209,10 +209,11 @@ describe('a mixin given to a group that shows a tilt and a scale', () => {
       scale: '2 2 2'
     });
     const payload = { entity: g, component: 'mixin', value: 'bar' };
-    expect(routeGroupLevel('entityupdate', payload).levelled).toEqual({
+    expect(routeKindLimits('entityupdate', payload).levelled).toEqual({
       rotation: { x: 10, y: 30, z: 0 },
       scale: { x: 2, y: 2, z: 2 },
-      becameGroup: false
+      becameKind: false,
+      kind: 'group'
     });
     inspector.execute('entityupdate', payload);
     expect(g.getDOMAttribute('rotation')).toEqual({ x: 0, y: 30, z: 0 });
@@ -234,7 +235,7 @@ describe('a mixin the document defines', () => {
     defineMixin('turned', { rotation: '0 90 0', scale: '1 1 1' });
     const g = entityIn(root, { id: 'g', cls: 'user-group' });
     const payload = { entity: g, component: 'mixin', value: 'turned' };
-    expect(routeGroupLevel('entityupdate', payload)).toBe(null);
+    expect(routeKindLimits('entityupdate', payload)).toBe(null);
     inspector.execute('entityupdate', payload);
     expect(g.hasAttribute('rotation')).toBe(false);
     expect(g.hasAttribute('scale')).toBe(false);
@@ -271,7 +272,7 @@ describe('a mixin the document defines', () => {
     });
     g.setAttribute('mixin', 'turned');
     const payload = { entity: g, component: 'rotation', value: null };
-    expect(routeGroupLevel('entityupdate', payload)).toBe(null);
+    expect(routeKindLimits('entityupdate', payload)).toBe(null);
   });
 });
 
@@ -291,7 +292,7 @@ describe('writes that do not make a group', () => {
         ['mixin', 'bar']
       ]) {
         const payload = { entity, component, value };
-        expect(routeGroupLevel('entityupdate', payload)).toBe(null);
+        expect(routeKindLimits('entityupdate', payload)).toBe(null);
         inspector.execute('entityupdate', payload);
       }
     }

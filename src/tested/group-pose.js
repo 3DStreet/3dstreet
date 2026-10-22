@@ -1,24 +1,24 @@
-// A user group always has scale 1 and X/Z rotation 0: it turns about the
-// vertical axis only and is never scaled. "Levelling" a group means bringing it
-// back to that, keeping the direction it faces.
+// An item whose kind declares transform limits (src/tested/transform-kinds.js)
+// is kept within them: a group or a shape has scale 1 and no X/Z rotation; a
+// managed street or intersection has scale 1 and may tilt. Bringing an item
+// within its limits keeps its position and the direction it faces. "Level"
+// means no X/Z rotation; levelledValue and the levelled names it feeds are
+// older and also cover unit scale.
 //
-// This module holds what every route that levels a group shares: one reading
-// of a vec3 value, so the command guard, the levelling and A-Frame agree on
-// what a value means; what counts as level and unit; and the levelling of
-// entity data — a scene being loaded, clipboard text, a create definition —
-// before any entity is minted from it.
+// This module holds what every route that keeps an item within its limits
+// shares: one reading of a vec3 value, so the command guard, the conforming
+// and A-Frame agree on what a value means; what counts as level and unit; and
+// the conforming of entity data — a scene being loaded, clipboard text, a
+// create definition — before any entity is minted from it.
 //
 // Pure data: no AFRAME, no DOM, no logging, so it can be unit-tested directly.
+
+import { kindById, kindsOfNode, limitedComponents } from './transform-kinds.js';
 
 // A scale within this of 1, or an angle within this many degrees of 0, counts
 // as unit or level. It absorbs float noise from string round-trips; it is not a
 // tolerance anyone should rely on.
 export const POSE_EPS = 1e-3;
-
-// The class a saved scene carries on a user group. The same constant as
-// groups/groupModel.js's; declared again because this module imports nothing
-// from the editor, and a test keeps the two equal.
-export const USER_GROUP_CLASS = 'user-group';
 
 export const ROTATION_DEFAULT = Object.freeze({ x: 0, y: 0, z: 0 });
 export const SCALE_DEFAULT = Object.freeze({ x: 1, y: 1, z: 1 });
@@ -113,7 +113,7 @@ export function isUnitScale(scale) {
   return AXES.every((axis) => Math.abs(s[axis] - 1) <= POSE_EPS);
 }
 
-/** Does `value` already conform for a group's `component` (rotation or scale)? */
+/** Does `value` already conform for `component` (rotation: level; scale: unit)? */
 export function conforms(component, value) {
   return component === 'scale' ? isUnitScale(value) : isLevel(value);
 }
@@ -172,33 +172,25 @@ export function levelledValue(component, value) {
   return value && typeof value === 'object' ? { x: 1, y: 1, z: 1 } : '1 1 1';
 }
 
-function classListOf(node) {
-  const list = [];
-  for (const value of [node.class, node.components?.class]) {
-    if (Array.isArray(value)) list.push(...value.map(String));
-    else if (typeof value === 'string') list.push(...value.split(/\s+/));
-  }
-  return list;
-}
-
-function isGroupNode(node) {
-  return classListOf(node).includes(USER_GROUP_CLASS);
-}
-
-// Level one group's own data. Returns its change record, or null when nothing
-// it shows had to change.
-function levelNode(node, mixinPose) {
+// Bring one constrained item's own data within its kinds' limits, for the
+// components they limit. Returns its change record, or null when nothing it
+// shows had to change.
+function conformNode(node, kinds, mixinPose) {
   const components = node.components ?? {};
-  const change = { id: node.id, name: node['data-layer-name'] };
+  const change = {
+    id: node.id,
+    name: node['data-layer-name'],
+    kind: kinds[0].id
+  };
   let changed = false;
   const hasMixin = typeof node.mixin === 'string' && node.mixin.trim() !== '';
   // A mixin's scale or rotation shows on an entity with no value of its own.
   // When the mixins can be read, what they supply is judged like an own value;
   // when they cannot, both are written explicitly (an own value outranks a
-  // mixin's), level and unit, unreported since the old value is unknown.
+  // mixin's), level or unit, unreported since the old value is unknown.
   const fromMixin = hasMixin && mixinPose ? mixinPose(node.mixin) : undefined;
 
-  for (const component of ['rotation', 'scale']) {
+  for (const component of limitedComponents(kinds)) {
     let shown = components[component];
     if (shown === undefined && hasMixin) {
       if (!fromMixin) {
@@ -225,25 +217,30 @@ function levelNode(node, mixinPose) {
 }
 
 /**
- * Level every user group in an entity-data tree, in place: a scene's `data`
- * array, a getElementData result or an entitycreate definition. Groups lose
- * any scale and any X/Z rotation and keep their facing; members' values are
- * never touched, and a nested group is levelled in its own frame.
+ * Bring every constrained item in an entity-data tree within its kind's limits,
+ * in place: a scene's `data` array, a getElementData result or an entitycreate
+ * definition. An item is constrained when its class or a component makes it a
+ * kind that declares limits. It loses any scale, and a heading-only kind (a
+ * group, a shape) also loses any X/Z rotation, keeping its facing; a managed
+ * street or intersection keeps its rotation as saved. Other components and
+ * other items are never touched, and a nested item is handled in its own
+ * frame.
  *
- * `mixinPose(mixinAttribute)`, when given, returns the {rotation?, scale?} a
- * group's mixins supply, or null when they cannot be read; see levelNode.
+ * `mixinPose(mixinAttribute)`, when given, returns the {rotation?, scale?} an
+ * item's mixins supply, or null when they cannot be read; see conformNode.
  *
- * Returns one record per group whose shown values changed, in document order
- * (parent before child): {id, name, rotation?, newY?, scale?}, holding the
- * values as they were, plus the new Y rotation when the facing had to be
- * rewritten to a different Y.
+ * Returns one record per item whose shown values changed, in document order
+ * (parent before child): {id, name, kind, rotation?, newY?, scale?}, holding
+ * the values as they were, the id of the item's kind, and the new Y rotation
+ * when the facing had to be rewritten to a different Y.
  */
-export function levelGroupPoses(nodes, { mixinPose } = {}) {
+export function conformToKindLimits(nodes, { mixinPose } = {}) {
   const changes = [];
   const walk = (node) => {
     if (!node || typeof node !== 'object') return;
-    if (isGroupNode(node)) {
-      const change = levelNode(node, mixinPose);
+    const kinds = kindsOfNode(node);
+    if (kinds.length > 0) {
+      const change = conformNode(node, kinds, mixinPose);
       if (change) changes.push(change);
     }
     if (Array.isArray(node.children)) node.children.forEach(walk);
@@ -265,17 +262,24 @@ function describeChange(change) {
     const s = parseVec3LikeAFrame(change.scale, DEFAULTS.scale);
     parts.push(`scale ${s.x} ${s.y} ${s.z}`);
   }
-  const label = change.name || change.id;
-  const who = label ? `"${label}"` : '(unnamed)';
-  return `${who} (${parts.join(', ')})`;
+  const name = change.name || change.id;
+  const who = name ? `"${name}"` : '(unnamed)';
+  const kind = kindById(change.kind).label;
+  return `${kind} ${who} (removed ${parts.join(', ')})`;
 }
 
-/** The load warning for `changes` (from levelGroupPoses), or null for none. */
-export function describeLevelledGroups(changes) {
+/**
+ * The load warning for `changes` (from conformToKindLimits), or null for none.
+ * Each item names what was removed; everything else it had is kept.
+ */
+export function describeConformedItems(changes) {
   if (!changes?.length) return null;
-  const noun = changes.length === 1 ? 'group' : 'groups';
+  const items =
+    changes.length === 1
+      ? "1 item within its kind's limits"
+      : `${changes.length} items within their kinds' limits`;
   return (
-    `[groups] Removed tilt or scale from ${changes.length} ${noun} on load; ` +
-    `heading and position kept: ${changes.map(describeChange).join(', ')}.`
+    `[scene-load] Brought ${items}; position and facing kept: ` +
+    `${changes.map(describeChange).join(', ')}.`
   );
 }
