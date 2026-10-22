@@ -152,10 +152,11 @@ async function click(name, init) {
   await settle();
 }
 
-// A double-click on a row as the browser is specified to deliver it (UI
-// Events: a press and a click carrying each click count, then dblclick).
-// Each event goes to the row shown under the pointer at that moment, as in
-// the browser: each top-level block of rows is keyed by its last row's
+// A double-click on a row in the order the UI Events spec gives: a press and
+// a click carrying each click count, then dblclick. No recorded browser trace
+// backs this order or the second press's count of 2, so both need checking by
+// hand in a real browser. Each event goes to the row shown under the pointer
+// at that moment: each top-level block of rows is keyed by its last row's
 // index, so the first click remounts the block when it expands a group.
 async function doubleClick(name) {
   for (const detail of [1, 2]) {

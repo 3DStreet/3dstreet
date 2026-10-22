@@ -318,10 +318,10 @@ class SceneGraph extends React.Component {
     if (!skip) Events.emit('objectfocus', entity.object3D);
   };
 
-  // The first press of a new click run ends any camera skip a row's step out
-  // left, so it only ever applies to that click's own double-click, never to
-  // a later one (such as a double-click on the row's expand arrow, whose
-  // clicks do not reach the row).
+  // The first press of a new click clears skipFocusFor, so the skip applies
+  // only to the double-click of the click that set it, not to a later one
+  // such as a double-click on the row's expand arrow, whose clicks do not
+  // reach the row.
   onListMouseDown = (event) => {
     if (event.detail <= 1) this.skipFocusFor = null;
   };
