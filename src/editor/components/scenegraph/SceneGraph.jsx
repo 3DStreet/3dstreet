@@ -65,6 +65,10 @@ const DROP_STRIP = 'drop-strip';
 // inside the list at its top edge), placed absolutely so showing it moves
 // nothing. A drop that lands in a group starts at that level's indent, with a
 // chevron for "inside"; any other runs the full width.
+// How far a drop line stops short of the list's edges, so it ends inside the
+// open group's white box (drawn 3px in from the rows' edges, 1px wide).
+const DROP_LINE_INSET_PX = 4;
+
 function DropLine({ gapY, indentPx }) {
   const atLevel = indentPx != null;
   return (
@@ -72,7 +76,7 @@ function DropLine({ gapY, indentPx }) {
       className={classNames('drop-line', { 'at-level': atLevel })}
       style={{
         top: `${Math.max(0, gapY - 1)}px`,
-        left: `${atLevel ? indentPx : 0}px`
+        left: `${atLevel ? indentPx : DROP_LINE_INSET_PX}px`
       }}
       aria-hidden="true"
     >
@@ -204,7 +208,7 @@ class SceneGraph extends React.Component {
     if (openGroup && openGroup !== this.shownOpenGroup) {
       this.state.expandedElements.set(openGroup, true);
       this.expandToRoot(openGroup);
-      this.scrollToRowSoon(openGroup, () => !this.props.selectedEntity);
+      this.scrollToBlockSoon(openGroup, () => !this.props.selectedEntity);
     }
     this.shownOpenGroup = openGroup;
   };
@@ -286,6 +290,36 @@ class SceneGraph extends React.Component {
         nodeRect.bottom <= containerRect.bottom;
       if (!isVisible) {
         node.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
+  // Like scrollToRowSoon, for a group's row and the rows listed under it:
+  // scroll as little as brings the whole block into view, or, when it is
+  // taller than the list, bring its top row to the top.
+  scrollToBlockSoon = (group, shouldScroll = () => true) => {
+    setTimeout(() => {
+      if (!shouldScroll()) return;
+      const nodes = [];
+      this.state.entities.forEach((o, i) => {
+        if (o.entity !== group && !group.contains(o.entity)) return;
+        const node = document.getElementById('sgnode' + i);
+        if (node) nodes.push(node);
+      });
+      const container = document.querySelector('#scenegraph .layers');
+      if (!nodes.length || !container) return;
+      const view = container.getBoundingClientRect();
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      const top = first.getBoundingClientRect().top;
+      const bottom = Math.max(
+        ...nodes.map((node) => node.getBoundingClientRect().bottom)
+      );
+      if (top >= view.top && bottom <= view.bottom) return;
+      if (top < view.top || bottom - top > view.bottom - view.top) {
+        first.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        last.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
     }, 100);
   };
@@ -799,15 +833,7 @@ class SceneGraph extends React.Component {
       this.isVisibleInSceneGraph(entityOption.entity)
     );
     const openGroup = this.innermostOpenGroup();
-    // The open group's outline gives way to a drop into the group, whose
-    // border marks its row.
-    const dropIntoOpen =
-      !!openGroup &&
-      this.state.insertionInfo?.position === 'child' &&
-      this.state.insertionInfo?.ref === openGroup;
-    const blockParts = dropIntoOpen
-      ? []
-      : openBlockParts(entityOptions, openGroup);
+    const blockParts = openBlockParts(entityOptions, openGroup);
     let children = [];
     for (let i = 0; i < entityOptions.length; i++) {
       const entityOption = entityOptions[i];

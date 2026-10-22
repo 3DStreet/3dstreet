@@ -46,7 +46,8 @@
     position: absolute;
     z-index: 1;
     display: block;
-    right: 0;
+    // Ends inside the open group's white box (DROP_LINE_INSET_PX).
+    right: 4px;
     height: 2px;
     background: variables.$blue-100;
     pointer-events: none;
@@ -277,7 +278,8 @@
     // open group. Each row draws its own part; rows sit flush, so the parts
     // join: each part reaches over its row's transparent border, so the side
     // lines run unbroken. Not the border itself, which marks a drop into a
-    // group and whose width the drop levels count.
+    // group (the box stays on during one) and whose width the drop levels
+    // count.
     &.open-block-first,
     &.open-block-middle,
     &.open-block-last,

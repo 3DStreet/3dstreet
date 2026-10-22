@@ -262,6 +262,37 @@ describe('the layer panel showing the open group', () => {
     act(() => h.groupScope.open(B));
     await flushRows();
     await waitForScroll();
+    // The block (Group B, Tree, Group C) fits, so its last row is brought up
+    // to the bottom of the list.
+    expect(scrolled).toEqual(['sgnode3']);
+  });
+
+  it('brings a half-hidden opened group into view with its members, when they fit (fails if only its own row is checked)', async () => {
+    const { B } = buildScene();
+    stubLayout({
+      sgnode1: { top: 380, bottom: 420 },
+      sgnode2: { top: 420, bottom: 460 },
+      sgnode3: { top: 460, bottom: 500 }
+    });
+    await renderPanel();
+    vi.useFakeTimers();
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
+    expect(scrolled).toEqual(['sgnode3']);
+  });
+
+  it('brings the top of an opened group taller than the list to the top (fails if it scrolls to its last row and hides the group)', async () => {
+    const { B } = buildScene();
+    stubLayout({
+      sgnode1: { top: 380, bottom: 420 },
+      sgnode3: { top: 800, bottom: 840 }
+    });
+    await renderPanel();
+    vi.useFakeTimers();
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
     expect(scrolled).toEqual(['sgnode1']);
   });
 
@@ -286,7 +317,7 @@ describe('the layer panel showing the open group', () => {
     await flushRows();
     await waitForScroll();
     expect(listed('Tree')).toBe(true);
-    expect(scrolled).toEqual(['sgnode1']);
+    expect(scrolled).toEqual(['sgnode3']);
   });
 
   it("does not scroll when the opened group's row is in view (fails if opening always scrolls)", async () => {
@@ -380,7 +411,8 @@ describe('the layer panel showing the open group', () => {
     expect(selected()).toBe(null);
     await renderPanel();
     await act(() => new Promise((resolve) => setTimeout(resolve, 150)));
-    expect(scrolled).toContain('sgnode3');
+    // Group C's block ends at Cone's row, which comes into view at the bottom.
+    expect(scrolled).toContain('sgnode4');
   });
 
   it('stops listening for scope changes when it unmounts (fails if the listener is left behind)', async () => {
@@ -548,7 +580,7 @@ describe('a faded row', () => {
 });
 
 describe('the open mark during a drag', () => {
-  it('gives way to the highlight of a drop into the open group (fails if both show)', async () => {
+  it('stays on beside the highlight of a drop into the open group (fails if the drop hides it)', async () => {
     const { B } = buildScene();
     await renderPanel();
     await run(() => h.groupScope.open(B));
@@ -557,8 +589,8 @@ describe('the open mark during a drag', () => {
     fireEvent.dragStart(row('Cone'), { dataTransfer: dataTransfer() });
     expect(dragOver(row('Group B'), 0.5)).toBe(true);
     expect(has('Group B', 'drop-child')).toBe(true);
-    expect(openMark('Group B')).toBe(false);
-    expect(document.querySelectorAll('[class*="open-block-"]')).toHaveLength(0);
+    expect(openMark('Group B')).toBe(true);
+    expect(blockPart('Cone')).toBe('last');
   });
 });
 

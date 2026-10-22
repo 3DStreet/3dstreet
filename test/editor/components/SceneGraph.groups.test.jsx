@@ -450,7 +450,7 @@ describe('drop levels at a gap where groups end', () => {
         // The top level keeps a full-width line without a chevron.
         expect(dropLine()).toEqual({
           top: lineAbove(row('Later')),
-          left: { 3: '66px', 2: '36px', 1: '0px' }[level],
+          left: { 3: '66px', 2: '36px', 1: '4px' }[level],
           chevron: level > 1
         });
         expect(await dropAndUndo(row(name))).toEqual(expected[level]);
@@ -517,7 +517,7 @@ describe('drop levels at a gap where groups end', () => {
     expect(dragOver(row('Bench'), 0.85, atLevel(3))).toBe(true);
     expect(dropLine()).toEqual({
       top: lineAbove(row('Later')),
-      left: '0px',
+      left: '4px',
       chevron: false
     });
     expect(await dropAndUndo(row('Bench'))).toEqual({
@@ -547,7 +547,7 @@ describe('drop levels at a gap where groups end', () => {
       expect(dragOver(strip(), 0.5, atLevel(level))).toBe(true);
       expect(dropLine()).toEqual({
         top: lineAbove(strip()),
-        left: { 3: '66px', 2: '36px', 1: '0px' }[level],
+        left: { 3: '66px', 2: '36px', 1: '4px' }[level],
         chevron: level > 1
       });
       expect(await dropAndUndo(strip())).toEqual(expected[level]);
@@ -598,7 +598,7 @@ describe('drop levels at a gap where groups end', () => {
         // A street is not a group: a full-width line.
         expect(dropLine()).toEqual({
           top: lineAbove(row('Lane 1')),
-          left: '0px',
+          left: '4px',
           chevron: false
         });
         expect(await dropAndUndo(row(name))).toEqual({
@@ -631,7 +631,7 @@ describe('drop gaps in a scene without groups', () => {
 
     // A full-width line without a chevron.
     const noLevels = () =>
-      expect(dropLine()).toMatchObject({ left: '0px', chevron: false });
+      expect(dropLine()).toMatchObject({ left: '4px', chevron: false });
 
     // (a) The header's lower zone is "after the street"; above the first
     // segment nothing but a segment may go.
@@ -982,7 +982,7 @@ describe('one drop line per gap', () => {
       owner: 'list',
       className: level > 1 ? 'drop-line at-level' : 'drop-line',
       top: `${top - 1}px`,
-      left: level > 1 ? `${6 + 30 * (level - 1)}px` : '0px',
+      left: level > 1 ? `${6 + 30 * (level - 1)}px` : '4px',
       chevron: level > 1
     }
   ];
