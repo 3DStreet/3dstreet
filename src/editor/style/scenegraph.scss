@@ -269,17 +269,24 @@
     // See ROW_CONTENT_INSET_PX in dropLevels.js.
     border: 2px solid transparent;
 
-    &.drop-child {
-      border-color: variables.$blue-100;
+    // A drop into this row: a blue box exactly where the open group's white
+    // box runs, and over it, so the two never sit side by side.
+    &.drop-child::before {
+      content: '';
+      position: absolute;
+      inset: 1px;
+      border: 2px solid variables.$blue-100;
+      pointer-events: none;
+      z-index: 2;
     }
 
     // The open group's block (its row and the rows listed inside it): one
     // white box just inside the rows' borders, as the canvas outlines the
     // open group. Each row draws its own part; rows sit flush, so the parts
     // join: each part reaches over its row's transparent border, so the side
-    // lines run unbroken. Not the border itself, which marks a drop into a
-    // group (the box stays on during one) and whose width the drop levels
-    // count.
+    // lines run unbroken. Not the border itself, whose width the drop
+    // levels count. It stays on during a drop into the group, under the
+    // drop's blue box.
     &.open-block-first,
     &.open-block-middle,
     &.open-block-last,
