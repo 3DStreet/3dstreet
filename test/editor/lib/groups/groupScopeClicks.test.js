@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import Events from '@/editor/lib/Events.js';
 import useStore from '@/store';
 import { captureNavDiscovery } from '@/editor/lib/navAnalytics.js';
+import { Shortcuts } from '@/editor/lib/shortcuts.js';
 import { group, item, mountEditor, solid } from './_editorHarness.js';
 
 const flags = vi.hoisted(() => ({ streetLevel: false }));
@@ -628,17 +629,213 @@ describe('reconciling the open groups', () => {
     expect(h.openIds()).toEqual([]);
   });
 
-  it('reopens the editor closed, with a member selected at exit replaced by its outermost group', () => {
-    const { A, tree } = nestedScene();
-    h.inspector.selectEntity(tree);
-    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+  it('drops a selection left inside a group with nothing open when the editor opens with nothing remembered (fails if the illegal state survives)', () => {
+    const { tree } = nestedScene();
     useStore.getState().setIsInspectorEnabled(false);
+    h.sceneEl.dispatchEvent(new CustomEvent('newScene'));
+    // As a scene load can leave it: a member selected, nothing open.
+    h.inspector.selectEntity(tree);
+    h.groupScope.setStack([]);
+    useStore.getState().setIsInspectorEnabled(true);
+    expect(h.openIds()).toEqual([]);
+    expect(selected()).toBe(null);
+  });
+});
+
+// The viewer shows no isolation; back in the editor the open groups
+// and the selection are as they were, as far as the scene still allows.
+describe('a round trip through the viewer', () => {
+  const leave = () => useStore.getState().setIsInspectorEnabled(false);
+  const back = () => useStore.getState().setIsInspectorEnabled(true);
+
+  it('closes everything while away and restores nested groups and the member selected', () => {
+    const { C, tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    leave();
     expect(h.openIds()).toEqual([]);
     expect(h.inspector.opened).toBe(false);
-    useStore.getState().setIsInspectorEnabled(true);
-    expect(h.inspector.opened).toBe(true);
-    expect(selected()).toBe(A);
+    back();
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(tree);
+    // Escape still steps out one level from there.
+    h.escape();
+    expect(h.openIds()).toEqual(['A', 'B']);
+    expect(selected()).toBe(C);
+  });
+
+  it('restores the groups when the selection is unchanged, announcing no selection (fails if restoring relies on a selection event)', () => {
+    const { tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    leave();
+    const onSelect = vi.fn();
+    Events.on('objectselect', onSelect);
+    const selectEntity = vi.spyOn(h.inspector, 'selectEntity');
+    back();
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(selectEntity).not.toHaveBeenCalled();
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+  });
+
+  it('restores open groups with nothing selected (fails if a null selection loses them)', () => {
+    const { C } = nestedScene();
+    h.groupScope.open(C);
+    expect(selected()).toBe(null);
+    leave();
+    back();
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(null);
+  });
+
+  it('keeps a closed group selected, at the top level or inside an open group', () => {
+    const { A, B } = nestedScene();
+    h.inspector.selectEntity(A);
+    leave();
+    back();
     expect(h.openIds()).toEqual([]);
+    expect(selected()).toBe(A);
+
+    h.inspector.selectEntity(B);
+    expect(h.openIds()).toEqual(['A']);
+    leave();
+    back();
+    expect(h.openIds()).toEqual(['A']);
+    expect(selected()).toBe(B);
+  });
+
+  it('keeps the remembered selection even if the inspector lost it while away', () => {
+    const { tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    leave();
+    h.inspector.selectEntity(null);
+    back();
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(tree);
+  });
+
+  it('forgets everything on a scene load while away, and clears a selection left detached', () => {
+    const { tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    leave();
+    tree.remove();
+    h.sceneEl.dispatchEvent(new CustomEvent('newScene'));
+    back();
+    expect(h.openIds()).toEqual([]);
+    expect(selected()).toBe(null);
+  });
+
+  it('never reopens a group of a newly loaded scene that shares an id with a remembered one', () => {
+    const { A, tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    leave();
+    A.remove();
+    h.sceneEl.dispatchEvent(new CustomEvent('newScene'));
+    const again = group(h.streetContainer, { id: 'A' });
+    solid(again, [0, 0, 0], [1, 1, 1]);
+    h.frame();
+    back();
+    expect(h.openIds()).toEqual([]);
+  });
+
+  it('reopens only the groups outside one hidden while away, with nothing selected', () => {
+    const { B, tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    leave();
+    B.object3D.visible = false;
+    back();
+    expect(h.openIds()).toEqual(['A']);
+    expect(selected()).toBe(null);
+  });
+
+  it('reopens the groups but selects nothing when the selected member was removed while away', () => {
+    const { tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    leave();
+    tree.remove();
+    back();
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(null);
+  });
+
+  it('stops at a group no longer inside the one before it', () => {
+    const { B, tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    leave();
+    h.streetContainer.append(B);
+    back();
+    expect(h.openIds()).toEqual(['A']);
+    expect(selected()).toBe(null);
+  });
+});
+
+// The viewer returns to the editor on Escape's key-down; the key-up of that
+// same press then reaches the editor's shortcuts.
+describe('the Escape that returns from the viewer', () => {
+  function returnOnEscapeDown() {
+    const onDown = (e) => {
+      if (e.keyCode !== 27) return;
+      window.removeEventListener('keydown', onDown);
+      // As the store does: the inspector opens, enabling its shortcuts,
+      // inside this key-down.
+      Shortcuts.enable();
+      useStore.getState().setIsInspectorEnabled(true);
+    };
+    window.addEventListener('keydown', onDown);
+  }
+
+  it('neither leaves a level nor clears the selection, and the next Escape leaves one', () => {
+    const { C, tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    useStore.getState().setIsInspectorEnabled(false);
+    Shortcuts.disable();
+    returnOnEscapeDown();
+    h.escape();
+    expect(h.inspector.opened).toBe(true);
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(tree);
+    h.escape();
+    expect(h.openIds()).toEqual(['A', 'B']);
+    expect(selected()).toBe(C);
+  });
+
+  it('control: with the shortcuts already listening, the same press leaves a level', () => {
+    const { tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    h.escape();
+    expect(h.openIds()).toEqual(['A', 'B']);
+  });
+
+  it('ignores a key-up whose key-down it never saw, and an auto-repeated key-down', () => {
+    const { tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    h.escapeKey('keyup');
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(tree);
+    h.escapeKey('keydown', { repeat: true });
+    h.escapeKey('keyup');
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(tree);
+  });
+
+  it('is not armed by a press in a text field', () => {
+    const { tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    const input = document.createElement('input');
+    document.body.append(input);
+    h.escapeKey('keydown', {}, input);
+    // Focus leaves the field before the key-up.
+    h.escapeKey('keyup');
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(tree);
+  });
+
+  it('is disarmed by losing focus between key-down and key-up', () => {
+    const { tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    h.escapeKey('keydown');
+    window.dispatchEvent(new Event('blur'));
+    h.escapeKey('keyup');
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(tree);
   });
 });
 
