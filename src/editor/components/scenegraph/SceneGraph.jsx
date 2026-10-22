@@ -308,6 +308,13 @@ class SceneGraph extends React.Component {
     this.selectEntity(entity);
   };
 
+  // A click on the panel below the rows leaves one level of the open groups,
+  // as Escape and a click outside the open group on the canvas do.
+  clickBelowRows = (event) => {
+    if (event.target.closest('.entity')) return;
+    AFRAME.INSPECTOR.groupScope?.escape();
+  };
+
   doubleClickRow = (entity) => {
     Events.emit('objectfocus', entity.object3D);
   };
@@ -970,7 +977,7 @@ class SceneGraph extends React.Component {
                 )}
               </div>
               {this.state.activeTab === 'layers' && (
-                <div className="layers">
+                <div className="layers" onClick={this.clickBelowRows}>
                   {this.state.entities.length === 0 ? (
                     <div className="layers-empty-state">
                       <p>

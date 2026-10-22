@@ -679,3 +679,29 @@ describe('renaming a group from its menu', () => {
 function findRowInput() {
   return document.querySelector('.entity .entityNameInput');
 }
+
+describe('a click on the panel below the rows', () => {
+  it('leaves one level, selecting the group it left, and does nothing with no group open (fails if it closes every level, or a row click reaches it)', async () => {
+    const { C } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(C));
+    fireEvent.click(document.querySelector('.layers-drop-end'));
+    await settle();
+    expect(h.openIds()).toEqual(['B']);
+    expect(selected()?.id).toBe('C');
+
+    fireEvent.click(document.querySelector('.layers'));
+    await settle();
+    expect(h.openIds()).toEqual([]);
+    expect(selected()?.id).toBe('B');
+
+    fireEvent.click(document.querySelector('.layers'));
+    await settle();
+    expect(selected()?.id).toBe('B');
+
+    await run(() => h.groupScope.open(C));
+    await click('Cone');
+    expect(selected()?.id).toBe('cone');
+    expect(h.openIds()).toEqual(['B', 'C']);
+  });
+});
