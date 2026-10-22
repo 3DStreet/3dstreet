@@ -14,6 +14,16 @@ import {
 // scene. The tile streaming library is replaced by a stand-in that loads
 // nothing; tile materials are prepared by its real fade manager.
 
+// shape.js statically imports the app store, which pulls in the Firebase and
+// PostHog chain; it reads only the units preference and takes one subscription
+// (see shape-fill-export.test.js).
+vi.mock('../../src/store.js', () => ({
+  default: {
+    getState: () => ({ unitsPreference: 'metric' }),
+    subscribe: () => () => {}
+  }
+}));
+
 vi.mock('3d-tiles-renderer', async () => {
   const { EventDispatcher, Group } = await import('three');
   class TilesRenderer extends EventDispatcher {
@@ -83,6 +93,7 @@ let ScopeFade;
 let installEditorFrame;
 let presentation;
 let FadeMaterialManager;
+let groupBounds;
 
 beforeAll(async () => {
   window.AFRAME_ASYNC = true;
@@ -99,6 +110,9 @@ beforeAll(async () => {
   await import('../../src/aframe-components/google-maps-aerial.js');
   await import('../../src/aframe-components/tiled-basemap.js');
   await import('../../src/aframe-components/osm-buildings.js');
+  await import('../../src/aframe-components/shape.js');
+  await import('../../src/aframe-components/shape-vertex.js');
+  groupBounds = await import('../../src/editor/lib/groups/groupBounds.js');
   ({ FadeMaterialManager } =
     await import('3d-tiles-renderer/src/three/plugins/fade/FadeMaterialManager.js'));
   window.AFRAME.emitReady?.();
@@ -768,6 +782,146 @@ describe('in an A-Frame scene', () => {
       opacities.forEach((opacity) => expect(opacity).toBeCloseTo(0.2, 9));
       expect(set.material.opacity).toBe(1);
       expect(appendedMesh.material.opacity).toBe(1);
+    });
+
+    // A closed shape of three vertices, in `parent`, with the given shape
+    // attribute; resolves once its lines have been built, which happens on a
+    // later animation frame than the one that created it.
+    const nextFrame = () => new Promise(requestAnimationFrame);
+
+    async function until(condition, what) {
+      for (let i = 0; i < 120; i++) {
+        if (condition()) return;
+        await nextFrame();
+      }
+      throw new Error(`timed out waiting for ${what}`);
+    }
+
+    async function addShape(parent, attributes = 'closed: true', origin) {
+      const el = document.createElement('a-entity');
+      if (origin) el.setAttribute('position', origin);
+      el.setAttribute('shape', attributes);
+      for (const [x, z] of [
+        [0, 0],
+        [10, 0],
+        [10, 10]
+      ]) {
+        const vertex = document.createElement('a-entity');
+        vertex.setAttribute('shape-vertex', '');
+        vertex.setAttribute('position', { x, y: 0, z });
+        el.appendChild(vertex);
+      }
+      parent.appendChild(el);
+      await until(
+        () => el.components.shape?.lineGroup?.children.length > 0,
+        'a shape to build'
+      );
+      return el;
+    }
+
+    // What a shape's line and its see-through outline are drawn with now.
+    const drawnLine = (el) =>
+      el.components.shape.lineGroup.children[0].material;
+    const drawnOverlay = (el) =>
+      el.components.shape.overlayGroup.children[0].material;
+
+    it('fades an outside shape and its see-through outline, and leaves a shape inside the group at full strength', async () => {
+      await open();
+      const container = document.getElementById('street-container');
+      const inside = await addShape(group);
+      const outside = await addShape(container);
+      // Both are built before this apply, as a scene loaded with a group
+      // already open would have them.
+      outsideFade.apply(group, 2);
+
+      const seen = render(() => ({
+        outsideLine: drawnLine(outside).opacity,
+        outsideOverlay: drawnOverlay(outside).opacity,
+        insideLine: drawnLine(inside).opacity,
+        insideOverlay: drawnOverlay(inside).opacity
+      }));
+      expect(seen.outsideLine).toBeCloseTo(0.2, 9);
+      expect(seen.outsideOverlay).toBeCloseTo(0.3 * 0.2, 9);
+      expect(seen.insideLine).toBe(1);
+      expect(seen.insideOverlay).toBeCloseTo(0.3, 9);
+    });
+
+    it('fades an outside shape that is redrawn or created while the group is open, and forgets the meshes a redraw removed', async () => {
+      await open();
+      const container = document.getElementById('street-container');
+      const outside = await addShape(container);
+      outsideFade.apply(group, 2);
+
+      // (a) Moving a vertex rebuilds every mesh of the shape.
+      const before = [...outside.components.shape.lineGroup.children];
+      outside.querySelector('[shape-vertex]').setAttribute('position', {
+        x: 0,
+        y: 0,
+        z: -4
+      });
+      await until(() => {
+        const now = outside.components.shape.lineGroup.children;
+        return now.length > 0 && !now.some((mesh) => before.includes(mesh));
+      }, 'the shape to rebuild');
+      const redrawn = render(() => drawnLine(outside).opacity);
+      expect(redrawn).toBeCloseTo(0.2, 9);
+      expect(
+        [...outsideFade.meshes].every((mesh) => outsideFade.inScene(mesh))
+      ).toBe(true);
+
+      // (b) A new shape is classified as it builds.
+      const created = await addShape(container);
+      expect(render(() => drawnLine(created).opacity)).toBeCloseTo(0.2, 9);
+    });
+
+    it('draws a fill painted after its faded copy was made, faded, instead of not at all', async () => {
+      await open();
+      const container = document.getElementById('street-container');
+      // Unpainted, but still a click target, so it has a fill mesh.
+      const outside = await addShape(
+        container,
+        'closed: true; selectInside: true; fillOpacity: 0'
+      );
+      const fill = () => outside.components.shape.fillGroup.children[0];
+      outsideFade.apply(group, 2);
+      // The copy of the unpainted fill is made here.
+      render(() => fill().material);
+      outsideFade.restore();
+
+      outside.setAttribute('shape', 'fillOpacity', 40);
+      await until(
+        () => fill()?.material.colorWrite === true,
+        'the fill to be painted'
+      );
+      const original = fill().material;
+      outsideFade.apply(group, 3);
+
+      const drawn = render(() => {
+        const material = fill().material;
+        return {
+          copy: material !== original,
+          colorWrite: material.colorWrite,
+          opacity: material.opacity
+        };
+      });
+      expect(drawn.copy).toBe(true);
+      expect(drawn.colorWrite).toBe(true);
+      expect(drawn.opacity).toBeCloseTo(original.opacity * 0.2, 9);
+    });
+
+    it('measures the bounds of a group holding a shape drawn away from the origin', async () => {
+      await open();
+      const shapeEl = await addShape(group, 'closed: true', '20 0 0');
+      group.object3D.updateWorldMatrix(true, true);
+      const box = groupBounds.memberBoundsLocal(group, new THREE.Box3());
+      const radius = shapeEl.components.shape.data.lineWidth;
+      // The group's own box member is at the origin; the shape reaches the box
+      // out to its far corner, a line radius beyond the vertex.
+      expect(box.min.x).toBeCloseTo(-0.5, 6);
+      expect(box.max.x).toBeGreaterThan(30 - 1e-6);
+      expect(box.max.x).toBeLessThanOrEqual(30 + radius + 1e-6);
+      expect(box.max.z).toBeGreaterThan(10 - 1e-6);
+      expect(box.max.z).toBeLessThanOrEqual(10 + radius + 1e-6);
     });
 
     it('fades a new OSM building tile only through its layer: exactly layer opacity times the factor', async () => {

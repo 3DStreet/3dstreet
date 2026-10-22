@@ -177,9 +177,11 @@ export function initRaycaster(inspector) {
   // Are the canvas's clicks and hover resolved with the group rules? While
   // there are group pick targets, unless a tool that takes the canvas (the
   // shape tool) has paused the cursor: its clicks are the tool's, and the
-  // group rules keep out of them.
+  // group rules keep out of them. With the editor closed only Visitor Build
+  // selects anything, by its own rule (getIntersectedEl).
   function groupRulesResolveClicks() {
     return (
+      useStore.getState().isInspectorEnabled &&
       mouseCursor.isPlaying !== false &&
       inspector.groupScope.hasGroupPickTargets()
     );

@@ -1556,6 +1556,9 @@
   "groups.placement.backdropTopLevel": {
     "defaultMessage": "A 360° panorama surrounds the whole scene, so it cannot go inside a group. It was added at the top level of the scene."
   },
+  "groups.placement.drawnShapeTopLevel": {
+    "defaultMessage": "The group you were drawing in can no longer take this shape, so it was added at the top level of the scene."
+  },
   "groups.placement.outsideGroup": {
     "defaultMessage": "This kind of item cannot go inside a group, so it was added outside the open group."
   },

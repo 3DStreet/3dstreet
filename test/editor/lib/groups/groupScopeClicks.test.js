@@ -52,7 +52,11 @@ beforeEach(() => {
 
 afterEach(() => {
   // First, while the editor is still mounted: its store subscribers run.
-  useStore.setState({ isInspectorEnabled: true, osmWayCandidate: null });
+  useStore.setState({
+    isInspectorEnabled: true,
+    buildSessionActive: false,
+    osmWayCandidate: null
+  });
   h.dispose();
   Events.removeAllListeners();
   vi.unstubAllGlobals();
@@ -607,6 +611,59 @@ describe('reconciling the open groups', () => {
     h.inspector.selectEntity(a1);
     expect(h.openIds()).toEqual(['A']);
     useStore.getState().setIsInspectorEnabled(false);
+    expect(h.openIds()).toEqual([]);
+  });
+
+  it('opens no group for the objects visitors place while the editor is closed, through the session and after it ends (fails if a selection opens groups whatever the editor state)', () => {
+    const g = group(h.streetContainer, { id: 'g' });
+    const area = solid(g, [0, 0, 0], [1, 1, 1], { id: 'area' });
+    area.setAttribute('shape', '');
+    const placed = item(area, { id: 'placed' });
+    placed.setAttribute('data-viewer-added', '');
+
+    // The editor open: the selection does reach the scope here.
+    h.inspector.selectEntity(placed);
+    expect(h.openIds()).toEqual(['g']);
+    // Closed before the session, so the return from it (which restores the
+    // groups open on leaving) has none to reopen.
+    h.groupScope.close(null);
+
+    // A session runs with the editor closed.
+    h.inspector.selectEntity(null);
+    useStore.getState().setIsInspectorEnabled(false);
+    useStore.getState().setBuildSessionActive(true);
+    expect(h.openIds()).toEqual([]);
+    h.inspector.selectEntity(placed);
+    expect(h.openIds()).toEqual([]);
+
+    // Stop, as the viewport does.
+    h.inspector.selectEntity(null);
+    useStore.getState().setBuildSessionActive(false);
+    useStore.getState().setIsInspectorEnabled(true);
+    expect(h.openIds()).toEqual([]);
+  });
+
+  it('lets a click select an object a visitor placed in a grouped area while the editor is closed, and hover preview it rather than the group, with an empty group elsewhere (fails if the group rules take canvas clicks with the editor closed)', () => {
+    const g = group(h.streetContainer, { id: 'g' });
+    const area = solid(g, [0, 0, 0], [4, 0.1, 4], { id: 'area' });
+    area.setAttribute('shape', '');
+    // An empty group shows a center marker, which makes the canvas consult
+    // the group rules with nothing selected.
+    group(h.streetContainer, { id: 'empty' });
+    h.frame();
+    // The author's group is still selected when the session starts.
+    h.inspector.selectEntity(g);
+    useStore.getState().setIsInspectorEnabled(false);
+    useStore.getState().setBuildSessionActive(true);
+    const placed = solid(area, [1, 0.1, 1], [2, 1.1, 2], { id: 'placed' });
+    placed.setAttribute('data-viewer-added', '');
+    h.frame();
+
+    h.aimDown(1.5, 1.5);
+    h.poll();
+    expect(h.groupScope.hoverOpens || null).toBe(null);
+    h.click();
+    expect(selected()).toBe(placed);
     expect(h.openIds()).toEqual([]);
   });
 

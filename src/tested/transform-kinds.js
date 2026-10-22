@@ -52,14 +52,13 @@ export const KINDS = Object.freeze([
     component: 'managed-intersection',
     markers: Object.freeze([NO_SCALE])
   }),
-  // A drawn shape is never scaled, turns about the vertical axis only and
-  // keeps its parent.
+  // A drawn shape is never scaled and turns about the vertical axis only.
   Object.freeze({
     id: 'shape',
     label: 'shape',
     plural: 'shapes',
     component: 'shape',
-    markers: Object.freeze([NO_SCALE, YAW_ONLY, NO_REPARENT])
+    markers: Object.freeze([NO_SCALE, YAW_ONLY])
   })
 ]);
 

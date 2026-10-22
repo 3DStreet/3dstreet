@@ -389,3 +389,44 @@ describe('shape fill — export follows visibility', () => {
     expect(painted.components.shape.fillGroup.visible).toBe(true);
   });
 });
+
+describe('shape fill - draw order across parents', () => {
+  it('orders overlapping fills by their height in the world, and again when an ancestor moves', async () => {
+    // A filled shape inside a plain entity raised 0.2 m, and one at the top
+    // level raised 0.1 m, over each other with the same area. Their own local
+    // heights are both 0; only the world heights tell them apart.
+    const root = await elFactory();
+    mounted.push(root.sceneEl);
+    const holder = document.createElement('a-entity');
+    holder.setAttribute('position', { x: 0, y: 0.2, z: 0 });
+    root.sceneEl.appendChild(holder);
+    const inside = document.createElement('a-entity');
+    holder.appendChild(inside);
+    const outside = document.createElement('a-entity');
+    outside.setAttribute('position', { x: 0, y: 0.1, z: 0 });
+    root.sceneEl.appendChild(outside);
+    for (const el of [inside, outside]) {
+      el.setAttribute('shape', 'closed: true; fillOpacity: 40');
+      for (const [x, z] of [
+        [0, 0],
+        [10, 0],
+        [10, 10]
+      ]) {
+        const v = document.createElement('a-entity');
+        v.setAttribute('shape-vertex', '');
+        v.setAttribute('position', { x, y: 0, z });
+        el.appendChild(v);
+      }
+    }
+    await nextFrame();
+    await nextFrame();
+    const order = (el) => fillMeshes(el)[0].renderOrder;
+    expect(order(inside)).toBeGreaterThan(order(outside));
+
+    // The holder moves and the system ticks in the same step: the fill order
+    // has to be read off the matrix this step brought up to date.
+    holder.object3D.position.y = 0;
+    root.sceneEl.systems.shape.tick();
+    expect(order(inside)).toBeLessThan(order(outside));
+  });
+});

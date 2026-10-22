@@ -15,14 +15,13 @@ export { USER_GROUP_CLASS };
 export const STREET_CONTAINER_ID = 'street-container';
 
 // Items that keep the parent the editor gives them, so they never move into or
-// out of a user group: street segments, shapes, the Starting View and anything
+// out of a user group: street segments, the Starting View and anything
 // marked not to be reparented, named by a component or attribute. Each is
 // something an entity and its data (an `entitycreate` definition, or copied
 // entity data) both carry, so the rule reads the same for an item that exists
 // and for one about to be created.
 const KEEPS_ITS_PARENT = [
   'street-segment',
-  'shape',
   'viewer-start',
   'data-transform-no-reparent'
 ];

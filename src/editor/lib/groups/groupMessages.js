@@ -58,6 +58,11 @@ export const groupMessages = defineMessages({
     defaultMessage:
       'This was added outside the open group. To put it in the group, drag it there in the Layers panel.'
   },
+  drawnShapeAtTopLevel: {
+    id: 'groups.placement.drawnShapeTopLevel',
+    defaultMessage:
+      'The group you were drawing in can no longer take this shape, so it was added at the top level of the scene.'
+  },
   backdropAtTopLevel: {
     id: 'groups.placement.backdropTopLevel',
     defaultMessage:

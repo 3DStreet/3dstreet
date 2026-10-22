@@ -77,11 +77,10 @@ describe('where a new item is placed', () => {
     ).toMatchObject({ x: expect.closeTo(1, 9), z: expect.closeTo(2, 9) });
   });
 
-  it('keeps an item that may not go into a group out of it: shapes, segments, the Starting View and generated items', () => {
+  it('keeps an item that may not go into a group out of it: segments, the Starting View and generated items; a drawn shape may go in', () => {
     scene.scopeGroups();
     scene.openGroups('outer', 'inner');
     for (const definition of [
-      { components: { shape: '' } },
       { components: { 'street-segment': 'type: drive-lane' } },
       { components: { 'viewer-start': '' } },
       { class: ['autocreated'], components: {} },
@@ -93,6 +92,7 @@ describe('where a new item is placed', () => {
       );
     }
     expect(isGroupableItem({ mixin: 'tree3', components: {} })).toBe(true);
+    expect(isGroupableItem({ components: { shape: '' } })).toBe(true);
     expect(isGroupableItem({ class: ['user-group'], components: {} })).toBe(
       true
     );
@@ -295,11 +295,13 @@ describe('an item a route may not put in the open group', () => {
     scene.scopeGroups();
     scene.openGroups('outer', 'inner');
     scene.inspector.execute('entitycreate', {
-      components: { shape: '', position: '1 0 1' }
+      components: { 'street-segment': '', position: '1 0 1' }
     });
     const [[, payload]] = scene.creates();
     expect(payload.parentEl).toBeUndefined();
-    expect(scene.root.lastElementChild.hasAttribute('shape')).toBe(true);
+    expect(scene.root.lastElementChild.hasAttribute('street-segment')).toBe(
+      true
+    );
     expect(scene.notify.infoMessage).toHaveBeenCalledWith(
       groupMessage('placedAtTopLevel')
     );
@@ -308,7 +310,8 @@ describe('an item a route may not put in the open group', () => {
   it('says nothing when no group is open, when the item went into the group, or when redo brings it back; says it once when it lands outside (fails if the notice repeats on redo)', () => {
     const { inner } = scene.scopeGroups();
     scene.inspector.execute('entitycreate', {
-      components: { shape: '' }
+      class: ['autocreated'],
+      components: {}
     });
     scene.openGroups('outer', 'inner');
     scene.inspector.execute('entitycreate', {
@@ -319,7 +322,8 @@ describe('an item a route may not put in the open group', () => {
     expect(scene.notify.infoMessage).not.toHaveBeenCalled();
 
     scene.inspector.execute('entitycreate', {
-      components: { shape: '' }
+      class: ['autocreated'],
+      components: {}
     });
     expect(scene.notify.infoMessage).toHaveBeenCalledTimes(1);
     tick();
@@ -381,9 +385,9 @@ describe('the notice for an item added outside the open group', () => {
   });
 
   it('keeps "cannot go inside a group" for an item that cannot, and gives a 360° panorama its own reason with no invitation to drag it (fails if the notice ignores what the item is)', () => {
-    expect(noticesFor(create({ components: { shape: '' } }))).toEqual([
-      groupMessage('placedAtTopLevel')
-    ]);
+    expect(
+      noticesFor(create({ class: ['autocreated'], components: {} }))
+    ).toEqual([groupMessage('placedAtTopLevel')]);
     expect(
       noticesFor(
         create({
@@ -401,7 +405,9 @@ describe('the notice for an item added outside the open group', () => {
       noticesFor(create({ parentEl: other, components: { position: '1 0 1' } }))
     ).toEqual([groupMessage('routePlacedOutsideGroup')]);
     expect(
-      noticesFor(create({ parentEl: other, components: { shape: '' } }))
+      noticesFor(
+        create({ parentEl: other, class: ['autocreated'], components: {} })
+      )
     ).toEqual([groupMessage('placedOutsideGroup')]);
   });
 });

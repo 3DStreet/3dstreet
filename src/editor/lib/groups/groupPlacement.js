@@ -5,7 +5,7 @@
 // group open, an item that may live in a group goes into the innermost open
 // group, at the world pose it would have had at the top level: the preview a
 // route shows is where the item lands. An item that may not live in a group
-// (a street segment, a shape, the Starting View, the 360° panorama) keeps its
+// (a street segment, the Starting View, the 360° panorama) keeps its
 // route's destination, and the user is told it landed outside the group.
 // A route that creates its item with a raw `entitycreate` and no ticket keeps
 // its own destination too, even for an item that could be grouped (the
@@ -16,7 +16,10 @@
 // group, and checked again when the item is committed: an upload, a clipboard
 // read or an asset placement may finish after the group was removed or moved
 // somewhere it can no longer take items. Such a placement is refused with an
-// explanation; it never falls back to the top level.
+// explanation; it never falls back to the top level. The one exception is a
+// shape being drawn, which is the user's work in progress and not an upload
+// that can be tried again: when its group can no longer take it, it is added at
+// the top level with a message.
 
 import {
   BACKDROP_CLASS,
@@ -80,6 +83,27 @@ export function beginPlacement({ groupable = true } = {}) {
   const stack = globalThis.AFRAME?.INSPECTOR?.groupScope?.openStack;
   if (!stack?.length) return null;
   return { parentId: stack[stack.length - 1] };
+}
+
+/**
+ * While a tool draws an item for group `groupId`, have the group's outline and
+ * scrim take in the drawing: `forEachPoint(visit)` calls `visit(x, y, z)` for
+ * each world point drawn so far, and `pad` is the world distance the drawing
+ * extends beyond each. Returns a handle for hideDrawingExtent, or null when
+ * there is no scope to show it (the group's center and handles never follow a
+ * drawing).
+ */
+export function showDrawingExtent(groupId, forEachPoint, pad) {
+  const presentation = globalThis.AFRAME?.INSPECTOR?.groupScope?.presentation;
+  return presentation?.setDrawingExtent(groupId, forEachPoint, pad) ?? null;
+}
+
+/** Stop following the drawing `handle` was returned for. */
+export function hideDrawingExtent(handle) {
+  if (!handle) return;
+  globalThis.AFRAME?.INSPECTOR?.groupScope?.presentation?.clearDrawingExtent(
+    handle
+  );
 }
 
 /** The ticket's group, if it can still take the item; null otherwise. */
@@ -310,8 +334,8 @@ export function viewCenterPoint(camera) {
 
 // The item a new group made for `selectedEl` goes above: `selectedEl` itself,
 // or, for a selection inside a street or intersection, the whole street, since
-// a group cannot go inside one. Null when that item cannot go into a group (a
-// shape, the Starting View, the 360° panorama, a fixed layer).
+// a group cannot go inside one. Null when that item cannot go into a group
+// (the Starting View, the 360° panorama, a fixed layer).
 function groupAnchor(selectedEl) {
   let anchor = selectedEl;
   while (anchor && !canAcceptChild(anchor.parentNode)) {

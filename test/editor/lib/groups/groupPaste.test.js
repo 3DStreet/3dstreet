@@ -120,6 +120,41 @@ function groupWithMember() {
   return { group, member };
 }
 
+describe('pasting a drawn shape', () => {
+  it('into an open group keeps its world pose, plus the offset along world X (fails if a shape is still kept at the top level)', async () => {
+    const shape = entityIn(scene.root, {
+      id: 'shape',
+      position: '2 0 2',
+      rotation: '0 20 0'
+    });
+    for (const position of ['0 0 0', '3 0 1', '1 0 4']) {
+      entityIn(shape, { position });
+    }
+    STREET.utils.getElementData = (el) => {
+      const data = elementData(el);
+      if (el === shape) data.components.shape = '';
+      return data;
+    };
+    entityIn(scene.root, {
+      id: 'open',
+      cls: 'user-group',
+      position: '12 0 -4',
+      rotation: '0 90 0'
+    });
+    await copy(shape);
+    scene.openGroups('open');
+    await pasteFromClipboard();
+
+    const [, payload] = pastes()[0];
+    expect(payload.parentId).toBe('open');
+    expect(payload.requireParent).toBe(true);
+    const pasted = pastedElement();
+    expect(pasted.children).toHaveLength(3);
+    expectMatrixClose(expect, worldOf(pasted), besideSource(shape));
+    expect(scene.notify.infoMessage).not.toHaveBeenCalled();
+  });
+});
+
 describe('pasting an item copied from inside a group', () => {
   it('keeps its world pose, plus the offset along world X, at the top level and inside an open group turned the other way (fails with a local-position paste or a local-X offset)', async () => {
     const { member } = groupWithMember();
@@ -282,13 +317,13 @@ describe('a paste that cannot land where it began', () => {
   });
 
   it('pastes an item that may not go into a group at the top level with its copied pose, and says it landed there', async () => {
-    const shape = entityIn(scene.root, { id: 'shape', position: '2 0 2' });
+    const start = entityIn(scene.root, { id: 'start', position: '2 0 2' });
     STREET.utils.getElementData = (el) => ({
       ...elementData(el),
-      components: { ...elementData(el).components, shape: '' }
+      components: { ...elementData(el).components, 'viewer-start': '' }
     });
     groupWithMember();
-    await copy(shape);
+    await copy(start);
     scene.openGroups('g');
     await pasteFromClipboard();
     const [, payload] = pastes()[0];
@@ -520,16 +555,16 @@ describe('a street, shape or old ruler arriving by paste', () => {
     expect(pasted.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
   });
 
-  it('pastes an old ruler at the top level with a group open, as the shape it becomes, and says it landed there (fails if the ruler is migrated only after its destination is chosen)', async () => {
+  it('pastes an old ruler into the open group, as the shape it becomes (fails if the ruler is migrated only after its destination is chosen)', async () => {
     groupWithMember();
     putOnClipboard(ruler());
     scene.openGroups('g');
     await pasteFromClipboard();
     const [, payload] = pastes()[0];
-    expect(payload.parentId).toBe('street-container');
-    expect(payload.requireParent).toBeUndefined();
+    expect(payload.parentId).toBe('g');
+    expect(payload.requireParent).toBe(true);
     expect(payload.entityData.components.shape).toBe('');
-    expect(scene.notify.infoMessage).toHaveBeenCalledWith(
+    expect(scene.notify.infoMessage).not.toHaveBeenCalledWith(
       groupMessage('placedAtTopLevel')
     );
     expect(pastedElement().getAttribute('scale')).toEqual({

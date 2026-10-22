@@ -8,6 +8,7 @@ import { faBullseye, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { captureFocusPose } from './focusPose.js';
 import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 import { reseededGeneratorAttributes } from '../../tested/generator-seeds.js';
+import { retargetStreetPath } from '../../tested/copied-street-path.js';
 import { innermostOpenGroup } from './groups/groupPlacement.js';
 import { isUserGroup } from './groups/groupModel.js';
 import {
@@ -211,17 +212,40 @@ export function cloneEntity(entity) {
   return AFRAME.INSPECTOR.execute('entityclone', entity);
 }
 
-function recursivelyRegenerateId(element) {
+// Gives the element and its descendants new ids. `idMap` records old id -> new
+// id for every element that had one, for retargetStreetPathsInClone.
+function recursivelyRegenerateId(element, idMap) {
   if (element.id) {
+    const oldId = element.id;
     // if it's a nanoid, create a new one, otherwise use getUniqueId
-    element.id =
-      element.id.length === 21 ? createUniqueId() : getUniqueId(element.id);
+    element.id = oldId.length === 21 ? createUniqueId() : getUniqueId(oldId);
+    idMap.set(oldId, element.id);
   } else {
     element.id = createUniqueId();
   }
 
   for (const child of element.childNodes) {
-    recursivelyRegenerateId(child);
+    recursivelyRegenerateId(child, idMap);
+  }
+}
+
+/**
+ * Point each copied street at the copy of the path shape it follows, when the
+ * copy holds that shape; a street copied without its path keeps following the
+ * original. Written as the raw attribute on the detached copy, like the
+ * reseeding below.
+ */
+function retargetStreetPathsInClone(element, idMap) {
+  if (element.nodeType !== Node.ELEMENT_NODE) return;
+  const value = element.getAttribute('managed-street');
+  if (typeof value === 'string') {
+    const next = retargetStreetPath(value, idMap);
+    if (next !== value) {
+      HTMLElement.prototype.setAttribute.call(element, 'managed-street', next);
+    }
+  }
+  for (const child of element.childNodes) {
+    retargetStreetPathsInClone(child, idMap);
   }
 }
 
@@ -254,7 +278,9 @@ export function cloneEntityImpl(entity) {
   entity.flushToDOM();
   const clone = prepareForSerialization(entity);
   if (clone !== null) {
-    recursivelyRegenerateId(clone);
+    const idMap = new Map();
+    recursivelyRegenerateId(clone, idMap);
+    retargetStreetPathsInClone(clone, idMap);
     recursivelyReseedGenerators(clone);
     const nextName = getUniqueLayerName(clone.getAttribute('data-layer-name'));
     if (nextName) clone.setAttribute('data-layer-name', nextName);

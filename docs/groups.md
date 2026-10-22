@@ -15,7 +15,7 @@ edited in isolation. The code is in `src/editor/lib/groups/`; the
   zones, by placement and by the command guard: `canReparent` reads it from an
   entity, and `isGroupableItem` from the data of an item about to be created.
   Items the editor keeps under a fixed parent (street segments, generated
-  content, shapes, the Starting View) never enter a group. Nor does a new
+  content, the Starting View) never enter a group. Nor does a new
   360° panorama, which surrounds the whole scene: it carries the saved
   `scene-backdrop` class and stays at the top level on every route. A
   panorama in a scene saved before that class existed has none, and can still
@@ -85,10 +85,12 @@ the elements). The stack is session state only and is never saved.
   empty space does the same, and an item closes the group and is selected.
   Escape leaves one level, selecting the group it left.
   `resolveCanvasClick` in `groupScope.js` decides; the controller applies.
-- **Selection.** The scope follows the selection wherever it comes from:
-  selecting an item opens the groups around it, and selecting a group closes
-  it. A null selection (opening a group, a tool switch, undoing a create)
-  leaves the scope as it is.
+- **Selection.** While the editor is open, the scope follows the selection
+  wherever it comes from: selecting an item opens the groups around it, and
+  selecting a group closes it. A null selection (opening a group, a tool
+  switch, undoing a create) leaves the scope as it is. With the editor closed
+  (a Visitor Build session selects the objects visitors place) a selection
+  leaves the scope as it is, which is empty since the editor closed.
 - **Pruning.** Deleting or hiding an open group closes it and every group
   inside it. Loading a scene closes every group. A group being moved stays in
   the stack while the move settles; the move then selects it
@@ -170,6 +172,11 @@ so it has no handles.
 - A white outline around the member box and a scrim darkening the screen
   outside the box's outline appear in the same task as the group opens, so
   they are on screen in the next frame.
+- While the Shape tool draws in the open group, the outline and scrim also take
+  in the drawing (its placed points and the cursor point, each with room for the
+  line's thickness), so what is being drawn is never under the scrim. The
+  group's center, handles and stand point change only when the shape is
+  created: the drawing is not stored in the group's bounds.
 - Fading the outside follows one animation frame after the first render that
   shows the outline. Every change of open group cancels pending work for the
   previous one, and anything that still runs checks the scope generation it
@@ -182,21 +189,26 @@ so it has no handles.
 ## Fading the outside
 
 While a group is open, scene content outside it is drawn at a fifth of its own
-opacity (`scopeFade.js`). Editor helpers are drawn normally. Nothing
-saved changes, and visibility is never written.
+opacity (`scopeFade.js`). Editor helpers in the helper scene are drawn
+normally; an outside object's own editor-only parts, such as a shape's
+see-through outline, fade with it. Nothing saved changes, and visibility is
+never written.
 
 - **Meshes** are drawn with a faded copy of their material, swapped in at the
   start of each render and swapped back at its end. Outside the render window
   every material is the original, so batching, exporters and the serializer
   never see a copy. A copy is refreshed when its original changes (a texture
-  arrives, a material is replaced). Copies are transparent, write no depth,
-  and scale a cutout's alpha test with its opacity.
+  arrives, a material is replaced), and follows whether its original draws
+  colour, as a shape's fill does once it is painted. Copies are transparent,
+  write no depth, and scale a cutout's alpha test with its opacity.
 - The shadow pass runs inside the window, so an outside cutout casts a
   slightly wider shadow while a group is open.
 - A shader material with no `opacity` uniform cannot be faded and is drawn as
   it is.
 - Content that arrives while a group is open is classified before it is first
-  drawn.
+  drawn. A shape that is created or redrawn while a group is open is
+  classified as it is rebuilt: it rebuilds its meshes without any A-Frame
+  event, so the fade listens for its own `shape-geometry-changed`.
 - If a render window throws, every swap is undone and fading stops for the
   session; the group stays open.
 - **Captures and exports** see the original appearance. A synchronous render
@@ -247,9 +259,14 @@ real `BatchedMesh`.
   Their items land at the top level, and the notice says the item can be
   dragged into the group in the layer panel.
 - The destination is taken when the operation begins (a card click, a file
-  picker opening, a paste) and checked again when the item is committed. If the
-  group has gone, or can no longer take the item, the placement is refused with
-  an explanation; it never falls back to the top level.
+  picker opening, a paste, the Shape tool starting) and checked again when the
+  item is committed. If the group has gone, or can no longer take the item, the
+  placement is refused with an explanation; it never falls back to the top
+  level. The one exception is a shape being drawn: it is the user's work in
+  progress, so it is added at the top level, where it was drawn, with a
+  message. Selecting the new shape there closes every open group. A group that
+  is only closed while the shape is drawn still receives it, and is opened
+  again when the shape is selected.
 - A placement "in view" that finds no ground uses the group's stand point (the
   center, on the bottom of its members; an empty group's center itself),
   never its origin. So does a route with no position of its own (the Assets
@@ -264,7 +281,7 @@ real `BatchedMesh`.
   the item's position, or at the center of a selected group, which is where
   the user sees that group. A selection inside a street or intersection
   stands for the whole street. With no such item selected (nothing at all, a
-  fixed layer, a shape, the Starting View or the panorama) it goes first in
+  fixed layer, the Starting View or the panorama) it goes first in
   the open group, at its center, or first at the top level, at the origin.
   The create command's `beforeEl` keeps that place across undo and redo.
 - **Paste.** An item copied from inside a group, or pasted into an open group,

@@ -180,6 +180,34 @@ describe('placing from the Add Layer panel while a group is open', () => {
     expect(Math.abs(actual.dot(expected))).toBeCloseTo(1, 9);
   });
 
+  it('places the Shape card into the open group at the world position its definition names, with no notice (fails if a shape is still kept at the top level)', () => {
+    entityIn(root, {
+      id: 'g',
+      cls: 'user-group',
+      position: '50 0 -20',
+      rotation: '0 40 0'
+    });
+    scene.openGroups('g');
+    renderPanel();
+
+    tab('🔵 Shapes');
+    fireEvent.mouseEnter(card('Shape'));
+    const inView = groundUnder(scene.camera);
+    fireEvent.click(card('Shape'));
+
+    const [create] = scene.creates();
+    const [, payload] = create;
+    expect(payload.parentEl).toBe(document.getElementById('g'));
+    expect(payload.requireParent).toBe(true);
+    // The card's three points have their centroid at (8/3, 0, 4/3).
+    const expected = inView.clone().add(new THREE.Vector3(8 / 3, 0, 4 / 3));
+    expect(
+      committedWorldPosition(root, create).distanceTo(expected)
+    ).toBeLessThan(1e-6);
+    expect(notify.infoMessage).not.toHaveBeenCalled();
+    expect(notify.warningMessage).not.toHaveBeenCalled();
+  });
+
   it('places into the innermost open group and the selected item does not matter; with no group open, each route keeps its own parent', () => {
     const { outer, inner } = scene.scopeGroups();
     const member = entityIn(inner, { id: 'member', position: '1 0 1' });

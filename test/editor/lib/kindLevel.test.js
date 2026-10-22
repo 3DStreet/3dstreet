@@ -25,11 +25,7 @@ function registerKindComponents() {
 const MARKERS_SET_BY = {
   'managed-street': ['data-transform-no-scale'],
   'managed-intersection': ['data-transform-no-scale'],
-  shape: [
-    'data-transform-no-scale',
-    'data-transform-yaw-only',
-    'data-transform-no-reparent'
-  ]
+  shape: ['data-transform-no-scale', 'data-transform-yaw-only']
 };
 
 function kindIn(parent, component, options = {}) {
@@ -332,7 +328,7 @@ describe('what the AI assistant is told about a constrained kind', () => {
   );
 
   it.each(STRIP_ROUTES)(
-    'still cannot scale, tilt or move to another parent a shape whose markers were removed %s (fails if the guard reads only the attributes)',
+    'still cannot scale or tilt a shape whose markers were removed %s (fails if the guard reads only the attributes)',
     async (_, strip) => {
       entityIn(scene.root, { id: 'g', cls: 'user-group' });
       const shape = kindIn(scene.root, 'shape', {
@@ -366,7 +362,7 @@ describe('what the AI assistant is told about a constrained kind', () => {
       expect(
         resolveCommand('entityreparent', { entity: shape, parentEl: 'g' })
           .refusal
-      ).toBe('This element cannot be moved to a different parent.');
+      ).toBeNull();
       expect(shape.getAttribute('rotation')).toEqual(vec(0, 30, 0));
     }
   );
