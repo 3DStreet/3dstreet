@@ -1,8 +1,12 @@
 // The kinds of item that declare transform limits, and the limits each one
-// declares. One table, read by the command guard, by the levelling of entity
-// data (scene load, paste, create) and by the command rewrite that levels an
-// item as it becomes one of these kinds — so a kind added here is covered by
-// all three.
+// declares. One table, read by the command guard, by the conforming of entity
+// data (scene load, paste, create) and by the command rewrite that brings an
+// item within its limits as it becomes one of these kinds — so a kind added
+// here is covered by all three, at the command layer and in the data.
+//
+// The table does not set anything on a live entity. The stock gizmo and the
+// properties panel's raw reads still look at the marker attributes, which each
+// kind's component sets in its init; a test checks that the two agree.
 //
 // A kind is recognised by the class or component that makes an item that kind,
 // never by the marker attributes alone: markers are not saved with a scene, and
@@ -15,22 +19,29 @@ export const NO_SCALE = 'data-transform-no-scale';
 export const YAW_ONLY = 'data-transform-yaw-only';
 export const NO_REPARENT = 'data-transform-no-reparent';
 
-// The class a saved scene carries on a user group. The same constant as
-// groups/groupModel.js's; declared again because this module imports nothing
-// from the editor, and a test keeps the two equal.
+/** Every transform marker. */
+export const MARKERS = Object.freeze([NO_SCALE, YAW_ONLY, NO_REPARENT]);
+
+// The class a saved scene carries on a user group; groups/groupModel.js
+// re-exports it.
 export const USER_GROUP_CLASS = 'user-group';
 
-// In this order: the first kind an item has names it.
+// In this order: the first kind an item has names it. `id` identifies a kind
+// in code; `label` and `plural` are the English words used in messages.
 export const KINDS = Object.freeze([
-  // A user group turns about the vertical axis only and is never scaled.
+  // A user group turns about the vertical axis only and is never scaled. Its
+  // members keep their own scale.
   Object.freeze({
+    id: 'group',
     label: 'group',
     plural: 'groups',
     className: USER_GROUP_CLASS,
-    markers: Object.freeze([YAW_ONLY, NO_SCALE])
+    markers: Object.freeze([YAW_ONLY, NO_SCALE]),
+    holdsMembers: true
   }),
   // A managed street is never scaled; it may tilt.
   Object.freeze({
+    id: 'managed-street',
     label: 'managed street',
     plural: 'managed streets',
     component: 'managed-street',
@@ -38,6 +49,7 @@ export const KINDS = Object.freeze([
   }),
   // A managed intersection is never scaled; it may tilt.
   Object.freeze({
+    id: 'managed-intersection',
     label: 'managed intersection',
     plural: 'managed intersections',
     component: 'managed-intersection',
@@ -46,6 +58,7 @@ export const KINDS = Object.freeze([
   // A drawn shape is never scaled, turns about the vertical axis only and
   // keeps its parent.
   Object.freeze({
+    id: 'shape',
     label: 'shape',
     plural: 'shapes',
     component: 'shape',
@@ -54,22 +67,42 @@ export const KINDS = Object.freeze([
 ]);
 
 // The pose component each marker keeps within its limit. NO_REPARENT is about
-// placement, so it levels nothing.
-export const LEVELLED_BY_MARKER = Object.freeze({
+// placement, so it limits no pose component.
+export const LIMITED_BY_MARKER = Object.freeze({
   [NO_SCALE]: 'scale',
   [YAW_ONLY]: 'rotation'
 });
 
-const LEVELLED_ORDER = ['rotation', 'scale'];
+/** The pose components a kind can limit, in the order they are written. */
+export const POSE_COMPONENTS = Object.freeze(['rotation', 'scale']);
+
+/** The kind with this id, or undefined. */
+export function kindById(id) {
+  return KINDS.find((kind) => kind.id === id);
+}
 
 /** The kind whose component is `component`, or undefined. */
 export function kindByComponent(component) {
   return KINDS.find((kind) => kind.component && kind.component === component);
 }
 
-/** The kind with this label, or undefined. */
-export function kindByLabel(label) {
-  return KINDS.find((kind) => kind.label === label);
+/** Does this kind turn about the vertical axis only? */
+export function isYawOnly(kind) {
+  return kind.markers.includes(YAW_ONLY);
+}
+
+/**
+ * The kinds that a class list and a components object make, in table order. A
+ * component counts when it has a value, whatever it is: a migrated ruler
+ * carries `shape: ''`. A null or undefined value is no component.
+ */
+export function kindsOf({ classes = [], components = {} } = {}) {
+  return KINDS.filter((kind) =>
+    kind.className
+      ? classes.includes(kind.className)
+      : components[kind.component] !== undefined &&
+        components[kind.component] !== null
+  );
 }
 
 // The class list as a saved node can carry it: a top-level `class` attribute
@@ -85,18 +118,14 @@ function classListOf(node) {
 
 /**
  * The kinds of an entity-data node (a saved scene's entry, a getElementData
- * result, a create definition), in table order. A component counts when its
- * key is present, whatever its value: a migrated ruler carries `shape: ''`.
+ * result, a create definition), in table order.
  */
 export function kindsOfNode(node) {
   if (!node || typeof node !== 'object') return [];
-  const classes = classListOf(node);
-  const components = node.components ?? {};
-  return KINDS.filter((kind) =>
-    kind.className
-      ? classes.includes(kind.className)
-      : Object.hasOwn(components, kind.component)
-  );
+  return kindsOf({
+    classes: classListOf(node),
+    components: node.components ?? {}
+  });
 }
 
 /** The kinds of a live element, in table order. */
@@ -121,12 +150,12 @@ export function markersOfKinds(kinds) {
 }
 
 /**
- * The pose components the given kinds keep within limits, in the order
- * rotation, scale: rotation for a yaw-only kind, scale for a no-scale kind.
+ * The pose components the given kinds limit, in the order rotation, scale:
+ * rotation for a yaw-only kind, scale for a no-scale kind.
  */
-export function levelledComponents(kinds) {
-  const levelled = markersOfKinds(kinds)
-    .map((marker) => LEVELLED_BY_MARKER[marker])
+export function limitedComponents(kinds) {
+  const limited = markersOfKinds(kinds)
+    .map((marker) => LIMITED_BY_MARKER[marker])
     .filter(Boolean);
-  return LEVELLED_ORDER.filter((component) => levelled.includes(component));
+  return POSE_COMPONENTS.filter((component) => limited.includes(component));
 }

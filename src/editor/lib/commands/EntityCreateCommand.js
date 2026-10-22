@@ -2,7 +2,7 @@ import Events from '../Events';
 import { Command } from '../command.js';
 import { createEntity, createUniqueId } from '../entity.jsx';
 import { isGroupableItem, isSystemItem } from '../groups/groupModel.js';
-import { levelConstrainedPoses } from '@/tested/group-pose.js';
+import { conformToKindLimits } from '@/tested/group-pose.js';
 import { readMixinPose } from '../groups/groupLevel.js';
 import {
   beginPlacement,
@@ -115,7 +115,7 @@ export class EntityCreateCommand extends Command {
     // A constrained item is created within its kind's limits. Done once here,
     // so redo replays the same definition.
     this.definition = withOwnComponents(this.definition);
-    levelConstrainedPoses(this.definition, { mixinPose: readMixinPose });
+    conformToKindLimits(this.definition, { mixinPose: readMixinPose });
   }
 
   execute(nextCommandCallback) {

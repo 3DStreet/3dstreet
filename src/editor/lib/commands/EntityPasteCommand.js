@@ -5,7 +5,7 @@ import { createUniqueId } from '../entity.jsx';
 import { isGroupableItem } from '../groups/groupModel.js';
 import { notePlacedOutsideOpenGroup } from '../groups/groupPlacement.js';
 import { migrateImplicitStreetAlign } from '@/tested/migrate-street-align.js';
-import { levelConstrainedPoses } from '@/tested/group-pose.js';
+import { conformToKindLimits } from '@/tested/group-pose.js';
 import { readMixinPose } from '../groups/groupLevel.js';
 
 /**
@@ -71,7 +71,7 @@ export class EntityPasteCommand extends Command {
     // managed street or intersection, a shape) be scaled or tilted. The pose is
     // already local to the destination, so this keeps the pasted item's
     // position and heading there.
-    levelConstrainedPoses(entityData, { mixinPose: readMixinPose });
+    conformToKindLimits(entityData, { mixinPose: readMixinPose });
 
     const entity = STREET.utils.createEntityFromObj(
       entityData,

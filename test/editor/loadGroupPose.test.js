@@ -143,7 +143,7 @@ function tiltedBox() {
 }
 
 const WARNING =
-  '[scene-load] Removed tilt or scale from 3 items on load; heading and position kept: group "Scaled group" (scale 1.5 1.5 1.5), group "Outer group" (scale 2 2 2), group "Inner tilted group" (rotation x 10, z 0).';
+  '[scene-load] Brought 3 items within their kinds\' limits; position and heading kept: group "Scaled group" (removed scale 1.5 1.5 1.5), group "Outer group" (removed scale 2 2 2), group "Inner tilted group" (removed rotation x 10, z 0).';
 
 const item = (id, components, extra = {}) => ({
   id,
@@ -162,7 +162,7 @@ const kindsToLevel = () => [
       item('start-street', {
         'managed-street': '',
         'street-align': '',
-        position: '0 0 0',
+        position: '3 0 4',
         rotation: '0 30 0',
         scale: '2 1 2'
       }),
@@ -253,16 +253,16 @@ const kindsConforming = () => [
 ];
 
 const KINDS_WARNING =
-  '[scene-load] Removed tilt or scale from 9 items on load; heading and position kept: ' +
-  'managed street "start-street" (scale 2 1 2), ' +
-  'managed street "middle-street" (scale 2 1 2), ' +
-  'managed street "mirrored-street" (scale -1 1 1), ' +
-  'managed intersection "scaled-intersection" (scale 1.2 1.2 1.2), ' +
-  'shape "big-area" (scale 2 1 2), ' +
-  'shape "tilted-area" (rotation x 0, z 20), ' +
-  'shape "ruler" (scale 2 2 2), ' +
-  'group "scaled-group" (scale 2 2 2), ' +
-  'managed street "grouped-street" (scale 2 1 2).';
+  "[scene-load] Brought 9 items within their kinds' limits; position and heading kept: " +
+  'managed street "start-street" (removed scale 2 1 2), ' +
+  'managed street "middle-street" (removed scale 2 1 2), ' +
+  'managed street "mirrored-street" (removed scale -1 1 1), ' +
+  'managed intersection "scaled-intersection" (removed scale 1.2 1.2 1.2), ' +
+  'shape "big-area" (removed scale 2 1 2), ' +
+  'shape "tilted-area" (removed rotation x 0, z 20), ' +
+  'shape "ruler" (removed scale 2 2 2), ' +
+  'group "scaled-group" (removed scale 2 2 2), ' +
+  'managed street "grouped-street" (removed scale 2 1 2).';
 
 const vec = (x, y, z) => ({ x, y, z });
 
@@ -400,8 +400,8 @@ describe('loading a scene levels its groups', () => {
   });
 });
 
-describe('loading a scene levels streets, intersections and shapes', () => {
-  it('brings every kind within its limits, keeps street tilt, turns an old ruler into a level shape, and warns once naming each item and kind (fails if levelling runs before the ruler migration, warns per kind, walks the top level only, or misses a kind)', () => {
+describe('loading a scene brings streets, intersections and shapes within their limits', () => {
+  it('brings every kind within its limits, keeps street tilt and position, turns an old ruler into a level shape, and warns once naming each item and kind (fails if the limits are applied before the ruler migration, it warns per item, walks the top level only, or misses a kind)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     STREET.utils.createEntities(kindsToLevel(), sceneEl);
 
@@ -422,6 +422,7 @@ describe('loading a scene levels streets, intersections and shapes', () => {
     expect(byId('start-street').getAttribute('rotation')).toEqual(
       vec(0, 30, 0)
     );
+    expect(byId('start-street').getAttribute('position')).toEqual(vec(3, 0, 4));
     expect(byId('tilted-street').getAttribute('rotation')).toEqual(
       vec(5, 30, 0)
     );

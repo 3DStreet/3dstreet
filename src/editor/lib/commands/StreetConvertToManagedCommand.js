@@ -2,7 +2,7 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.jsx';
-import { levelConstrainedPoses } from '@/tested/group-pose.js';
+import { conformToKindLimits } from '@/tested/group-pose.js';
 
 /**
  * Convert a legacy `street` + `streetmix-loader` street into a managed street
@@ -34,7 +34,7 @@ export class StreetConvertToManagedCommand extends Command {
       // A managed street is never scaled: the legacy street's scale is
       // dropped, its position and rotation kept. Undo restores the legacy
       // snapshot, scale included.
-      levelConstrainedPoses(this.managedData);
+      conformToKindLimits(this.managedData);
     }
   }
 

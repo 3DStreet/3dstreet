@@ -12,7 +12,8 @@ const YAW_ONLY = 'data-transform-yaw-only';
 const NO_REPARENT = 'data-transform-no-reparent';
 const MARKERS = [NO_SCALE, YAW_ONLY, NO_REPARENT];
 
-const STRIP_REFUSAL = 'The transform limits on this element cannot be removed.';
+const STRIP_REFUSAL =
+  "This element's scale, rotation and parent limits cannot be removed.";
 
 function element({ attributes = [], classes = [] } = {}) {
   const el = document.createElement('div');

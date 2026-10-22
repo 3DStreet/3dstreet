@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  describeLevelledItems,
-  levelConstrainedPoses
+  describeConformedItems,
+  conformToKindLimits
 } from '../../src/tested/group-pose.js';
-import {
-  USER_GROUP_CLASS as KINDS_GROUP_CLASS,
-  kindsOfEntity
-} from '../../src/tested/transform-kinds.js';
+import { kindsOfEntity } from '../../src/tested/transform-kinds.js';
 import { migrateMeasureLinesToShapes } from '../../src/tested/migrate-measure-lines.js';
-import { USER_GROUP_CLASS } from '../../src/editor/lib/groups/groupModel.js';
 
 const street = (id, components) => ({
   id,
@@ -18,15 +14,15 @@ const street = (id, components) => ({
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 
-describe('levelConstrainedPoses on streets, intersections and shapes', () => {
+describe('conformToKindLimits on streets, intersections and shapes', () => {
   it('leaves a tilted managed street at unit scale exactly as saved (fails if managed streets are treated as heading-only)', () => {
     const data = [street('s', { rotation: '5 30 0' })];
     const pristine = clone(data);
-    expect(levelConstrainedPoses(data)).toEqual([]);
+    expect(conformToKindLimits(data)).toEqual([]);
     expect(data).toEqual(pristine);
   });
 
-  it('gives a scaled managed street unit scale and keeps its position, rotation and settings (fails if managed streets are not levelled)', () => {
+  it('gives a scaled managed street unit scale and keeps its position, rotation and settings (fails if managed streets may keep a scale)', () => {
     const data = [
       street('s', {
         position: '3 0 4',
@@ -36,7 +32,7 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
         'street-align': 'width: center; length: start'
       })
     ];
-    const changes = levelConstrainedPoses(data);
+    const changes = conformToKindLimits(data);
     expect(data[0].components).toEqual({
       'managed-street': 'sourceType: json-blob; length: 60',
       'street-align': 'width: center; length: start',
@@ -45,30 +41,30 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
       scale: '1 1 1'
     });
     expect(changes).toEqual([
-      { id: 's', name: 's', kind: 'managed street', scale: '2 1 2' }
+      { id: 's', name: 's', kind: 'managed-street', scale: '2 1 2' }
     ]);
   });
 
-  it('levels a mirrored and a zero-scale street to unit scale (fails if the unit test reads each axis by its magnitude)', () => {
+  it('gives a mirrored and a zero-scale street unit scale (fails if the unit test reads each axis by its magnitude)', () => {
     const data = [
       street('mirrored', { scale: '-1 1 1' }),
       street('flat', { scale: '0 0 0' })
     ];
-    const changes = levelConstrainedPoses(data);
+    const changes = conformToKindLimits(data);
     expect(data[0].components.scale).toBe('1 1 1');
     expect(data[1].components.scale).toBe('1 1 1');
     expect(changes).toEqual([
       {
         id: 'mirrored',
         name: 'mirrored',
-        kind: 'managed street',
+        kind: 'managed-street',
         scale: '-1 1 1'
       },
-      { id: 'flat', name: 'flat', kind: 'managed street', scale: '0 0 0' }
+      { id: 'flat', name: 'flat', kind: 'managed-street', scale: '0 0 0' }
     ]);
   });
 
-  it('gives a scaled managed intersection unit scale and keeps its tilt (fails if managed intersections are not levelled, or are treated as heading-only)', () => {
+  it('gives a scaled managed intersection unit scale and keeps its tilt (fails if managed intersections may keep a scale, or are treated as heading-only)', () => {
     const data = [
       {
         id: 'x',
@@ -79,7 +75,7 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
         }
       }
     ];
-    const changes = levelConstrainedPoses(data);
+    const changes = conformToKindLimits(data);
     expect(data[0].components).toEqual({
       'managed-intersection': '',
       rotation: '3 0 0',
@@ -89,7 +85,7 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
       {
         id: 'x',
         name: undefined,
-        kind: 'managed intersection',
+        kind: 'managed-intersection',
         scale: '1.2 1.2 1.2'
       }
     ]);
@@ -106,18 +102,21 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
         }
       }
     ];
-    levelConstrainedPoses(data);
+    const changes = conformToKindLimits(data);
     expect(data[0].components).toEqual({
       shape: 'closed: true; lineWidth: 0.5',
       rotation: '0 45 0',
       scale: '1 1 1'
     });
+    expect(changes).toEqual([
+      { id: 'area', name: undefined, kind: 'shape', scale: '2 1 2' }
+    ]);
   });
 
   it('lays a tilted shape flat with the same heading, and keeps the facing of one turned past 90 degrees (fails if shapes may tilt, or X and Z are zeroed without keeping the facing)', () => {
     const tilted = { id: 'a', components: { shape: '', rotation: '0 30 20' } };
     const over = { id: 'b', components: { shape: '', rotation: '170 30 0' } };
-    const changes = levelConstrainedPoses([tilted, over]);
+    const changes = conformToKindLimits([tilted, over]);
     expect(tilted.components.rotation).toBe('0 30 0');
     expect(over.components.rotation).toBe('0 -150 0');
     expect(changes).toEqual([
@@ -132,7 +131,7 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
     ]);
   });
 
-  it('levels a scaled group and the scaled street inside it, the group listed first (fails if the walk stops at a levelled item or lists children first)', () => {
+  it('gives a scaled group and the scaled street inside it unit scale, the group listed first (fails if the walk stops at a changed item or lists children first)', () => {
     const data = [
       {
         id: 'outer',
@@ -148,7 +147,7 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
         ]
       }
     ];
-    const changes = levelConstrainedPoses(data);
+    const changes = conformToKindLimits(data);
     expect(data[0].components.scale).toBe('1 1 1');
     expect(data[0].children[0].components.scale).toBe('1 1 1');
     expect(changes).toEqual([
@@ -156,7 +155,7 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
       {
         id: 'main',
         name: 'Main Street',
-        kind: 'managed street',
+        kind: 'managed-street',
         scale: '2 1 2'
       }
     ]);
@@ -195,7 +194,7 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
     (_, node) => {
       const data = [node];
       const pristine = clone(data);
-      expect(levelConstrainedPoses(data)).toEqual([]);
+      expect(conformToKindLimits(data)).toEqual([]);
       expect(data).toEqual(pristine);
     }
   );
@@ -219,19 +218,19 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
         }
       };
       const pristine = clone(definition);
-      expect(levelConstrainedPoses(definition, { mixinPose })).toEqual([]);
+      expect(conformToKindLimits(definition, { mixinPose })).toEqual([]);
       expect(definition).toEqual(pristine);
     }
   );
 
-  it('writes only what each kind levels when its mixins cannot be read: scale for a street, scale and rotation for a shape (fails if both components are written for every kind)', () => {
+  it('writes only what each kind limits when its mixins cannot be read: scale for a street, scale and rotation for a shape (fails if both components are written for every kind)', () => {
     const mixinStreet = {
       id: 's',
       mixin: 'odd',
       components: { 'managed-street': '' }
     };
     const mixinShape = { id: 'a', mixin: 'odd', components: { shape: '' } };
-    const changes = levelConstrainedPoses([mixinStreet, mixinShape], {
+    const changes = conformToKindLimits([mixinStreet, mixinShape], {
       mixinPose: () => null
     });
     expect(changes).toEqual([]);
@@ -257,7 +256,7 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
       }
     ];
     migrateMeasureLinesToShapes(data);
-    const changes = levelConstrainedPoses(data);
+    const changes = conformToKindLimits(data);
     expect(data[0].components.shape).toBe('');
     expect(data[0].components.scale).toBe('1 1 1');
     expect(changes).toEqual([
@@ -266,8 +265,8 @@ describe('levelConstrainedPoses on streets, intersections and shapes', () => {
   });
 });
 
-describe('describeLevelledItems', () => {
-  it('names each levelled item with its kind, in walk order (fails on any wording, prefix or count drift, or if the kind is dropped)', () => {
+describe('describeConformedItems', () => {
+  it('names each changed item with its kind, in walk order (fails on any wording, prefix or count drift, or if the kind is dropped)', () => {
     const data = [
       {
         id: 'outer',
@@ -283,20 +282,20 @@ describe('describeLevelledItems', () => {
         ]
       }
     ];
-    expect(describeLevelledItems(levelConstrainedPoses(data))).toBe(
-      '[scene-load] Removed tilt or scale from 2 items on load; heading and position kept: group "Outer group" (scale 2 2 2), managed street "Main Street" (scale 2 1 2).'
+    expect(describeConformedItems(conformToKindLimits(data))).toBe(
+      '[scene-load] Brought 2 items within their kinds\' limits; position and heading kept: group "Outer group" (removed scale 2 2 2), managed street "Main Street" (removed scale 2 1 2).'
     );
   });
 
   it('names an unnamed item by its kind alone, in the singular', () => {
     const data = [{ components: { shape: '', rotation: '0 30 20' } }];
-    expect(describeLevelledItems(levelConstrainedPoses(data))).toBe(
-      '[scene-load] Removed tilt or scale from 1 item on load; heading and position kept: shape (unnamed) (rotation x 0, z 20).'
+    expect(describeConformedItems(conformToKindLimits(data))).toBe(
+      "[scene-load] Brought 1 item within its kind's limits; position and heading kept: shape (unnamed) (removed rotation x 0, z 20)."
     );
   });
 
-  it('returns null when nothing was levelled', () => {
-    expect(describeLevelledItems([])).toBeNull();
+  it('returns null when nothing was changed', () => {
+    expect(describeConformedItems([])).toBeNull();
   });
 });
 
@@ -313,12 +312,12 @@ describe('kindsOfEntity', () => {
     [
       'a managed-street attribute',
       (el) => el.setAttribute('managed-street', ''),
-      ['managed street']
+      ['managed-street']
     ],
     [
       'a managed-intersection attribute',
       (el) => el.setAttribute('managed-intersection', ''),
-      ['managed intersection']
+      ['managed-intersection']
     ],
     [
       'only a marker attribute',
@@ -327,15 +326,8 @@ describe('kindsOfEntity', () => {
     ]
   ])(
     'recognises %s (fails if bare markers are read as a kind)',
-    (_, setup, labels) => {
-      expect(kindsOfEntity(element(setup)).map((kind) => kind.label)).toEqual(
-        labels
-      );
+    (_, setup, ids) => {
+      expect(kindsOfEntity(element(setup)).map((kind) => kind.id)).toEqual(ids);
     }
   );
-
-  it('uses the class the editor treats as a group (fails if either is renamed)', () => {
-    expect(KINDS_GROUP_CLASS).toBe(USER_GROUP_CLASS);
-    expect(KINDS_GROUP_CLASS).toBe('user-group');
-  });
 });

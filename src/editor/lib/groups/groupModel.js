@@ -8,7 +8,9 @@
 // zones, for placement and for the command guard, so the three can never
 // disagree about where an item may go.
 
-export const USER_GROUP_CLASS = 'user-group';
+import { USER_GROUP_CLASS } from '@/tested/transform-kinds.js';
+
+export { USER_GROUP_CLASS };
 
 export const STREET_CONTAINER_ID = 'street-container';
 

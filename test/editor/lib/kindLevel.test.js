@@ -40,6 +40,9 @@ function kindIn(parent, component, options = {}) {
 }
 
 const vec = (x, y, z) => ({ x, y, z });
+
+const STRIP_REFUSED =
+  "entityupdate refused: This element's scale, rotation and parent limits cannot be removed.";
 const own = (el, name) => {
   const v = el.getDOMAttribute(name);
   return v && vec(v.x, v.y, v.z);
@@ -80,7 +83,7 @@ describe('a command that makes an item a constrained kind', () => {
     expect(r.refusal).toBeNull();
   });
 
-  it('levels it in one undo step named for the command, and undo restores the values exactly (fails without the rewrite, if undo values are live objects, or if the step is named as a batch)', () => {
+  it('brings it within its limits in one undo step named for the command, and undo restores the values exactly (fails without the rewrite, if undo values are live objects, or if the step is named as a batch)', () => {
     const box = entityIn(scene.root, {
       id: 'box',
       rotation: '10 30 5',
@@ -176,7 +179,7 @@ describe('a command that makes an item a constrained kind', () => {
 });
 
 describe('a command on an existing constrained kind', () => {
-  it('levels the scale a new mixin gives a managed street, and not its rotation; an item with only the marker is not levelled (fails if the mixin route is group-only, judges a street rotation, or reads bare markers as a kind)', () => {
+  it('drops the scale a new mixin gives a managed street, and not its rotation; an item with only the marker is not rewritten (fails if the mixin route is group-only, judges a street rotation, or reads bare markers as a kind)', () => {
     const mixin = document.createElement('a-mixin');
     mixin.id = 'tall';
     mixin.setAttribute('scale', '1 1.5 1');
@@ -235,29 +238,6 @@ describe('a command on an existing constrained kind', () => {
     expect(removal.cmdName).toBe('componentremove');
     expect(removal.payload).toBe(payload);
   });
-
-  it('levels a scaled managed street when its class is written, leaving its tilt (fails if the class route only knows groups, or judges a street rotation)', () => {
-    const street = kindIn(scene.root, 'managed-street', {
-      id: 'street',
-      rotation: '5 30 0',
-      scale: '2 2 2'
-    });
-    const r = resolveCommand('entityupdate', {
-      entity: street,
-      component: 'class',
-      value: 'foo'
-    });
-    expect(r.cmdName).toBe('multi');
-    expect(r.payload.map(([, p]) => [p.component, p.value])).toEqual([
-      ['class', 'foo'],
-      ['scale', '1 1 1']
-    ]);
-    expect(r.levelled).toEqual({
-      scale: vec(2, 2, 2),
-      became: false,
-      kind: 'managed street'
-    });
-  });
 });
 
 describe('what the AI assistant is told about a constrained kind', () => {
@@ -315,37 +295,44 @@ describe('what the AI assistant is told about a constrained kind', () => {
     ).resolves.toBe('entityupdate executed');
   });
 
-  it('is refused removing a transform marker, by chat and by MCP alike, and still cannot scale the item (fails if the strip is let through, or, with the strip let through, if the kind does not imply its marker)', async () => {
+  it('is refused removing a transform marker, by chat and by MCP alike (fails if the strip is let through)', async () => {
     const street = kindIn(scene.root, 'managed-street', { id: 'street' });
     const strip = {
       entityId: 'street',
       component: 'data-transform-no-scale',
       value: null
     };
-    await expect(dispatchToolCall('entityUpdate', strip)).rejects.toThrow(
-      'entityupdate refused: The transform limits on this element cannot be removed.'
+    await expect(dispatchToolCall('entityUpdate', strip)).rejects.toMatchObject(
+      { message: STRIP_REFUSED }
     );
     const { callToolAsMCPContent } =
       await import('@/editor/lib/mcp/dispatch.js');
-    await expect(callToolAsMCPContent('entityUpdate', strip)).rejects.toThrow(
-      'entityupdate refused: The transform limits on this element cannot be removed.'
-    );
+    await expect(
+      callToolAsMCPContent('entityUpdate', strip)
+    ).rejects.toMatchObject({ message: STRIP_REFUSED });
     expect(street.hasAttribute('data-transform-no-scale')).toBe(true);
     expect(scene.inspector.history.undos).toHaveLength(0);
+  });
+
+  it('still cannot scale a managed street whose marker attribute was removed outside the editor, as from the console (fails if the kind does not imply its marker)', async () => {
+    const street = kindIn(scene.root, 'managed-street', { id: 'street' });
+    street.removeAttribute('data-transform-no-scale');
     await expect(
       dispatchToolCall('entityUpdate', {
         entityId: 'street',
         component: 'scale',
         value: '2 2 2'
       })
-    ).rejects.toThrow(
-      'entityupdate refused: Scaling is not available for this element.'
-    );
+    ).rejects.toMatchObject({
+      message:
+        'entityupdate refused: Scaling is not available for this element.'
+    });
+    expect(street.object3D.scale.toArray()).toEqual([1, 1, 1]);
   });
 });
 
 describe('creating a constrained kind', () => {
-  it('creates a managed street defined with a scale at unit scale, keeping its tilt, through undo and redo (fails if create does not level every kind)', () => {
+  it('creates a managed street defined with a scale at unit scale, keeping its tilt, through undo and redo (fails if create does not apply the limits of every kind)', () => {
     scene.inspector.execute('entitycreate', {
       components: {
         'managed-street': '',

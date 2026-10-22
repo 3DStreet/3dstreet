@@ -18,7 +18,7 @@ import {
   resolveDetachToolArgs,
   routeCloneEdit
 } from '../../src/editor/lib/detachClone.js';
-import { routeTransformLevel } from '../../src/editor/lib/groups/groupLevel.js';
+import { routeKindLimits } from '../../src/editor/lib/groups/groupLevel.js';
 import { resolveCommand } from '../../src/editor/lib/resolveCommand.js';
 
 // A segment element with a live generator component (the shape
@@ -1030,7 +1030,7 @@ describe('detachClone (#2011)', () => {
         value: 'user-group'
       });
       expect(routed.cmdName).toBe('detachclone');
-      const levelled = routeTransformLevel(routed.cmdName, routed.payload);
+      const levelled = routeKindLimits(routed.cmdName, routed.payload);
       expect(levelled.cmdName).toBe('detachclone');
       expect(levelled.payload.pose).toEqual({
         rotation: '0 30 0',
@@ -1039,7 +1039,7 @@ describe('detachClone (#2011)', () => {
       expect(levelled.levelled).toEqual({
         rotation: { x: 5, y: 30, z: 0 },
         scale: { x: 1, y: 1.5, z: 1 },
-        became: true,
+        becameKind: true,
         kind: 'group'
       });
 
@@ -1057,9 +1057,7 @@ describe('detachClone (#2011)', () => {
         component: 'class',
         value: 'foo'
       });
-      expect(routeTransformLevel(notAGroup.cmdName, notAGroup.payload)).toBe(
-        null
-      );
+      expect(routeKindLimits(notAGroup.cmdName, notAGroup.payload)).toBe(null);
     });
   });
 
@@ -1082,10 +1080,8 @@ describe('detachClone (#2011)', () => {
         component: 'managed-street',
         value: ''
       });
-      const levelledStreet = routeTransformLevel(
-        street.cmdName,
-        street.payload
-      );
+      const levelledStreet = routeKindLimits(street.cmdName, street.payload);
+      expect(levelledStreet).not.toBeNull();
       expect(levelledStreet.cmdName).toBe('detachclone');
       expect(levelledStreet.payload.pose.scale).toBe('1 1 1');
       expect(levelledStreet.payload.pose.rotation).toBeUndefined();
@@ -1098,8 +1094,8 @@ describe('detachClone (#2011)', () => {
       expect(definition.components.scale).toBe('1 1 1');
       expect(levelledStreet.levelled).toEqual({
         scale: { x: 1, y: 1.5, z: 1 },
-        became: true,
-        kind: 'managed street'
+        becameKind: true,
+        kind: 'managed-street'
       });
 
       const shape = routeCloneEdit('entityupdate', {
@@ -1107,7 +1103,7 @@ describe('detachClone (#2011)', () => {
         component: 'shape',
         value: ''
       });
-      const levelledShape = routeTransformLevel(shape.cmdName, shape.payload);
+      const levelledShape = routeKindLimits(shape.cmdName, shape.payload);
       expect(levelledShape.payload.pose).toEqual({
         rotation: '0 30 0',
         scale: '1 1 1'
@@ -1115,7 +1111,7 @@ describe('detachClone (#2011)', () => {
       expect(levelledShape.levelled).toEqual({
         rotation: { x: 5, y: 30, z: 0 },
         scale: { x: 1, y: 1.5, z: 1 },
-        became: true,
+        becameKind: true,
         kind: 'shape'
       });
     });
@@ -1149,7 +1145,7 @@ describe('detachClone (#2011)', () => {
         rotation: '0 -150 0',
         scale: '1 1 1'
       });
-      expect(resolved.levelled.became).toBe(true);
+      expect(resolved.levelled.becameKind).toBe(true);
     });
   });
 
@@ -1166,7 +1162,7 @@ describe('detachClone (#2011)', () => {
         value: 'user-group'
       };
       const move = { entity: other, component: 'position', value: '1 0 0' };
-      const routed = routeTransformLevel('multi', [
+      const routed = routeKindLimits('multi', [
         ['entityupdate', classWrite, first],
         ['entityupdate', move, second]
       ]);

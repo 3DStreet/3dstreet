@@ -1,11 +1,12 @@
-// Levelling a constrained item at the command layer. An item whose kind
-// forbids scale or tilt (tested/transform-kinds.js: a user group, a managed
-// street or intersection, a shape) always meets its kind's limits
-// (tested/group-pose.js levels data being loaded, pasted or created). This
+// Keeping a constrained item within its kind's limits at the command layer.
+// An item whose kind declares transform limits (tested/transform-kinds.js: a
+// user group, a managed street or intersection, a shape) always meets them
+// (tested/group-pose.js conforms data being loaded, pasted or created). This
 // module handles a live entity BECOMING such a kind, or one whose shown pose a
-// command would take outside its limits, by rewriting the command into a
-// batch: the levelling is part of the same undo step and every write goes
-// through the ordinary update command.
+// mixin or removal would take outside its limits, by rewriting the command
+// into a batch: bringing it within its limits is part of the same undo step,
+// and every write goes through the ordinary update command. A direct scale or
+// tilt write is not rewritten; the guard refuses it.
 
 import {
   ROTATION_DEFAULT,
@@ -15,21 +16,19 @@ import {
   parseVec3LikeAFrame,
   sameFacing
 } from '@/tested/group-pose.js';
+import { classAfterUpdate } from './groupModel.js';
 import {
-  USER_GROUP_CLASS,
-  classAfterUpdate,
-  isUserGroup
-} from './groupModel.js';
-import {
-  YAW_ONLY,
+  KINDS,
+  POSE_COMPONENTS,
+  isYawOnly,
   kindByComponent,
-  kindByLabel,
+  kindById,
+  kindsOf,
   kindsOfEntity,
-  levelledComponents
+  limitedComponents
 } from '@/tested/transform-kinds.js';
 
 const DEFAULTS = { rotation: ROTATION_DEFAULT, scale: SCALE_DEFAULT };
-const LEVELLED = ['rotation', 'scale'];
 
 function vec3String(v) {
   return `${v.x} ${v.y} ${v.z}`;
@@ -73,35 +72,38 @@ function undoValue(entity, name) {
   return isDefault(name, shown) ? null : shown;
 }
 
-function levelTuple(entity, name, value) {
+function conformTuple(entity, name, value) {
   return [
     'entityupdate',
     { entity, component: name, value, oldValue: undoValue(entity, name) }
   ];
 }
 
-function levelledString(name, value) {
-  const levelled = levelledValue(
+// The value within limits for `name`, as an "x y z" string: level for a
+// rotation (keeping its facing), unit for a scale.
+function conformedString(name, value) {
+  const conformed = levelledValue(
     name,
     parseVec3LikeAFrame(value, DEFAULTS[name])
   );
-  return vec3String(levelled);
+  return vec3String(conformed);
 }
 
 /**
  * What the AI is told was removed: {rotation?, scale?} holding the values
- * before (as {x, y, z}), whether the write made the item that kind (`became`),
- * and the label of the kind it is levelled for. Null when nothing was removed.
+ * before (as {x, y, z}), whether the write made the item that kind
+ * (`becameKind`), and the id of the kind whose limits applied. Null when
+ * nothing was removed.
  */
-function levelledRecord(removed, became, kind) {
+function levelledRecord(removed, becameKind, kind) {
   return removed.rotation || removed.scale
-    ? { ...removed, became, kind: kind.label }
+    ? { ...removed, becameKind, kind: kind.id }
     : null;
 }
 
-// The kinds an entity has once `extra` is added, in table order.
-function withKind(kinds, extra) {
-  return kinds.includes(extra) ? kinds : [...kinds, extra];
+// The kinds in `a` or `b`, in table order.
+function unionOfKinds(a, b) {
+  return KINDS.filter((kind) => a.includes(kind) || b.includes(kind));
 }
 
 /**
@@ -115,7 +117,7 @@ export function readMixinPose(mixinAttribute) {
     if (!id) continue;
     const mixin = document.getElementById(id);
     if (mixin?.tagName !== 'A-MIXIN') return null;
-    for (const name of LEVELLED) {
+    for (const name of POSE_COMPONENTS) {
       const value = mixin.getAttribute(name);
       if (value !== null && value !== undefined && value !== '') {
         pose[name] = copyVec3(parseVec3LikeAFrame(value, DEFAULTS[name]));
@@ -125,36 +127,39 @@ export function readMixinPose(mixinAttribute) {
   return pose;
 }
 
-// The tuples that level what `entity` shows now, for `kinds`, and the values
-// they remove.
-function levellingTuples(entity, kinds) {
+// The tuples that bring what `entity` shows now within the limits of
+// `kinds`, and the values they remove.
+function conformingTuples(entity, kinds) {
   const tuples = [];
   const removed = {};
-  for (const name of levelledComponents(kinds)) {
+  for (const name of limitedComponents(kinds)) {
     const shown = shownValue(entity, name);
     if (conforms(name, shown)) continue;
-    tuples.push(levelTuple(entity, name, levelledString(name, shown)));
+    tuples.push(conformTuple(entity, name, conformedString(name, shown)));
     removed[name] = shown;
   }
   return { tuples, removed };
 }
 
-// A class write: level what the entity shows now for the kinds it has after
-// the write — its kinds by component, and a group when the class leaves it one.
+// A class write that leaves the entity a kind made by a class (a group): bring
+// what it shows now within the limits of every kind it has after the write.
+// Only such a write can take an entity outside limits; a kind made by a
+// component is already within its own.
 function routeClassWrite(payload) {
   const { entity } = payload;
-  const byComponent = kindsOfEntity(entity).filter((kind) => kind.component);
-  const group = kindByLabel('group');
-  const makesGroup = classAfterUpdate(payload).includes(USER_GROUP_CLASS);
-  const kinds = makesGroup ? [group, ...byComponent] : byComponent;
-  if (kinds.length === 0) return null;
-  const { tuples, removed } = levellingTuples(entity, kinds);
+  const byClass = kindsOf({ classes: classAfterUpdate(payload) });
+  if (byClass.length === 0) return null;
+  const before = kindsOfEntity(entity);
+  const kinds = unionOfKinds(
+    byClass,
+    before.filter((kind) => kind.component)
+  );
+  const { tuples, removed } = conformingTuples(entity, kinds);
   if (tuples.length === 0) return null;
-  const became = makesGroup && !isUserGroup(entity);
   return {
     cmdName: 'multi',
     payload: [['entityupdate', payload], ...tuples],
-    levelled: levelledRecord(removed, became, kinds[0])
+    levelled: levelledRecord(removed, !before.includes(byClass[0]), byClass[0])
   };
 }
 
@@ -169,13 +174,16 @@ function kindWritten(cmdName, payload) {
 }
 
 // A write that makes the entity a constrained kind, or updates the component
-// of one: the levelling runs first, so the component starts on an entity
-// already within its limits. The batch keeps the name of the command asked
+// of one: bringing it within its limits runs first, so the component starts on
+// an entity already within them. The batch keeps the name of the command asked
 // for.
 function routeKindWrite(cmdName, payload, kind) {
   const { entity } = payload;
   const before = kindsOfEntity(entity);
-  const { tuples, removed } = levellingTuples(entity, withKind(before, kind));
+  const { tuples, removed } = conformingTuples(
+    entity,
+    unionOfKinds(before, [kind])
+  );
   if (tuples.length === 0) return null;
   return {
     cmdName: 'multi',
@@ -187,7 +195,7 @@ function routeKindWrite(cmdName, payload, kind) {
 
 // A mixin write on a constrained kind. What the item will show is its own
 // value, else the incoming mixins' value, else the default; whatever of that
-// does not conform is levelled, keeping its facing. When the incoming mixins
+// does not conform is brought within limits, keeping its facing. When the incoming mixins
 // cannot be read, the values are written explicitly, since an own value
 // outranks a mixin's.
 function routeMixinWrite(payload) {
@@ -197,13 +205,13 @@ function routeMixinWrite(payload) {
   const incoming = payload.property ? null : readMixinPose(payload.value);
   const tuples = [['entityupdate', payload]];
   const removed = {};
-  for (const name of levelledComponents(kinds)) {
+  for (const name of limitedComponents(kinds)) {
     const own = ownValue(entity, name);
     const shown =
       own ?? (incoming ? (incoming[name] ?? DEFAULTS[name]) : DEFAULTS[name]);
     const fits = conforms(name, shown);
     if (fits && (incoming || own !== null)) continue;
-    tuples.push(levelTuple(entity, name, levelledString(name, shown)));
+    tuples.push(conformTuple(entity, name, conformedString(name, shown)));
     if (!fits) {
       removed[name] = copyVec3(parseVec3LikeAFrame(shown, DEFAULTS[name]));
     }
@@ -217,12 +225,12 @@ function routeMixinWrite(payload) {
 }
 
 // Removing a constrained item's scale or rotation while it has a mixin lets
-// the mixin's value show. Left alone when its kind does not level that
+// the mixin's value show. Left alone when its kind does not limit that
 // component or the value conforms; otherwise the removal is written as the
-// levelled value (or, when the mixins cannot be read, as the explicit
+// value within limits (or, when the mixins cannot be read, as the explicit
 // default).
 function routeRemoval(entity, component) {
-  if (!levelledComponents(kindsOfEntity(entity)).includes(component)) {
+  if (!limitedComponents(kindsOfEntity(entity)).includes(component)) {
     return null;
   }
   const mixinAttribute = String(entity.getAttribute('mixin') || '').trim();
@@ -237,43 +245,34 @@ function routeRemoval(entity, component) {
     payload: {
       entity,
       component,
-      value: levelledString(component, supplied)
+      value: conformedString(component, supplied)
     },
     levelled: null
   };
 }
 
-// The kinds a detach's components give the plain entity it creates: a group by
-// the class, the others by their component.
+// The kinds a detach's components give the plain entity it creates.
 function kindsOfDetach(components) {
   if (!components) return [];
-  const kinds = [];
   const cls = components.class;
-  if (
-    cls !== undefined &&
-    classAfterUpdate({ value: cls }).includes(USER_GROUP_CLASS)
-  ) {
-    kinds.push(kindByLabel('group'));
-  }
-  for (const [name, value] of Object.entries(components)) {
-    const kind = kindByComponent(name);
-    if (kind && value !== null && value !== undefined) kinds.push(kind);
-  }
-  return kinds;
+  return kindsOf({
+    classes: cls === undefined ? [] : classAfterUpdate({ value: cls }),
+    components
+  });
 }
 
 // An edit on a generated street clone that makes it a constrained kind (a
 // class that makes a group, or a kind's component) has already been routed
-// into a detach; level the plain entity the detach creates, for that kind's
-// components only.
+// into a detach; bring the plain entity the detach creates within that kind's
+// limits, for the components it limits only.
 function routeDetach(payload) {
   const kinds = kindsOfDetach(payload.components);
   if (kinds.length === 0) return null;
   const clone = payload.entity;
   const pose = payload.pose || {};
   const removed = {};
-  const levelledPose = {};
-  for (const name of levelledComponents(kinds)) {
+  const conformedPose = {};
+  for (const name of limitedComponents(kinds)) {
     const shown = copyVec3(
       parseVec3LikeAFrame(
         pose[name] !== undefined ? pose[name] : clone.getAttribute(name),
@@ -283,26 +282,29 @@ function routeDetach(payload) {
     if (!conforms(name, shown)) removed[name] = shown;
     // Written even when it conforms: the plain entity keeps the clone's
     // mixin, and an own value outranks the mixin's.
-    levelledPose[name] = levelledString(name, shown);
+    conformedPose[name] = conformedString(name, shown);
   }
   return {
     cmdName: 'detachclone',
-    payload: { ...payload, pose: { ...pose, ...levelledPose } },
+    payload: { ...payload, pose: { ...pose, ...conformedPose } },
     levelled: levelledRecord(removed, true, kinds[0])
   };
 }
 
 // A batch is rewritten member by member. Each member is a tuple
 // [type, payload, callback]; a member that expands into a batch keeps its
-// callback on its own (first) tuple. Only the first levelled member is
-// reported: no caller sends a batch that levels more than one item.
+// callback on its own (first) tuple. Only the first member's removal is
+// reported: the record is for an AI tool result, and no tool sends a batch
+// that changes more than one item. The one batch that can (the managed
+// intersection's settle pass, one length update per joined street) runs from
+// a timer, outside any tool call.
 function routeMulti(tuples) {
   if (!Array.isArray(tuples)) return null;
   let changed = false;
   let levelled = null;
   const out = [];
   for (const tuple of tuples) {
-    const routed = routeTransformLevel(tuple?.[0], tuple?.[1]);
+    const routed = routeKindLimits(tuple?.[0], tuple?.[1]);
     if (!routed) {
       out.push(tuple);
       continue;
@@ -326,12 +328,12 @@ function routeMulti(tuples) {
  * removed (see levelledRecord), or null, and `name` the history label when the
  * rewrite should keep the name of the command asked for.
  *
- * Fires for a class write on an entity that is a constrained kind after it, a
- * write that adds or updates a kind's component, a mixin write on a kind, a
- * removal of the scale or rotation a kind levels while it has a mixin, a
- * detach that makes a kind, and any `multi` holding one of these.
+ * Fires for a class write that leaves the entity a group, a write that adds or
+ * updates a kind's component, a mixin write on a kind, a removal of the scale
+ * or rotation a kind limits while it has a mixin, a detach that makes a kind,
+ * and any `multi` holding one of these.
  */
-export function routeTransformLevel(cmdName, payload) {
+export function routeKindLimits(cmdName, payload) {
   if (cmdName === 'multi') return routeMulti(payload);
   if (cmdName === 'detachclone') return routeDetach(payload);
   const entity = payload?.entity;
@@ -369,37 +371,41 @@ function removedParts({ rotation, scale }) {
     : `${tilt || scalePart} was removed`;
 }
 
-function ruleFor(kind, yawOnly) {
-  return yawOnly
+function ruleFor(kind) {
+  return isYawOnly(kind)
     ? `${kind.plural} turn only about the vertical axis and are never scaled.`
     : `${kind.plural} are never scaled.`;
 }
 
-function endingFor({ rotation, scale }, kind, yawOnly) {
+function endingFor({ rotation, scale }, kind) {
   const newY = rotation && levelledValue('rotation', rotation).y;
-  const unchanged = yawOnly
+  const unchanged = isYawOnly(kind)
     ? 'Its heading and position are unchanged.'
     : 'Its rotation and position are unchanged.';
   const facing =
     rotation && !sameFacing(newY, rotation.y)
       ? `It faces the same way and its position is unchanged; its rotation is now 0 ${tidy(newY)} 0.`
       : unchanged;
-  return scale && kind.className === USER_GROUP_CLASS
+  // A group's members keep their own scale; a street's generated children
+  // are drawn in its frame and follow it.
+  return scale && kind.holdsMembers
     ? `${facing} The items in it keep their own sizes.`
     : facing;
 }
 
 /**
- * The sentence the AI is told when a command levelled a constrained item, from
- * a levelledRecord. English on purpose, like every tool result: it is read by
- * the model, never shown in the UI.
+ * The sentence the AI is told when a command brought a constrained item within
+ * its kind's limits, from a levelledRecord. English on purpose, like every
+ * tool result: it is read by the model, never shown in the UI.
  */
 export function describeLevelledPose(levelled) {
   if (!levelled) return null;
-  const kind = kindByLabel(levelled.kind);
-  const yawOnly = kind.markers.includes(YAW_ONLY);
-  const subject = levelled.became
+  const kind = kindById(levelled.kind);
+  const subject = levelled.becameKind
     ? `The item is now a ${kind.label}, so its`
     : `This ${kind.label}'s`;
-  return `${subject} ${removedParts(levelled)}; ${ruleFor(kind, yawOnly)} ${endingFor(levelled, kind, yawOnly)}`;
+  return (
+    `${subject} ${removedParts(levelled)}; ` +
+    `${ruleFor(kind)} ${endingFor(levelled, kind)}`
+  );
 }

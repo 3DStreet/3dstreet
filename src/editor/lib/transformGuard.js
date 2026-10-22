@@ -1,7 +1,7 @@
 /* global THREE */
 // Capability markers that restrict what may be done to an entity's transform,
 // enforced centrally for every command the editor runs. An entity opts in by
-// carrying the attribute; the guard is otherwise entity-type-agnostic.
+// carrying the attribute, or by being a kind that declares it (below).
 //
 //   data-transform-no-scale       scale must stay unit
 //   data-transform-yaw-only       rotation may change about Y alone: the X and
@@ -17,8 +17,10 @@
 // component) carries them by being that kind, whether or not the attributes
 // are there (hasTransformMarker): data-* attributes are not saved with the
 // scene, and a class or component needs no editor code to have run for an AI
-// command to see it. Removing a marker attribute through a command is refused,
-// and so is removing the user-group class from a group that still has members.
+// command to see it. This holds at the command layer only: the stock gizmo
+// reads the attributes, which each kind's component sets in its init.
+// Removing a marker attribute through a command is refused, and so is
+// removing the user-group class from a group that still has members.
 //
 // Values are judged as A-Frame will apply them (parseVec3LikeAFrame), so a
 // string such as "10° 30 0" or "2,2,2" is read the way it would take effect.
@@ -58,6 +60,7 @@ import {
   parseVec3LikeAFrame
 } from '@/tested/group-pose.js';
 import {
+  MARKERS,
   NO_REPARENT,
   NO_SCALE,
   YAW_ONLY,
@@ -114,8 +117,6 @@ function tiltsAwayFromCurrent(entity, axes, names) {
   );
 }
 
-const MARKERS = new Set([NO_SCALE, YAW_ONLY, NO_REPARENT]);
-
 /** Does `entity` carry `marker`, as an attribute or implied by its kind? */
 export function hasTransformMarker(entity, marker) {
   return (
@@ -128,7 +129,7 @@ export function hasTransformMarker(entity, marker) {
 // undefined value removes a plain attribute, with or without a property.
 function removesMarker(entity, payload) {
   return (
-    MARKERS.has(payload.component) &&
+    MARKERS.includes(payload.component) &&
     entity.hasAttribute(payload.component) &&
     (payload.value === null || payload.value === undefined)
   );
@@ -172,14 +173,14 @@ function requiredParentGone(commandType, payload) {
 function refuseVec3Write(entity, component, payload) {
   if (
     component === 'scale' &&
-    hasTransformMarker(entity, 'data-transform-no-scale') &&
+    hasTransformMarker(entity, NO_SCALE) &&
     departsFrom(requestedAxes(payload, 'scale'), 1, ['x', 'y', 'z'])
   ) {
     return 'Scaling is not available for this element.';
   }
   if (
     component === 'rotation' &&
-    hasTransformMarker(entity, 'data-transform-yaw-only') &&
+    hasTransformMarker(entity, YAW_ONLY) &&
     tiltsAwayFromCurrent(entity, requestedAxes(payload, 'rotation'), ['x', 'z'])
   ) {
     return 'This element can only be rotated about the vertical axis.';
@@ -229,7 +230,7 @@ export function refuseGuardedTransform(commandType, payload) {
 
   if (commandType === 'entityupdate') {
     if (removesMarker(entity, payload)) {
-      return 'The transform limits on this element cannot be removed.';
+      return "This element's scale, rotation and parent limits cannot be removed.";
     }
     const reason = refuseVec3Write(entity, payload.component, payload);
     if (reason) return reason;
@@ -246,7 +247,7 @@ export function refuseGuardedTransform(commandType, payload) {
     // payload.parentEl is the target parent's id. A same-parent reorder comes
     // through this command too, and must not be refused.
     if (payload.parentEl === entity.parentNode?.id) return null;
-    if (hasTransformMarker(entity, 'data-transform-no-reparent')) {
+    if (hasTransformMarker(entity, NO_REPARENT)) {
       return 'This element cannot be moved to a different parent.';
     }
     const newParent = document.getElementById(payload.parentEl);

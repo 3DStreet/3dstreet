@@ -23,8 +23,8 @@ import {
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
 import {
-  describeLevelledItems,
-  levelConstrainedPoses
+  describeConformedItems,
+  conformToKindLimits
 } from './tested/group-pose';
 import { readMixinPose } from './editor/lib/groups/groupLevel.js';
 import { isProjectPassHash, isRedeemHash } from './tested/project-pass-link.js';
@@ -606,10 +606,10 @@ function createEntities(entitiesData, parentEl) {
   // Unlike the migrations above, this one discards part of a saved transform
   // (the tilt or scale an item's kind forbids), so it says so. It runs after
   // the ruler migration, which turns an old ruler into a shape.
-  const levelled = levelConstrainedPoses(entitiesData, {
+  const conformed = conformToKindLimits(entitiesData, {
     mixinPose: readMixinPose
   });
-  if (levelled.length) console.warn(describeLevelledItems(levelled));
+  if (conformed.length) console.warn(describeConformedItems(conformed));
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
   if (BATCHING_ENABLED) {

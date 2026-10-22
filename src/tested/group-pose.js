@@ -1,18 +1,18 @@
-// An item whose kind forbids scale or tilt (src/tested/transform-kinds.js) has
-// scale 1, or X/Z rotation 0, or both: a group or a shape turns about the
-// vertical axis only and is never scaled; a managed street or intersection is
-// never scaled. "Levelling" an item means bringing it back within its kind's
-// limits, keeping the direction it faces.
+// An item whose kind declares transform limits (src/tested/transform-kinds.js)
+// is kept within them: a group or a shape has scale 1 and no X/Z rotation; a
+// managed street or intersection has scale 1 and may tilt. Bringing an item
+// within its limits keeps its position and the direction it faces. "Level"
+// here always means no X/Z rotation.
 //
-// This module holds what every route that levels such an item shares: one
-// reading of a vec3 value, so the command guard, the levelling and A-Frame
-// agree on what a value means; what counts as level and unit; and the
-// levelling of entity data — a scene being loaded, clipboard text, a create
-// definition — before any entity is minted from it.
+// This module holds what every route that keeps an item within its limits
+// shares: one reading of a vec3 value, so the command guard, the conforming
+// and A-Frame agree on what a value means; what counts as level and unit; and
+// the conforming of entity data — a scene being loaded, clipboard text, a
+// create definition — before any entity is minted from it.
 //
 // Pure data: no AFRAME, no DOM, no logging, so it can be unit-tested directly.
 
-import { kindsOfNode, levelledComponents } from './transform-kinds.js';
+import { kindById, kindsOfNode, limitedComponents } from './transform-kinds.js';
 
 // A scale within this of 1, or an angle within this many degrees of 0, counts
 // as unit or level. It absorbs float noise from string round-trips; it is not a
@@ -171,15 +171,15 @@ export function levelledValue(component, value) {
   return value && typeof value === 'object' ? { x: 1, y: 1, z: 1 } : '1 1 1';
 }
 
-// Level one constrained item's own data, for the components its kinds keep
-// within limits. Returns its change record, or null when nothing it shows had
-// to change.
-function levelNode(node, kinds, mixinPose) {
+// Bring one constrained item's own data within its kinds' limits, for the
+// components they limit. Returns its change record, or null when nothing it
+// shows had to change.
+function conformNode(node, kinds, mixinPose) {
   const components = node.components ?? {};
   const change = {
     id: node.id,
     name: node['data-layer-name'],
-    kind: kinds[0].label
+    kind: kinds[0].id
   };
   let changed = false;
   const hasMixin = typeof node.mixin === 'string' && node.mixin.trim() !== '';
@@ -189,7 +189,7 @@ function levelNode(node, kinds, mixinPose) {
   // mixin's), level or unit, unreported since the old value is unknown.
   const fromMixin = hasMixin && mixinPose ? mixinPose(node.mixin) : undefined;
 
-  for (const component of levelledComponents(kinds)) {
+  for (const component of limitedComponents(kinds)) {
     let shown = components[component];
     if (shown === undefined && hasMixin) {
       if (!fromMixin) {
@@ -216,29 +216,30 @@ function levelNode(node, kinds, mixinPose) {
 }
 
 /**
- * Level every constrained item in an entity-data tree, in place: a scene's
- * `data` array, a getElementData result or an entitycreate definition. An item
- * is constrained when its class or a component makes it a kind that forbids
- * scale or tilt; it loses what its kind forbids — any scale, and for a
- * heading-only kind any X/Z rotation, keeping its facing. Other components and
- * other items are never touched, and a nested item is levelled in its own
+ * Bring every constrained item in an entity-data tree within its kind's limits,
+ * in place: a scene's `data` array, a getElementData result or an entitycreate
+ * definition. An item is constrained when its class or a component makes it a
+ * kind that declares limits. It loses any scale, and a heading-only kind (a
+ * group, a shape) also loses any X/Z rotation, keeping its facing; a managed
+ * street or intersection keeps its rotation as saved. Other components and
+ * other items are never touched, and a nested item is handled in its own
  * frame.
  *
  * `mixinPose(mixinAttribute)`, when given, returns the {rotation?, scale?} an
- * item's mixins supply, or null when they cannot be read; see levelNode.
+ * item's mixins supply, or null when they cannot be read; see conformNode.
  *
  * Returns one record per item whose shown values changed, in document order
  * (parent before child): {id, name, kind, rotation?, newY?, scale?}, holding
- * the values as they were, the label of the item's kind, and the new Y
- * rotation when the facing had to be rewritten to a different Y.
+ * the values as they were, the id of the item's kind, and the new Y rotation
+ * when the facing had to be rewritten to a different Y.
  */
-export function levelConstrainedPoses(nodes, { mixinPose } = {}) {
+export function conformToKindLimits(nodes, { mixinPose } = {}) {
   const changes = [];
   const walk = (node) => {
     if (!node || typeof node !== 'object') return;
     const kinds = kindsOfNode(node);
     if (kinds.length > 0) {
-      const change = levelNode(node, kinds, mixinPose);
+      const change = conformNode(node, kinds, mixinPose);
       if (change) changes.push(change);
     }
     if (Array.isArray(node.children)) node.children.forEach(walk);
@@ -260,20 +261,24 @@ function describeChange(change) {
     const s = parseVec3LikeAFrame(change.scale, DEFAULTS.scale);
     parts.push(`scale ${s.x} ${s.y} ${s.z}`);
   }
-  const label = change.name || change.id;
-  const who = label ? `"${label}"` : '(unnamed)';
-  return `${change.kind} ${who} (${parts.join(', ')})`;
+  const name = change.name || change.id;
+  const who = name ? `"${name}"` : '(unnamed)';
+  const kind = kindById(change.kind).label;
+  return `${kind} ${who} (removed ${parts.join(', ')})`;
 }
 
 /**
- * The load warning for `changes` (from levelConstrainedPoses), or null for
- * none.
+ * The load warning for `changes` (from conformToKindLimits), or null for none.
+ * Each item names what was removed; everything else it had is kept.
  */
-export function describeLevelledItems(changes) {
+export function describeConformedItems(changes) {
   if (!changes?.length) return null;
-  const noun = changes.length === 1 ? 'item' : 'items';
+  const items =
+    changes.length === 1
+      ? "1 item within its kind's limits"
+      : `${changes.length} items within their kinds' limits`;
   return (
-    `[scene-load] Removed tilt or scale from ${changes.length} ${noun} on load; ` +
-    `heading and position kept: ${changes.map(describeChange).join(', ')}.`
+    `[scene-load] Brought ${items}; position and heading kept: ` +
+    `${changes.map(describeChange).join(', ')}.`
   );
 }
