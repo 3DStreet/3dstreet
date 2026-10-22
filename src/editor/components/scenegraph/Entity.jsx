@@ -74,6 +74,15 @@ class Entity extends React.Component {
     isFiltering: PropTypes.bool,
     isSelected: PropTypes.bool,
     selectEntity: PropTypes.func,
+    // A click and a double-click on the row; the list decides what they do.
+    onRowClick: PropTypes.func,
+    onRowDoubleClick: PropTypes.func,
+    // 'open' for the open group's own row, 'outside' for a row outside it
+    // (see openGroupRows.js).
+    openGroupRole: PropTypes.oneOf(['open', 'outside']),
+    // Where the row sits in the open group's outlined block, if it does
+    // (see openBlockParts).
+    openBlockPart: PropTypes.oneOf(['first', 'middle', 'last', 'only']),
     toggleExpandedCollapsed: PropTypes.func,
     // Drag and drop props
     draggedEntity: PropTypes.object,
@@ -103,7 +112,20 @@ class Entity extends React.Component {
     setRenamingEntity: PropTypes.func
   };
 
-  onClick = () => this.props.selectEntity(this.props.entity);
+  // A press on the row while its name is being renamed ends the rename (the
+  // field loses focus and commits); the click it makes does nothing more.
+  // Otherwise that click would act on the row the rename left selected, and
+  // a selected group would open.
+  onMouseDown = () => {
+    this.pressBeganRenaming = this.props.renamingEntity === this.props.entity;
+  };
+
+  onClick = (event) => {
+    const pressBeganRenaming = this.pressBeganRenaming;
+    this.pressBeganRenaming = false;
+    if (pressBeganRenaming) return;
+    this.props.onRowClick(this.props.entity, event);
+  };
 
   // Select the row being right-clicked before the context menu opens, so the
   // menu's selection-based actions (cut/copy/paste target) apply to it.
@@ -113,7 +135,7 @@ class Entity extends React.Component {
     }
   };
 
-  onDoubleClick = () => Events.emit('objectfocus', this.props.entity.object3D);
+  onDoubleClick = () => this.props.onRowDoubleClick(this.props.entity);
 
   // Badge click (the badge lives inside the clickable row, so the row's own
   // click is stopped). A hotspot badge focuses the camera on the layer; a
@@ -142,9 +164,18 @@ class Entity extends React.Component {
     });
   };
 
+  // The open group's row cannot be dragged: it is being worked inside. A row
+  // outside it can, into the open group among other places.
+  canDrag() {
+    return (
+      this.props.canBeDragged(this.props.entity) &&
+      this.props.openGroupRole !== 'open'
+    );
+  }
+
   // Drag and drop handlers
   onDragStart = (e) => {
-    if (!this.props.canBeDragged(this.props.entity)) {
+    if (!this.canDrag()) {
       e.preventDefault();
       return;
     }
@@ -287,7 +318,7 @@ class Entity extends React.Component {
     // Check if entity can be dragged. Suspended while the row's label is in
     // inline-rename mode so drag-start can't swallow text selection there.
     const isRenaming = this.props.renamingEntity === entity;
-    const canBeDragged = this.props.canBeDragged(entity) && !isRenaming;
+    const canBeDragged = this.canDrag() && !isRenaming;
 
     // Clone and remove buttons if not a-scene.
     const cloneButton =
@@ -316,10 +347,11 @@ class Entity extends React.Component {
         />
       );
 
-    // Expand/collapse children arrow: left-justified before the name (#1980).
-    // Rows without children reserve no space — the name shifts left, an
-    // accepted inconsistency for a tighter row.
-    let collapse = null;
+    // Expand/collapse children arrow, left of the name (#1980). Every row
+    // reserves its slot, so names at one depth line up whether or not the row
+    // has children; a row without children leaves it empty, and a click there
+    // is a click on the row.
+    let collapse = <span className="collapsespace" aria-hidden="true" />;
     if (entity.children.length > 0 && !isFiltering) {
       collapse = (
         <span
@@ -406,6 +438,9 @@ class Entity extends React.Component {
       </span>
     );
 
+    // A drop between rows is drawn by the list, not the row.
+    const isDropChild = isHoveredDropTarget && insertion.position === 'child';
+
     // Class name.
     const className = classNames({
       active: this.props.isSelected,
@@ -415,8 +450,10 @@ class Entity extends React.Component {
       option: true,
       // Drag and drop classes
       dragging: isDragging,
-      // A drop between rows is drawn by the list, not the row.
-      'drop-child': isHoveredDropTarget && insertion.position === 'child'
+      'drop-child': isDropChild,
+      [`open-block-${this.props.openBlockPart}`]: !!this.props.openBlockPart,
+      // Faded only: the row acts as it does with no group open.
+      'outside-open-group': this.props.openGroupRole === 'outside'
     });
 
     return (
@@ -427,6 +464,7 @@ class Entity extends React.Component {
       >
         <div
           className={className}
+          onMouseDown={this.onMouseDown}
           onClick={this.onClick}
           onDoubleClick={this.onDoubleClick}
           id={this.props.id}

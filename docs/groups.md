@@ -91,7 +91,8 @@ the elements). The stack is session state only and is never saved.
   leaves the scope as it is.
 - **Pruning.** Deleting or hiding an open group closes it and every group
   inside it. Loading a scene closes every group. A group being moved stays in
-  the stack while the move settles; the move then selects it, which closes it.
+  the stack while the move settles; the move then selects it
+  (unless the layer panel chooses otherwise, see Layer panel), which closes it.
 - **Viewer and Play.** The viewer shows no isolation: leaving the editor closes
   every group, remembering them and the selection. Back in the editor (Edit,
   Escape, or Stop after Play from the editor) they are restored, as far as the
@@ -104,8 +105,8 @@ the elements). The stack is session state only and is never saved.
 - **Pick targets.** The selected group's box, the markers and the open group's
   volume are ray/box tests, not scene objects, so camera navigation and
   placement never land on them.
-- **Double-click.** The clicks of a double-click that select or open a group
-  are the whole gesture: the camera does not move.
+- **Double-click.** On the canvas, the clicks of a double-click that select
+  or open a group are the whole gesture: the camera does not move.
 - **Hover** previews what a click would select. A dark magenta (#808) box
   means the click would open the selected group; it stays on the group's
   current box while the group moves or turns. A click that leaves a group
@@ -119,8 +120,28 @@ the elements). The stack is session state only and is never saved.
   open. OSM streets are not part of any group.
 - **Touch.** The A-Frame cursor acts on a tap only when it hits an entity. On a
   touch device, taps on empty space, on the empty inside of a group's box and
-  on an empty group's marker do nothing; the layer panel does those jobs, and
-  tapping an outside object leaves the group.
+  on an empty group's marker do nothing, and tapping an outside object leaves
+  the group. In the layer panel a tap does what a click does (see Layer
+  panel).
+- **Layer panel.** While a group is open, the rows outside it are faded and
+  the open group's row and the rows listed inside it are outlined in white
+  as one block; that row is expanded, and
+  scrolled into view when nothing is selected. A click on the selected
+  group's row opens it (a hidden group cannot be opened). Every other click
+  selects its row, and the scope follows the selection: a click on the open
+  group's row leaves it, selecting it, and a click on a faded row closes the
+  open groups and selects that row, opening any group around it. A faded row
+  is faded only and otherwise acts as it does with no group open, so an
+  outside item can be dragged into the open group. The open group's row cannot
+  be dragged. `resolveRowClick` in `openGroupRows.js` decides a click. The
+  second click of a double-click never opens, leaves or selects; the
+  double-click moves the camera to the row. A click on the panel below the
+  rows closes every open group and selects nothing. A drag in the panel
+  leaves the open groups as they are: once the moved item has loaded, the
+  panel selects what keeps them (`selectionAfterMove`) — the item, or the
+  outermost closed group around it inside the open one, or nothing when it
+  left the open group (redo chooses the same way). Undoing a move does not:
+  it selects the moved item, and the scope follows it.
 
 ## Handles
 
