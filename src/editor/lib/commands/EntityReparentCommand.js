@@ -48,6 +48,10 @@ export class EntityReparentCommand extends Command {
       this.entityId = entity.id;
       this.newParentEl = payload.parentEl; // this is the id
       this.newIndexInParent = payload.indexInParent;
+      // What to select once the moved entity has loaded: by default the
+      // entity; `payload.select(movedEl)` may name another element or null.
+      // Undo always selects the entity.
+      this.selectAfterMove = payload.select ?? null;
 
       // Store current state for undo
       this.oldParentEl = entity.parentNode.id;
@@ -97,7 +101,7 @@ export class EntityReparentCommand extends Command {
   // `beforeEl`. Everything that can be checked is checked before the original
   // leaves the scene; if building the copy still throws, the original goes
   // back where it was, attributes intact, and the user is told.
-  replace(entity, data, parent, beforeEl, nextCommandCallback) {
+  replace(entity, data, parent, beforeEl, nextCommandCallback, select) {
     if (!data) {
       this.fail(null);
       return undefined;
@@ -130,7 +134,7 @@ export class EntityReparentCommand extends Command {
         Events.emit('entityremoved', entity);
         Events.emit('entitycreated', recreated);
 
-        this.editor.selectEntity(recreated);
+        this.editor.selectEntity(select ? select(recreated) : recreated);
 
         nextCommandCallback?.(recreated);
       },
@@ -195,7 +199,8 @@ export class EntityReparentCommand extends Command {
       entityData,
       newParent,
       beforeEl,
-      nextCommandCallback
+      nextCommandCallback,
+      this.selectAfterMove
     );
   }
 

@@ -35,6 +35,7 @@ import {
 } from './groups/groupPlacement.js';
 import { groupMessage } from './groups/groupMessages.js';
 import { notifyRefusal } from './transformGuard.js';
+import { migrateMeasureLinesToShapes } from '@/tested/migrate-measure-lines.js';
 
 const CLIPBOARD_FORMAT = '3dstreet/entity';
 const CLIPBOARD_VERSION = 1;
@@ -395,6 +396,10 @@ export async function pasteFromClipboard() {
   if (envelope.kind === 'segment') {
     return pasteSegment(envelope);
   }
+  // Text from a build that still had the ruler: it becomes a shape here, as a
+  // scene load would make it, before where it may go is decided — a shape
+  // never goes into a group.
+  migrateMeasureLinesToShapes([envelope.data]);
   const intoGroup = ticket && isGroupableItem(envelope.data) ? ticket : null;
   if (intoGroup || envelope.inUserGroup) {
     return pasteAtWorldPose(envelope, intoGroup);

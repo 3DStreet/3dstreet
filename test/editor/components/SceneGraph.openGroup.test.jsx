@@ -1,0 +1,748 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import PropTypes from 'prop-types';
+import { useEffect, useState } from 'react';
+import {
+  act,
+  cleanup,
+  createEvent,
+  fireEvent,
+  render,
+  screen
+} from '@testing-library/react';
+import { IntlProvider } from 'react-intl';
+import Events from '@/editor/lib/Events.js';
+import useStore from '@/store';
+import SceneGraph from '@/editor/components/scenegraph/SceneGraph.jsx';
+import {
+  ROW_HEIGHT,
+  findRow,
+  row,
+  settle,
+  streetUtilsStub
+} from './_sceneGraphHarness.jsx';
+import {
+  group,
+  item,
+  mountEditor,
+  solid
+} from '../lib/groups/_editorHarness.js';
+
+// The layer panel while groups are open: the real scope controller,
+// viewport, raycaster and shortcuts (see _editorHarness), with the panel
+// rendered beside them as the editor renders it.
+
+vi.mock('@/editor/lib/cameras', () => ({ copyCameraPosition: vi.fn() }));
+vi.mock('@/editor/lib/navAnalytics.js', () => ({
+  captureNavDiscovery: vi.fn()
+}));
+vi.mock('@/editor/lib/nav-experimental/index.js', async () => {
+  const { EventDispatcher, Vector3 } = await import('three');
+  return {
+    isStreetLevelNav: () => false,
+    ExperimentalControls: class extends EventDispatcher {
+      center = new Vector3();
+      setAspectRatio() {}
+      setCamera() {}
+      focus() {}
+      navigateDoubleClick() {}
+      newSceneCameraZoom() {}
+    }
+  };
+});
+
+let h;
+let focused;
+const onFocus = (object) => focused.push(object);
+// The editor answers the panel's `entityselect` by selecting without
+// announcing it again (index.jsx).
+const onEntitySelect = (el) => h.inspector.selectEntity(el, false);
+
+// The editor's select announces the selection with `entityselect` unless
+// told not to (index.jsx), which the harness's select does not do.
+function announceSelections(inspector) {
+  const select = inspector.selectEntity;
+  inspector.selectEntity = function (el, emit) {
+    select.call(this, el);
+    if (emit === undefined) Events.emit('entityselect', el);
+  };
+}
+
+const realRect = Element.prototype.getBoundingClientRect;
+const realScrollIntoView = Element.prototype.scrollIntoView;
+
+beforeEach(() => {
+  useStore.setState({ isInspectorEnabled: true, panelsVisible: true });
+  h = mountEditor();
+  announceSelections(h.inspector);
+  Events.on('entityselect', onEntitySelect);
+  focused = [];
+  Events.on('objectfocus', onFocus);
+  vi.stubGlobal('STREET', {
+    utils: streetUtilsStub(),
+    notify: { infoMessage: vi.fn(), warningMessage: vi.fn() }
+  });
+});
+
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  // While the editor is still mounted: its store subscribers run.
+  useStore.setState({ isInspectorEnabled: true, panelsVisible: true });
+  h.dispose();
+  Events.removeAllListeners();
+  vi.unstubAllGlobals();
+  Element.prototype.getBoundingClientRect = realRect;
+  Element.prototype.scrollIntoView = realScrollIntoView;
+  document.body.replaceChildren();
+});
+
+// Main keeps the last `entityselect` and hands it to the panel as its
+// selection (Main.jsx).
+function Host({ scene }) {
+  const [selected, setSelected] = useState(null);
+  useEffect(() => {
+    Events.on('entityselect', setSelected);
+    return () => Events.off('entityselect', setSelected);
+  }, []);
+  return <SceneGraph scene={scene} selectedEntity={selected} />;
+}
+Host.propTypes = { scene: PropTypes.object };
+
+async function renderPanel() {
+  const view = render(
+    <IntlProvider locale="en">
+      <Host scene={h.sceneEl} />
+    </IntlProvider>
+  );
+  await settle();
+  return view;
+}
+
+const named = (el, name) => {
+  el.setAttribute('data-layer-name', name);
+  return el;
+};
+
+// Street, Group B {Tree, Group C {Cone}}, Lamp. Tree and Cone are 1 m boxes
+// the canvas can hit. In the list (and their row ids): Street sgnode0, Group B
+// 1, Tree 2, Group C 3, Cone 4, Lamp 5.
+function buildScene() {
+  const sc = h.streetContainer;
+  const street = named(item(sc, { id: 'street' }), 'Street');
+  const B = named(group(sc, { id: 'B' }), 'Group B');
+  const tree = named(solid(B, [0, 0, 0], [1, 1, 1], { id: 'tree' }), 'Tree');
+  const C = named(group(B, { id: 'C' }), 'Group C');
+  const cone = named(solid(C, [4, 0, 0], [5, 1, 1], { id: 'cone' }), 'Cone');
+  const lamp = named(item(sc, { id: 'lamp' }), 'Lamp');
+  h.frame();
+  return { street, B, tree, C, cone, lamp };
+}
+
+const selected = () => h.inspector.selectedEntity;
+const has = (name, cls) => findRow(name).classList.contains(cls);
+// The row's part in the open group's outlined block, or null.
+const blockPart = (name) =>
+  ['first', 'middle', 'last', 'only'].find((p) =>
+    has(name, `open-block-${p}`)
+  ) ?? null;
+// The open group's own row: the top of its block.
+const openMark = (name) => ['first', 'only'].includes(blockPart(name));
+const listed = (name) => screen.queryByText(name) !== null;
+
+async function run(action) {
+  act(action);
+  await settle();
+}
+
+async function click(name, init) {
+  fireEvent.click(findRow(name), init);
+  await settle();
+}
+
+// A double-click on a row in the order the UI Events spec gives: a press and
+// a click carrying each click count, then dblclick. No recorded browser trace
+// backs this order or the second press's count of 2, so both need checking by
+// hand in a real browser. Each event goes to the row shown under the pointer
+// at that moment: each top-level block of rows is keyed by its last row's
+// index, so the first click remounts the block when it expands a group.
+async function doubleClick(name) {
+  for (const detail of [1, 2]) {
+    fireEvent.mouseDown(findRow(name), { detail });
+    fireEvent.click(findRow(name), { detail });
+  }
+  fireEvent.dblClick(findRow(name), { detail: 2 });
+  await settle();
+}
+
+// jsdom lays nothing out. For the scroll tests, a row's box is looked up by
+// its id (`sgnode` + its place in the list, which stays with its entity) and
+// the list's by `layers`; anything else has jsdom's empty box.
+let rects;
+let scrolled;
+const IN_VIEW = { top: 40, bottom: 80 };
+const BELOW_VIEW = { top: 500, bottom: 540 };
+
+function stubLayout(boxes) {
+  rects = { layers: { top: 0, bottom: 400 }, ...boxes };
+  Element.prototype.getBoundingClientRect = function () {
+    const key = this.classList?.contains('layers') ? 'layers' : this.id;
+    return rects[key] ?? realRect.call(this);
+  };
+  scrolled = [];
+  Element.prototype.scrollIntoView = vi.fn(function () {
+    scrolled.push(this.id);
+  });
+}
+
+// Under fake timers: let the row list rebuild, then run the 100 ms the panel
+// waits before it scrolls.
+async function flushRows() {
+  await act(() => vi.advanceTimersByTimeAsync(0));
+}
+async function waitForScroll() {
+  await act(() => vi.advanceTimersByTimeAsync(100));
+}
+
+const dataTransfer = () => ({
+  setData() {},
+  setDragImage() {},
+  effectAllowed: '',
+  dropEffect: ''
+});
+
+// Returns whether the row advertised a drop there (preventDefault).
+function dragOver(target, fraction) {
+  const event = createEvent.dragOver(target, { dataTransfer: dataTransfer() });
+  Object.defineProperty(event, 'clientY', { value: ROW_HEIGHT * fraction });
+  Object.defineProperty(event, 'clientX', { value: 0 });
+  return !fireEvent(target, event);
+}
+
+describe('the layer panel showing the open group', () => {
+  it('marks the group opened on the canvas, fades the rows outside it and lists its own members only (fails if rows fade by selection, the mark is the selection bar, or the group is not expanded or is expanded to its depths)', async () => {
+    buildScene();
+    await renderPanel();
+    // Tree's box: the first click selects Group B, the second opens it.
+    h.aimDown(0.5, 0.5);
+    await run(() => h.click());
+    expect(selected()?.id).toBe('B');
+    await run(() => h.click());
+    expect(h.openIds()).toEqual(['B']);
+    expect(selected()).toBe(null);
+
+    expect(openMark('Group B')).toBe(true);
+    expect(has('Group B', 'outside-open-group')).toBe(false);
+    for (const name of ['Street', 'Lamp']) {
+      expect(has(name, 'outside-open-group')).toBe(true);
+    }
+    for (const name of ['Tree', 'Group C']) {
+      expect(openMark(name)).toBe(false);
+      expect(has(name, 'outside-open-group')).toBe(false);
+    }
+    expect(listed('Cone')).toBe(false);
+    expect(document.querySelectorAll('.entity.active')).toHaveLength(0);
+    // One box round the group's row and the rows listed inside it.
+    expect(
+      ['Street', 'Group B', 'Tree', 'Group C', 'Lamp'].map(blockPart)
+    ).toEqual([null, 'first', 'middle', 'last', null]);
+  });
+
+  it("scrolls the opened group's row into view when it is out of view (fails if opening does not scroll)", async () => {
+    const { B } = buildScene();
+    stubLayout({ sgnode1: BELOW_VIEW });
+    await renderPanel();
+    vi.useFakeTimers();
+    // Selecting the group scrolls to it already; that scroll is not the one
+    // under test.
+    act(() => h.inspector.selectEntity(B));
+    await flushRows();
+    await waitForScroll();
+    scrolled.length = 0;
+
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
+    // The block (Group B, Tree, Group C) fits, so its last row is brought up
+    // to the bottom of the list.
+    expect(scrolled).toEqual(['sgnode3']);
+  });
+
+  it('brings a half-hidden opened group into view with its members, when they fit (fails if only its own row is checked)', async () => {
+    const { B } = buildScene();
+    stubLayout({
+      sgnode1: { top: 380, bottom: 420 },
+      sgnode2: { top: 420, bottom: 460 },
+      sgnode3: { top: 460, bottom: 500 }
+    });
+    await renderPanel();
+    vi.useFakeTimers();
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
+    expect(scrolled).toEqual(['sgnode3']);
+  });
+
+  it('brings the top of an opened group taller than the list to the top (fails if it scrolls to its last row and hides the group)', async () => {
+    const { B } = buildScene();
+    stubLayout({
+      sgnode1: { top: 380, bottom: 420 },
+      sgnode3: { top: 800, bottom: 840 }
+    });
+    await renderPanel();
+    vi.useFakeTimers();
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
+    expect(scrolled).toEqual(['sgnode1']);
+  });
+
+  it('expands and reveals a group opened again after it was closed and its row collapsed (fails if the group last shown is not forgotten when it closes)', async () => {
+    const { B } = buildScene();
+    stubLayout({ sgnode1: BELOW_VIEW });
+    await renderPanel();
+    vi.useFakeTimers();
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
+    // Leave it (which selects it), collapse its row, and clear the selection.
+    act(() => h.groupScope.escape());
+    fireEvent.click(findRow('Group B').querySelector('.collapsespace'));
+    act(() => h.inspector.selectEntity(null));
+    await flushRows();
+    await waitForScroll();
+    expect(listed('Tree')).toBe(false);
+    scrolled.length = 0;
+
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
+    expect(listed('Tree')).toBe(true);
+    expect(scrolled).toEqual(['sgnode3']);
+  });
+
+  it("does not scroll when the opened group's row is in view (fails if opening always scrolls)", async () => {
+    const { B } = buildScene();
+    stubLayout({ sgnode1: IN_VIEW });
+    await renderPanel();
+    vi.useFakeTimers();
+    act(() => h.inspector.selectEntity(B));
+    await flushRows();
+    await waitForScroll();
+    scrolled.length = 0;
+
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
+    expect(scrolled).toEqual([]);
+  });
+
+  it("scrolls to the selected row, not the group the selection opened (fails if the group's row scrolls while something is selected)", async () => {
+    const { tree } = buildScene();
+    stubLayout({ sgnode1: BELOW_VIEW, sgnode2: BELOW_VIEW });
+    await renderPanel();
+    vi.useFakeTimers();
+    act(() => h.inspector.selectEntity(tree));
+    await flushRows();
+    await waitForScroll();
+    expect(h.openIds()).toEqual(['B']);
+    expect(scrolled).toEqual(['sgnode2']);
+  });
+
+  it('expands the opened group while the list is not shown, and scrolls nothing (fails if the expansion waits for the row to exist)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    stubLayout({ sgnode1: BELOW_VIEW });
+    vi.useFakeTimers();
+    act(() => useStore.setState({ panelsVisible: false }));
+    act(() => h.inspector.selectEntity(B));
+    act(() => h.groupScope.open(B));
+    await flushRows();
+    await waitForScroll();
+    expect(scrolled).toEqual([]);
+
+    act(() => useStore.setState({ panelsVisible: true }));
+    await flushRows();
+    expect(listed('Tree')).toBe(true);
+  });
+
+  it('expands the groups around a nested open group as far as its row, and marks the innermost one (fails if only the open group is expanded, or the outermost is marked)', async () => {
+    const { C } = buildScene();
+    await renderPanel();
+    expect(listed('Group C')).toBe(false);
+    await run(() => h.groupScope.open(C));
+    expect(h.openIds()).toEqual(['B', 'C']);
+    expect(openMark('Group C')).toBe(true);
+    expect(listed('Tree')).toBe(true);
+    expect(listed('Cone')).toBe(true);
+    expect(has('Group B', 'outside-open-group')).toBe(true);
+    expect(has('Tree', 'outside-open-group')).toBe(true);
+    expect(openMark('Group B')).toBe(false);
+
+    // Leaving a level collapses nothing.
+    await run(() => h.groupScope.escape());
+    expect(h.openIds()).toEqual(['B']);
+    expect(listed('Cone')).toBe(true);
+    expect(listed('Tree')).toBe(true);
+    expect(openMark('Group B')).toBe(true);
+    expect(openMark('Group C')).toBe(false);
+    expect(has('Group C', 'outside-open-group')).toBe(false);
+  });
+
+  it('shows the groups already open when it mounts, and brings the open row into view (fails if the panel only reacts to later changes, or looks the row up before the list is built)', async () => {
+    const { B, C } = buildScene();
+    act(() => h.groupScope.open(C));
+    await renderPanel();
+    expect(openMark('Group C')).toBe(true);
+    expect(listed('Tree')).toBe(true);
+    expect(listed('Cone')).toBe(true);
+    expect(has('Street', 'outside-open-group')).toBe(true);
+    expect(has('Lamp', 'outside-open-group')).toBe(true);
+    cleanup();
+
+    // One level.
+    act(() => h.groupScope.open(B));
+    await renderPanel();
+    expect(listed('Tree')).toBe(true);
+    cleanup();
+
+    // The reveal is scheduled as the panel mounts, so real time passes here.
+    stubLayout({ sgnode3: BELOW_VIEW });
+    act(() => h.groupScope.open(C));
+    expect(selected()).toBe(null);
+    await renderPanel();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 150)));
+    // Group C's block ends at Cone's row, which comes into view at the bottom.
+    expect(scrolled).toContain('sgnode4');
+  });
+
+  it('stops listening for scope changes when it unmounts (fails if the listener is left behind)', async () => {
+    buildScene();
+    const before = Events.listenerCount('groupscopechanged');
+    const view = await renderPanel();
+    expect(Events.listenerCount('groupscopechanged')).toBe(before + 1);
+    view.unmount();
+    expect(Events.listenerCount('groupscopechanged')).toBe(before);
+  });
+});
+
+describe('a click on a layer row with groups', () => {
+  it('opens the selected group, and then selects a member inside it (fails if a click on a selected group selects it again, or a member click leaves the group)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.inspector.selectEntity(B));
+    expect(has('Group B', 'active')).toBe(true);
+
+    await click('Group B');
+    expect(h.openIds()).toEqual(['B']);
+    expect(selected()).toBe(null);
+    expect(openMark('Group B')).toBe(true);
+
+    await click('Tree');
+    expect(selected()?.id).toBe('tree');
+    expect(h.openIds()).toEqual(['B']);
+  });
+
+  it('does not open a hidden group (fails if the hidden check is dropped and the group is opened directly)', async () => {
+    const { B } = buildScene();
+    B.setAttribute('visible', false);
+    await renderPanel();
+    await run(() => h.inspector.selectEntity(B));
+    await click('Group B');
+    expect(h.openIds()).toEqual([]);
+    expect(selected()?.id).toBe('B');
+  });
+
+  it("selects a member of a closed group, which opens the group around it (fails if a member click selects its group, as the canvas's does)", async () => {
+    buildScene();
+    await renderPanel();
+    fireEvent.click(findRow('Group B').querySelector('.collapsespace'));
+    await settle();
+    await click('Tree');
+    expect(selected()?.id).toBe('tree');
+    expect(h.openIds()).toEqual(['B']);
+  });
+
+  it('closes a single open group and selects a faded row (fails if one level is left like a nested one)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(B));
+    await click('Lamp');
+    expect(selected()?.id).toBe('lamp');
+    expect(h.openIds()).toEqual([]);
+    expect(document.querySelectorAll('.outside-open-group')).toHaveLength(0);
+  });
+
+  it('on a faded row of a nested open group selects the row, and the open groups follow it (fails if the click only leaves one level)', async () => {
+    const { C } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(C));
+    await click('Tree');
+    expect(selected()?.id).toBe('tree');
+    expect(h.openIds()).toEqual(['B']);
+    for (const name of ['Tree', 'Group C']) {
+      expect(has(name, 'outside-open-group')).toBe(false);
+    }
+    for (const name of ['Street', 'Lamp']) {
+      expect(has(name, 'outside-open-group')).toBe(true);
+    }
+
+    await click('Lamp');
+    expect(selected()?.id).toBe('lamp');
+    expect(h.openIds()).toEqual([]);
+  });
+
+  it("on the open group's row leaves that level and selects the group (fails if the row does nothing, or opens the group again)", async () => {
+    const { B, C } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(B));
+    await click('Group B');
+    expect(selected()?.id).toBe('B');
+    expect(h.openIds()).toEqual([]);
+
+    await run(() => h.groupScope.open(C));
+    await click('Group C');
+    expect(selected()?.id).toBe('C');
+    expect(h.openIds()).toEqual(['B']);
+  });
+});
+
+describe("the open group's row", () => {
+  it('leaves the group and selects it on a right-click, then shows its menu (fails if the row is made inert like a faded one)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(B));
+    expect(findRow('Group B').hasAttribute('data-disabled')).toBe(false);
+    fireEvent.contextMenu(findRow('Group B'));
+    await settle();
+    expect(selected()?.id).toBe('B');
+    expect(h.openIds()).toEqual([]);
+    expect(screen.getByRole('menu')).not.toBe(null);
+  });
+
+  it('hides the group with its eye, which closes it (fails if the eye of the open row is made inert)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(B));
+    fireEvent.click(
+      findRow('Group B').querySelector('.entityVisibilityToggle')
+    );
+    await settle();
+    expect(B.object3D.visible).toBe(false);
+    expect(h.openIds()).toEqual([]);
+  });
+
+  it('cannot be dragged, while a faded row and a row inside the group can (fails if dragging ignores the open group, or faded rows cannot be dragged in)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(B));
+    expect(findRow('Group B').getAttribute('draggable')).toBe('false');
+    expect(findRow('Lamp').getAttribute('draggable')).toBe('true');
+    expect(findRow('Tree').getAttribute('draggable')).toBe('true');
+  });
+});
+
+describe('a faded row', () => {
+  it('acts like any row: its menu opens on the row it selects, and its eye works (fails if a faded row is made inert)', async () => {
+    const { B, lamp } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(B));
+    expect(findRow('Lamp').hasAttribute('data-disabled')).toBe(false);
+    fireEvent.click(findRow('Lamp').querySelector('.entityVisibilityToggle'));
+    await settle();
+    expect(lamp.object3D.visible).toBe(false);
+    expect(selected()).toBe(null);
+    expect(h.openIds()).toEqual(['B']);
+
+    fireEvent.contextMenu(findRow('Lamp'));
+    await settle();
+    expect(selected()?.id).toBe('lamp');
+    expect(h.openIds()).toEqual([]);
+    expect(screen.getByRole('menu')).not.toBe(null);
+  });
+
+  it('can be dragged into the open group (fails if a faded row cannot be dragged)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(B));
+    fireEvent.dragStart(row('Lamp'), { dataTransfer: dataTransfer() });
+    expect(dragOver(row('Group B'), 0.5)).toBe(true);
+    expect(has('Group B', 'drop-child')).toBe(true);
+  });
+
+  it('can still be dropped onto (fails if faded rows ignore drags)', async () => {
+    const { C } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(C));
+    fireEvent.dragStart(row('Cone'), { dataTransfer: dataTransfer() });
+    expect(dragOver(row('Lamp'), 0.1)).toBe(true);
+    expect(document.querySelector('.drop-line')).not.toBe(null);
+  });
+});
+
+describe('the open mark during a drag', () => {
+  it('stays on beside the highlight of a drop into the open group (fails if the drop hides it)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(B));
+    fireEvent.click(findRow('Group C').querySelector('.collapsespace'));
+    await settle();
+    fireEvent.dragStart(row('Cone'), { dataTransfer: dataTransfer() });
+    expect(dragOver(row('Group B'), 0.5)).toBe(true);
+    expect(has('Group B', 'drop-child')).toBe(true);
+    expect(openMark('Group B')).toBe(true);
+    expect(blockPart('Cone')).toBe('last');
+  });
+});
+
+describe('a double-click on a layer row', () => {
+  it('on an unselected group selects it and moves the camera to it (fails if the second click opens it)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await doubleClick('Group B');
+    expect(selected()?.id).toBe('B');
+    expect(h.openIds()).toEqual([]);
+    expect(focused).toEqual([B.object3D]);
+  });
+
+  it('on the selected group opens it and moves the camera to it (fails if the second click leaves it again)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.inspector.selectEntity(B));
+    await doubleClick('Group B');
+    expect(h.openIds()).toEqual(['B']);
+    expect(selected()).toBe(null);
+    expect(focused).toEqual([B.object3D]);
+  });
+
+  it("on the open group's row leaves it, selecting it, and moves the camera to it (fails if the second click reopens it)", async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(B));
+    await doubleClick('Group B');
+    expect(selected()?.id).toBe('B');
+    expect(h.openIds()).toEqual([]);
+    expect(focused).toEqual([B.object3D]);
+  });
+
+  it('on a faded row with one group open selects the row and moves the camera to it (fails if every faded-row click skips the camera move)', async () => {
+    const { B, lamp } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(B));
+    await doubleClick('Lamp');
+    expect(selected()?.id).toBe('lamp');
+    expect(h.openIds()).toEqual([]);
+    expect(focused).toEqual([lamp.object3D]);
+  });
+
+  it('on a faded row of a nested open group selects the row and moves the camera to it (fails if the click only leaves a level)', async () => {
+    const { C, tree } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(C));
+    await doubleClick('Tree');
+    expect(selected()?.id).toBe('tree');
+    expect(h.openIds()).toEqual(['B']);
+    expect(focused).toEqual([tree.object3D]);
+  });
+});
+
+describe('the arrow keys with groups open', () => {
+  it('select the next listed row, faded or open, as they always have (fails if they skip the open group)', async () => {
+    const { cone } = buildScene();
+    await renderPanel();
+    await run(() => h.inspector.selectEntity(cone));
+    expect(h.openIds()).toEqual(['B', 'C']);
+    fireEvent.keyUp(document.querySelector('.scenegraph-panel'), {
+      keyCode: 38
+    });
+    await settle();
+    expect(selected()?.id).toBe('C');
+    expect(h.openIds()).toEqual(['B']);
+  });
+});
+
+describe('renaming a group from its menu', () => {
+  it('ends with a press elsewhere on the row, which does not then open the group; the next click does (fails if the press that ends the rename also opens the group, or the guard outlasts it)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.inspector.selectEntity(B));
+    fireEvent.contextMenu(findRow('Group B'));
+    await settle();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    await settle();
+    const input = findRowInput();
+    fireEvent.change(input, { target: { value: 'Planters' } });
+
+    // A press on the row outside the field: the field loses focus (jsdom
+    // moves no focus on a press, so the blur is sent here), then the click.
+    const groupRow = input.closest('.entity');
+    fireEvent.mouseDown(groupRow);
+    fireEvent.blur(input);
+    fireEvent.click(groupRow);
+    await settle();
+    expect(B.getAttribute('data-layer-name')).toBe('Planters');
+    expect(h.openIds()).toEqual([]);
+    expect(selected()?.id).toBe('B');
+
+    // A click with no press first, so a guard left set would swallow it.
+    await click('Planters');
+    expect(h.openIds()).toEqual(['B']);
+  });
+
+  it('ends with a press on another row, whose click then selects that row (fails if the guard swallows a press on any row while something is renamed)', async () => {
+    const { B } = buildScene();
+    await renderPanel();
+    await run(() => h.inspector.selectEntity(B));
+    fireEvent.contextMenu(findRow('Group B'));
+    await settle();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Rename' }));
+    await settle();
+    const input = findRowInput();
+    fireEvent.change(input, { target: { value: 'Planters' } });
+
+    fireEvent.mouseDown(findRow('Lamp'));
+    fireEvent.blur(input);
+    fireEvent.click(findRow('Lamp'));
+    await settle();
+    expect(B.getAttribute('data-layer-name')).toBe('Planters');
+    expect(selected()?.id).toBe('lamp');
+  });
+});
+
+function findRowInput() {
+  return document.querySelector('.entity .entityNameInput');
+}
+
+describe('a click on the panel below the rows', () => {
+  it('closes every open group and selects nothing, and does nothing with no group open (fails if it leaves only one level, or a row click reaches it)', async () => {
+    const { C, lamp } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(C));
+    fireEvent.click(document.querySelector('.layers-drop-end'));
+    await settle();
+    expect(h.openIds()).toEqual([]);
+    expect(selected()).toBe(null);
+
+    await run(() => h.inspector.selectEntity(lamp));
+    fireEvent.click(document.querySelector('.layers'));
+    await settle();
+    expect(selected()?.id).toBe('lamp');
+
+    await run(() => h.groupScope.open(C));
+    await click('Cone');
+    expect(selected()?.id).toBe('cone');
+    expect(h.openIds()).toEqual(['B', 'C']);
+  });
+
+  it("is not reached by a click in a row's context menu, which is portalled out of the panel (fails if Rename from the menu closes the open group)", async () => {
+    const { C } = buildScene();
+    await renderPanel();
+    await run(() => h.groupScope.open(C));
+    await click('Cone');
+    fireEvent.contextMenu(findRow('Cone'));
+    await settle();
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename' }));
+    await settle();
+    expect(h.openIds()).toEqual(['B', 'C']);
+    expect(selected()?.id).toBe('cone');
+  });
+});

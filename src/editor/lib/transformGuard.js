@@ -1,7 +1,7 @@
 /* global THREE */
 // Capability markers that restrict what may be done to an entity's transform,
 // enforced centrally for every command the editor runs. An entity opts in by
-// carrying the attribute; the guard is otherwise entity-type-agnostic.
+// carrying the attribute, or by being a kind that declares it (below).
 //
 //   data-transform-no-scale       scale must stay unit
 //   data-transform-yaw-only       rotation may change about Y alone: the X and
@@ -12,10 +12,16 @@
 //                                 the layers panel does that through the same
 //                                 reparent command)
 //
-// A user group carries yaw-only and no-scale by its class rather than as
-// attributes (hasTransformMarker): data-* attributes are not saved with the
-// scene, and a class needs no editor code to have run for an AI command to see
-// it. Removing that class from a group that still has members is refused.
+// An item of a kind that declares markers (tested/transform-kinds.js: a user
+// group by its class; a managed street, managed intersection or shape by its
+// component) carries them by being that kind, whether or not the attributes
+// are there (hasTransformMarker): data-* attributes are not saved with the
+// scene, and a class or component needs no editor code to have run for an AI
+// command to see it. This holds at the command layer only: the stock gizmo
+// reads the attributes, which each kind's component sets in its init.
+// Removing a marker attribute from such an item changes nothing the guard
+// decides. Removing the user-group class from a group that still has members
+// is refused.
 //
 // Values are judged as A-Frame will apply them (parseVec3LikeAFrame), so a
 // string such as "10° 30 0" or "2,2,2" is read the way it would take effect.
@@ -35,8 +41,8 @@
 // Every command that goes through Inspector.execute is judged, whether it
 // updates a component or adds one. A direct setAttribute is not — from scene
 // load, generator code or an animation component — nor is a scene authored
-// before the markers existed. Scene load levels groups itself
-// (tested/group-pose.js).
+// before the markers existed. Scene load brings every constrained item within
+// its kind's limits itself (tested/group-pose.js).
 
 import {
   USER_GROUP_CLASS,
@@ -54,6 +60,13 @@ import {
   isZeroAngle,
   parseVec3LikeAFrame
 } from '@/tested/group-pose.js';
+import {
+  NO_REPARENT,
+  NO_SCALE,
+  YAW_ONLY,
+  kindsOfEntity,
+  markersOfKinds
+} from '@/tested/transform-kinds.js';
 
 // Refuse a repeat notice for the same entity and reason within this window: the
 // panel's number fields are drag-scrubbers that fire a command per pointer
@@ -104,16 +117,11 @@ function tiltsAwayFromCurrent(entity, axes, names) {
   );
 }
 
-const IMPLIED_BY_USER_GROUP = new Set([
-  'data-transform-yaw-only',
-  'data-transform-no-scale'
-]);
-
-/** Does `entity` carry `marker`, as an attribute or implied by its class? */
+/** Does `entity` carry `marker`, as an attribute or implied by its kind? */
 export function hasTransformMarker(entity, marker) {
   return (
     entity.hasAttribute(marker) ||
-    (IMPLIED_BY_USER_GROUP.has(marker) && isUserGroup(entity))
+    markersOfKinds(kindsOfEntity(entity)).includes(marker)
   );
 }
 
@@ -155,14 +163,14 @@ function requiredParentGone(commandType, payload) {
 function refuseVec3Write(entity, component, payload) {
   if (
     component === 'scale' &&
-    hasTransformMarker(entity, 'data-transform-no-scale') &&
+    hasTransformMarker(entity, NO_SCALE) &&
     departsFrom(requestedAxes(payload, 'scale'), 1, ['x', 'y', 'z'])
   ) {
     return 'Scaling is not available for this element.';
   }
   if (
     component === 'rotation' &&
-    hasTransformMarker(entity, 'data-transform-yaw-only') &&
+    hasTransformMarker(entity, YAW_ONLY) &&
     tiltsAwayFromCurrent(entity, requestedAxes(payload, 'rotation'), ['x', 'z'])
   ) {
     return 'This element can only be rotated about the vertical axis.';
@@ -226,7 +234,7 @@ export function refuseGuardedTransform(commandType, payload) {
     // payload.parentEl is the target parent's id. A same-parent reorder comes
     // through this command too, and must not be refused.
     if (payload.parentEl === entity.parentNode?.id) return null;
-    if (hasTransformMarker(entity, 'data-transform-no-reparent')) {
+    if (hasTransformMarker(entity, NO_REPARENT)) {
       return 'This element cannot be moved to a different parent.';
     }
     const newParent = document.getElementById(payload.parentEl);

@@ -11,7 +11,11 @@
 // raycaster supplies the hits.
 
 import { resolveClickSelection } from '../cascadingSelection.js';
-import { isHiddenInHierarchy, isUserGroup } from './groupModel.js';
+import {
+  isHiddenInHierarchy,
+  isUserGroup,
+  userGroupAncestors
+} from './groupModel.js';
 
 /**
  * A pick target along the cursor ray, nearest first:
@@ -135,4 +139,40 @@ export function hoverTargetOf(result) {
   if (result.action === 'open') return result.group;
   if (result.action === 'exit') return null;
   return result.el || null;
+}
+
+/**
+ * What of a scope remembered on leaving the editor can be restored on return:
+ * `groups` the open groups then, outermost first, and `selected` the selection
+ * then (or null). Keeps the groups while each is still a shown user group in
+ * the scene, directly inside the one before it (the first inside none), and
+ * stops at the first that is not. Keeps the selection only if it is still
+ * shown and the groups around it are exactly the kept ones, which is the
+ * pairing a click could have produced; otherwise nothing is selected.
+ *
+ * Elements, not ids: a scene loaded meanwhile has new elements, so a group
+ * that happens to share an id with a remembered one is never reopened.
+ */
+export function restorableScope(groups, selected) {
+  const kept = [];
+  for (const groupEl of groups) {
+    if (
+      !groupEl?.isConnected ||
+      !isUserGroup(groupEl) ||
+      isHiddenInHierarchy(groupEl) ||
+      !sameElements(userGroupAncestors(groupEl), kept)
+    ) {
+      break;
+    }
+    kept.push(groupEl);
+  }
+  const keepSelected =
+    !!selected?.isConnected &&
+    !isHiddenInHierarchy(selected) &&
+    sameElements(userGroupAncestors(selected), kept);
+  return { groups: kept, selected: keepSelected ? selected : null };
+}
+
+function sameElements(a, b) {
+  return a.length === b.length && a.every((el, i) => el === b[i]);
 }

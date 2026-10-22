@@ -143,7 +143,128 @@ function tiltedBox() {
 }
 
 const WARNING =
-  '[groups] Removed tilt or scale from 3 groups on load; heading and position kept: "Scaled group" (scale 1.5 1.5 1.5), "Outer group" (scale 2 2 2), "Inner tilted group" (rotation x 10, z 0).';
+  '[scene-load] Brought 3 items within their kinds\' limits; position and facing kept: group "Scaled group" (removed scale 1.5 1.5 1.5), group "Outer group" (removed scale 2 2 2), group "Inner tilted group" (removed rotation x 10, z 0).';
+
+const item = (id, components, extra = {}) => ({
+  id,
+  'data-layer-name': id,
+  components,
+  ...extra
+});
+
+// Streets, an intersection, shapes and an old ruler saved outside their kinds'
+// limits, a street inside a scaled group, and a classic street (no kind).
+const kindsToLevel = () => [
+  {
+    id: 'street-container',
+    'data-layer-name': 'User Layers',
+    children: [
+      item('start-street', {
+        'managed-street': '',
+        'street-align': '',
+        position: '3 0 4',
+        rotation: '0 30 0',
+        scale: '2 1 2'
+      }),
+      item('middle-street', {
+        'managed-street': '',
+        'street-align': 'width: center; length: middle',
+        position: '10 0 0',
+        scale: '2 1 2'
+      }),
+      item('tilted-street', {
+        'managed-street': '',
+        'street-align': 'width: center; length: middle',
+        rotation: '5 30 0'
+      }),
+      item('mirrored-street', {
+        'managed-street': '',
+        'street-align': 'width: center; length: middle',
+        scale: '-1 1 1'
+      }),
+      item('scaled-intersection', {
+        'managed-intersection': '',
+        scale: '1.2 1.2 1.2'
+      }),
+      item('big-area', {
+        shape: 'closed: true; lineWidth: 0.5',
+        rotation: '0 45 0',
+        scale: '2 1 2'
+      }),
+      item('tilted-area', { shape: '', rotation: '0 30 20' }),
+      item('ruler', {
+        'measure-line': 'start: 0 0 0; end: 8 0 0',
+        scale: '2 2 2'
+      }),
+      item(
+        'scaled-group',
+        { position: '0 0 -20', scale: '2 2 2' },
+        {
+          class: ['user-group'],
+          children: [
+            item('grouped-street', {
+              'managed-street': '',
+              'street-align': 'width: center; length: middle',
+              scale: '2 1 2'
+            })
+          ]
+        }
+      ),
+      item('classic-street', {
+        street: 'length: 60',
+        'streetmix-loader': 'streetmixStreetURL: https://streetmix.net/x/1',
+        scale: '2 2 2'
+      })
+    ]
+  }
+];
+
+// The same kinds already within their limits, the tilted street included; most
+// carry no saved scale or rotation.
+const kindsConforming = () => [
+  {
+    id: 'street-container',
+    'data-layer-name': 'User Layers',
+    children: [
+      item('start-street', {
+        'managed-street': '',
+        'street-align': 'width: center; length: start',
+        rotation: '0 30 0'
+      }),
+      item('tilted-street', {
+        'managed-street': '',
+        'street-align': 'width: center; length: middle',
+        rotation: '5 30 0',
+        scale: '1 1 1'
+      }),
+      item('plain-intersection', { 'managed-intersection': '' }),
+      item('level-area', { shape: '', rotation: '0 45 0' }),
+      item('bare-area', { shape: '' }),
+      item(
+        'level-group',
+        { position: '0 0 -20' },
+        {
+          class: ['user-group'],
+          children: [item('grouped-street', { 'managed-street': '' })]
+        }
+      )
+    ]
+  }
+];
+
+const KINDS_WARNING =
+  "[scene-load] Brought 9 items within their kinds' limits; position and facing kept: " +
+  'managed street "start-street" (removed scale 2 1 2), ' +
+  'managed street "middle-street" (removed scale 2 1 2), ' +
+  'managed street "mirrored-street" (removed scale -1 1 1), ' +
+  'managed intersection "scaled-intersection" (removed scale 1.2 1.2 1.2), ' +
+  'shape "big-area" (removed scale 2 1 2), ' +
+  'shape "tilted-area" (removed rotation x 0, z 20), ' +
+  'shape "ruler" (removed scale 2 2 2), ' +
+  'group "scaled-group" (removed scale 2 2 2), ' +
+  'managed street "grouped-street" (removed scale 2 1 2).';
+
+const vec = (x, y, z) => ({ x, y, z });
 
 beforeAll(async () => {
   window.BATCHING_ENABLED = false;
@@ -276,5 +397,102 @@ describe('loading a scene levels its groups', () => {
       z: 1
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+});
+
+describe('loading a scene brings streets, intersections and shapes within their limits', () => {
+  it('brings every kind within its limits, keeps street tilt and position, turns an old ruler into a level shape, and warns once naming each item and kind (fails if the limits are applied before the ruler migration, it warns per item, walks the top level only, or misses a kind)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    STREET.utils.createEntities(kindsToLevel(), sceneEl);
+
+    for (const id of [
+      'start-street',
+      'middle-street',
+      'tilted-street',
+      'mirrored-street',
+      'scaled-intersection',
+      'big-area',
+      'tilted-area',
+      'ruler',
+      'scaled-group',
+      'grouped-street'
+    ]) {
+      expect(byId(id).object3D.scale.toArray(), id).toEqual([1, 1, 1]);
+    }
+    expect(byId('start-street').getAttribute('rotation')).toEqual(
+      vec(0, 30, 0)
+    );
+    expect(byId('start-street').getAttribute('position')).toEqual(vec(3, 0, 4));
+    expect(byId('tilted-street').getAttribute('rotation')).toEqual(
+      vec(5, 30, 0)
+    );
+    expect(byId('big-area').getAttribute('rotation')).toEqual(vec(0, 45, 0));
+    expect(byId('big-area').getAttribute('shape')).toBe(
+      'closed: true; lineWidth: 0.5'
+    );
+    expect(byId('tilted-area').getAttribute('rotation')).toEqual(vec(0, 30, 0));
+    expect(byId('ruler').hasAttribute('shape')).toBe(true);
+    expect(byId('ruler').hasAttribute('measure-line')).toBe(false);
+    expect(byId('classic-street').getAttribute('scale')).toEqual(vec(2, 2, 2));
+    expect(byId('start-street').getAttribute('street-align')).toContain(
+      'length: start'
+    );
+    expect(byId('middle-street').getAttribute('street-align')).toBe(
+      'width: center; length: middle'
+    );
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(KINDS_WARNING);
+  });
+
+  it('says nothing for a scene whose kinds already conform, and writes no scale or rotation they did not save (fails if the warning is unconditional, or unit scale or a rotation is written onto a conforming item)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const saved = kindsConforming();
+    STREET.utils.createEntities(kindsConforming(), sceneEl);
+    expect(warn).not.toHaveBeenCalled();
+
+    const parse = (value) => {
+      const [x, y, z] = value.split(' ').map(Number);
+      return vec(x, y, z);
+    };
+    const check = (node) => {
+      if (node.id !== 'street-container') {
+        const el = byId(node.id);
+        for (const name of ['scale', 'rotation']) {
+          const value = node.components?.[name];
+          expect(el.hasAttribute(name), `${node.id} ${name}`).toBe(
+            value !== undefined
+          );
+          if (value !== undefined) {
+            expect(el.getAttribute(name), `${node.id} ${name}`).toEqual(
+              parse(value)
+            );
+          }
+        }
+      }
+      node.children?.forEach(check);
+    };
+    saved.forEach(check);
+  });
+
+  it('counts a kind component saved as null, which A-Frame still starts with its defaults, and brings it to unit scale (fails if a null component is not counted on load)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    STREET.utils.createEntities(
+      [
+        {
+          id: 'street-container',
+          'data-layer-name': 'User Layers',
+          children: [
+            item('null-street', { 'managed-street': null, scale: '2 2 2' })
+          ]
+        }
+      ],
+      sceneEl
+    );
+    expect(byId('null-street').object3D.scale.toArray()).toEqual([1, 1, 1]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      "[scene-load] Brought 1 item within its kind's limits; position and facing kept: " +
+        'managed street "null-street" (removed scale 2 2 2).'
+    );
   });
 });

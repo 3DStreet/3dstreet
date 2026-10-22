@@ -496,3 +496,81 @@ describe('a group arriving by paste', () => {
     expect(pasted.getAttribute('scale')).toEqual({ x: 2, y: 1, z: 1 });
   });
 });
+
+describe('a street, shape or old ruler arriving by paste', () => {
+  function putOnClipboard(data) {
+    clipboardText = JSON.stringify({
+      format: '3dstreet/entity',
+      version: 1,
+      kind: 'entity',
+      documentToken: 'another-document',
+      sourceEntityId: null,
+      data,
+      worldMatrix: null,
+      inUserGroup: false
+    });
+  }
+
+  const ruler = () => ({
+    id: 'ruler',
+    components: {
+      'measure-line': 'start: 0 0 0; end: 8 0 0',
+      scale: '2 2 2'
+    }
+  });
+
+  it('gives a pasted managed street unit scale keeping its tilt, and lays a pasted shape flat at unit scale (fails if paste levels only groups)', async () => {
+    putOnClipboard({
+      id: 'street',
+      components: {
+        'managed-street': '',
+        rotation: '5 30 0',
+        scale: '2 1 2'
+      }
+    });
+    await pasteFromClipboard();
+    const street = pastedElement();
+    expect(street.getAttribute('rotation')).toEqual({ x: 5, y: 30, z: 0 });
+    expect(street.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+
+    putOnClipboard({
+      id: 'area',
+      components: { shape: '', rotation: '0 30 20', scale: '2 2 2' }
+    });
+    await pasteFromClipboard();
+    const area = pastedElement();
+    expect(area.getAttribute('rotation')).toEqual({ x: 0, y: 30, z: 0 });
+    expect(area.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
+  it('turns a pasted old ruler into a shape at unit scale (fails if paste does not migrate rulers)', async () => {
+    putOnClipboard(ruler());
+    await pasteFromClipboard();
+    const pasted = pastedElement();
+    expect(pasted.hasAttribute('shape')).toBe(true);
+    expect(pasted.hasAttribute('measure-line')).toBe(false);
+    expect(
+      [...pasted.children].filter((child) => child.hasAttribute('shape-vertex'))
+    ).toHaveLength(2);
+    expect(pasted.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
+  });
+
+  it('pastes an old ruler at the top level with a group open, as the shape it becomes, and says it landed there (fails if the ruler is migrated only after its destination is chosen)', async () => {
+    groupWithMember();
+    putOnClipboard(ruler());
+    scene.openGroups('g');
+    await pasteFromClipboard();
+    const [, payload] = pastes()[0];
+    expect(payload.parentId).toBe('street-container');
+    expect(payload.requireParent).toBeUndefined();
+    expect(payload.entityData.components.shape).toBe('');
+    expect(scene.notify.infoMessage).toHaveBeenCalledWith(
+      groupMessage('placedAtTopLevel')
+    );
+    expect(pastedElement().getAttribute('scale')).toEqual({
+      x: 1,
+      y: 1,
+      z: 1
+    });
+  });
+});

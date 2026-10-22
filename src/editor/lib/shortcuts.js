@@ -24,7 +24,16 @@ export const Shortcuts = {
     default: {},
     modules: {}
   },
+  // Escape acts on key-up, but only for a press whose key-down the editor
+  // accepted. The viewer returns to the editor on Escape's key-down, and the
+  // key-up of that same press must not then also leave a group level or
+  // clear the selection.
+  escapeDown: false,
   onKeyUp: function (event) {
+    // Cleared before the gate below, so a gated key-up does not leave it set.
+    const escapeDown = this.escapeDown;
+    if (event.keyCode === 27) this.escapeDown = false;
+
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
     }
@@ -32,7 +41,7 @@ export const Shortcuts = {
     var keyCode = event.keyCode;
 
     // esc: leave one open group level if a group is open, else unselect entity
-    if (keyCode === 27 && !this.inspector.groupScope.escape()) {
+    if (keyCode === 27 && escapeDown && !this.inspector.groupScope.escape()) {
       if (this.inspector.selectedEntity) {
         this.inspector.selectEntity(null);
       }
@@ -129,6 +138,10 @@ export const Shortcuts = {
       return;
     }
 
+    // Not on auto-repeat: holding the Escape that left the viewer repeats
+    // key-downs once the editor is back, and those must not arm it.
+    if (event.keyCode === 27 && !event.repeat) this.escapeDown = true;
+
     if (
       (event.ctrlKey && os !== 'macos') ||
       (event.metaKey && os === 'macos')
@@ -223,14 +236,21 @@ export const Shortcuts = {
       this.disable();
     }
 
+    this.escapeDown = false;
     window.addEventListener('keydown', this.onKeyDown, false);
     window.addEventListener('keyup', this.onKeyUp, false);
+    window.addEventListener('blur', this.onBlur, false);
     this.enabled = true;
   },
   disable: function () {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('blur', this.onBlur);
+    this.escapeDown = false;
     this.enabled = false;
+  },
+  onBlur: function () {
+    this.escapeDown = false;
   },
   checkModuleShortcutCollision: function (keyCode, moduleName, mustBeActive) {
     if (
@@ -270,5 +290,6 @@ export const Shortcuts = {
     this.inspector = inspector;
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
+    this.onBlur = this.onBlur.bind(this);
   }
 };

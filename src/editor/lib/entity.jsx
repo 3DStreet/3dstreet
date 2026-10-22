@@ -170,7 +170,12 @@ export function insertAfter(newNode, referenceNode) {
  * @param {Element} targetEntity  Sibling to insert relative to.
  * @param {string}  insertionMode 'before' or 'after' the target.
  */
-export function reorderEntityRelativeTo(entity, targetEntity, insertionMode) {
+export function reorderEntityRelativeTo(
+  entity,
+  targetEntity,
+  insertionMode,
+  select
+) {
   const targetParent = targetEntity.parentNode;
   if (!targetParent) {
     return;
@@ -187,7 +192,8 @@ export function reorderEntityRelativeTo(entity, targetEntity, insertionMode) {
   AFRAME.INSPECTOR.execute('entityreparent', {
     entity,
     parentEl: targetParent.id,
-    indexInParent: insertionMode === 'after' ? targetIndex + 1 : targetIndex
+    indexInParent: insertionMode === 'after' ? targetIndex + 1 : targetIndex,
+    select
   });
 }
 

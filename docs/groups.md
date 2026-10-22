@@ -26,10 +26,10 @@ edited in isolation. The code is in `src/editor/lib/groups/`; the
   has members is refused. Whatever becomes a group, or arrives as one — a
   loaded scene, a paste, a class added by a command — loses any X/Z rotation
   and any scale; its heading and position are kept, and its members keep
-  their own values. Loading a scene that held such a group logs a `[groups]`
-  warning. A mixin's rotation or scale counts as the group's own when the
-  group has none. A direct `setAttribute` — from an animation component or
-  the console — is not checked or levelled.
+  their own values. Loading a scene that held such a group names it in the
+  load's `[scene-load]` warning. A mixin's rotation or scale counts as the
+  group's own when the group has none. A direct `setAttribute` — from an
+  animation component or the console — is not checked or levelled.
 
 ## Bounds, center and origin
 
@@ -92,15 +92,23 @@ the elements). The stack is session state only and is never saved.
   (a Visitor Build session selects the objects visitors place) a selection
   leaves the scope as it is, which is empty since the editor closed.
 - **Pruning.** Deleting or hiding an open group closes it and every group
-  inside it. Loading a scene and leaving the editor close every group; on
-  return, a selection inside a group becomes that group's outermost group,
-  selected and closed. A group being moved stays in the stack while the move
-  settles; the move then selects it, which closes it.
+  inside it. Loading a scene closes every group. A group being moved stays in
+  the stack while the move settles; the move then selects it
+  (unless the layer panel chooses otherwise, see Layer panel), which closes it.
+- **Viewer and Play.** The viewer shows no isolation: leaving the editor closes
+  every group, remembering them and the selection. Back in the editor (Edit,
+  Escape, or Stop after Play from the editor) they are restored, as far as the
+  scene allows: the open groups are kept up to the first that is gone, hidden or
+  no longer inside the one before it, and the selection only if the groups
+  around it are exactly those. A scene loaded meanwhile forgets them.
+  `restorableScope` in `groupScope.js` decides. The Escape that returns from the
+  viewer does nothing more: the editor acts on an Escape key-up only after
+  seeing its key-down (`shortcuts.js`).
 - **Pick targets.** The selected group's box, the markers and the open group's
   volume are ray/box tests, not scene objects, so camera navigation and
   placement never land on them.
-- **Double-click.** The clicks of a double-click that select or open a group
-  are the whole gesture: the camera does not move.
+- **Double-click.** On the canvas, the clicks of a double-click that select
+  or open a group are the whole gesture: the camera does not move.
 - **Hover** previews what a click would select. A dark magenta (#808) box
   means the click would open the selected group; it stays on the group's
   current box while the group moves or turns. A click that leaves a group
@@ -114,8 +122,28 @@ the elements). The stack is session state only and is never saved.
   open. OSM streets are not part of any group.
 - **Touch.** The A-Frame cursor acts on a tap only when it hits an entity. On a
   touch device, taps on empty space, on the empty inside of a group's box and
-  on an empty group's marker do nothing; the layer panel does those jobs, and
-  tapping an outside object leaves the group.
+  on an empty group's marker do nothing, and tapping an outside object leaves
+  the group. In the layer panel a tap does what a click does (see Layer
+  panel).
+- **Layer panel.** While a group is open, the rows outside it are faded and
+  the open group's row and the rows listed inside it are outlined in white
+  as one block; that row is expanded, and
+  scrolled into view when nothing is selected. A click on the selected
+  group's row opens it (a hidden group cannot be opened). Every other click
+  selects its row, and the scope follows the selection: a click on the open
+  group's row leaves it, selecting it, and a click on a faded row closes the
+  open groups and selects that row, opening any group around it. A faded row
+  is faded only and otherwise acts as it does with no group open, so an
+  outside item can be dragged into the open group. The open group's row cannot
+  be dragged. `resolveRowClick` in `openGroupRows.js` decides a click. The
+  second click of a double-click never opens, leaves or selects; the
+  double-click moves the camera to the row. A click on the panel below the
+  rows closes every open group and selects nothing. A drag in the panel
+  leaves the open groups as they are: once the moved item has loaded, the
+  panel selects what keeps them (`selectionAfterMove`) — the item, or the
+  outermost closed group around it inside the open one, or nothing when it
+  left the open group (redo chooses the same way). Undoing a move does not:
+  it selects the moved item, and the scope follows it.
 
 ## Handles
 
