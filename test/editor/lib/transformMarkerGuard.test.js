@@ -12,12 +12,6 @@ const YAW_ONLY = 'data-transform-yaw-only';
 const NO_REPARENT = 'data-transform-no-reparent';
 const MARKERS = [NO_SCALE, YAW_ONLY, NO_REPARENT];
 
-const STRIP_REFUSAL = {
-  [NO_SCALE]: "This element's scale limit cannot be removed.",
-  [YAW_ONLY]: "This element's rotation limit cannot be removed.",
-  [NO_REPARENT]: "This element's parent limit cannot be removed."
-};
-
 function element({ attributes = [], classes = [] } = {}) {
   const el = document.createElement('div');
   for (const name of attributes) el.setAttribute(name, '');
@@ -25,35 +19,20 @@ function element({ attributes = [], classes = [] } = {}) {
   return el;
 }
 
-describe('removing a transform marker through a command', () => {
+describe('a write to a transform marker attribute', () => {
   it.each(MARKERS)(
-    'is refused for %s, naming that limit, with or without a property, and inside a batch (fails if the strip is let through, only the form without a property is checked, or the refusal names other limits)',
+    'is let through when it removes %s, which then limits a kind no less (fails if removing a marker is refused)',
     (marker) => {
-      const forms = [
-        { value: null },
-        { value: undefined },
-        { property: 'x', value: null }
-      ];
-      for (const form of forms) {
-        const el = element({ attributes: [marker] });
-        expect(
-          refuseGuardedTransform('entityupdate', {
-            entity: el,
-            component: marker,
-            ...form
-          })
-        ).toBe(STRIP_REFUSAL[marker]);
-      }
-      const el = element({ attributes: [marker] });
+      const el = element({ attributes: ['shape', marker] });
       expect(
-        refuseGuardedTransform('multi', [
-          [
-            'entityupdate',
-            { entity: el, component: 'position', value: '1 0 0' }
-          ],
-          ['entityupdate', { entity: el, component: marker, value: null }]
-        ])
-      ).toBe(STRIP_REFUSAL[marker]);
+        refuseGuardedTransform('entityupdate', {
+          entity: el,
+          component: marker,
+          value: null
+        })
+      ).toBeNull();
+      el.removeAttribute(marker);
+      expect(hasTransformMarker(el, marker)).toBe(true);
     }
   );
 

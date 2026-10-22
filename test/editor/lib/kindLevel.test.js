@@ -41,8 +41,6 @@ function kindIn(parent, component, options = {}) {
 
 const vec = (x, y, z) => ({ x, y, z });
 
-const STRIP_REFUSED =
-  "entityupdate refused: This element's scale limit cannot be removed.";
 const own = (el, name) => {
   const v = el.getDOMAttribute(name);
   return v && vec(v.x, v.y, v.z);
@@ -295,40 +293,83 @@ describe('what the AI assistant is told about a constrained kind', () => {
     ).resolves.toBe('entityupdate executed');
   });
 
-  it('is refused removing a transform marker, by chat and by MCP alike (fails if the strip is let through)', async () => {
-    const street = kindIn(scene.root, 'managed-street', { id: 'street' });
-    const strip = {
-      entityId: 'street',
-      component: 'data-transform-no-scale',
-      value: null
-    };
-    await expect(dispatchToolCall('entityUpdate', strip)).rejects.toMatchObject(
-      { message: STRIP_REFUSED }
-    );
-    const { callToolAsMCPContent } =
-      await import('@/editor/lib/mcp/dispatch.js');
-    await expect(
-      callToolAsMCPContent('entityUpdate', strip)
-    ).rejects.toMatchObject({ message: STRIP_REFUSED });
-    expect(street.hasAttribute('data-transform-no-scale')).toBe(true);
-    expect(scene.inspector.history.undos).toHaveLength(0);
-  });
+  // Two ways a marker attribute can go: an AI update to null, and a direct
+  // removal from the console.
+  const STRIP_ROUTES = [
+    [
+      'by an AI update',
+      async (el, marker) => {
+        await expect(
+          dispatchToolCall('entityUpdate', {
+            entityId: el.id,
+            component: marker,
+            value: null
+          })
+        ).resolves.toBe('entityupdate executed');
+      }
+    ],
+    ['from the console', async (el, marker) => el.removeAttribute(marker)]
+  ];
 
-  it('still cannot scale a managed street whose marker attribute was removed outside the editor, as from the console (fails if the kind does not imply its marker)', async () => {
-    const street = kindIn(scene.root, 'managed-street', { id: 'street' });
-    street.removeAttribute('data-transform-no-scale');
-    await expect(
-      dispatchToolCall('entityUpdate', {
-        entityId: 'street',
-        component: 'scale',
-        value: '2 2 2'
-      })
-    ).rejects.toMatchObject({
-      message:
-        'entityupdate refused: Scaling is not available for this element.'
-    });
-    expect(street.object3D.scale.toArray()).toEqual([1, 1, 1]);
-  });
+  it.each(STRIP_ROUTES)(
+    'still cannot scale a managed street whose marker was removed %s (fails if the guard reads only the attribute)',
+    async (_, strip) => {
+      const street = kindIn(scene.root, 'managed-street', { id: 'street' });
+      await strip(street, 'data-transform-no-scale');
+      expect(street.hasAttribute('data-transform-no-scale')).toBe(false);
+      await expect(
+        dispatchToolCall('entityUpdate', {
+          entityId: 'street',
+          component: 'scale',
+          value: '2 2 2'
+        })
+      ).rejects.toMatchObject({
+        message:
+          'entityupdate refused: Scaling is not available for this element.'
+      });
+      expect(street.object3D.scale.toArray()).toEqual([1, 1, 1]);
+    }
+  );
+
+  it.each(STRIP_ROUTES)(
+    'still cannot scale, tilt or move to another parent a shape whose markers were removed %s (fails if the guard reads only the attributes)',
+    async (_, strip) => {
+      entityIn(scene.root, { id: 'g', cls: 'user-group' });
+      const shape = kindIn(scene.root, 'shape', {
+        id: 'area',
+        rotation: '0 30 0'
+      });
+      for (const marker of MARKERS_SET_BY.shape) await strip(shape, marker);
+      expect(
+        MARKERS_SET_BY.shape.filter((marker) => shape.hasAttribute(marker))
+      ).toEqual([]);
+      await expect(
+        dispatchToolCall('entityUpdate', {
+          entityId: 'area',
+          component: 'scale',
+          value: '2 2 2'
+        })
+      ).rejects.toMatchObject({
+        message:
+          'entityupdate refused: Scaling is not available for this element.'
+      });
+      await expect(
+        dispatchToolCall('entityUpdate', {
+          entityId: 'area',
+          component: 'rotation',
+          value: '10 30 0'
+        })
+      ).rejects.toMatchObject({
+        message:
+          'entityupdate refused: This element can only be rotated about the vertical axis.'
+      });
+      expect(
+        resolveCommand('entityreparent', { entity: shape, parentEl: 'g' })
+          .refusal
+      ).toBe('This element cannot be moved to a different parent.');
+      expect(shape.getAttribute('rotation')).toEqual(vec(0, 30, 0));
+    }
+  );
 });
 
 describe('creating a constrained kind', () => {

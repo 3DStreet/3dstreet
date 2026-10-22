@@ -19,8 +19,9 @@
 // scene, and a class or component needs no editor code to have run for an AI
 // command to see it. This holds at the command layer only: the stock gizmo
 // reads the attributes, which each kind's component sets in its init.
-// Removing a marker attribute through a command is refused, and so is
-// removing the user-group class from a group that still has members.
+// Removing a marker attribute from such an item changes nothing the guard
+// decides. Removing the user-group class from a group that still has members
+// is refused.
 //
 // Values are judged as A-Frame will apply them (parseVec3LikeAFrame), so a
 // string such as "10° 30 0" or "2,2,2" is read the way it would take effect.
@@ -60,7 +61,6 @@ import {
   parseVec3LikeAFrame
 } from '@/tested/group-pose.js';
 import {
-  MARKERS,
   NO_REPARENT,
   NO_SCALE,
   YAW_ONLY,
@@ -122,23 +122,6 @@ export function hasTransformMarker(entity, marker) {
   return (
     entity.hasAttribute(marker) ||
     markersOfKinds(kindsOfEntity(entity)).includes(marker)
-  );
-}
-
-// What the person is told when a command would remove a marker, by marker.
-const STRIP_REFUSALS = {
-  [NO_SCALE]: "This element's scale limit cannot be removed.",
-  [YAW_ONLY]: "This element's rotation limit cannot be removed.",
-  [NO_REPARENT]: "This element's parent limit cannot be removed."
-};
-
-// An update that would remove a marker attribute the entity carries: a null or
-// undefined value removes a plain attribute, with or without a property.
-function removesMarker(entity, payload) {
-  return (
-    MARKERS.includes(payload.component) &&
-    entity.hasAttribute(payload.component) &&
-    (payload.value === null || payload.value === undefined)
   );
 }
 
@@ -236,9 +219,6 @@ export function refuseGuardedTransform(commandType, payload) {
   }
 
   if (commandType === 'entityupdate') {
-    if (removesMarker(entity, payload)) {
-      return STRIP_REFUSALS[payload.component];
-    }
     const reason = refuseVec3Write(entity, payload.component, payload);
     if (reason) return reason;
     if (

@@ -19,9 +19,6 @@ export const NO_SCALE = 'data-transform-no-scale';
 export const YAW_ONLY = 'data-transform-yaw-only';
 export const NO_REPARENT = 'data-transform-no-reparent';
 
-/** Every transform marker. */
-export const MARKERS = Object.freeze([NO_SCALE, YAW_ONLY, NO_REPARENT]);
-
 // The class a saved scene carries on a user group; groups/groupModel.js
 // re-exports it.
 export const USER_GROUP_CLASS = 'user-group';

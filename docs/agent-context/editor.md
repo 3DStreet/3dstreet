@@ -21,8 +21,8 @@ layer an entity opts in by carrying the attribute, or by being a kind that
 declares them (`src/tested/transform-kinds.js`: a user group by its class;
 managed streets, managed intersections and shapes by their component). The
 stock gizmo reads the attributes only, which each kind's component sets in its
-init. Removing a marker through a command is refused, and so is removing the
-`user-group` class from a group with members. A command that makes an item a
+init. Removing a marker attribute from such an item changes nothing the guard
+decides; removing the `user-group` class from a group with members is refused. A command that makes an item a
 constrained kind (a class that makes a group, or adding or updating a kind's
 component), and a mixin write or a scale or rotation removal that would let a
 mixin take one outside its limits, rewrites itself to bring the item within
