@@ -283,14 +283,14 @@ describe('describeConformedItems', () => {
       }
     ];
     expect(describeConformedItems(conformToKindLimits(data))).toBe(
-      '[scene-load] Brought 2 items within their kinds\' limits; position and heading kept: group "Outer group" (removed scale 2 2 2), managed street "Main Street" (removed scale 2 1 2).'
+      '[scene-load] Brought 2 items within their kinds\' limits; position and facing kept: group "Outer group" (removed scale 2 2 2), managed street "Main Street" (removed scale 2 1 2).'
     );
   });
 
   it('names an unnamed item by its kind alone, in the singular', () => {
     const data = [{ components: { shape: '', rotation: '0 30 20' } }];
     expect(describeConformedItems(conformToKindLimits(data))).toBe(
-      "[scene-load] Brought 1 item within its kind's limits; position and heading kept: shape (unnamed) (removed rotation x 0, z 20)."
+      "[scene-load] Brought 1 item within its kind's limits; position and facing kept: shape (unnamed) (removed rotation x 0, z 20)."
     );
   });
 

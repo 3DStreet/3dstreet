@@ -125,6 +125,13 @@ export function hasTransformMarker(entity, marker) {
   );
 }
 
+// What the person is told when a command would remove a marker, by marker.
+const STRIP_REFUSALS = {
+  [NO_SCALE]: "This element's scale limit cannot be removed.",
+  [YAW_ONLY]: "This element's rotation limit cannot be removed.",
+  [NO_REPARENT]: "This element's parent limit cannot be removed."
+};
+
 // An update that would remove a marker attribute the entity carries: a null or
 // undefined value removes a plain attribute, with or without a property.
 function removesMarker(entity, payload) {
@@ -230,7 +237,7 @@ export function refuseGuardedTransform(commandType, payload) {
 
   if (commandType === 'entityupdate') {
     if (removesMarker(entity, payload)) {
-      return "This element's scale, rotation and parent limits cannot be removed.";
+      return STRIP_REFUSALS[payload.component];
     }
     const reason = refuseVec3Write(entity, payload.component, payload);
     if (reason) return reason;

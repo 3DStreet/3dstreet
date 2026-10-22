@@ -29,9 +29,9 @@ export function withCommandOutcome(execute) {
  * routing (generated clones, then constrained items kept within their kinds'
  * limits), the command class for the routed request, and the guard's verdict
  * on it. Inspector.execute is this plus the refusal notice and History; test
- * harnesses call it to run the same pipeline. It neither notifies nor touches History; its one side effect is
- * recording the outcome of the first call while a tool call runs
- * (withCommandOutcome).
+ * harnesses call it to run the same pipeline. It neither notifies nor touches
+ * History; its one side effect is recording the outcome of the first call
+ * while a tool call runs (withCommandOutcome).
  *
  * Returns {Cmd, cmdName, payload, optionalName, callback, refusal, levelled}.
  * `Cmd` is undefined for an unknown command; `refusal` is the reason to show,

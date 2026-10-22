@@ -143,7 +143,7 @@ function tiltedBox() {
 }
 
 const WARNING =
-  '[scene-load] Brought 3 items within their kinds\' limits; position and heading kept: group "Scaled group" (removed scale 1.5 1.5 1.5), group "Outer group" (removed scale 2 2 2), group "Inner tilted group" (removed rotation x 10, z 0).';
+  '[scene-load] Brought 3 items within their kinds\' limits; position and facing kept: group "Scaled group" (removed scale 1.5 1.5 1.5), group "Outer group" (removed scale 2 2 2), group "Inner tilted group" (removed rotation x 10, z 0).';
 
 const item = (id, components, extra = {}) => ({
   id,
@@ -253,7 +253,7 @@ const kindsConforming = () => [
 ];
 
 const KINDS_WARNING =
-  "[scene-load] Brought 9 items within their kinds' limits; position and heading kept: " +
+  "[scene-load] Brought 9 items within their kinds' limits; position and facing kept: " +
   'managed street "start-street" (removed scale 2 1 2), ' +
   'managed street "middle-street" (removed scale 2 1 2), ' +
   'managed street "mirrored-street" (removed scale -1 1 1), ' +
@@ -472,5 +472,27 @@ describe('loading a scene brings streets, intersections and shapes within their 
       node.children?.forEach(check);
     };
     saved.forEach(check);
+  });
+
+  it('counts a kind component saved as null, which A-Frame still starts with its defaults, and brings it to unit scale (fails if a null component is not counted on load)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    STREET.utils.createEntities(
+      [
+        {
+          id: 'street-container',
+          'data-layer-name': 'User Layers',
+          children: [
+            item('null-street', { 'managed-street': null, scale: '2 2 2' })
+          ]
+        }
+      ],
+      sceneEl
+    );
+    expect(byId('null-street').object3D.scale.toArray()).toEqual([1, 1, 1]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      "[scene-load] Brought 1 item within its kind's limits; position and facing kept: " +
+        'managed street "null-street" (removed scale 2 2 2).'
+    );
   });
 });

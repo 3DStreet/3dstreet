@@ -2,7 +2,8 @@
 // is kept within them: a group or a shape has scale 1 and no X/Z rotation; a
 // managed street or intersection has scale 1 and may tilt. Bringing an item
 // within its limits keeps its position and the direction it faces. "Level"
-// here always means no X/Z rotation.
+// means no X/Z rotation; levelledValue and the levelled names it feeds are
+// older and also cover unit scale.
 //
 // This module holds what every route that keeps an item within its limits
 // shares: one reading of a vec3 value, so the command guard, the conforming
@@ -278,7 +279,7 @@ export function describeConformedItems(changes) {
       ? "1 item within its kind's limits"
       : `${changes.length} items within their kinds' limits`;
   return (
-    `[scene-load] Brought ${items}; position and heading kept: ` +
+    `[scene-load] Brought ${items}; position and facing kept: ` +
     `${changes.map(describeChange).join(', ')}.`
   );
 }

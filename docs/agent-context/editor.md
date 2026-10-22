@@ -26,8 +26,9 @@ init. Removing a marker through a command is refused, and so is removing the
 constrained kind (a class that makes a group, or adding or updating a kind's
 component), and a mixin write or a scale or rotation removal that would let a
 mixin take one outside its limits, rewrites itself to bring the item within
-them (`routeKindLimits`); a direct scale or tilt write is refused instead. The hierarchy rules refuse a move to another
-parent that `canReparent` (`src/editor/lib/groups/groupModel.js`) rejects or
+them (`routeKindLimits`); a direct scale or tilt write is refused instead.
+The hierarchy rules refuse a move to another parent that `canReparent`
+(`src/editor/lib/groups/groupModel.js`) rejects or
 that could not keep the item's world pose, and a create or paste whose
 `requireParent` parent can no longer take the item. The markers are **not**
 the same thing as the far more common `data-no-transform`, which is a UI gate

@@ -81,7 +81,7 @@ const groupsToLevel = () => [
 ];
 
 const LEVELLED_WARNING =
-  '[scene-load] Brought 3 items within their kinds\' limits; position and heading kept: group "Scaled group" (removed scale 1.5 1.5 1.5), group "Outer group" (removed scale 2 2 2), group "Inner tilted group" (removed rotation x 10, z 0).';
+  '[scene-load] Brought 3 items within their kinds\' limits; position and facing kept: group "Scaled group" (removed scale 1.5 1.5 1.5), group "Outer group" (removed scale 2 2 2), group "Inner tilted group" (removed rotation x 10, z 0).';
 
 describe('conformToKindLimits', () => {
   it('sets a group to unit scale and leaves its rotation, position and members alone (fails if the pass writes through to members or touches position)', () => {
@@ -295,7 +295,7 @@ describe('conformToKindLimits', () => {
     ]);
     expect(halfTurn[0].components.rotation).toBe('0 -150 0');
     expect(describeConformedItems(halfTurnChanges)).toBe(
-      '[scene-load] Brought 1 item within its kind\'s limits; position and heading kept: group "Turned group" (removed rotation x 180, z 180, now facing y -150).'
+      '[scene-load] Brought 1 item within its kind\'s limits; position and facing kept: group "Turned group" (removed rotation x 180, z 180, now facing y -150).'
     );
 
     const degrees = [group('d', { rotation: '10° 30 0' })];
@@ -336,14 +336,14 @@ describe('describeConformedItems', () => {
   it('joins a tilt and a scale on one group, and falls back to the id or "(unnamed)"', () => {
     const named = [group('Both', { rotation: '10 30 5', scale: '2 2 2' })];
     expect(describeConformedItems(conformToKindLimits(named))).toBe(
-      '[scene-load] Brought 1 item within its kind\'s limits; position and heading kept: group "Both" (removed rotation x 10, z 5, scale 2 2 2).'
+      '[scene-load] Brought 1 item within its kind\'s limits; position and facing kept: group "Both" (removed rotation x 10, z 5, scale 2 2 2).'
     );
     const unnamed = [
       { id: 'g1', class: ['user-group'], components: { scale: '2 2 2' } },
       { class: ['user-group'], components: { scale: '3 3 3' } }
     ];
     expect(describeConformedItems(conformToKindLimits(unnamed))).toBe(
-      '[scene-load] Brought 2 items within their kinds\' limits; position and heading kept: group "g1" (removed scale 2 2 2), group (unnamed) (removed scale 3 3 3).'
+      '[scene-load] Brought 2 items within their kinds\' limits; position and facing kept: group "g1" (removed scale 2 2 2), group (unnamed) (removed scale 3 3 3).'
     );
   });
 

@@ -94,15 +94,20 @@ export function isYawOnly(kind) {
 /**
  * The kinds that a class list and a components object make, in table order. A
  * component counts when it has a value, whatever it is: a migrated ruler
- * carries `shape: ''`. A null or undefined value is no component.
+ * carries `shape: ''`. A null value counts only with `nullCounts`: in saved
+ * data every key is set on the entity, and A-Frame starts a component set to
+ * null with its defaults; in a write, null removes it.
  */
-export function kindsOf({ classes = [], components = {} } = {}) {
-  return KINDS.filter((kind) =>
-    kind.className
-      ? classes.includes(kind.className)
-      : components[kind.component] !== undefined &&
-        components[kind.component] !== null
-  );
+export function kindsOf({
+  classes = [],
+  components = {},
+  nullCounts = false
+} = {}) {
+  return KINDS.filter((kind) => {
+    if (kind.className) return classes.includes(kind.className);
+    const value = components[kind.component];
+    return value !== undefined && (nullCounts || value !== null);
+  });
 }
 
 // The class list as a saved node can carry it: a top-level `class` attribute
@@ -124,7 +129,8 @@ export function kindsOfNode(node) {
   if (!node || typeof node !== 'object') return [];
   return kindsOf({
     classes: classListOf(node),
-    components: node.components ?? {}
+    components: node.components ?? {},
+    nullCounts: true
   });
 }
 

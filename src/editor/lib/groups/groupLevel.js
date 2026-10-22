@@ -195,9 +195,9 @@ function routeKindWrite(cmdName, payload, kind) {
 
 // A mixin write on a constrained kind. What the item will show is its own
 // value, else the incoming mixins' value, else the default; whatever of that
-// does not conform is brought within limits, keeping its facing. When the incoming mixins
-// cannot be read, the values are written explicitly, since an own value
-// outranks a mixin's.
+// does not conform is brought within limits, keeping its facing. When the
+// incoming mixins cannot be read, the values are written explicitly, since an
+// own value outranks a mixin's.
 function routeMixinWrite(payload) {
   const { entity } = payload;
   const kinds = kindsOfEntity(entity);

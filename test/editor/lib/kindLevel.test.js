@@ -42,7 +42,7 @@ function kindIn(parent, component, options = {}) {
 const vec = (x, y, z) => ({ x, y, z });
 
 const STRIP_REFUSED =
-  "entityupdate refused: This element's scale, rotation and parent limits cannot be removed.";
+  "entityupdate refused: This element's scale limit cannot be removed.";
 const own = (el, name) => {
   const v = el.getDOMAttribute(name);
   return v && vec(v.x, v.y, v.z);
