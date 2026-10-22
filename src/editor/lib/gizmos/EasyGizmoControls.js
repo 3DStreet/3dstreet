@@ -932,6 +932,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.el = undefined;
     this.object = undefined;
     this._policy = null;
+    this._pivotHeld = false;
     this.probe.excludeEl = null;
     this.visible = false;
     this.axis = null;
@@ -2768,6 +2769,15 @@ class EasyGizmoControls extends GizmoPointerControls {
     return formatGesturePose(el);
   }
 
+  // A gesture that cannot start leaves nothing behind, the held pivot
+  // included: it would otherwise place the handles of the next selection.
+  _abandonStart() {
+    this.dragSnapshot = null;
+    this.cancelPose = null;
+    this._pivotHeld = false;
+    return false;
+  }
+
   startDrag(axis, event) {
     if (!this.el || !this.object) return false;
     // Recorded so the commit can refuse to fire against an entity that changed
@@ -2786,11 +2796,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     if (this._isLandingAxis(axis)) {
       const targetY =
         axis === 'landingUp' ? this.landingUpY : this.landingDownY;
-      if (targetY === null) {
-        this.dragSnapshot = null;
-        this.cancelPose = null;
-        return false;
-      }
+      if (targetY === null) return this._abandonStart();
       // Freezing the target set is what gives "the target that was pressed" an
       // identity. Without it the probe keeps running under a held press, so a
       // tile streaming in can put a nearer surface between the object and the
@@ -2810,7 +2816,7 @@ class EasyGizmoControls extends GizmoPointerControls {
       this.object.getWorldPosition(this._dragStartWorld);
       this._dragVerticalPoint.copy(this._pickPoint);
       const along = this._verticalRayAlong();
-      if (along === null) return false;
+      if (along === null) return this._abandonStart();
       this._dragVerticalAlongStart = along;
       this._refreshSupport();
       return;
@@ -2824,9 +2830,7 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.dragPlane.setFromNormalAndCoplanarPoint(UP, _v2);
     this.dragConstrained = this.flat;
     if (!this.dragConstrained && !this.intersectPlane(this.dragPlane, _v)) {
-      this.dragSnapshot = null;
-      this.cancelPose = null;
-      return false;
+      return this._abandonStart();
     }
 
     // Latched before the axis branches, because rotation returns early.

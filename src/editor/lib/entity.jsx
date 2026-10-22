@@ -182,12 +182,8 @@ export function reorderEntityRelativeTo(
   }
   // entityreparent looks parents up by id (undo needs the old parent's id
   // too), so make sure both ends have one.
-  if (!targetParent.id) {
-    targetParent.setAttribute('id', createUniqueId());
-  }
-  if (entity.parentNode && !entity.parentNode.id) {
-    entity.parentNode.setAttribute('id', createUniqueId());
-  }
+  ensureId(targetParent);
+  ensureId(entity.parentNode);
   const targetIndex = Array.from(targetParent.children).indexOf(targetEntity);
   AFRAME.INSPECTOR.execute('entityreparent', {
     entity,
@@ -701,6 +697,16 @@ export function createUniqueId() {
     // be sure to not return an id starting with a number
   } while (/^[-\d]/.test(id));
   return id;
+}
+
+/**
+ * Give `el` a unique id if it has none, and return its id. Commands and the
+ * group scope look elements up by id.
+ */
+export function ensureId(el) {
+  if (!el) return undefined;
+  if (!el.id) el.setAttribute('id', createUniqueId());
+  return el.id;
 }
 
 export function getComponentClipboardRepresentation(entity, componentName) {

@@ -1,7 +1,7 @@
 import Events from '../Events';
 import { Command } from '../command.js';
 import {
-  createUniqueId,
+  ensureId,
   findClosestEntity,
   prepareForSerialization
 } from '../entity.jsx';
@@ -40,10 +40,7 @@ export class EntityRemoveCommand extends Command {
     // element, so the element held here may be gone by then. An id-less
     // parent is given one, as creating into it already does.
     this.parentEl = entity.parentNode;
-    if (!this.parentEl.id) {
-      this.parentEl.setAttribute('id', createUniqueId());
-    }
-    this.parentId = this.parentEl.id;
+    this.parentId = ensureId(this.parentEl);
     this.index = Array.from(this.parentEl.children).indexOf(entity);
   }
 

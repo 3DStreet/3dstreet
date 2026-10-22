@@ -93,7 +93,9 @@ the elements). The stack is session state only and is never saved.
   leaves the scope as it is, which is empty since the editor closed.
 - **Pruning.** Deleting or hiding an open group closes it and every group
   inside it. Loading a scene closes every group. A group being moved stays in
-  the stack while the move settles; the move then selects it
+  the stack while the move settles, with the open groups inside it, and a
+  group no longer inside the open group before it closes; the move then
+  selects it
   (unless the layer panel chooses otherwise, see Layer panel), which closes it.
 - **Viewer and Play.** The viewer shows no isolation: leaving the editor closes
   every group, remembering them and the selection. Back in the editor (Edit,
@@ -142,7 +144,8 @@ the elements). The stack is session state only and is never saved.
   leaves the open groups as they are: once the moved item has loaded, the
   panel selects what keeps them (`selectionAfterMove`) — the item, or the
   outermost closed group around it inside the open one, or nothing when it
-  left the open group (redo chooses the same way). Undoing a move does not:
+  left the open group or is the open group or one around it (redo chooses the
+  same way). Undoing a move does not:
   it selects the moved item, and the scope follows it.
 
 ## Handles

@@ -62,11 +62,14 @@ export function resolveRowClick(el, { selected, openGroups }) {
  * the open groups as they were (the scope follows the selection). Inside the
  * innermost open group `openGroup` (or anywhere, when none is open) that is
  * what a click on the moved item would select: the outermost closed group
- * around it there, else the item itself. Moved out of the open group, nothing
- * is selected.
+ * around it there, else the item itself. Moved out of the open group, or the
+ * open group itself moved (with or without the groups around it), nothing is
+ * selected: selecting it would close it.
  */
 export function selectionAfterMove(moved, openGroup) {
-  if (openGroup && !openGroup.contains(moved)) return null;
+  if (openGroup && (moved === openGroup || !openGroup.contains(moved))) {
+    return null;
+  }
   const closedAround = userGroupAncestors(moved).filter(
     (g) => !openGroup || (g !== openGroup && openGroup.contains(g))
   );

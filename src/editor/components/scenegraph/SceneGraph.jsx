@@ -11,7 +11,7 @@ import { AwesomeIcon } from '../elements/AwesomeIcon';
 import { faChevronRight } from '@fortawesome/free-solid-svg-icons';
 import { FolderPlusIcon, Plus20Circle } from '@shared/icons';
 import {
-  createUniqueId,
+  ensureId,
   getEntityDisplayName,
   reorderEntityRelativeTo
 } from '../../lib/entity';
@@ -88,11 +88,6 @@ DropLine.propTypes = {
   gapY: PropTypes.number,
   indentPx: PropTypes.number
 };
-
-// The move command and the layer's own undo look parents up by id.
-function ensureId(el) {
-  if (el && !el.id) el.setAttribute('id', createUniqueId());
-}
 
 class SceneGraph extends React.Component {
   static contextType = AuthContext;

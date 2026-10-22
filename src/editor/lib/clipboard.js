@@ -24,7 +24,7 @@
  * Copy itself never touches undo history; Cut is a Copy plus the existing
  * undoable `entityremove` command.
  */
-import { createUniqueId } from './entity.jsx';
+import { createUniqueId, ensureId } from './entity.jsx';
 import { isGroupableItem } from './groups/groupModel.js';
 import {
   beginPlacement,
@@ -305,9 +305,7 @@ function pasteStreetOrEntity(envelope) {
     console.error('[clipboard] default parent not found, cannot paste');
     return false;
   }
-  if (!parentEl.id) {
-    parentEl.id = createUniqueId();
-  }
+  ensureId(parentEl);
 
   const entityData = JSON.parse(JSON.stringify(envelope.data));
 
@@ -346,9 +344,7 @@ function pasteAtWorldPose(envelope, ticket) {
     else console.error('[clipboard] default parent not found, cannot paste');
     return false;
   }
-  if (!parentEl.id) {
-    parentEl.id = createUniqueId();
-  }
+  ensureId(parentEl);
 
   const world = pastedWorldMatrix(
     envelope.worldMatrix,
@@ -397,8 +393,8 @@ export async function pasteFromClipboard() {
     return pasteSegment(envelope);
   }
   // Text from a build that still had the ruler: it becomes a shape here, as a
-  // scene load would make it, before where it may go is decided — a shape
-  // never goes into a group.
+  // scene load would make it, before where it may go is decided, so it goes
+  // into the open group as any shape does.
   migrateMeasureLinesToShapes([envelope.data]);
   const intoGroup = ticket && isGroupableItem(envelope.data) ? ticket : null;
   if (intoGroup || envelope.inUserGroup) {

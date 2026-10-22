@@ -111,6 +111,10 @@ describe('the selection after a move in the panel', () => {
     expect(selectionAfterMove(cone, groupC)).toBe(cone);
     expect(selectionAfterMove(tree, groupC)).toBe(null);
     expect(selectionAfterMove(lamp, groupC)).toBe(null);
+    // The open group, or a group around it, moved: selecting either would
+    // close the open group.
+    expect(selectionAfterMove(groupC, groupC)).toBe(null);
+    expect(selectionAfterMove(groupB, groupC)).toBe(null);
     // Group B open: Cone sits in closed Group C.
     expect(selectionAfterMove(cone, groupB)).toBe(groupC);
     expect(selectionAfterMove(tree, groupB)).toBe(tree);

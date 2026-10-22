@@ -1,9 +1,9 @@
-/* global THREE, STREET */
+/* global STREET */
 import Events from '../Events.js';
 import { Command } from '../command.js';
 import { createUniqueId } from '../entity.jsx';
 import { groupMessage } from '../groups/groupMessages.js';
-import { localPoseFromWorld } from '../groups/groupTransformMath.js';
+import { localPoseUnder } from '../groups/groupPlacement.js';
 
 // Ids of entities being moved: from the moment the command takes the original
 // out of the scene until the element that replaces it has loaded. The layer
@@ -14,17 +14,6 @@ const inFlight = new Set();
 /** Is a move of the entity with this id still settling? */
 export function isReparentInFlight(id) {
   return !!id && inFlight.has(id);
-}
-
-let poseScratch = null;
-function scratch() {
-  poseScratch ??= {
-    position: new THREE.Vector3(),
-    quaternion: new THREE.Quaternion(),
-    scale: new THREE.Vector3(),
-    euler: new THREE.Euler()
-  };
-  return poseScratch;
 }
 
 const vec3String = (v) => `${v.x} ${v.y} ${v.z}`;
@@ -77,22 +66,11 @@ export class EntityReparentCommand extends Command {
   // Write into `data` the local pose that keeps the entity's world pose under
   // `newParent`. Returns false when no position/rotation/scale can hold it.
   applyLocalPose(data, newParent) {
-    const pose = scratch();
-    newParent.object3D.updateWorldMatrix(true, false);
-    if (
-      !localPoseFromWorld(
-        newParent.object3D.matrixWorld,
-        this.worldMatrix,
-        pose
-      )
-    ) {
-      return false;
-    }
-    pose.euler.setFromQuaternion(pose.quaternion, 'YXZ');
-    const toDeg = THREE.MathUtils.radToDeg;
+    const pose = localPoseUnder(newParent, this.worldMatrix);
+    if (!pose) return false;
     data.components ??= {};
     data.components.position = vec3String(pose.position);
-    data.components.rotation = `${toDeg(pose.euler.x)} ${toDeg(pose.euler.y)} ${toDeg(pose.euler.z)}`;
+    data.components.rotation = vec3String(pose.rotation);
     data.components.scale = vec3String(pose.scale);
     return true;
   }

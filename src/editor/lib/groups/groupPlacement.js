@@ -32,6 +32,7 @@ import {
   userGroupAncestors
 } from './groupModel.js';
 import { groupMessage } from './groupMessages.js';
+import { parseVec3LikeAFrame } from '@/tested/group-pose.js';
 import { localPoseFromWorld } from './groupTransformMath.js';
 import { getGroupBounds, getGroupCenter } from './groupBounds.js';
 import { TRANSFORM_REFUSED, notifyRefusal } from '../transformGuard.js';
@@ -112,19 +113,6 @@ export function resolvePlacement(ticket) {
   return canAcceptChild(parentEl) ? parentEl : null;
 }
 
-function readVec3(value, fallback) {
-  if (value === undefined || value === null || value === '') return fallback;
-  if (typeof value === 'string') {
-    const parts = value.trim().split(/\s+/).map(Number);
-    return {
-      x: parts[0] ?? fallback.x,
-      y: parts[1] ?? fallback.y,
-      z: parts[2] ?? fallback.z
-    };
-  }
-  return { x: value.x, y: value.y, z: value.z };
-}
-
 const ORIGIN = { x: 0, y: 0, z: 0 };
 const UNIT = { x: 1, y: 1, z: 1 };
 
@@ -135,9 +123,9 @@ const UNIT = { x: 1, y: 1, z: 1 };
  */
 export function worldMatrixOf(components, out) {
   const t = tmp();
-  const position = readVec3(components?.position, ORIGIN);
-  const rotation = readVec3(components?.rotation, ORIGIN);
-  const scale = readVec3(components?.scale, UNIT);
+  const position = parseVec3LikeAFrame(components?.position, ORIGIN);
+  const rotation = parseVec3LikeAFrame(components?.rotation, ORIGIN);
+  const scale = parseVec3LikeAFrame(components?.scale, UNIT);
   const deg = THREE.MathUtils.degToRad;
   t.euler.set(deg(rotation.x), deg(rotation.y), deg(rotation.z), 'YXZ');
   t.pose.quaternion.setFromEuler(t.euler);

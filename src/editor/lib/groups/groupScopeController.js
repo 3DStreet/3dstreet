@@ -23,7 +23,7 @@
 import Events from '../Events';
 import useStore from '@/store';
 import { FRAME_ORDER, PER_ITEM_PASS_MAX_THROWS } from '../editorFrame.js';
-import { createUniqueId } from '../entity';
+import { ensureId } from '../entity';
 import { isReparentInFlight } from '../commands/EntityReparentCommand.js';
 import { GroupAffordances } from './groupAffordances.js';
 import { ScopeFade } from './scopeFade.js';
@@ -43,24 +43,18 @@ import {
 
 const NO_GROUPS = Object.freeze([]);
 
-// The scope refers to groups by id. A group made by the editor always has
-// one; a group written by hand into a scene file may not, and is given one
-// here, which the scene then saves.
-function ensureGroupId(groupEl) {
-  if (!groupEl.id) groupEl.id = createUniqueId();
-  return groupEl.id;
-}
-
 /**
- * Ids of the shown user groups enclosing `el`, outermost first; an id-less
- * group is given an id (see ensureGroupId).
+ * Ids of the shown user groups enclosing `el`, outermost first. The scope
+ * refers to groups by id. A group made by the editor always has one; a group
+ * written by hand into a scene file may not, and is given one here, which the
+ * scene then saves.
  */
 function ensureEnclosingGroupIds(el) {
   const ids = [];
   for (const groupEl of userGroupAncestors(el)) {
     // Hiding is inherited, so every group inside a hidden one is hidden too.
     if (isHiddenInHierarchy(groupEl)) break;
-    ids.push(ensureGroupId(groupEl));
+    ids.push(ensureId(groupEl));
   }
   return ids;
 }
@@ -239,10 +233,7 @@ export class GroupScopeController {
    */
   open(groupEl) {
     if (!isUserGroup(groupEl) || isHiddenInHierarchy(groupEl)) return;
-    this.setStack([
-      ...ensureEnclosingGroupIds(groupEl),
-      ensureGroupId(groupEl)
-    ]);
+    this.setStack([...ensureEnclosingGroupIds(groupEl), ensureId(groupEl)]);
     // Through this controller, so a drilling double-click stays latched.
     this.select(null);
   }
@@ -289,23 +280,30 @@ export class GroupScopeController {
     this.setStack(ensureEnclosingGroupIds(selected));
   }
 
-  // Drop every open group that is gone or hidden, and every group inside it.
+  // Drop every open group that is gone, hidden or no longer inside the one
+  // before it, and every group inside it.
   prune() {
     const kept = [];
-    for (const id of this.stack) {
+    let outer = null;
+    for (const [i, id] of this.stack.entries()) {
       const el = document.getElementById(id);
       if (!el) {
-        // Moved: out of the scene until its replacement (same id) arrives.
-        if (isReparentInFlight(id)) {
-          kept.push(id);
-          continue;
-        }
+        // Moved: out of the scene until its replacement (same id) arrives,
+        // with the open groups inside it. The prune after it lands checks
+        // them.
+        if (isReparentInFlight(id)) kept.push(...this.stack.slice(i));
         break;
       }
-      if (!el.isConnected || !isUserGroup(el) || isHiddenInHierarchy(el)) {
+      if (
+        !el.isConnected ||
+        !isUserGroup(el) ||
+        isHiddenInHierarchy(el) ||
+        (outer && !outer.contains(el))
+      ) {
         break;
       }
       kept.push(id);
+      outer = el;
     }
     this.setStack(kept);
   }
