@@ -624,6 +624,9 @@ describe('reconciling the open groups', () => {
     // The editor open: the selection does reach the scope here.
     h.inspector.selectEntity(placed);
     expect(h.openIds()).toEqual(['g']);
+    // Closed before the session, so the return from it (which restores the
+    // groups open on leaving) has none to reopen.
+    h.groupScope.close(null);
 
     // A session runs with the editor closed.
     h.inspector.selectEntity(null);

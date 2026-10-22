@@ -80,11 +80,7 @@ async function mount(component, value) {
 const MOUNTED = {
   shape: {
     value: 'closed: true',
-    markers: [
-      'data-transform-no-reparent',
-      'data-transform-no-scale',
-      'data-transform-yaw-only'
-    ]
+    markers: ['data-transform-no-scale', 'data-transform-yaw-only']
   },
   'managed-street': {
     value: { sourceType: 'json-blob', sourceValue: STREET_JSON },

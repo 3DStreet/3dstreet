@@ -555,16 +555,16 @@ describe('a street, shape or old ruler arriving by paste', () => {
     expect(pasted.getAttribute('scale')).toEqual({ x: 1, y: 1, z: 1 });
   });
 
-  it('pastes an old ruler at the top level with a group open, as the shape it becomes, and says it landed there (fails if the ruler is migrated only after its destination is chosen)', async () => {
+  it('pastes an old ruler into the open group, as the shape it becomes (fails if the ruler is migrated only after its destination is chosen)', async () => {
     groupWithMember();
     putOnClipboard(ruler());
     scene.openGroups('g');
     await pasteFromClipboard();
     const [, payload] = pastes()[0];
-    expect(payload.parentId).toBe('street-container');
-    expect(payload.requireParent).toBeUndefined();
+    expect(payload.parentId).toBe('g');
+    expect(payload.requireParent).toBe(true);
     expect(payload.entityData.components.shape).toBe('');
-    expect(scene.notify.infoMessage).toHaveBeenCalledWith(
+    expect(scene.notify.infoMessage).not.toHaveBeenCalledWith(
       groupMessage('placedAtTopLevel')
     );
     expect(pastedElement().getAttribute('scale')).toEqual({

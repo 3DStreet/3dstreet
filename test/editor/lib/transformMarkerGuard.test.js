@@ -20,7 +20,8 @@ function element({ attributes = [], classes = [] } = {}) {
 }
 
 describe('a write to a transform marker attribute', () => {
-  it.each(MARKERS)(
+  // The markers a shape's kind declares (#2112: a shape may change parent).
+  it.each([NO_SCALE, YAW_ONLY])(
     'is let through when it removes %s, which then limits a kind no less (fails if removing a marker is refused)',
     (marker) => {
       const el = element({ attributes: ['shape', marker] });
@@ -75,7 +76,7 @@ describe('hasTransformMarker on the constrained kinds', () => {
     [
       'a shape',
       { attributes: ['shape'] },
-      { [NO_SCALE]: true, [YAW_ONLY]: true, [NO_REPARENT]: true }
+      { [NO_SCALE]: true, [YAW_ONLY]: true, [NO_REPARENT]: false }
     ],
     [
       'a managed street',
