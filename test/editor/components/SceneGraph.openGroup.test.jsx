@@ -681,23 +681,19 @@ function findRowInput() {
 }
 
 describe('a click on the panel below the rows', () => {
-  it('leaves one level, selecting the group it left, and does nothing with no group open (fails if it closes every level, or a row click reaches it)', async () => {
-    const { C } = buildScene();
+  it('closes every open group and selects nothing, and does nothing with no group open (fails if it leaves only one level, or a row click reaches it)', async () => {
+    const { C, lamp } = buildScene();
     await renderPanel();
     await run(() => h.groupScope.open(C));
     fireEvent.click(document.querySelector('.layers-drop-end'));
     await settle();
-    expect(h.openIds()).toEqual(['B']);
-    expect(selected()?.id).toBe('C');
-
-    fireEvent.click(document.querySelector('.layers'));
-    await settle();
     expect(h.openIds()).toEqual([]);
-    expect(selected()?.id).toBe('B');
+    expect(selected()).toBe(null);
 
+    await run(() => h.inspector.selectEntity(lamp));
     fireEvent.click(document.querySelector('.layers'));
     await settle();
-    expect(selected()?.id).toBe('B');
+    expect(selected()?.id).toBe('lamp');
 
     await run(() => h.groupScope.open(C));
     await click('Cone');

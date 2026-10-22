@@ -32,7 +32,8 @@ import {
 import {
   openBlockParts,
   openGroupRole,
-  resolveRowClick
+  resolveRowClick,
+  selectionAfterMove
 } from './openGroupRows.js';
 import { isEditableTarget } from '@shared/utils/dom.js';
 import posthog from 'posthog-js';
@@ -308,12 +309,17 @@ class SceneGraph extends React.Component {
     this.selectEntity(entity);
   };
 
-  // A click on the panel below the rows leaves one level of the open groups,
-  // as Escape and a click outside the open group on the canvas do.
+  // A click on the panel below the rows closes every open group, selecting
+  // nothing, as a click on a row outside them closes them all.
   clickBelowRows = (event) => {
-    if (event.target.closest('.entity')) return;
-    AFRAME.INSPECTOR.groupScope?.escape();
+    if (event.target.closest('.entity') || !this.openGroups().length) return;
+    AFRAME.INSPECTOR.groupScope?.close(null);
   };
+
+  // A move made in the panel leaves the open groups as they are: what it
+  // selects once the moved item has loaded is chosen to keep them.
+  selectAfterMove = (moved) =>
+    selectionAfterMove(moved, this.innermostOpenGroup());
 
   doubleClickRow = (entity) => {
     Events.emit('objectfocus', entity.object3D);
@@ -518,7 +524,8 @@ class SceneGraph extends React.Component {
     AFRAME.INSPECTOR.execute('entityreparent', {
       entity: draggedEntity,
       parentEl: root.id,
-      indexInParent: root.children.length
+      indexInParent: root.children.length,
+      select: this.selectAfterMove
     });
   };
 
@@ -546,7 +553,12 @@ class SceneGraph extends React.Component {
 
     if (insertionMode !== 'child') {
       // Insert before or after targetEntity (same parent)
-      reorderEntityRelativeTo(draggedEntity, targetEntity, insertionMode);
+      reorderEntityRelativeTo(
+        draggedEntity,
+        targetEntity,
+        insertionMode,
+        this.selectAfterMove
+      );
       return;
     }
 
@@ -563,7 +575,8 @@ class SceneGraph extends React.Component {
     AFRAME.INSPECTOR.execute('entityreparent', {
       entity: draggedEntity,
       parentEl,
-      indexInParent
+      indexInParent,
+      select: this.selectAfterMove
     });
   };
 

@@ -87,7 +87,8 @@ the elements). The stack is session state only and is never saved.
   inside it. Loading a scene and leaving the editor close every group; on
   return, a selection inside a group becomes that group's outermost group,
   selected and closed. A group being moved stays in the stack while the move
-  settles; the move then selects it, which closes it.
+  settles; a move selects it (unless the layer panel chooses otherwise, see
+  Layer panel), which closes it.
 - **Pick targets.** The selected group's box, the markers and the open group's
   volume are ray/box tests, not scene objects, so camera navigation and
   placement never land on them.
@@ -121,7 +122,13 @@ the elements). The stack is session state only and is never saved.
   outside item can be dragged into the open group. The open group's row cannot
   be dragged. `resolveRowClick` in `openGroupRows.js` decides a click. The
   second click of a double-click never opens, leaves or selects; the
-  double-click moves the camera to the row.
+  double-click moves the camera to the row. A click on the panel below the
+  rows closes every open group and selects nothing. A drag in the panel
+  leaves the open groups as they are: once the moved item has loaded, the
+  panel selects what keeps them (`selectionAfterMove`) — the item, or the
+  outermost closed group around it inside the open one, or nothing when it
+  left the open group (redo chooses the same way). Undoing a move does not:
+  it selects the moved item, and the scope follows it.
 
 ## Handles
 

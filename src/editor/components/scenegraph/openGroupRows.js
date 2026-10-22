@@ -2,6 +2,7 @@
 // group"), and what a click on a row does while groups are open.
 
 import { isSelectedClosedGroup } from '../../lib/groups/groupScope.js';
+import { userGroupAncestors } from '../../lib/groups/groupModel.js';
 
 /**
  * The part a layer row plays while groups are open: 'open' for the innermost
@@ -54,4 +55,20 @@ export function resolveRowClick(el, { selected, openGroups }) {
     return { action: 'open', group: el };
   }
   return { action: 'select', el };
+}
+
+/**
+ * What to select after the layer panel moves `moved`, so that the move leaves
+ * the open groups as they were (the scope follows the selection). Inside the
+ * innermost open group `openGroup` (or anywhere, when none is open) that is
+ * what a click on the moved item would select: the outermost closed group
+ * around it there, else the item itself. Moved out of the open group, nothing
+ * is selected.
+ */
+export function selectionAfterMove(moved, openGroup) {
+  if (openGroup && !openGroup.contains(moved)) return null;
+  const closedAround = userGroupAncestors(moved).filter(
+    (g) => !openGroup || (g !== openGroup && openGroup.contains(g))
+  );
+  return closedAround[0] ?? moved;
 }

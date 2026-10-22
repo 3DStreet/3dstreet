@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   openBlockParts,
   openGroupRole,
-  resolveRowClick
+  resolveRowClick,
+  selectionAfterMove
 } from '@/editor/components/scenegraph/openGroupRows.js';
 import { entity, group, scene } from '../lib/groups/_groupFixtures.js';
 
@@ -101,5 +102,21 @@ describe("the open group's outlined block", () => {
   it('is one row when the group lists nothing under it (fails if a lone row gets an open bottom)', () => {
     const rows = [groupB, lamp].map((entity) => ({ entity }));
     expect(openBlockParts(rows, groupB)).toEqual(['only', null]);
+  });
+});
+
+describe('the selection after a move in the panel', () => {
+  it('keeps the open groups: the item inside the open group, the closed group around it there, or nothing outside it (fails if a move would open or close a group)', () => {
+    // Group C open inside Group B.
+    expect(selectionAfterMove(cone, groupC)).toBe(cone);
+    expect(selectionAfterMove(tree, groupC)).toBe(null);
+    expect(selectionAfterMove(lamp, groupC)).toBe(null);
+    // Group B open: Cone sits in closed Group C.
+    expect(selectionAfterMove(cone, groupB)).toBe(groupC);
+    expect(selectionAfterMove(tree, groupB)).toBe(tree);
+    // Nothing open: the outermost group around the item.
+    expect(selectionAfterMove(cone, null)).toBe(groupB);
+    expect(selectionAfterMove(lamp, null)).toBe(lamp);
+    expect(selectionAfterMove(groupB, null)).toBe(groupB);
   });
 });
