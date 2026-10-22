@@ -9,6 +9,7 @@ import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { expandBatchedMeshesForExport } from '../../../batch-models';
 import { isUserGroup } from '../../lib/groups/groupModel.js';
+import { hasTransformMarker } from '../../lib/transformGuard.js';
 import { withOriginalAppearance } from '../../lib/groups/scopeFade.js';
 
 export default class CommonComponents extends React.Component {
@@ -41,12 +42,12 @@ export default class CommonComponents extends React.Component {
   renderCommonAttributes() {
     const entity = this.props.entity;
     return ['position', 'rotation', 'scale'].map((componentName) => {
-      // Anything that opts out of scaling (managed streets, shapes) hides the
-      // row: the command layer refuses the write anyway, so showing it would
-      // only offer an edit that bounces back.
+      // Anything that opts out of scaling (managed streets, shapes, groups)
+      // hides the row: the command layer refuses the write anyway, so showing
+      // it would only offer an edit that bounces back.
       if (
         componentName === 'scale' &&
-        entity.hasAttribute('data-transform-no-scale')
+        hasTransformMarker(entity, 'data-transform-no-scale')
       ) {
         return null;
       }

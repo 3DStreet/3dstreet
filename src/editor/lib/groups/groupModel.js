@@ -35,6 +35,20 @@ export function isUserGroup(el) {
   return !!el?.classList?.contains(USER_GROUP_CLASS);
 }
 
+/**
+ * The class list an `entityupdate` of `class` leaves on the entity, as the
+ * editor's updateEntity and the DOM apply it: a null value removes the
+ * attribute; any other value is stringified (an array becomes "a,b", one
+ * token) and split on whitespace. With a `property`, the DOM receives the
+ * property as the value.
+ */
+export function classAfterUpdate(payload) {
+  if (payload.value === null || payload.value === undefined) return [];
+  return String(payload.property || payload.value)
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
 export function isStreetContainer(el) {
   return el?.id === STREET_CONTAINER_ID;
 }

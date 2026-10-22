@@ -1574,11 +1574,11 @@
   "groups.refusal.illegalParent": {
     "defaultMessage": "This item cannot be moved into that layer."
   },
-  "groups.refusal.nonUniformScale": {
-    "defaultMessage": "A group can only be scaled by the same amount along every axis."
-  },
   "groups.refusal.placementDistorts": {
     "defaultMessage": "This item cannot be added to the open group without distorting it, because the group's scale is not the same along every axis. Nothing was added."
+  },
+  "groups.refusal.ungroupWithMembers": {
+    "defaultMessage": "This group still has items in it, so it must stay a group. Move its items out of it first."
   },
   "groups.refusal.unrepresentablePose": {
     "defaultMessage": "This item cannot be moved there without distorting it, because the destination group's scale is not the same along every axis."

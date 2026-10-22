@@ -669,6 +669,43 @@ describe('entering and leaving', () => {
     expect(restore).not.toHaveBeenCalled();
   });
 
+  it('fades the outside again after each return from the viewer, and never while away', () => {
+    const { G, member, treeMesh } = simpleScene();
+    h.inspector.selectEntity(member);
+    enter(G);
+    for (let trip = 0; trip < 3; trip++) {
+      useStore.getState().setIsInspectorEnabled(false);
+      expect(getPresentationFactor()).toBe(1);
+      h.inspector.opened = false;
+      expect(treeMesh.material.opacity).toBe(1);
+      useStore.getState().setIsInspectorEnabled(true);
+      // Opening G cleared the selection; it comes back open, nothing selected.
+      expect(h.openIds()).toEqual(['G']);
+      expect(h.inspector.selectedEntity).toBe(null);
+      h.frame();
+      runFrameRequests();
+      expect(drawnWith(treeMesh)[0]).not.toBe(treeMesh.material);
+    }
+    // One scope's treatment, not one per trip: closing restores it all.
+    h.groupScope.close(null);
+    expect(getPresentationFactor()).toBe(1);
+    expect(drawnWith(treeMesh)[0]).toBe(treeMesh.material);
+  });
+
+  it('shows nothing of a scope forgotten by a scene load while away', () => {
+    const { G, member, treeMesh } = simpleScene();
+    h.inspector.selectEntity(member);
+    enter(G);
+    useStore.getState().setIsInspectorEnabled(false);
+    h.sceneEl.dispatchEvent(new CustomEvent('newScene'));
+    useStore.getState().setIsInspectorEnabled(true);
+    h.frame();
+    runFrameRequests();
+    expect(h.openIds()).toEqual([]);
+    expect(getPresentationFactor()).toBe(1);
+    expect(drawnWith(treeMesh)[0]).toBe(treeMesh.material);
+  });
+
   it('removes the fade before any further render when the editor is left', () => {
     const { G, member, treeMesh } = simpleScene();
     const splat = splatEntity(h.streetContainer, 'splat');

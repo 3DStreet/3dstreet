@@ -358,9 +358,7 @@ function spyExecute() {
 }
 
 function escape() {
-  const event = new KeyboardEvent('keyup', { key: 'Escape', bubbles: true });
-  Object.defineProperty(event, 'keyCode', { value: 27 });
-  document.body.dispatchEvent(event);
+  h.escape();
 }
 
 // ------------------------------------------------------------------ tests
@@ -391,7 +389,7 @@ describe('the easy gizmo on a group', () => {
     expect(pad.y).toBeCloseTo(2.5, 6);
   });
 
-  it('gives a group its own stock control at its center in Advanced move and rotate, Y ring alone, a placeholder in scale and the easy gizmo in easy; items keep theirs (fails on handles at the origin, or a setting given to one control only)', () => {
+  it('gives a group its own stock control at its center in Advanced move and rotate, Y ring alone, move in scale and the easy gizmo in easy; items keep theirs (fails on handles at the origin, or a setting given to one control only)', () => {
     const { g } = farGroup();
     const stock = groupStock();
     const item = itemStock();
@@ -413,16 +411,11 @@ describe('the easy gizmo on a group', () => {
     }
 
     advanced('scale');
-    expect(stock.object).toBeUndefined();
-    expect(item.object).toBeUndefined();
-    const placeholder = h.inspector.groupScope.affordances.scalePlaceholder;
-    expect(placeholder.visible).toBe(true);
-    expect(worldOf(placeholder).distanceTo(center)).toBeLessThan(1e-6);
+    expectGroupMovesInScale(g, center);
 
     advanced('easy');
     expect(controls.el).toBe(g);
     expect(stock.object).toBeUndefined();
-    expect(placeholder.visible).toBe(false);
 
     // Into rotate with an item selected, then the group selected: the group's
     // axes are set on that route too, and the item's never come from them.
@@ -1152,6 +1145,8 @@ describe('a held press on a group handle when the editor is left', () => {
     h.frame();
     expect(h.groupHoverBox.boxFill.material.opacity).toBe(0.3);
     expect(h.openIds()).toEqual([]);
+    // The return restores the scope as it was at exit.
+    expect(h.inspector.selectedEntity).toBe(g);
   });
 });
 
@@ -1397,6 +1392,44 @@ describe('the boxes drawn around a group that moves or turns as a whole', () => 
   });
 });
 
+describe('a group in scale mode', () => {
+  it('gets its move control when selected while scale mode is on (fails if only a change of mode is handled)', () => {
+    const { g } = farGroup();
+    const plain = posable(solid(h.streetContainer, [0, 0, 0], [1, 1, 1]));
+    select(plain);
+    advanced('scale');
+    select(g);
+    expectGroupMovesInScale(g, new THREE.Vector3(12, 1.25, 22));
+  });
+
+  it('leaves the shared item control in scale mode for the next item selected (fails if the group falls back to move through the shared control)', () => {
+    const { g } = farGroup();
+    const plain = posable(solid(h.streetContainer, [0, 0, 0], [1, 1, 1]));
+    select(g);
+    advanced('scale');
+    select(plain);
+    expect(itemStock().object).toBe(plain.object3D);
+    expect(itemStock().mode).toBe('scale');
+  });
+
+  it('loses its move control while hidden and gets it back, in move, when shown (fails if visibility only follows the easy gizmo)', () => {
+    const { g } = farGroup();
+    g.setAttribute('visible', true);
+    select(g);
+    advanced('scale');
+    expect(groupStock().object).toBe(stockGesture().handleAnchor);
+    h.inspector.execute('entityupdate', {
+      entity: g,
+      component: 'visible',
+      value: false
+    });
+    expect(groupStock().object).toBeUndefined();
+    h.inspector.history.undo();
+    expect(groupStock().object).toBe(stockGesture().handleAnchor);
+    expect(groupStock().mode).toBe('translate');
+  });
+});
+
 describe('hiding the selected group', () => {
   it('takes its handles away and gives them back when shown', () => {
     const { g } = farGroup();
@@ -1498,6 +1531,28 @@ const itemStock = () =>
   h.inspector.sceneHelpers.children.find(
     (child) => child.isTransformControlsRoot
   ).controls;
+
+// Scale mode on a selected group: the group's own control, in move, at its
+// center, and no other handles or scale stand-in.
+function expectGroupMovesInScale(g, center) {
+  const stock = groupStock();
+  expect(stock.object).toBe(stockGesture().handleAnchor);
+  expect(stock.mode).toBe('translate');
+  expect([stock.showX, stock.showY, stock.showZ]).toEqual([true, true, true]);
+  expect(stock.worldPosition.distanceTo(center)).toBeLessThan(1e-6);
+  expect(itemStock().object).toBeUndefined();
+  expect(controls.el).toBeUndefined();
+  const named = (name) => {
+    let found = null;
+    h.inspector.sceneHelpers.traverse((o) => {
+      if (o.name === name) found = o;
+    });
+    return found;
+  };
+  // Where a scale stand-in would hang, so the search below is a real one.
+  expect(named('group-center-marker')).not.toBe(null);
+  expect(named('group-scale-placeholder')).toBe(null);
+}
 
 function advanced(mode) {
   Events.emit('transformmodechange', mode);

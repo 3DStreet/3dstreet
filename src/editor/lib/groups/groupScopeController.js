@@ -13,7 +13,8 @@
 // group closes it. Opening a group (which clears the selection), leaving one
 // level (which selects the group left) and closing everything are the explicit
 // transitions. Removal, hiding, scene replacement and leaving the editor prune
-// the stack; they never add to it.
+// the stack; they never add to it. The one exception is returning from the
+// viewer, which restores what leaving the editor closed.
 //
 // Published read-only as `inspector.groupScope`.
 
@@ -34,7 +35,8 @@ import {
   hoverTargetOf,
   isDrill,
   isSelectedClosedGroup,
-  resolveCanvasClick
+  resolveCanvasClick,
+  restorableScope
 } from './groupScope.js';
 
 const NO_GROUPS = Object.freeze([]);
@@ -114,6 +116,9 @@ export class GroupScopeController {
     this.ownSelections = 0;
     // The group a click at the hovered spot would open, if any.
     this.hoverOpens = null;
+    // The open groups and the selection when the editor last closed, as
+    // elements, restored when it opens again; forgotten on any scene load.
+    this.away = null;
     this.affordances = new GroupAffordances(inspector, this);
 
     const sceneEl = inspector.sceneEl;
@@ -135,7 +140,10 @@ export class GroupScopeController {
       if (detail?.component === 'visible') this.prune();
     });
     on(sceneEl, 'child-detached', prune);
-    on(sceneEl, 'newScene', () => this.setStack(NO_GROUPS));
+    on(sceneEl, 'newScene', () => {
+      this.away = null;
+      this.setStack(NO_GROUPS);
+    });
     on(window, 'blur', () => {
       this.drillLatch = false;
     });
@@ -296,19 +304,28 @@ export class GroupScopeController {
     this.setStack(kept);
   }
 
+  // The viewer shows no isolation, so leaving the editor closes every group,
+  // remembering them and the selection for the return.
   onEditorClosed() {
     this.drillLatch = false;
+    this.away = { groups: this.openElements(), selected: this.selected() };
     this.setStack(NO_GROUPS);
   }
 
-  // Reopen closed, in a state a click could have produced: a selection inside
-  // a group becomes that group's outermost group, selected and closed.
+  // Back from the viewer, reopen what was open and reselect what was
+  // selected, as far as the scene still allows (see restorableScope). With
+  // nothing remembered (a scene was loaded meanwhile) the same rule leaves a
+  // selection only where no group is open around it.
   onEditorOpened() {
     this.affordances.markDirty();
-    const selected = this.selected();
-    if (!selected?.isConnected) return;
-    const outermost = userGroupAncestors(selected)[0];
-    if (outermost) this.select(outermost);
+    this.drillLatch = false;
+    const away = this.away || { groups: NO_GROUPS, selected: this.selected() };
+    this.away = null;
+    const restored = restorableScope(away.groups, away.selected);
+    // Remembered from the open stack, so every group has an id.
+    this.setStack(restored.groups.map((el) => el.id));
+    // The stack above already matches the selection.
+    if (restored.selected !== this.selected()) this.select(restored.selected);
   }
 
   // ------------------------------------------------------------ canvas input

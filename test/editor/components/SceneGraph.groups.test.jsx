@@ -9,8 +9,7 @@ import {
 import { IntlProvider } from 'react-intl';
 import * as THREE from 'three';
 import { History } from '@/editor/lib/history.js';
-import { commandsByType } from '@/editor/lib/commands/index.js';
-import { refuseGuardedTransform } from '@/editor/lib/transformGuard.js';
+import { resolveCommand } from '@/editor/lib/resolveCommand.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 import SceneGraph from '@/editor/components/scenegraph/SceneGraph.jsx';
 import { boxMesh } from '../lib/groups/_groupFixtures.js';
@@ -46,10 +45,9 @@ function makeEntity(parent, { id, name, cls, attrs = {} } = {}) {
 // real command. Every call is recorded, refused or not.
 function composedExecute(type, payload) {
   executed.push([type, payload]);
-  const refusal = refuseGuardedTransform(type, payload);
-  if (refusal) return refusal;
-  const Cmd = commandsByType.get(type);
-  editor.history.execute(new Cmd(editor, payload));
+  const r = resolveCommand(type, payload);
+  if (r.refusal) return r.refusal;
+  editor.history.execute(new r.Cmd(editor, r.payload));
   return undefined;
 }
 

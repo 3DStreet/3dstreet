@@ -16,18 +16,29 @@ symbol (`src/editor/lib/transformGuard.js`) instead of running a command that
 would violate a transform-capability marker on the target entity or the
 hierarchy rules — test for the symbol, not for a falsy return, since the
 success path returns `undefined`. The markers are `data-transform-no-scale`,
-`data-transform-yaw-only`, `data-transform-uniform-scale` and
-`data-transform-no-reparent`; an entity opts in by carrying the attribute (a
-user group implies yaw-only and uniform-scale by its class). The hierarchy
-rules refuse a move to another parent that `canReparent`
-(`src/editor/lib/groups/groupModel.js`) rejects or that could not keep the
-item's world pose, and a create or paste whose `requireParent` parent can no
-longer take the item. The markers are **not** the same thing as
-the far more common `data-no-transform`, which is a UI gate only (it hides the
-properties-panel transform rows and the gizmo) and is enforced nowhere at the
-command layer. Coverage is every command route — properties panel, AI chat,
-gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
-or component code. The stock rotate gizmo ("Advanced rotate") shows all three
+`data-transform-yaw-only` and `data-transform-no-reparent`; an entity opts in
+by carrying the attribute (a user group implies yaw-only and no-scale by its
+class). Removing the `user-group` class from a group with members is refused,
+and a command that would leave a group tilted or scaled rewrites itself to
+level it (`routeGroupLevel`). The hierarchy rules refuse a move to another
+parent that `canReparent` (`src/editor/lib/groups/groupModel.js`) rejects or
+that could not keep the item's world pose, and a create or paste whose
+`requireParent` parent can no longer take the item. The markers are **not**
+the same thing as the far more common `data-no-transform`, which is a UI gate
+only (it hides the properties-panel transform rows and the gizmo) and is
+enforced nowhere at the command layer. Every command through
+`Inspector.execute` is judged, but not a direct `setAttribute` from scene load
+or component code (scene load levels groups itself; see `docs/groups.md`).
+
+`Inspector.execute` is `resolveCommand` (`src/editor/lib/resolveCommand.js`:
+`routeCloneEdit`, then `routeGroupLevel`, then the command lookup and the
+guard) followed by the refusal notice or History. A test harness that stands
+in for `execute` calls `resolveCommand`, so it runs the same routing and
+guard. A tool call runs its command inside `withCommandOutcome`, which
+records the first command's refusal reason or levelling for the tool result;
+the command must run synchronously inside it.
+
+The stock rotate gizmo ("Advanced rotate") shows all three
 rings, since yaw-only rotation is the easy gizmo's job; on a
 `data-transform-yaw-only` entity it offers its Y ring alone
 (`applyStockGizmoAxes` in `src/editor/lib/viewport.js`), so it never starts a

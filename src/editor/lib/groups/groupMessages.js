@@ -14,11 +14,6 @@ import { MESSAGES } from '../../i18n/messages.js';
 import { getActiveLocale } from '@shared/utils/format';
 
 export const groupMessages = defineMessages({
-  nonUniformScale: {
-    id: 'groups.refusal.nonUniformScale',
-    defaultMessage:
-      'A group can only be scaled by the same amount along every axis.'
-  },
   illegalParent: {
     id: 'groups.refusal.illegalParent',
     defaultMessage: 'This item cannot be moved into that layer.'
@@ -37,6 +32,11 @@ export const groupMessages = defineMessages({
     id: 'groups.refusal.placementDistorts',
     defaultMessage:
       "This item cannot be added to the open group without distorting it, because the group's scale is not the same along every axis. Nothing was added."
+  },
+  ungroupWithMembers: {
+    id: 'groups.refusal.ungroupWithMembers',
+    defaultMessage:
+      'This group still has items in it, so it must stay a group. Move its items out of it first.'
   },
   placedAtTopLevel: {
     id: 'groups.placement.topLevel',
