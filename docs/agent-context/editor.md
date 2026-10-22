@@ -16,14 +16,17 @@ symbol (`src/editor/lib/transformGuard.js`) instead of running a command that
 would violate a transform-capability marker on the target entity or the
 hierarchy rules — test for the symbol, not for a falsy return, since the
 success path returns `undefined`. The markers are `data-transform-no-scale`,
-`data-transform-yaw-only` and `data-transform-no-reparent`; an entity opts in
-by carrying the attribute, or by being a kind that declares them
-(`src/tested/transform-kinds.js`: a user group by its class; managed streets,
-managed intersections and shapes by their component). Removing a marker
-through a command is refused. Removing the `user-group` class from a group
-with members is refused, and a command that makes an item a constrained kind,
-or would leave one outside its limits, rewrites itself to level it
-(`routeTransformLevel`). The hierarchy rules refuse a move to another
+`data-transform-yaw-only` and `data-transform-no-reparent`; at the command
+layer an entity opts in by carrying the attribute, or by being a kind that
+declares them (`src/tested/transform-kinds.js`: a user group by its class;
+managed streets, managed intersections and shapes by their component). The
+stock gizmo reads the attributes only, which each kind's component sets in its
+init. Removing a marker through a command is refused, and so is removing the
+`user-group` class from a group with members. A command that makes an item a
+constrained kind (a class that makes a group, or adding or updating a kind's
+component), and a mixin write or a scale or rotation removal that would let a
+mixin take one outside its limits, rewrites itself to bring the item within
+them (`routeKindLimits`); a direct scale or tilt write is refused instead. The hierarchy rules refuse a move to another
 parent that `canReparent` (`src/editor/lib/groups/groupModel.js`) rejects or
 that could not keep the item's world pose, and a create or paste whose
 `requireParent` parent can no longer take the item. The markers are **not**
@@ -36,7 +39,7 @@ kind's limits first; a load that changed anything logs one `[scene-load]`
 warning).
 
 `Inspector.execute` is `resolveCommand` (`src/editor/lib/resolveCommand.js`:
-`routeCloneEdit`, then `routeTransformLevel`, then the command lookup and the
+`routeCloneEdit`, then `routeKindLimits`, then the command lookup and the
 guard) followed by the refusal notice or History. A test harness that stands
 in for `execute` calls `resolveCommand`, so it runs the same routing and
 guard. A tool call runs its command inside `withCommandOutcome`, which
