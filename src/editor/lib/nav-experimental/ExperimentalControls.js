@@ -190,6 +190,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       get mapPivotFarAcceptGain() {
         return self._mapPivotFarAcceptGain;
       },
+      // The editor's selected entity (#1993 selection rotation pivot). Read
+      // live from the inspector global — null outside the editor or with
+      // nothing selected.
+      get selectedEntity() {
+        const inspector =
+          typeof AFRAME !== 'undefined' ? AFRAME.INSPECTOR : undefined;
+        return (inspector && inspector.selectedEntity) || null;
+      },
       get rotationSpeed() {
         return self.rotationSpeed;
       },
