@@ -263,7 +263,7 @@ describe('drawing a shape with a group open', () => {
     expect(notify.warningMessage).not.toHaveBeenCalled();
   });
 
-  it('creates the shape where it always was when no group is open: container-local points, no parent given (fails if the world points are used unconverted)', () => {
+  it('creates the shape at the top level when no group is open, re-posed under the offset container (fails if the world points are used unconverted)', () => {
     const { inspector, streetContainer } = editor;
     streetContainer.object3D.position.set(5, 0, 3);
     const execute = vi.spyOn(inspector, 'execute');
@@ -278,20 +278,24 @@ describe('drawing a shape with a group open', () => {
     );
     expect(calls).toHaveLength(1);
     const payload = calls[0][1];
-    expect(payload.parentEl).toBeUndefined();
-    expect(payload.requireParent).toBeUndefined();
+    expect(payload.parentEl).toBe(streetContainer);
     const offset = new THREE.Vector3(5, 0, 3);
     const centroid = drawn
       .reduce((sum, p) => sum.add(p), new THREE.Vector3())
       .divideScalar(drawn.length)
       .sub(offset);
-    const [cx, cy, cz] = payload.components.position.split(' ').map(Number);
-    expectNear({ x: cx, y: cy, z: cz }, centroid);
+    expectNear(payload.components.position, centroid);
+    expect(payload.components.rotation).toBeUndefined();
+    expect(payload.components.scale).toBeUndefined();
     payload.children.forEach((child, i) => {
       const [x, y, z] = child.components.position.split(' ').map(Number);
       const expected = drawn[i].clone().sub(offset).sub(centroid);
       expectNear({ x, y, z }, expected);
     });
+    // Created, and with no group open nothing about groups is said.
+    const shape = createdShape();
+    expect(shape.parentNode).toBe(streetContainer);
+    expect(notify.infoMessage).not.toHaveBeenCalled();
     const style = getShapeStyle();
     expect(payload.components.shape).toMatchObject({
       lineColor: style.lineColor,

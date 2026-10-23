@@ -107,6 +107,9 @@ export class GroupScopeController {
     // The open groups and the selection when the editor last closed, as
     // elements, restored when it opens again; forgotten on any scene load.
     this.away = null;
+    // A selection the editor's own opening made (its focus entity), which
+    // stands in place of what was remembered. See onEditorOpened().
+    this.openingSelection = null;
     this.affordances = new GroupAffordances(inspector, this);
 
     const sceneEl = inspector.sceneEl;
@@ -130,6 +133,7 @@ export class GroupScopeController {
     on(sceneEl, 'child-detached', prune);
     on(sceneEl, 'newScene', () => {
       this.away = null;
+      this.openingSelection = null;
       this.setStack(NO_GROUPS);
     });
     on(window, 'blur', () => {
@@ -261,14 +265,19 @@ export class GroupScopeController {
   // tool switch, undoing a create) leaves the scope as it is. So does any
   // selection made while the editor is closed (Visitor Build selects the
   // objects visitors place): the scope was emptied when the editor closed, and
-  // stays empty until it reopens.
+  // stays empty until it reopens. The inspector's own flag, not the store's,
+  // says whether it is open: the store flips its flag only after the opening
+  // has selected its focus entity.
   followSelection() {
-    if (!useStore.getState().isInspectorEnabled) return;
+    if (!this.inspector.opened) return;
     if (!this.ownSelections) this.drillLatch = false;
     const selected = this.selected();
     // A move replaces the element: the new one is selected once it has loaded.
     if (!selected || !selected.isConnected) return;
     this.setStack(ensureEnclosingGroupIds(selected));
+    if (!useStore.getState().isInspectorEnabled) {
+      this.openingSelection = selected;
+    }
   }
 
   // Drop every open group that is gone, hidden or no longer inside the one
@@ -303,6 +312,7 @@ export class GroupScopeController {
   // remembering them and the selection for the return.
   onEditorClosed() {
     this.drillLatch = false;
+    this.openingSelection = null;
     this.away = { groups: this.openElements(), selected: this.selected() };
     this.setStack(NO_GROUPS);
   }
@@ -310,10 +320,17 @@ export class GroupScopeController {
   // Back from the viewer, reopen what was open and reselect what was
   // selected, as far as the scene still allows (see restorableScope). With
   // nothing remembered (a scene was loaded meanwhile) the same rule leaves a
-  // selection only where no group is open around it.
+  // selection only where no group is open around it. An opening that selected
+  // something itself has already opened the groups around it, and that wins.
   onEditorOpened() {
     this.affordances.markDirty();
     this.drillLatch = false;
+    const opening = this.openingSelection;
+    this.openingSelection = null;
+    if (opening && opening === this.selected()) {
+      this.away = null;
+      return;
+    }
     const away = this.away || { groups: NO_GROUPS, selected: this.selected() };
     this.away = null;
     const restored = restorableScope(away.groups, away.selected);

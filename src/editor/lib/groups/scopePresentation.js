@@ -32,19 +32,20 @@ function tmp() {
       positions: new Float32Array(BOX_EDGES.length * 3),
       parentInverse: new THREE.Matrix4(),
       // For drawnBox: the box it builds, the group's inverse placement, the
-      // half-size of the cube around each point, and the point being carried.
+      // half-size on each local axis of the box around each point, and the
+      // point being carried.
       drawn: new THREE.Box3(),
       toLocal: new THREE.Matrix4(),
       point: new THREE.Vector3(),
-      half: 0,
+      half: new THREE.Vector3(),
       visit: null
     };
     const s = scratch;
     s.visit = (x, y, z) => {
       s.point.set(x, y, z).applyMatrix4(s.toLocal);
-      s.point.subScalar(s.half);
+      s.point.sub(s.half);
       s.drawn.expandByPoint(s.point);
-      s.point.addScalar(2 * s.half);
+      s.point.addScaledVector(s.half, 2);
       s.drawn.expandByPoint(s.point);
     };
   }
@@ -168,7 +169,7 @@ export class ScopePresentation {
   /**
    * Have the outline and scrim of group `groupId` also take in the points
    * `forEachPoint(visit)` gives, as `visit(x, y, z)` in world space, each with
-   * a cube of half-size `pad` (world distance) around it: a tool's drawing,
+   * a box reaching `pad` (world distance) on each side: a tool's drawing,
    * which is not yet a member of the group. Returns a handle for
    * clearDrawingExtent. Nothing else follows the drawing.
    */
@@ -184,7 +185,7 @@ export class ScopePresentation {
 
   // The box to draw for the group: its stored bounds, or when a drawing in it
   // is being followed, those bounds (or an empty box) grown to take in each
-  // point, with a cube of its pad around it. The pad is what gives a lone
+  // point, with a box of its pad around it. The pad is what gives a lone
   // point or a flat run of points a volume: the preview's tubes and spheres
   // have a radius, and a box with no volume has no opening in the scrim. The
   // result is a scratch box, valid until the next call.
@@ -196,14 +197,13 @@ export class ScopePresentation {
     if (Math.abs(matrixWorld.determinant()) < 1e-12) return stored;
     const t = tmp();
     t.toLocal.copy(matrixWorld).invert();
-    // At least `pad` in world on every axis, however the group is scaled.
+    // `pad` in world along each of the group's axes, however it is scaled.
     const e = matrixWorld.elements;
-    const smallestScale = Math.min(
-      Math.hypot(e[0], e[1], e[2]),
-      Math.hypot(e[4], e[5], e[6]),
-      Math.hypot(e[8], e[9], e[10])
+    t.half.set(
+      extent.pad / Math.hypot(e[0], e[1], e[2]),
+      extent.pad / Math.hypot(e[4], e[5], e[6]),
+      extent.pad / Math.hypot(e[8], e[9], e[10])
     );
-    t.half = extent.pad / smallestScale;
     if (stored) t.drawn.copy(stored);
     else t.drawn.makeEmpty();
     extent.forEachPoint(t.visit);

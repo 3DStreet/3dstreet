@@ -496,8 +496,8 @@ AFRAME.registerComponent('shape', {
   // held cap's order describing where that cap actually is.
   //
   // The world matrix must be current: the system tick refreshes it
-  // (syncWorldMeasure) before syncFillOrder, and a derive that builds a fill
-  // has just refreshed it measuring the area. Only the y row is needed: the
+  // (syncWorldMeasure) before syncFillOrder, and _addFill refreshes it before
+  // building the cap. Only the y row is needed: the
   // local point is (0, py, 0), so the height is e[5] * py + e[13].
   _planeYOf: function (mesh) {
     const e = this.el.object3D.matrixWorld.elements;
@@ -738,9 +738,12 @@ AFRAME.registerComponent('shape', {
   // only thing the dirty-check watches — never move. Compare-and-bail keeps
   // the unchanged path allocation-free; the recompute reads the same ring the
   // last derive measured, whose entries are live vertex positions.
+  // It also refreshes the world matrix syncFillOrder reads, for any shape
+  // with a fill.
   syncWorldMeasure: function () {
-    if (!this._areaPts) return;
+    if (!this._areaPts && !this.fillGroup.children[0]) return;
     this.el.object3D.updateWorldMatrix(true, false);
+    if (!this._areaPts) return;
     const m = this.el.object3D.matrixWorld;
     if (this.worldMatrixCache && this.worldMatrixCache.equals(m)) return;
     if (!this.worldMatrixCache) this.worldMatrixCache = new THREE.Matrix4();
@@ -893,9 +896,8 @@ AFRAME.registerComponent('shape', {
     // plane, and among fills on the same plane above any LARGER one, so a small
     // marking inside a big zone lands on top. See shapeFillRender.js.
     //
-    // The plane's height is a world height (see _planeYOf). The world matrix
-    // it reads was refreshed by _worldAreaXZ earlier in this same derive, on
-    // the path that builds a fill, and must stay so.
+    // The plane's height is a world height (see _planeYOf).
+    this.el.object3D.updateWorldMatrix(true, false);
     this._fillPlaneY = this._planeYOf(mesh);
     mesh.renderOrder = fillPaintOrder(this._fillPlaneY, area);
     // Same reason as the sphere/cylinder leaves: the inspector raycaster reads
