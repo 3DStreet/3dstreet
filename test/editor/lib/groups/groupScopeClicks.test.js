@@ -813,6 +813,39 @@ describe('a round trip through the viewer', () => {
     expect(selected()).toBe(null);
   });
 
+  // The store opens the inspector, which selects its focus entity, and only
+  // then flips its own flag.
+  const backFocusing = (el) => {
+    h.inspector.open = function () {
+      this.opened = true;
+      this.selectEntity(el);
+    };
+    back();
+  };
+
+  it('opens the groups around a member the opening focuses, over what was remembered (fails if the scope reads the store flag, or the restore overrides it)', () => {
+    const { tree, outside } = nestedScene();
+    h.inspector.selectEntity(outside);
+    leave();
+    backFocusing(tree);
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(tree);
+  });
+
+  it('restores as usual after an opening that focused something, on the next round trip', () => {
+    const { tree, b1 } = nestedScene();
+    leave();
+    backFocusing(tree);
+    h.inspector.open = function () {
+      this.opened = true;
+    };
+    h.inspector.selectEntity(b1);
+    leave();
+    back();
+    expect(h.openIds()).toEqual(['A', 'B']);
+    expect(selected()).toBe(b1);
+  });
+
   it('stops at a group no longer inside the one before it', () => {
     const { B, tree } = nestedScene();
     h.inspector.selectEntity(tree);
