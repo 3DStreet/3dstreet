@@ -59,10 +59,7 @@ import { ProbeTargets } from '../../../lib/nav-experimental/probeTargets.js';
 import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants.js';
 import { getShapeStyle } from '../../../lib/shapeStyle.js';
 import { nextMoveGizmo } from '../../../lib/transformModes.js';
-import {
-  isGroupableItem,
-  STREET_CONTAINER_ID
-} from '../../../lib/groups/groupModel.js';
+import { STREET_CONTAINER_ID } from '../../../lib/groups/groupModel.js';
 import { groupMessage } from '../../../lib/groups/groupMessages.js';
 import {
   beginPlacement,
@@ -205,10 +202,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     // Where the shape goes is fixed now, as the tool starts, like every other
     // way of adding an item: the innermost group open at this moment, or null
-    // when none is (the shape is then created where it always was).
-    const ticket = beginPlacement({
-      groupable: isGroupableItem({ components: { shape: '' } })
-    });
+    // when none is (the shape is then created at the top level).
+    const ticket = beginPlacement();
     let extentHandle = null;
 
     // --- activate ---------------------------------------------------------
@@ -724,53 +719,32 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // number it was given.
       const layerName = `Shape • ${closed ? 'Polygon' : 'Polyline'} ${shapeLayerCounter++}`;
 
-      // With a group open when the tool started, the shape goes into that
-      // group, at the world position it was drawn at. The definition is built
-      // from the world points and re-posed under the group; its vertices stay
+      // The shape goes into the group open when the tool started, or else the
+      // top level, at the world position it was drawn at. The definition is
+      // built from the world points and re-posed under its parent (the top
+      // level's container is offset in a geospatial scene); its vertices stay
       // world-axis offsets from the centroid, which is right because the
       // entity's resulting world rotation is the identity.
-      let atTopLevel = false;
-      if (ticket) {
-        const worldDefinition = definitionThrough(
-          verts.map((v) => new THREE.Vector3(v.x, v.y, v.z))
-        );
-        const placed = placeDefinition(worldDefinition, ticket);
-        if (!placed.refusal) {
-          AFRAME.INSPECTOR.execute('entitycreate', placed.definition);
-          return;
-        }
+      const worldDefinition = definitionThrough(
+        verts.map((v) => new THREE.Vector3(v.x, v.y, v.z))
+      );
+      let placed = ticket && placeDefinition(worldDefinition, ticket);
+      if (placed?.refusal) {
         // The group is gone, or can no longer take the shape without
         // distorting it. What was drawn is the user's work: it is added at the
         // top level, where it was drawn, and the user is told.
         STREET.notify.infoMessage(groupMessage('drawnShapeAtTopLevel'));
-        atTopLevel = true;
       }
-
-      // With no group open, or after the fallback above, vertices are picked
-      // in world space, but entitycreate parents the shape to the editor's
-      // default parent
-      // (#street-container) and treats child positions as LOCAL to it. Convert
-      // so the committed shape lands exactly where the world-space preview
-      // showed it, even if that parent is offset (e.g. a geospatial scene).
-      const parentEl = document.getElementById(STREET_CONTAINER_ID);
-      const parentObj = parentEl && parentEl.object3D;
-      if (parentObj) parentObj.updateMatrixWorld();
-      const toLocal = (v) => {
-        const w = new THREE.Vector3(v.x, v.y, v.z);
-        return parentObj ? parentObj.worldToLocal(w) : w;
-      };
-      const definition = definitionThrough(verts.map(toLocal));
+      if (!placed || placed.refusal) {
+        // Marked as required there, like a group placement, so a group still
+        // open does not add a notice that the shape is outside it.
+        placed = placeDefinition(worldDefinition, {
+          parentId: STREET_CONTAINER_ID
+        });
+      }
       AFRAME.INSPECTOR.execute(
         'entitycreate',
-        // The user was told where the shape went, so no second notice about it
-        // being outside the open group.
-        atTopLevel
-          ? {
-              ...definition,
-              parentEl: STREET_CONTAINER_ID,
-              requireParent: true
-            }
-          : definition
+        placed.refusal ? worldDefinition : placed.definition
       );
     }
 
