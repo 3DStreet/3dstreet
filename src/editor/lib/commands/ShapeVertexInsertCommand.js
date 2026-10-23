@@ -1,6 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
-import { createUniqueId } from '../entity.js';
+import { createUniqueId } from '../entity.jsx';
 
 /**
  * Add one vertex to a shape at a given index.

@@ -965,6 +965,12 @@ a.help-linkhover {
   width: 20px;
   margin-left: 0;
 }
+.sidepanelContent .group-origin-hint {
+  margin: 0 0 8px;
+  color: variables.$lightgray-200;
+  font-size: 12px;
+  line-height: 1.4;
+}
 
 /* ============================================================
    Compact property rows for the standard properties panel: the

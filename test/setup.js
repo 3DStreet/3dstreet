@@ -38,6 +38,15 @@ vi.mock('@shared/services/firebase.js', () => ({
   storage: {}
 }));
 
+// The editor's cloud-scene API (src/editor/api/scene.js) builds a collection
+// reference at module evaluation, which the real SDK refuses for the `db: {}`
+// stub above, so every panel importing it failed to load. Only that constructor
+// is replaced: a real read or write still reaches the SDK and throws.
+vi.mock('firebase/firestore', async (importOriginal) => ({
+  ...(await importOriginal()),
+  collection: vi.fn((parent, path) => ({ type: 'collection', path }))
+}));
+
 // Mock Stripe
 vi.mock('@stripe/stripe-js', () => ({
   loadStripe: vi.fn(() =>

@@ -172,7 +172,7 @@ Nothing in the load path depends on auth.
   during playback by design. The system also registers a
   `focus-hotspot` playable check (any hotspot with `enabled: true`) so
   the Start button surfaces for hotspot-only scenes.
-- **Layers badge:** `getEntityBadges` (`src/editor/lib/entity.js`)
+- **Layers badge:** `getEntityBadges` (`src/editor/lib/entity.jsx`)
   returns passive inline badges for role components an entity carries
   (a bullseye for `focus-hotspot`), rendered by `scenegraph/Entity.jsx`
   after the name and before the expand arrow. They never replace the

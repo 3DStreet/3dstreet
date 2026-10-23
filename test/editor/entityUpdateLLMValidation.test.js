@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// entity.js contains JSX inside a .js file, which this test setup cannot
-// transform (same workaround as shapeVertexEditing.test.js).
-vi.mock('../../src/editor/lib/entity.js', () => ({
+// The command is tested without the entity module (as in
+// shapeVertexEditing.test.js).
+vi.mock('../../src/editor/lib/entity.jsx', () => ({
   createUniqueId: () => 'x',
   updateEntity: () => {}
 }));

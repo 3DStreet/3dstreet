@@ -152,6 +152,10 @@ AFRAME.registerComponent('svg-extruder', {
     // create edges geometries and line segments from mergedGeometry
     const linesGeometry = new THREE.EdgesGeometry(mergedGeometry);
     const lines = new THREE.LineSegments(linesGeometry, stokeMaterial);
+    // The outline only draws the mesh's edges, and the mesh is the pick
+    // target. Lines pick within a world-unit tolerance (three.js default), so
+    // a pickable outline would take clicks meant for nearby objects.
+    lines.raycast = function () {};
 
     el.setObject3D('lines', lines);
 

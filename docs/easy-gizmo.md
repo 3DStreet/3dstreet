@@ -87,6 +87,8 @@ gesture follows its initiating pointer until release or cancellation. The click
 that trails a claimed press is swallowed (it would hand the selection to what
 sits under the handle); the double-click is not, so the editor's double-click
 focus frames the selected object even when the gizmo covers it at distance.
+Nothing of a claimed press is left for the canvas: the next click, mouse or
+touch, selects as usual.
 
 Native pointer capture is a convenience, not the ownership mechanism. Chrome
 drops capture mid-drag as soon as a pointermove reports no buttons held, which a
@@ -99,6 +101,12 @@ capture is lost is ignored (without capture the canvas sees the cursor cross
 into a side panel, which is not a release), and the drag ends on pointerup,
 pointercancel, blur or Escape as usual. Treating the loss as a cancel restored
 the press pose on release, which users saw as the object snapping back.
+
+The protocol has a second owner. `ClaimedPress` (`gizmos/claimedPress.js`)
+carries it as a unit, without the parts only the easy gizmo needs, for a
+control that cannot listen for itself: a group's stock control in the Advanced
+modes ([groups](groups.md#handles)). A change to the protocol here belongs
+there too.
 
 Translation records pointer movement and evaluates it once per scene frame.
 Release queues the final coordinate for the next frame token, so finishing a drag
@@ -130,6 +138,35 @@ only on a steep climb, where it is the price of following the ramp.
 The look-ahead can settle a frame the strict chain would have held: the step
 it takes is bounded by the same allowance, and the chain would have taken it
 from that column on the next frame anyway. It cannot invent a leap.
+
+## Attach policies
+
+`attach(el, policy)` takes an optional policy for an entity the item rules do
+not fit; without one nothing changes. User groups are the one caller: the
+viewport passes a policy for every group in easy mode. A policy supplies the
+pivot the handles stand at and a turn holds still, and the box whose bottom
+they stand on, read at every layout rather than measured from meshes. It can
+switch off ground behaviour (a move keeps its height, with no column probe and
+no landing targets), keep geometry edits inside the entity from cancelling a
+gesture, and defer presses.
+
+A deferred press is claimed and suppressed as usual, and its control shows as
+active at once, but nothing moves until the pointer has been 2 CSS pixels or
+more from the press point, including coalesced samples (`pressClassifier.js`).
+Then the drag starts from the press point. Released sooner, with no time
+limit, it is a click: the gizmo dispatches `handleClick` with the press point
+and the click count, and nothing else. A mouse's count is known only from the
+`click` event that follows the release (a cancelled `pointerdown` means no
+`mousedown` is sent to carry it), so a mouse click is reported from that event;
+a touch press is reported on release. `handlePress` and `handlePressEnd`
+bracket the held press; blur, `pointercancel`, Escape, detach and closing the
+editor end it with nothing done, and an Escape that ends one does nothing
+else. For a group, such a click over its box opens the group, and the
+double-click it starts does not frame ([groups](groups.md)).
+
+A commit rounds the position and the yaw, and writes pitch and roll exactly as
+read, since the gizmo only ever edits yaw. A cancel puts back the pose exactly
+as it was at the press.
 
 ## Work per frame and per event
 

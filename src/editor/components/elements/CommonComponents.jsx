@@ -8,6 +8,8 @@ import PositionRow from './PositionRow';
 import Events from '../../lib/Events';
 import { saveBlob } from '../../lib/utils';
 import { expandBatchedMeshesForExport } from '../../../batch-models';
+import { isUserGroup } from '../../lib/groups/groupModel.js';
+import { hasTransformMarker } from '../../lib/transformGuard.js';
 
 export default class CommonComponents extends React.Component {
   static propTypes = {
@@ -39,12 +41,12 @@ export default class CommonComponents extends React.Component {
   renderCommonAttributes() {
     const entity = this.props.entity;
     return ['position', 'rotation', 'scale'].map((componentName) => {
-      // Anything that opts out of scaling (managed streets, shapes) hides the
-      // row: the command layer refuses the write anyway, so showing it would
-      // only offer an edit that bounces back.
+      // Anything that opts out of scaling (managed streets, shapes, groups)
+      // hides the row: the command layer refuses the write anyway, so showing
+      // it would only offer an edit that bounces back.
       if (
         componentName === 'scale' &&
-        entity.hasAttribute('data-transform-no-scale')
+        hasTransformMarker(entity, 'data-transform-no-scale')
       ) {
         return null;
       }
@@ -119,6 +121,14 @@ export default class CommonComponents extends React.Component {
           </span>
         </div>
         <div className="collapsible-content sidepanelContent">
+          {isUserGroup(entity) && (
+            <p className="group-origin-hint">
+              <FormattedMessage
+                id="sidebar.groupOriginHint"
+                defaultMessage="Position describes the group origin. On-canvas movement and rotation controls use the group center, which is distinct from the origin."
+              />
+            </p>
+          )}
           {this.renderCommonAttributes()}
         </div>
       </Collapsible>
