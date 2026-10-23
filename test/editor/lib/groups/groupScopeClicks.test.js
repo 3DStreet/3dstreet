@@ -832,18 +832,17 @@ describe('a round trip through the viewer', () => {
     expect(selected()).toBe(tree);
   });
 
-  it('restores as usual after an opening that focused something, on the next round trip', () => {
-    const { tree, b1 } = nestedScene();
+  it('restores as usual on the next round trip after an opening that focused the same member (fails if the focused selection is left over to suppress that restore)', () => {
+    const { tree } = nestedScene();
     leave();
     backFocusing(tree);
     h.inspector.open = function () {
       this.opened = true;
     };
-    h.inspector.selectEntity(b1);
     leave();
     back();
-    expect(h.openIds()).toEqual(['A', 'B']);
-    expect(selected()).toBe(b1);
+    expect(h.openIds()).toEqual(['A', 'B', 'C']);
+    expect(selected()).toBe(tree);
   });
 
   it('stops at a group no longer inside the one before it', () => {
