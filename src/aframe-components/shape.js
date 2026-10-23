@@ -738,8 +738,10 @@ AFRAME.registerComponent('shape', {
   // only thing the dirty-check watches — never move. Compare-and-bail keeps
   // the unchanged path allocation-free; the recompute reads the same ring the
   // last derive measured, whose entries are live vertex positions.
-  // It also refreshes the world matrix for syncFillOrder, ring or not.
+  // It also refreshes the world matrix syncFillOrder reads, for any shape
+  // with a fill.
   syncWorldMeasure: function () {
+    if (!this._areaPts && !this.fillGroup.children[0]) return;
     this.el.object3D.updateWorldMatrix(true, false);
     if (!this._areaPts) return;
     const m = this.el.object3D.matrixWorld;

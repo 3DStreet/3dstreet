@@ -133,6 +133,7 @@ export class GroupScopeController {
     on(sceneEl, 'child-detached', prune);
     on(sceneEl, 'newScene', () => {
       this.away = null;
+      this.openingSelection = null;
       this.setStack(NO_GROUPS);
     });
     on(window, 'blur', () => {
