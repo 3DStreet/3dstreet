@@ -188,6 +188,59 @@ streets, blocks, parks and shore as data and invents every building.
   oriented-rectangle tests for cars), the same idea as SanFrancisco's
   oriented box per building.
 
+#### Vehicle physics (`controllers.js`, `traffic.js`)
+
+The player vehicles are arcade kinematics, not a physics engine:
+
+- **Car:** speed is a scalar along the heading. `driveSpeed()` adds
+  throttle acceleration up to a top speed (23.5 m/s, 36 boosted), then
+  subtracts constant rolling resistance, extra drag when coasting, braking
+  proportional to opposite input, and a quadratic air-drag term. It's
+  written so speed never crosses zero and stays stable at large `dt`.
+  Steering eases toward 0.52 rad, and yaw rate is steer × speed, saturating
+  at 8 m/s. There are no tyres, slip angles or weight transfer.
+- **Body motion is faked.** A three-axis spring-damper (pitch from
+  acceleration, roll from steer × speed, heave) moves only the chassis mesh.
+  The wheels spin from distance travelled.
+- **Collisions are hand-written impulses.** Building boxes are bucketed into
+  48 m cells. The car is an oriented rectangle tested against them with a
+  four-axis SAT check; walkers, bikes and the helicopter are circles. A hit
+  pushes the car out along the contact normal. Over 0.5 m/s it adds a
+  sideways slide (damped as tyre grip), bounces back at 25% head-on, and
+  sets off spin, pitch, roll and heave kicks plus sparks and a crash sound.
+- **Against traffic**, the same SAT check runs against each AI car with a
+  mass ratio for how the overlap is split: a bus takes 15% of the push, a
+  car half, an SUV 58% (slightly more than a car, which looks unintended).
+  They trade an impulse of (1 + 0.28) × approach speed, and the AI car
+  spins from the contact offset. AI cars then pick up their IDM following again (`a` 2.0, `b` 3.0,
+  `T` 1.2 s, `s0` 2 m; buses gentler), with a lateral-acceleration limit
+  that sets cornering speed.
+- **Bike and helicopter** use the same speed model without the body: the
+  bike leans by turn × speed, and the helicopter has separate horizontal and
+  vertical speeds with exponential decay, plus tilt from speed and yaw.
+- **Ground is flat.** Ground height is a lookup (0 m road, a sidewalk
+  height for walkers, fixed heights for two parks). There is no terrain,
+  ramps or airborne state.
+
+Compared with 3DStreet, this is simpler than what we have. `play-mode-vehicle`
+runs a Rapier raycast-wheel sim with fixed sub-steps that drive the scene
+clock, and `heli-flight-model.js` is its own flight model. Don't swap
+either for this. What transfers is on the traffic side:
+
+- **Traffic that reacts.** Our `street-traffic` is a pure function of sim
+  time; its kinematic Rapier colliders block the player but never yield,
+  brake or get shoved. Here AI cars follow the car ahead, stop at signals,
+  yield to people on crosswalks and absorb a hit, then recover. Adopting
+  that means giving up "pure function of sim time" (replay and seeking get
+  harder), so it would be an opt-in mode, not a replacement.
+- **Cheap contacts without an engine:** an oriented-box SAT test, a mass
+  ratio per vehicle class and a scripted spin and suspension kick read as a
+  crash at almost no cost. That could be the model for traffic-to-traffic
+  contact, which Rapier doesn't give us today because AI cars are kinematic.
+- **The `driveSpeed()` shape** (rolling + coast + brake + quadratic drag,
+  never crossing zero) is a compact, stable speed model for non-player
+  agents or a low-end fallback.
+
 ### Rendering in 3DStreet
 
 - **Chunking island-wide instanced meshes** for culling is directly
