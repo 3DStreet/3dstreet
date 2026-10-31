@@ -934,7 +934,9 @@
     "legacyStreet.fetchFailed": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted.",
     "legacyStreet.title": "This is a classic street",
     "screenshotModal.outputResolutionLabel": "Output resolution:",
-    "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}"
+    "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}",
+    "screenshotModal.sourceSize": "Source image: {width} × {height}",
+    "screenshotModal.lowResSource": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1871,7 +1873,9 @@
     "legacyStreet.fetchFailed": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted.",
     "legacyStreet.title": "This is a classic street",
     "screenshotModal.outputResolutionLabel": "Output resolution:",
-    "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}"
+    "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}",
+    "screenshotModal.sourceSize": "Source image: {width} × {height}",
+    "screenshotModal.lowResSource": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2808,6 +2812,8 @@
     "legacyStreet.fetchFailed": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted.",
     "legacyStreet.title": "This is a classic street",
     "screenshotModal.outputResolutionLabel": "Output resolution:",
-    "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}"
+    "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}",
+    "screenshotModal.sourceSize": "Source image: {width} × {height}",
+    "screenshotModal.lowResSource": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
   }
 }

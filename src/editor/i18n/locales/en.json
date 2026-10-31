@@ -2246,6 +2246,9 @@
   "screenshotModal.loginPrompt": {
     "defaultMessage": "Please log in to use AI rendering"
   },
+  "screenshotModal.lowResSource": {
+    "defaultMessage": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
+  },
   "screenshotModal.mixedModels": {
     "defaultMessage": "Mixed Models"
   },
@@ -2320,6 +2323,9 @@
   },
   "screenshotModal.showRender": {
     "defaultMessage": "Show Render"
+  },
+  "screenshotModal.sourceSize": {
+    "defaultMessage": "Source image: {width} × {height}"
   },
   "screenshotModal.thumbnailFailed": {
     "defaultMessage": "Failed to set scene thumbnail. Please try again."

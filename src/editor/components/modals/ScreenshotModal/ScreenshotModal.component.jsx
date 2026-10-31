@@ -51,6 +51,11 @@ import { getLocalizedStyleLabels } from './renderStyleMessages';
 // Available AI models (use shared constants)
 const AI_MODELS = REPLICATE_MODELS;
 
+// Below this long edge (the 2K output size) the model has to invent detail
+// the source doesn't have, so the modal flags the capture as low-res (#1887).
+// The capture is window size × device pixel ratio, invisible to the user.
+const LOW_RES_SOURCE_LONG_EDGE = 2048;
+
 // AI renders are async generation jobs since #1835: the submit callable
 // returns a jobId immediately and the server saves the finished image to the
 // gallery (so closing this modal or the tab mid-render no longer loses it).
@@ -77,6 +82,8 @@ function ScreenshotModal() {
   const isPro = currentUser?.isPro || currentUser?.isProTeam;
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState(null);
+  // Pixel size of the capture the AI render will use (#1887).
+  const [sourceSize, setSourceSize] = useState(null);
   const [aiImageUrl, setAiImageUrl] = useState(null);
   const [showOriginal, setShowOriginal] = useState(true);
   const [comparisonMode, setComparisonMode] = useState(false);
@@ -204,6 +211,7 @@ function ScreenshotModal() {
 
   const resetModalState = () => {
     setOriginalImageUrl(null);
+    setSourceSize(null);
     setAiImageUrl(null);
     setShowOriginal(true);
     setComparisonMode(false);
@@ -1032,6 +1040,7 @@ function ScreenshotModal() {
       captureScreenshotAsJpeg(isPro)
         .then(({ dataUrl, width, height, pngSrc }) => {
           setOriginalImageUrl(pngSrc);
+          setSourceSize({ width, height });
           if (!currentUser?.uid) {
             console.log('User not logged in, skipping gallery save');
             return;
@@ -1189,6 +1198,25 @@ function ScreenshotModal() {
                       onChange={setSelectedModel}
                       disabled={isAnyRendering}
                     />
+                  )}
+                </div>
+              )}
+
+              {sourceSize && (
+                <div className={styles.sourceSize}>
+                  <FormattedMessage
+                    id="screenshotModal.sourceSize"
+                    defaultMessage="Source image: {width} × {height}"
+                    values={sourceSize}
+                  />
+                  {Math.max(sourceSize.width, sourceSize.height) <
+                    LOW_RES_SOURCE_LONG_EDGE && (
+                    <p className={styles.lowResWarning}>
+                      <FormattedMessage
+                        id="screenshotModal.lowResSource"
+                        defaultMessage="Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
+                      />
+                    </p>
                   )}
                 </div>
               )}
