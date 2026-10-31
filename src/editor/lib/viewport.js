@@ -101,6 +101,31 @@ const boxPairsScratch = new Float32Array(24 * 3);
 // tick marks, low enough that the top/side corners (90°) always do.
 const RIBBON_OUTLINE_THRESHOLD_DEG = 30;
 
+// A SkinnedMesh (rigged vehicles) caches its own boundingBox/boundingSphere
+// the first time either is asked for, computed from bindMatrixInverse, which
+// only SkinnedMesh.updateMatrixWorld refreshes (updateWorldMatrix does not).
+// A model measured right after it loads, before its first render, caches
+// bounds offset by its world placement: the selection box and click
+// hit-test then miss the model until a reload (#2117). Recompute both once
+// from a consistent pose; they are mesh-local, so they stay valid wherever
+// the entity moves, and recomputing them per frame (every vertex through the
+// skeleton) makes dragging a bus lag. The bind inverse is put back after: it
+// was taken at the parked measuring pose, and a click's per-triangle test
+// before the next render would read it.
+const skinnedBoundsRefreshed = new WeakSet();
+const savedBindMatrixInverse = new THREE.Matrix4();
+function refreshSkinnedBounds(object) {
+  object.traverse((node) => {
+    if (!node.isSkinnedMesh || skinnedBoundsRefreshed.has(node)) return;
+    savedBindMatrixInverse.copy(node.bindMatrixInverse);
+    node.updateMatrixWorld();
+    node.computeBoundingBox();
+    node.computeBoundingSphere();
+    node.bindMatrixInverse.copy(savedBindMatrixInverse);
+    skinnedBoundsRefreshed.add(node);
+  });
+}
+
 // Note on structure: the inherited BoxHelper (a 1px LineSegments) is kept
 // purely as the box's DATA source — its constructor, setFromObject and
 // update() write the 8 corner positions we then copy into the fat-line
@@ -359,6 +384,8 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
         );
         auxMatrix.compose(origin, identityQuaternion, auxScale);
         this.object.parent.matrixWorld.copy(auxMatrix);
+        this.object.updateWorldMatrix(false, true);
+        refreshSkinnedBounds(this.object);
         tempBox3.setFromObject(this.object);
 
         // Batched entities have their original mesh tree stripped at batch time, so

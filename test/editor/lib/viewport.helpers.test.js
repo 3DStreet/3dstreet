@@ -117,6 +117,60 @@ describe('the selection box measurement', () => {
       dispose();
     }
   });
+
+  // A rigged vehicle measured right after it loads, before its first render,
+  // used to cache bounds offset by its placement (#2117).
+  it('measures a skinned mesh that has not rendered at its own bounds', () => {
+    const { sceneEl, selectionBox, select, dispose } = mount();
+    try {
+      const el = entity(sceneEl);
+      const geometry = new THREE.BoxGeometry(2, 2, 2);
+      const count = geometry.attributes.position.count;
+      geometry.setAttribute(
+        'skinIndex',
+        new THREE.Uint16BufferAttribute(new Array(count * 4).fill(0), 4)
+      );
+      geometry.setAttribute(
+        'skinWeight',
+        new THREE.Float32BufferAttribute(
+          Array.from({ length: count * 4 }, (_, i) => (i % 4 === 0 ? 1 : 0)),
+          4
+        )
+      );
+      const bone = new THREE.Bone();
+      const mesh = new THREE.SkinnedMesh(geometry);
+      el.object3D.add(bone, mesh);
+      mesh.bind(new THREE.Skeleton([bone]));
+      // Placed after bind and measured (say, by a hover raycast) with no
+      // render in between, like a freshly dropped model: bindMatrixInverse is
+      // still the bind-time one, so the cached bounds land at the placement.
+      el.object3D.position.set(30, 0, -40);
+      el.object3D.updateWorldMatrix(true, true);
+      mesh.computeBoundingBox();
+      mesh.computeBoundingSphere();
+
+      select(el);
+      const box = new THREE.Box3().setFromBufferAttribute(
+        selectionBox.geometry.attributes.position
+      );
+      expect(box.min.toArray()).toEqual([-1, -1, -1]);
+      expect(box.max.toArray()).toEqual([1, 1, 1]);
+      expect(selectionBox.position.toArray()).toEqual([30, 0, -40]);
+
+      // The click hit-test's cached sphere is fixed too.
+      expect(mesh.boundingSphere.center.length()).toBeLessThan(1);
+
+      // Measured once: a drag re-measures every frame, and walking every
+      // vertex through the skeleton each time makes it lag.
+      const recompute = vi.spyOn(mesh, 'computeBoundingBox');
+      el.object3D.position.set(10, 0, 5);
+      selectionBox.update();
+      expect(recompute).not.toHaveBeenCalled();
+      expect(selectionBox.position.toArray()).toEqual([10, 0, 5]);
+    } finally {
+      dispose();
+    }
+  });
 });
 
 describe('helpers for an entity that left the scene graph', () => {
