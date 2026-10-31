@@ -36,6 +36,10 @@ export const REPLICATE_MODELS = {
     version: '99256cc418d9ac41854575e2f1c8846ce2defd0c0fb6ff2d5cbc3c826be75bc8',
     estimatedTime: 60,
     includeIn4x: true,
+    // Default output tier, and the paid tiers above it (#1887). The server
+    // (public/functions/replicate-models.js) prices them; drift-guarded.
+    resolution: '2K',
+    outputTiers: { '4K': { tokenCost: 5 } },
     tokenCost: 3
   },
   'fal-flux-3-edit': {
@@ -112,6 +116,27 @@ export const REPLICATE_MODELS = {
     requiresSourceImage: true
   }
 };
+
+/**
+ * Output resolutions a model offers, default first: [] when it has no
+ * selectable tiers (#1887).
+ * @param {Object} model - REPLICATE_MODELS entry
+ * @returns {string[]}
+ */
+export const getOutputTiers = (model) =>
+  model?.outputTiers && model.resolution
+    ? [model.resolution, ...Object.keys(model.outputTiers)]
+    : [];
+
+/**
+ * Token cost of one render at an output tier; an unknown or default tier
+ * costs the model's base tokenCost.
+ * @param {Object} model - REPLICATE_MODELS entry
+ * @param {string|null} [tier]
+ * @returns {number}
+ */
+export const getTierTokenCost = (model, tier) =>
+  (tier && model?.outputTiers?.[tier]?.tokenCost) || model?.tokenCost || 1;
 
 /**
  * Get model name by version ID

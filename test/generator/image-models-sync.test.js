@@ -24,6 +24,10 @@ describe('image picker models stay in sync with the backend', () => {
       const backend = BACKEND_MODELS[id];
       expect(backend).toBeDefined();
       expect(model.tokenCost).toBe(backend.tokenCost);
+      // Output tiers (#1887): the picker's toggle labels and prices must be
+      // exactly what the server accepts and charges.
+      expect(model.outputTiers).toEqual(backend.outputTiers);
+      if (model.outputTiers) expect(model.resolution).toBe(backend.resolution);
       if (model.type === 'fal') {
         expect(backend.type).toBe('fal');
         expect(model.endpoint).toBe(backend.endpoint);

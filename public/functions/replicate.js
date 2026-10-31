@@ -6,7 +6,7 @@ const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, REPLICATE_MODELS } = require('./replicate-models.js');
-const { buildReplicateImageInput } = require('./image-model-inputs.js');
+const { buildReplicateImageInput, resolveOutputTier } = require('./image-model-inputs.js');
 const { assertAppCheck } = require('./app-check.js');
 // Pure .ply sanity check — gates degenerate (failed-SfM) reconstructions out of
 // the success/charge/save path. See issue #1745.
@@ -189,7 +189,7 @@ const generateReplicateImage = functions
     assertAppCheck(context);
 
     const userId = context.auth.uid;
-    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version, model_id, scene_id, source = 'editor', notify, gallery_metadata } = data;
+    const { prompt, input_image, guidance = 2.5, num_inference_steps = 30, model_version, model_id, scene_id, source = 'editor', notify, gallery_metadata, resolution } = data;
 
     // Opt-in completion email, same job-doc contract as the other kinds — but
     // unlike video/splat the default is OFF: most image renders finish in
@@ -212,7 +212,12 @@ const generateReplicateImage = functions
       modelConfig = Object.values(REPLICATE_MODELS).find(m => m.version === modelVersionToUse);
     }
 
-    const tokenCost = modelConfig?.tokenCost || 1; // Default to 1 if not found
+    // Output tier (#1887): the client names it, the server prices it.
+    const outputTier = resolveOutputTier(modelConfig, resolution);
+    if (!outputTier) {
+      throw new functions.https.HttpsError('invalid-argument', `This model doesn't offer ${resolution} output.`);
+    }
+    const tokenCost = outputTier.tokenCost;
     // User-facing model name for gallery metadata + the Discord post, resolved
     // at submit so the terminal processor never re-derives it.
     const modelDisplayName =
@@ -303,7 +308,8 @@ const generateReplicateImage = functions
         prompt,
         imageUrl,
         guidance,
-        numInferenceSteps: num_inference_steps
+        numInferenceSteps: num_inference_steps,
+        resolution: outputTier.resolution
       });
 
       // Durable job identity, same contract as the video/splat submits: the
@@ -347,6 +353,7 @@ const generateReplicateImage = functions
           prompt,
           guidance,
           num_inference_steps,
+          resolution: outputTier.resolution,
           scene_id: scene_id || null
         },
         // Client extras merged into the saved asset's generationMetadata —
@@ -1765,6 +1772,7 @@ async function saveImageToGallery(userId, imageUrl, job) {
         }),
         output_format: extension === 'jpeg' ? 'jpg' : extension,
         ...(params.scene_id && { sceneId: params.scene_id }),
+        ...(params.resolution && { resolution: params.resolution }),
         source: job.source || 'generator',
         // Client extras (editor: sceneId/sceneTitle/cameraState/renderMode —
         // powers the gallery's scene link + focus-camera button). May override

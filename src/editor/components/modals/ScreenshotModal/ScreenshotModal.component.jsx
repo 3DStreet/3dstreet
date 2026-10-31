@@ -25,7 +25,11 @@ import {
   isTokenExhaustedError
 } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
-import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import {
+  REPLICATE_MODELS,
+  getOutputTiers,
+  getTierTokenCost
+} from '@shared/constants/replicateModels.js';
 import { fitScale } from '@shared/utils/imageScale.js';
 import { computeRenderGridCell, RENDER_GRID_GAP } from './renderGridLayout.js';
 import {
@@ -82,6 +86,13 @@ function ScreenshotModal() {
   const [renderStartTime, setRenderStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [selectedModel, setSelectedModel] = useState('nano-banana-pro');
+  // 1x output resolution (#1887); null = the model's default tier. 4x always
+  // renders at each model's default.
+  const [outputTier, setOutputTier] = useState(null);
+  const selectedModelTiers = getOutputTiers(AI_MODELS[selectedModel]);
+  const activeOutputTier = selectedModelTiers.includes(outputTier)
+    ? outputTier
+    : null;
   const [renderMode, setRenderMode] = useState('1x'); // '1x' or '4x'
   const [aiImages, setAiImages] = useState({}); // Store multiple AI images with model keys
   const [renderTimers, setRenderTimers] = useState({}); // Individual timers for each model
@@ -423,7 +434,9 @@ function ScreenshotModal() {
     // users hit the paywall up front instead of round-tripping to the cloud
     // function and surfacing a toast on rejection. Pro/ProTeam users skip
     // this gate — canUseImageFeature below handles their monthly auto-refill.
-    const tokenCost = getTokenCost(targetModel);
+    // Only a 1x render (no slot key) takes the chosen output tier.
+    const requestedTier = modelKey ? null : activeOutputTier;
+    const tokenCost = getTierTokenCost(AI_MODELS[targetModel], requestedTier);
     if (!isPro && (tokenProfile?.genToken ?? 0) < tokenCost) {
       startCheckout('image');
       return;
@@ -589,6 +602,7 @@ function ScreenshotModal() {
           model_id: baseModelKey,
           scene_id: sceneId || null,
           gallery_metadata: galleryMetadata,
+          ...(requestedTier && { resolution: requestedTier }),
           notify
         });
       }
@@ -707,6 +721,8 @@ function ScreenshotModal() {
           model: baseModelKey,
           render_style: promptStyle,
           render_mode: renderMode,
+          output_resolution:
+            requestedTier || selectedModelConfig.resolution || null,
           is_pro_user: currentUser?.isPro || false,
           tokens_available: tokenProfile?.genToken || 0
         });
@@ -717,6 +733,8 @@ function ScreenshotModal() {
           model: baseModelKey,
           render_style: promptStyle,
           render_mode: renderMode,
+          output_resolution:
+            requestedTier || selectedModelConfig.resolution || null,
           is_pro_user: currentUser?.isPro || false,
           scene_id: STREET.utils.getCurrentSceneId()
         });
@@ -1103,6 +1121,44 @@ function ScreenshotModal() {
                 </div>
               )}
 
+              {renderMode === '1x' && selectedModelTiers.length > 0 && (
+                <div className={styles.modelSelector}>
+                  <label className={styles.modelLabel}>
+                    <FormattedMessage
+                      id="screenshotModal.outputResolutionLabel"
+                      defaultMessage="Output resolution:"
+                    />
+                  </label>
+                  <div className={styles.renderModeTabs}>
+                    {selectedModelTiers.map((tier, index) => {
+                      const isActive =
+                        (activeOutputTier || selectedModelTiers[0]) === tier;
+                      return (
+                        <button
+                          key={tier}
+                          type="button"
+                          className={`${styles.tabButton} ${isActive ? styles.active : ''}`}
+                          onClick={() => setOutputTier(index ? tier : null)}
+                          disabled={isAnyRendering}
+                        >
+                          {tier} ·{' '}
+                          <FormattedMessage
+                            id="screenshotModal.tierTokens"
+                            defaultMessage="{count, plural, one {# token} other {# tokens}}"
+                            values={{
+                              count: getTierTokenCost(
+                                AI_MODELS[selectedModel],
+                                tier
+                              )
+                            }}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {renderMode === '4x' && (
                 <div className={styles.modelMixToggle}>
                   <label className={styles.toggleLabel}>
@@ -1332,7 +1388,10 @@ function ScreenshotModal() {
                     </span>
                     {tokenProfile && (
                       <TokenDisplayInner
-                        count={getTokenCost(selectedModel)}
+                        count={getTierTokenCost(
+                          AI_MODELS[selectedModel],
+                          activeOutputTier
+                        )}
                         inline={true}
                       />
                     )}

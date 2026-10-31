@@ -932,7 +932,9 @@
     "legacyStreet.checking": "Checking Streetmix…",
     "legacyStreet.convert": "Convert to managed street",
     "legacyStreet.fetchFailed": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted.",
-    "legacyStreet.title": "This is a classic street"
+    "legacyStreet.title": "This is a classic street",
+    "screenshotModal.outputResolutionLabel": "Output resolution:",
+    "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1867,7 +1869,9 @@
     "legacyStreet.checking": "Checking Streetmix…",
     "legacyStreet.convert": "Convert to managed street",
     "legacyStreet.fetchFailed": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted.",
-    "legacyStreet.title": "This is a classic street"
+    "legacyStreet.title": "This is a classic street",
+    "screenshotModal.outputResolutionLabel": "Output resolution:",
+    "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2802,6 +2806,8 @@
     "legacyStreet.checking": "Checking Streetmix…",
     "legacyStreet.convert": "Convert to managed street",
     "legacyStreet.fetchFailed": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted.",
-    "legacyStreet.title": "This is a classic street"
+    "legacyStreet.title": "This is a classic street",
+    "screenshotModal.outputResolutionLabel": "Output resolution:",
+    "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}"
   }
 }
