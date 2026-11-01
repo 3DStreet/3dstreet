@@ -87,12 +87,15 @@ const REPLICATE_MODELS = {
     inputStyle: 'nano-banana',
     tokenCost: 1
   },
-  // $0.15/image at 2K.
+  // ~$0.14/image at 2K, ~$0.24 at 4K (#1887).
   'nano-banana-pro': {
     name: 'Nano Banana Pro',
     version: '99256cc418d9ac41854575e2f1c8846ce2defd0c0fb6ff2d5cbc3c826be75bc8',
     inputStyle: 'nano-banana',
     resolution: '2K',
+    // Paid output tiers above the default `resolution` (see
+    // resolveOutputTier in image-model-inputs.js). Mirrored in the picker.
+    outputTiers: { '4K': { tokenCost: 5 } },
     tokenCost: 3
   },
   // $0.101/image at 2K.

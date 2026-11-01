@@ -24,10 +24,12 @@ const TEXT_ONLY_ASPECT_RATIO = '16:9';
  * @param {string|null} args.imageUrl - Public URL of the source image, if any
  * @param {number} args.guidance - Kontext only
  * @param {number} args.numInferenceSteps - Kontext only
+ * @param {string} [args.resolution] - Output tier from resolveOutputTier;
+ *   defaults to the model's own `resolution`
  */
 function buildReplicateImageInput(
   modelConfig,
-  { prompt, imageUrl, guidance, numInferenceSteps }
+  { prompt, imageUrl, guidance, numInferenceSteps, resolution }
 ) {
   switch (modelConfig?.inputStyle) {
     case 'nano-banana': {
@@ -38,7 +40,8 @@ function buildReplicateImageInput(
       }
       // Nano Banana Pro / 2 accept '1K' | '2K' | '4K'; the original Nano
       // Banana has no resolution input.
-      if (modelConfig.resolution) input.resolution = modelConfig.resolution;
+      const outputResolution = resolution || modelConfig.resolution;
+      if (outputResolution) input.resolution = outputResolution;
       return input;
     }
     case 'seedream': {
@@ -146,7 +149,34 @@ function buildFalImagePayload(
   }
 }
 
+/**
+ * Resolve the output resolution a request asked for, and what it costs.
+ * A model's `resolution` is its default tier at its base `tokenCost`;
+ * `outputTiers` lists the paid tiers above it (e.g. Nano Banana Pro 4K,
+ * #1887). The server prices the tier: the client only names it.
+ *
+ * @param {Object} modelConfig - REPLICATE_MODELS entry
+ * @param {string|null|undefined} requested - e.g. '4K'; empty = default tier
+ * @returns {{resolution: string|null, tokenCost: number}|null} null when the
+ *   model doesn't offer the requested tier
+ */
+function resolveOutputTier(modelConfig, requested) {
+  const base = {
+    resolution: modelConfig?.resolution || null,
+    tokenCost: modelConfig?.tokenCost || 1
+  };
+  if (!requested || requested === base.resolution) return base;
+  // Own keys only: `requested` is client input, so 'constructor' and friends
+  // must not resolve to a prototype member with no tokenCost.
+  const tiers = modelConfig?.outputTiers;
+  if (typeof requested !== 'string' || !tiers) return null;
+  if (!Object.prototype.hasOwnProperty.call(tiers, requested)) return null;
+  const tier = tiers[requested];
+  return { resolution: requested, tokenCost: tier.tokenCost };
+}
+
 module.exports = {
+  resolveOutputTier,
   buildReplicateImageInput,
   buildFalImagePayload
 };

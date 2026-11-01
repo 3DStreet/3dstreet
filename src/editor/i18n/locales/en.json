@@ -2246,6 +2246,9 @@
   "screenshotModal.loginPrompt": {
     "defaultMessage": "Please log in to use AI rendering"
   },
+  "screenshotModal.lowResSource": {
+    "defaultMessage": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
+  },
   "screenshotModal.mixedModels": {
     "defaultMessage": "Mixed Models"
   },
@@ -2257,6 +2260,9 @@
   },
   "screenshotModal.onlyAuthorCanSetThumbnail": {
     "defaultMessage": "Only the scene author can set the thumbnail"
+  },
+  "screenshotModal.outputResolutionLabel": {
+    "defaultMessage": "Output resolution:"
   },
   "screenshotModal.overtimeWarning": {
     "defaultMessage": "Generation taking longer than expected."
@@ -2318,11 +2324,17 @@
   "screenshotModal.showRender": {
     "defaultMessage": "Show Render"
   },
+  "screenshotModal.sourceSize": {
+    "defaultMessage": "Source image: {width} × {height}"
+  },
   "screenshotModal.thumbnailFailed": {
     "defaultMessage": "Failed to set scene thumbnail. Please try again."
   },
   "screenshotModal.thumbnailSaved": {
     "defaultMessage": "Scene thumbnail saved successfully!"
+  },
+  "screenshotModal.tierTokens": {
+    "defaultMessage": "{count,plural,one{# token} other{# tokens}}"
   },
   "screenshotModal.title": {
     "defaultMessage": "Screenshot & Render"

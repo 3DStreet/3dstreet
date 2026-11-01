@@ -4,7 +4,8 @@ import { describe, it, expect } from 'vitest';
 const require = createRequire(import.meta.url);
 const {
   buildReplicateImageInput,
-  buildFalImagePayload
+  buildFalImagePayload,
+  resolveOutputTier
 } = require('../../public/functions/image-model-inputs.js');
 const {
   REPLICATE_MODELS
@@ -171,5 +172,77 @@ describe('buildFalImagePayload', () => {
     expect(payload.loras).toEqual(
       REPLICATE_MODELS['fal-flux-2-lora-sfmta'].loras
     );
+  });
+});
+
+describe('resolveOutputTier (#1887)', () => {
+  const pro = REPLICATE_MODELS['nano-banana-pro'];
+
+  it('no request, or the default tier, is the base resolution and cost', () => {
+    const base = { resolution: '2K', tokenCost: pro.tokenCost };
+    expect(resolveOutputTier(pro, undefined)).toEqual(base);
+    expect(resolveOutputTier(pro, null)).toEqual(base);
+    expect(resolveOutputTier(pro, '2K')).toEqual(base);
+  });
+
+  it('Nano Banana Pro 4K costs 5 tokens', () => {
+    expect(resolveOutputTier(pro, '4K')).toEqual({
+      resolution: '4K',
+      tokenCost: 5
+    });
+  });
+
+  it('rejects a tier the model does not offer', () => {
+    expect(resolveOutputTier(REPLICATE_MODELS['nano-banana-2'], '4K')).toBe(
+      null
+    );
+    expect(resolveOutputTier(pro, '8K')).toBe(null);
+  });
+
+  it('never resolves a prototype key to a free tier', () => {
+    expect(resolveOutputTier(pro, 'constructor')).toBe(null);
+    expect(resolveOutputTier(pro, '__proto__')).toBe(null);
+    expect(resolveOutputTier(pro, { toString: () => '4K' })).toBe(null);
+  });
+
+  it('a model without a resolution keeps its base cost', () => {
+    expect(resolveOutputTier(REPLICATE_MODELS['nano-banana'], null)).toEqual({
+      resolution: null,
+      tokenCost: 1
+    });
+  });
+
+  it('the resolved tier reaches the Replicate input', () => {
+    const { resolution } = resolveOutputTier(pro, '4K');
+    expect(
+      buildReplicateImageInput(pro, { ...replicateArgs(IMG), resolution })
+        .resolution
+    ).toBe('4K');
+  });
+});
+
+// A tier the request builder ignores would charge the tier price for the
+// default render. Fails if a tier is added to a model whose builder doesn't
+// pass `resolution` through (e.g. any fal model, or Seedream's `size`).
+describe('every priced output tier reaches the provider request (#1887)', () => {
+  const tiered = Object.entries(REPLICATE_MODELS).flatMap(([id, model]) =>
+    Object.keys(model.outputTiers || {}).map((tier) => [id, tier])
+  );
+
+  it('at least one model offers a paid tier', () => {
+    expect(tiered.length).toBeGreaterThan(0);
+  });
+
+  it.each(tiered)('%s %s', (id, tier) => {
+    const model = REPLICATE_MODELS[id];
+    const { resolution } = resolveOutputTier(model, tier);
+    const request =
+      model.type === 'fal'
+        ? buildFalImagePayload(model, { ...falArgs, resolution })
+        : buildReplicateImageInput(model, {
+            ...replicateArgs(IMG),
+            resolution
+          });
+    expect(Object.values(request)).toContain(tier);
   });
 });
