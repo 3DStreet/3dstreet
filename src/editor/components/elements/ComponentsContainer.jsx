@@ -68,6 +68,14 @@ export default class ComponentsContainer extends React.Component {
       });
     }
     if (this.canFlattenTerrain()) {
+      // An unlit (flat) surface such as a placed image only receives:
+      // adding this switches it to flat-shadow (#2123, ComponentAddCommand).
+      const isFlat = entity.getAttribute('material')?.shader === 'flat';
+      approved.push({
+        value: 'shadow',
+        label: 'Shadows',
+        attrValue: isFlat ? 'cast: false; receive: true' : ''
+      });
       approved.push({
         value: 'geo-flatten',
         label: 'Flatten Terrain',

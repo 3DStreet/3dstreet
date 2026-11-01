@@ -153,6 +153,14 @@ function finishIfItReturns(entityId, attributes) {
   finishedWhileGone.set(entityId, attributes);
 }
 
+// A placed image is usually a photo with its lighting baked in, so it stays
+// unlit (`flat-shadow` renders like `flat`) but shows the shadows of objects
+// placed on it (#2123). A flat plane casting its own shadow is never wanted.
+const IMAGE_PLANE_SHADING = {
+  material: 'shader: flat-shadow',
+  shadow: 'cast: false; receive: true'
+};
+
 // Longest side of a placed image plane, in meters. The other side is scaled
 // to preserve aspect ratio. Keeps the 4m default for square images so existing
 // behavior is unchanged.
@@ -234,7 +242,8 @@ async function createPlaceholderEntity(file, position, kind, ticket) {
         ...baseComponents,
         src: blobUrl,
         width: plane.width,
-        height: plane.height
+        height: plane.height,
+        ...IMAGE_PLANE_SHADING
       }
     };
   }
@@ -318,7 +327,8 @@ export function placeCloudAsset(asset, position, ticket = beginPlacement()) {
         ...baseComponents,
         src: servedUrl,
         width: plane.width,
-        height: plane.height
+        height: plane.height,
+        ...IMAGE_PLANE_SHADING
       }
     };
   }
