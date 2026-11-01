@@ -8,6 +8,9 @@ import { faBullseye, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { captureFocusPose } from './focusPose.js';
 import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
 import { reseededGeneratorAttributes } from '../../tested/generator-seeds.js';
+import { retargetStreetPath } from '../../tested/copied-street-path.js';
+import { innermostOpenGroup } from './groups/groupPlacement.js';
+import { isUserGroup } from './groups/groupModel.js';
 import {
   GeospatialIcon,
   ManagedStreetIcon,
@@ -20,6 +23,7 @@ import {
   Object24IconCyan,
   Geometry24Icon,
   ShapeIcon,
+  GroupIcon,
   ViewerStartIcon
 } from '@shared/icons';
 
@@ -166,24 +170,26 @@ export function insertAfter(newNode, referenceNode) {
  * @param {Element} targetEntity  Sibling to insert relative to.
  * @param {string}  insertionMode 'before' or 'after' the target.
  */
-export function reorderEntityRelativeTo(entity, targetEntity, insertionMode) {
+export function reorderEntityRelativeTo(
+  entity,
+  targetEntity,
+  insertionMode,
+  select
+) {
   const targetParent = targetEntity.parentNode;
   if (!targetParent) {
     return;
   }
   // entityreparent looks parents up by id (undo needs the old parent's id
   // too), so make sure both ends have one.
-  if (!targetParent.id) {
-    targetParent.setAttribute('id', createUniqueId());
-  }
-  if (entity.parentNode && !entity.parentNode.id) {
-    entity.parentNode.setAttribute('id', createUniqueId());
-  }
+  ensureId(targetParent);
+  ensureId(entity.parentNode);
   const targetIndex = Array.from(targetParent.children).indexOf(targetEntity);
   AFRAME.INSPECTOR.execute('entityreparent', {
     entity,
     parentEl: targetParent.id,
-    indexInParent: insertionMode === 'after' ? targetIndex + 1 : targetIndex
+    indexInParent: insertionMode === 'after' ? targetIndex + 1 : targetIndex,
+    select
   });
 }
 
@@ -202,17 +208,40 @@ export function cloneEntity(entity) {
   return AFRAME.INSPECTOR.execute('entityclone', entity);
 }
 
-function recursivelyRegenerateId(element) {
+// Gives the element and its descendants new ids. `idMap` records old id -> new
+// id for every element that had one, for retargetStreetPathsInClone.
+function recursivelyRegenerateId(element, idMap) {
   if (element.id) {
+    const oldId = element.id;
     // if it's a nanoid, create a new one, otherwise use getUniqueId
-    element.id =
-      element.id.length === 21 ? createUniqueId() : getUniqueId(element.id);
+    element.id = oldId.length === 21 ? createUniqueId() : getUniqueId(oldId);
+    idMap.set(oldId, element.id);
   } else {
     element.id = createUniqueId();
   }
 
   for (const child of element.childNodes) {
-    recursivelyRegenerateId(child);
+    recursivelyRegenerateId(child, idMap);
+  }
+}
+
+/**
+ * Point each copied street at the copy of the path shape it follows, when the
+ * copy holds that shape; a street copied without its path keeps following the
+ * original. Written as the raw attribute on the detached copy, like the
+ * reseeding below.
+ */
+function retargetStreetPathsInClone(element, idMap) {
+  if (element.nodeType !== Node.ELEMENT_NODE) return;
+  const value = element.getAttribute('managed-street');
+  if (typeof value === 'string') {
+    const next = retargetStreetPath(value, idMap);
+    if (next !== value) {
+      HTMLElement.prototype.setAttribute.call(element, 'managed-street', next);
+    }
+  }
+  for (const child of element.childNodes) {
+    retargetStreetPathsInClone(child, idMap);
   }
 }
 
@@ -245,7 +274,9 @@ export function cloneEntityImpl(entity) {
   entity.flushToDOM();
   const clone = prepareForSerialization(entity);
   if (clone !== null) {
-    recursivelyRegenerateId(clone);
+    const idMap = new Map();
+    recursivelyRegenerateId(clone, idMap);
+    retargetStreetPathsInClone(clone, idMap);
     recursivelyReseedGenerators(clone);
     const nextName = getUniqueLayerName(clone.getAttribute('data-layer-name'));
     if (nextName) clone.setAttribute('data-layer-name', nextName);
@@ -668,6 +699,16 @@ export function createUniqueId() {
   return id;
 }
 
+/**
+ * Give `el` a unique id if it has none, and return its id. Commands and the
+ * group scope look elements up by id.
+ */
+export function ensureId(el) {
+  if (!el) return undefined;
+  if (!el.id) el.setAttribute('id', createUniqueId());
+  return el.id;
+}
+
 export function getComponentClipboardRepresentation(entity, componentName) {
   entity.flushToDOM();
   let data = entity.getDOMAttribute(componentName);
@@ -769,6 +810,9 @@ export function getEntityIcon(entity) {
   if (entity.getAttribute('viewer-start')) {
     return <ViewerStartIcon />;
   }
+  if (isUserGroup(entity)) {
+    return <GroupIcon />;
+  }
 
   // Check for class-based icons
   if (entity.classList.contains('autocreated')) {
@@ -837,7 +881,13 @@ export function createEntity(definition, cb, parentEl = undefined) {
     { once: true }
   );
 
-  if (parentEl) {
+  // `beforeEl` (an id) inserts before that sibling, when it is still a child
+  // of the parent; otherwise the entity goes at the end.
+  const beforeEl =
+    definition.beforeEl && document.getElementById(definition.beforeEl);
+  if (parentEl && beforeEl?.parentNode === parentEl) {
+    parentEl.insertBefore(entity, beforeEl);
+  } else if (parentEl) {
     parentEl.appendChild(entity);
   } else {
     document
@@ -1026,13 +1076,29 @@ function viewerStartValuesFromCamera(parent) {
  */
 export function setViewerStartToCurrentView(entity, { notify = true } = {}) {
   const values = viewerStartValuesFromCamera(entity.object3D.parent);
+  // An update selects its entity when another is selected, which would close
+  // an open group around that selection; the Starting View is not the user's
+  // to select there (nor when the move is undone).
+  const noSelectEntity = innermostOpenGroup() !== null;
   // One undo step for the whole pose.
   AFRAME.INSPECTOR.execute('multi', [
-    ['entityupdate', { entity, component: 'position', value: values.position }],
-    ['entityupdate', { entity, component: 'rotation', value: values.rotation }],
     [
       'entityupdate',
-      { entity, component: 'viewer-start', property: 'fov', value: values.fov }
+      { entity, component: 'position', value: values.position, noSelectEntity }
+    ],
+    [
+      'entityupdate',
+      { entity, component: 'rotation', value: values.rotation, noSelectEntity }
+    ],
+    [
+      'entityupdate',
+      {
+        entity,
+        component: 'viewer-start',
+        property: 'fov',
+        value: values.fov,
+        noSelectEntity
+      }
     ]
   ]);
   if (notify) {
@@ -1049,13 +1115,16 @@ export function getViewerStartEntity() {
  * Move the scene's Starting View (viewer-start) to the current editor
  * view, creating it if the scene has none. Two callers: "set thumbnail"
  * (so the thumbnail view and the start pose are one thing) and View › Set
- * as Starting View. Returns the entity.
+ * as Starting View. Returns the entity. `select` is ignored while a group is
+ * open: the Starting View is a system item, and selecting it would close the
+ * group the user is working in.
  */
 export function ensureViewerStartAtCurrentView({ select = false } = {}) {
+  const groupOpen = innermostOpenGroup() !== null;
   const existing = getViewerStartEntity();
   if (existing) {
     setViewerStartToCurrentView(existing, { notify: false });
-    if (select) AFRAME.INSPECTOR.selectEntity(existing);
+    if (select && !groupOpen) AFRAME.INSPECTOR.selectEntity(existing);
     return existing;
   }
   const parent = document.querySelector(AFRAME.INSPECTOR.config.defaultParent);
@@ -1068,12 +1137,16 @@ export function ensureViewerStartAtCurrentView({ select = false } = {}) {
       'data-layer-name': 'Starting View'
     }
   };
-  // entitycreate selects the new entity once it has loaded; when called
-  // from set-thumbnail, put the author's selection back afterwards.
+  if (groupOpen) definition.noSelectEntity = true;
+  // entitycreate selects the new entity once it has loaded, unless told not
+  // to; when called from set-thumbnail, put the author's selection back
+  // afterwards.
   const previous = AFRAME.INSPECTOR.selectedEntity;
   // execute(cmdName, payload, optionalName, callback)
   return AFRAME.INSPECTOR.execute('entitycreate', definition, undefined, () => {
-    if (!select) AFRAME.INSPECTOR.selectEntity(previous || null);
+    if (!select && !definition.noSelectEntity) {
+      AFRAME.INSPECTOR.selectEntity(previous || null);
+    }
   });
 }
 

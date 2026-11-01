@@ -1,6 +1,6 @@
 import Events from '../Events';
 import { Command } from '../command.js';
-import { createUniqueId } from '../entity.js';
+import { createUniqueId } from '../entity.jsx';
 
 /**
  * Remove one vertex from a shape.

@@ -1,7 +1,8 @@
 /* global STREET */
 import Events from '../Events.js';
 import { Command } from '../command.js';
-import { createUniqueId } from '../entity.js';
+import { createUniqueId } from '../entity.jsx';
+import { conformToKindLimits } from '@/tested/group-pose.js';
 
 /**
  * Convert a legacy `street` + `streetmix-loader` street into a managed street
@@ -30,6 +31,10 @@ export class StreetConvertToManagedCommand extends Command {
       // Same root id as the legacy street, so restore() always finds the
       // current incarnation.
       this.managedData = buildManagedStreetData(entity, this.legacyData);
+      // A managed street is never scaled: the legacy street's scale is
+      // dropped, its position and rotation kept. Undo restores the legacy
+      // snapshot, scale included.
+      conformToKindLimits(this.managedData);
     }
   }
 

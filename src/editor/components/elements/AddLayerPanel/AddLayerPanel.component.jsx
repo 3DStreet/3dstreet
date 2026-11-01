@@ -26,6 +26,12 @@ import Events from '../../../lib/Events.js';
 import useStore from '@/store.js';
 import { getGroupedMixinOptions } from '../../../lib/mixinUtils';
 import { getEmptyDragImage } from '@shared/utils/dragImage.js';
+import {
+  beginPlacement,
+  executePlacedCreate,
+  innermostOpenGroup,
+  viewCenterPoint
+} from '@/editor/lib/groups/groupPlacement.js';
 
 const ASSET_CARD_MIME = 'application/x-3dstreet-asset';
 
@@ -85,7 +91,7 @@ const createEntityOnPosition = (mixinId, position, mixinName) => {
   if (previewEntity) {
     previewEntity.remove();
   }
-  AFRAME.INSPECTOR.execute('entitycreate', {
+  executePlacedCreate({
     // English name for scene-JSON/analytics consistency (mixin id is the canonical key); user can rename freely.
     'data-layer-name': mixinName,
     mixin: mixinId,
@@ -96,6 +102,10 @@ const createEntityOnPosition = (mixinId, position, mixinName) => {
 };
 
 const createEntity = (mixinId, mixinName) => {
+  // With a group open, the item goes into it where the preview shows,
+  // whatever is selected: no street-prop holder, and never the group origin.
+  const ticket = beginPlacement();
+  const previewPosition = ticket ? getPreviewPosition() : null;
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) {
     previewEntity.remove();
@@ -107,7 +117,7 @@ const createEntity = (mixinId, mixinName) => {
     components: {}
   };
 
-  const selectedElement = AFRAME.INSPECTOR.selectedEntity;
+  const selectedElement = ticket ? null : AFRAME.INSPECTOR.selectedEntity;
   const [ancestorEl, inSegment] = selectedElement
     ? getAncestorEl(selectedElement)
     : [undefined, false];
@@ -156,14 +166,16 @@ const createEntity = (mixinId, mixinName) => {
       newEntityObject.components.position = { x: pos.x, y: pos.y, z: pos.z };
     }
   } else {
-    const position = pickPointOnGroundPlane({
-      normalizedX: 0,
-      normalizedY: -0.1,
-      camera: AFRAME.INSPECTOR.camera
-    });
+    const position =
+      previewPosition ??
+      pickPointOnGroundPlane({
+        normalizedX: 0,
+        normalizedY: -0.1,
+        camera: AFRAME.INSPECTOR.camera
+      });
     newEntityObject.components.position = position;
   }
-  AFRAME.INSPECTOR.execute('entitycreate', newEntityObject);
+  executePlacedCreate(newEntityObject, { ticket });
 };
 
 // Creates the yellow arrow + pulsating ring placement cursor as a child of
@@ -206,7 +218,11 @@ const cardMouseEnter = (mixinId) => {
   if (mixinId) {
     previewEntity.setAttribute('mixin', mixinId);
 
-    const selectedElement = AFRAME.INSPECTOR.selectedEntity;
+    // With a group open the item goes into the group, not beside the
+    // selection (see createEntity).
+    const selectedElement = innermostOpenGroup()
+      ? null
+      : AFRAME.INSPECTOR.selectedEntity;
     const [ancestorEl, inSegment] = selectedElement
       ? getAncestorEl(selectedElement)
       : [undefined, false];
@@ -229,11 +245,7 @@ const cardMouseEnter = (mixinId) => {
     }
   }
 
-  const position = pickPointOnGroundPlane({
-    normalizedX: 0,
-    normalizedY: -0.1,
-    camera: AFRAME.INSPECTOR.camera
-  });
+  const position = viewCenterPoint(AFRAME.INSPECTOR.camera);
   previewEntity.setAttribute('position', position);
 };
 
@@ -242,11 +254,7 @@ const cardMouseEnter = (mixinId) => {
 const getPreviewPosition = () => {
   const previewEntity = document.getElementById('previewEntity');
   if (previewEntity) return previewEntity.object3D.position.clone();
-  return pickPointOnGroundPlane({
-    normalizedX: 0,
-    normalizedY: -0.1,
-    camera: AFRAME.INSPECTOR.camera
-  });
+  return viewCenterPoint(AFRAME.INSPECTOR.camera);
 };
 
 const cardMouseLeave = (mixinId) => {
@@ -540,7 +548,10 @@ const AddLayerPanel = () => {
       e.dataTransfer.dropEffect = 'move'; // See the section on the DataTransfer object.
     }
 
-    const previewEntity = document.getElementById('previewEntity');
+    // With a group open, always show where the drop will place the item.
+    const previewEntity = innermostOpenGroup()
+      ? ensureDropCursor()
+      : document.getElementById('previewEntity');
     if (previewEntity) {
       previewEntity.setAttribute('visible', true); // we need to set it to true because it's set to false in cardMouseLeave
       const position = pickPointOnGroundPlane({

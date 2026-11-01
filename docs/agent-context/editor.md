@@ -13,16 +13,41 @@ repository root; bare filenames name modules within this subsystem.
 
 **`Inspector.execute` can now refuse.** It returns the `TRANSFORM_REFUSED`
 symbol (`src/editor/lib/transformGuard.js`) instead of running a command that
-would violate a transform-capability marker on the target entity — test for the
-symbol, not for a falsy return, since the success path returns `undefined`. The
-markers are `data-transform-no-scale`, `data-transform-yaw-only` and
-`data-transform-no-reparent`; an entity opts in by carrying the attribute and
-the guard is otherwise entity-type-agnostic. They are **not** the same thing as
-the far more common `data-no-transform`, which is a UI gate only (it hides the
-properties-panel transform rows and the gizmo) and is enforced nowhere at the
-command layer. Coverage is every command route — properties panel, AI chat,
-gizmo, layers-panel reparent — but not a direct `setAttribute` from scene load
-or component code. The stock rotate gizmo ("Advanced rotate") shows all three
+would violate a transform-capability marker on the target entity or the
+hierarchy rules — test for the symbol, not for a falsy return, since the
+success path returns `undefined`. The markers are `data-transform-no-scale`,
+`data-transform-yaw-only` and `data-transform-no-reparent`; at the command
+layer an entity opts in by carrying the attribute, or by being a kind that
+declares them (`src/tested/transform-kinds.js`: a user group by its class;
+managed streets, managed intersections and shapes by their component). The
+stock gizmo reads the attributes only, which each kind's component sets in its
+init. Removing a marker attribute from such an item changes nothing the guard
+decides; removing the `user-group` class from a group with members is refused. A command that makes an item a
+constrained kind (a class that makes a group, or adding or updating a kind's
+component), and a mixin write or a scale or rotation removal that would let a
+mixin take one outside its limits, rewrites itself to bring the item within
+them (`routeKindLimits`); a direct scale or tilt write is refused instead.
+The hierarchy rules refuse a move to another parent that `canReparent`
+(`src/editor/lib/groups/groupModel.js`) rejects or
+that could not keep the item's world pose, and a create or paste whose
+`requireParent` parent can no longer take the item. The markers are **not**
+the same thing as the far more common `data-no-transform`, which is a UI gate
+only (it hides the properties-panel transform rows and the gizmo) and is
+enforced nowhere at the command layer. Every command through
+`Inspector.execute` is judged, but not a direct `setAttribute` from scene load
+or component code (scene load, paste and create bring every item within its
+kind's limits first; a load that changed anything logs one `[scene-load]`
+warning).
+
+`Inspector.execute` is `resolveCommand` (`src/editor/lib/resolveCommand.js`:
+`routeCloneEdit`, then `routeKindLimits`, then the command lookup and the
+guard) followed by the refusal notice or History. A test harness that stands
+in for `execute` calls `resolveCommand`, so it runs the same routing and
+guard. A tool call runs its command inside `withCommandOutcome`, which
+records the first command's refusal reason or levelling for the tool result;
+the command must run synchronously inside it.
+
+The stock rotate gizmo ("Advanced rotate") shows all three
 rings, since yaw-only rotation is the easy gizmo's job; on a
 `data-transform-yaw-only` entity it offers its Y ring alone
 (`applyStockGizmoAxes` in `src/editor/lib/viewport.js`), so it never starts a
@@ -71,6 +96,12 @@ and `logdepthbuf` pars/vertex/fragment chunks. Without them its depth is on a
 different scale from every built-in material and it occludes, or is occluded
 by, real geometry at random (#1988, #2009).
 
+**User groups:** entities with the `user-group` class, which users make, open
+for editing (`inspector.groupScope`) and move items into. Which parent an item
+may take is decided only by `canReparent` in `src/editor/lib/groups/groupModel.js`;
+per-frame work that must see final transforms registers in the editor frame
+window (`src/editor/lib/editorFrame.js`). Doc is [docs/groups.md](../groups.md).
+
 **Street gizmos:** always-on viewport handles for managed streets (endpoint
 nodes that rewrite position/rotation/length, segment width bars), additive to
 the standard TransformControls gizmo. Code in `src/editor/lib/gizmos/`; doc is
@@ -90,4 +121,4 @@ scenes (pref also in panelPrefs). Scene graph rows: expand arrow left of the
 name, and a right-justified overlay bar carries passive role badges plus the
 hover-revealed visibility eye (slashed eye stays visible when hidden).
 
-**Layer Reordering:** Drag-and-drop reordering of layers within the same parent in the SceneGraph. Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.
+**Layer Reordering:** Drag-and-drop reordering of layers in the SceneGraph, within a parent and between the top level and user groups; where groups end, the pointer's x picks the level (`docs/groups.md`). Uses `EntityReparentCommand` which serializes via `STREET.utils.getElementData()` and recreates via `STREET.utils.createEntityFromObj()` — the same proven save/load code path.

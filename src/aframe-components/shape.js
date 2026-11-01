@@ -92,8 +92,12 @@ AFRAME.registerSystem('shape', {
       // upward with the transform gizmo moves no vertex and fires no shape
       // event. Two reads and a compare on the unchanged path - see
       // syncFillOrder, which deliberately allocates nothing.
-      shape.syncFillOrder();
+      //
+      // The order matters: the fill's height is read off the world matrix, and
+      // syncWorldMeasure is what brings that matrix up to date this frame.
+      // Swapped, a group moved this frame would reorder the fills a frame late.
       shape.syncWorldMeasure();
+      shape.syncFillOrder();
       if (shape.data.updateEvent) return;
       if (shape.positionsChanged()) {
         shape.rederive();
@@ -333,11 +337,10 @@ AFRAME.registerComponent('shape', {
     // of the shape rather than its footprint, and editing a vertex assumes a
     // horizontal plane to drag on. The marker is what the stock rotate gizmo
     // reads to offer its Y ring alone (viewport.js), and what makes the rule
-    // hold for the properties panel and the AI chat too. Reparenting is
-    // blocked for the same reason: vertex positions
-    // are stored in the shape's own frame, and a new parent moves that frame.
+    // hold for the properties panel and the AI chat too. A reparent keeps the
+    // shape's world pose, so moving it between the top level and a group
+    // does not need blocking.
     this.el.setAttribute('data-transform-yaw-only', '');
-    this.el.setAttribute('data-transform-no-reparent', '');
 
     if (this.data.updateEvent) {
       this.el.addEventListener(this.data.updateEvent, this.requestRederive);
@@ -479,10 +482,12 @@ AFRAME.registerComponent('shape', {
   // True when any vertex has moved, been added, or been removed since the last
   // check. Seeds the cache for new vertices (a missing entry counts as changed
   // rather than dereferencing undefined) and prunes removed ones.
-  // The height of the cap's plane, in the shape's PARENT frame: the entity's
-  // own y plus the cap's, less the lift the cap carries above that plane. A
-  // committed shape holds its centroid on the entity and its vertices relative
-  // to it, so neither term alone is the height.
+  // The WORLD height of the cap's plane: the cap's local plane (its height less
+  // the lift it carries above it) carried through the entity's world matrix, so
+  // a committed shape, which holds its centroid on the entity and its vertices
+  // relative to it, is placed by every ancestor as well. Fills of shapes in
+  // different groups are ordered against each other by this number, so it has
+  // to be a height in one frame, whatever each shape's parent is.
   //
   // Read off the CAP rather than off vertex 0 so that the build and the
   // per-frame refresh compute the identical expression - two routes to the same
@@ -490,11 +495,13 @@ AFRAME.registerComponent('shape', {
   // draw order on the first tick after every rebuild. It is also what keeps a
   // held cap's order describing where that cap actually is.
   //
-  // Parent-frame rather than world is deliberate and sufficient: every shape
-  // shares one parent and shapes cannot be reparented, so a transform on that
-  // parent shifts all of them equally and cancels out of the comparison.
+  // The world matrix must be current: the system tick refreshes it
+  // (syncWorldMeasure) before syncFillOrder, and _addFill refreshes it before
+  // building the cap. Only the y row is needed: the
+  // local point is (0, py, 0), so the height is e[5] * py + e[13].
   _planeYOf: function (mesh) {
-    const raw = this.el.object3D.position.y + mesh.position.y - FILL_LIFT_M;
+    const e = this.el.object3D.matrixWorld.elements;
+    const raw = e[5] * (mesh.position.y - FILL_LIFT_M) + e[13];
     // Normalised so a NaN entity position settles instead of defeating the
     // cache below forever (NaN !== NaN).
     return Number.isFinite(raw) ? raw : 0;
@@ -731,9 +738,12 @@ AFRAME.registerComponent('shape', {
   // only thing the dirty-check watches — never move. Compare-and-bail keeps
   // the unchanged path allocation-free; the recompute reads the same ring the
   // last derive measured, whose entries are live vertex positions.
+  // It also refreshes the world matrix syncFillOrder reads, for any shape
+  // with a fill.
   syncWorldMeasure: function () {
-    if (!this._areaPts) return;
+    if (!this._areaPts && !this.fillGroup.children[0]) return;
     this.el.object3D.updateWorldMatrix(true, false);
+    if (!this._areaPts) return;
     const m = this.el.object3D.matrixWorld;
     if (this.worldMatrixCache && this.worldMatrixCache.equals(m)) return;
     if (!this.worldMatrixCache) this.worldMatrixCache = new THREE.Matrix4();
@@ -886,9 +896,8 @@ AFRAME.registerComponent('shape', {
     // plane, and among fills on the same plane above any LARGER one, so a small
     // marking inside a big zone lands on top. See shapeFillRender.js.
     //
-    // The plane's height is the entity's own y plus the vertex's, both in the
-    // parent frame: a committed shape carries its centroid on the entity and
-    // its vertices relative to it, so neither term alone is the height.
+    // The plane's height is a world height (see _planeYOf).
+    this.el.object3D.updateWorldMatrix(true, false);
     this._fillPlaneY = this._planeYOf(mesh);
     mesh.renderOrder = fillPaintOrder(this._fillPlaneY, area);
     // Same reason as the sphere/cylinder leaves: the inspector raycaster reads

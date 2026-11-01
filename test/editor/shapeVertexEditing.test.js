@@ -7,13 +7,12 @@ import {
   ringSelfIntersects
 } from '../../src/aframe-components/polygonMath.js';
 
-// entity.js contains JSX inside a .js file, which this test setup cannot
-// transform. A mock FACTORY means the module is never loaded or transformed at
-// all, so the command modules below can be imported for what they are. The
+// A mock FACTORY means entity.jsx is never loaded at all, so the command
+// modules below can be imported for what they are. The
 // specifier resolves relative to THIS file, not to the module that imports it.
-// Every binding the command modules take from entity.js has to appear here, or
+// Every binding the command modules take from entity.jsx has to appear here, or
 // the import fails on a missing export instead of on the property under test.
-vi.mock('../../src/editor/lib/entity.js', () => ({
+vi.mock('../../src/editor/lib/entity.jsx', () => ({
   createUniqueId: () => 'x',
   updateEntity: () => {}
 }));
