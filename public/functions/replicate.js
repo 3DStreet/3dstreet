@@ -1772,12 +1772,14 @@ async function saveImageToGallery(userId, imageUrl, job) {
         }),
         output_format: extension === 'jpeg' ? 'jpg' : extension,
         ...(params.scene_id && { sceneId: params.scene_id }),
-        ...(params.resolution && { resolution: params.resolution }),
         source: job.source || 'generator',
         // Client extras (editor: sceneId/sceneTitle/cameraState/renderMode —
         // powers the gallery's scene link + focus-camera button). May override
         // the defaults above; the server identity fields below always win.
         ...(job.galleryMetadata || {}),
+        // The server-priced output tier (#1887) — after the client extras so
+        // a client can't relabel what it was charged for.
+        ...(params.resolution && { resolution: params.resolution }),
         predictionId: job.predictionId || null,
         timestamp: new Date().toISOString()
       },

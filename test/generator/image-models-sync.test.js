@@ -27,7 +27,9 @@ describe('image picker models stay in sync with the backend', () => {
       // Output tiers (#1887): the picker's toggle labels and prices must be
       // exactly what the server accepts and charges.
       expect(model.outputTiers).toEqual(backend.outputTiers);
-      if (model.outputTiers) expect(model.resolution).toBe(backend.resolution);
+      // The default output size (toggle label + analytics). Seedream names
+      // it `size` on the backend.
+      expect(model.resolution).toBe(backend.resolution ?? backend.size);
       if (model.type === 'fal') {
         expect(backend.type).toBe('fal');
         expect(model.endpoint).toBe(backend.endpoint);

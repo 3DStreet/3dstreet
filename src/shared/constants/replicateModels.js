@@ -48,6 +48,7 @@ export const REPLICATE_MODELS = {
     group: 'best-quality',
     logo: '/ui_assets/model-black-forest-labs.png',
     endpoint: 'blackforestlabs/flux-3/edit-image',
+    resolution: '2k',
     estimatedTime: 80,
     // Too slow for the 4x batch; Flux 2 Klein is the Flux there.
     includeIn4x: false,
@@ -64,6 +65,7 @@ export const REPLICATE_MODELS = {
     group: 'high-quality',
     logo: '/ui_assets/model-bytedance.png',
     modelName: 'bytedance/seedream-5-pro',
+    resolution: '2K',
     estimatedTime: 30,
     includeIn4x: false,
     tokenCost: 2
@@ -74,6 +76,7 @@ export const REPLICATE_MODELS = {
     group: 'high-quality',
     logo: '/ui_assets/model-google.png',
     modelName: 'google/nano-banana-2',
+    resolution: '2K',
     estimatedTime: 30,
     includeIn4x: false,
     tokenCost: 2
@@ -100,6 +103,7 @@ export const REPLICATE_MODELS = {
     group: 'affordable',
     logo: '/ui_assets/model-xai.png',
     modelName: 'xai/grok-imagine-image-2',
+    resolution: '2k',
     estimatedTime: 20,
     includeIn4x: true,
     tokenCost: 1

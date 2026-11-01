@@ -220,3 +220,29 @@ describe('resolveOutputTier (#1887)', () => {
     ).toBe('4K');
   });
 });
+
+// A tier the request builder ignores would charge the tier price for the
+// default render. Fails if a tier is added to a model whose builder doesn't
+// pass `resolution` through (e.g. any fal model, or Seedream's `size`).
+describe('every priced output tier reaches the provider request (#1887)', () => {
+  const tiered = Object.entries(REPLICATE_MODELS).flatMap(([id, model]) =>
+    Object.keys(model.outputTiers || {}).map((tier) => [id, tier])
+  );
+
+  it('at least one model offers a paid tier', () => {
+    expect(tiered.length).toBeGreaterThan(0);
+  });
+
+  it.each(tiered)('%s %s', (id, tier) => {
+    const model = REPLICATE_MODELS[id];
+    const { resolution } = resolveOutputTier(model, tier);
+    const request =
+      model.type === 'fal'
+        ? buildFalImagePayload(model, { ...falArgs, resolution })
+        : buildReplicateImageInput(model, {
+            ...replicateArgs(IMG),
+            resolution
+          });
+    expect(Object.values(request)).toContain(tier);
+  });
+});
