@@ -28,6 +28,7 @@ require('./aframe-components/bvh-geometry.js');
 require('./aframe-components/street-geo.js');
 require('./aframe-components/geo-flatten.js');
 require('./aframe-components/street-environment.js');
+require('./aframe-components/flat-shadow.js'); // unlit material that shows received shadows (#2123)
 require('./aframe-components/intersection.js');
 require('./aframe-components/group-center.js'); // a user-set group center; nothing in the editor writes it yet
 require('./aframe-components/managed-intersection.js');

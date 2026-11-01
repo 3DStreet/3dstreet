@@ -8,6 +8,7 @@ import {
   ReorientationPlugin
 } from '3d-tiles-renderer/plugins';
 import { applyReferenceLayerOpacity } from '../tested/transparent-layering.js';
+import { receiveShadowsOnUnlit } from './flat-shadow.js';
 
 // The pre-0.5.0 setLatLonToYUp() oriented the tileset with +Y altitude,
 // +X north, +Z east. ReorientationPlugin's default frame is +X west,
@@ -72,6 +73,17 @@ AFRAME.registerComponent('google-maps-aerial', {
         dracoLoader: this.el.sceneEl.systems['gltf-model'].getDRACOLoader()
       })
     );
+
+    // The photographic tiles stay unlit but show the shadows of placed
+    // objects (#2123). processTileModel runs before the 'load-model' event,
+    // where TilesFadePlugin wraps the tile's material, so the fade wraps the
+    // flat-shadow material rather than a basic one swapped out from under
+    // it; and before the tile records its materials for disposal. Tiles
+    // never cast: their real shadows are already in the photos.
+    this.tiles.registerPlugin({
+      name: 'FLAT_SHADOW_PLUGIN',
+      processTileModel: (scene) => receiveShadowsOnUnlit(scene)
+    });
 
     // Always create flattening plugin to support runtime toggling
     this.flatteningPlugin = new TileFlatteningPlugin();
