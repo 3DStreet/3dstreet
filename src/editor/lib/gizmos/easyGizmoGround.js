@@ -90,8 +90,8 @@ export function placementKindOf(el) {
  * plane, which lying over a road would swallow the road's footprint. Stated as
  * a rule rather than a list of the upload path's current kinds: it admits
  * imported geometry and excludes imported decals, whatever gets added next.
- * The one decal admitted is a level, visible image, and only for furniture —
- * see `isLevelImportedImageHit` below.
+ * The one decal admitted is a level, visible image, which is ground for every
+ * kind — see `isLevelImportedImageHit` below.
  */
 export function isUserImportedMeshHit(hit) {
   if (!hit || !hit.object) return false;
@@ -127,8 +127,12 @@ function _materialShows(material) {
  * The decal exclusion above was about images in general; an aerial plan or
  * a traced site image lifted over the 3D Tiles is the surface the user is
  * building on, and an object dragged across it should rest on it rather than
- * on the drape beneath. Ranked with imported meshes, so only furniture rests
- * on it — a street or building never lands on a logo over the road.
+ * on the drape beneath. Like the tiles it is ground, not an item, so it sits
+ * outside the item ranking and supports every kind — street, building,
+ * imported mesh and furniture alike. Within a column it competes as a solid
+ * surface: it beats the tiles beneath it, and against a street or building
+ * the higher surface wins, so a logo a centimetre above a road lifts what
+ * rests there by that centimetre and no more.
  *
  * Unlike a mesh, a flat image is easy to leave in the scene hidden or at
  * opacity 0 (a terrain-flattening helper), and the probe raycasts invisible
@@ -161,7 +165,8 @@ export function isLevelImportedImageHit(hit) {
 
 /** Eligible support for this selection; furniture preserves the widest policy. */
 export function isGizmoGroundHit(hit, selectedKind = 'furniture') {
-  const imported = isUserImportedMeshHit(hit) || isLevelImportedImageHit(hit);
+  if (isLevelImportedImageHit(hit)) return true;
+  const imported = isUserImportedMeshHit(hit);
   const identityHit = placementHitOf(hit);
   if (!isSolidFloorHit(identityHit) && !imported) return false;
   const kind = classifyHitEntity(identityHit);

@@ -168,19 +168,20 @@ describe('what the gizmo counts as ground', () => {
       return hit;
     }
 
-    it('is support for furniture, above the tiles beneath it', () => {
+    it('is support for every kind, above the tiles beneath it', () => {
       const image = imagePlane(0.2);
       expect(isLevelImportedImageHit(image)).toBe(true);
-      expect(isGizmoGroundHit(image, 'furniture')).toBe(true);
-      const best = pickSupportBelow([tiles(0), image], 5);
-      expect(best.hit).toBe(image);
+      for (const kind of ['street', 'building', 'import', 'furniture']) {
+        expect(isGizmoGroundHit(image, kind)).toBe(true);
+      }
+      expect(pickSupportBelow([tiles(0), image], 5).hit).toBe(image);
     });
 
-    it('never supports a street, building or imported mesh', () => {
-      const image = imagePlane(0.2);
-      expect(isGizmoGroundHit(image, 'street')).toBe(false);
-      expect(isGizmoGroundHit(image, 'building')).toBe(false);
-      expect(isGizmoGroundHit(image, 'import')).toBe(false);
+    it('competes with a street by height, the higher surface winning', () => {
+      const image = imagePlane(0.21);
+      expect(pickSupportBelow([segment(0.2), image], 5).hit).toBe(image);
+      const under = imagePlane(0.1);
+      expect(pickSupportBelow([segment(0.2), under], 5).hit).not.toBe(under);
     });
 
     it('is not a surface standing upright, hidden or fully transparent', () => {
