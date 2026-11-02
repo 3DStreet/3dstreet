@@ -1209,6 +1209,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // Hide the ring on a window blur (e.g. Alt-Tab
       // mid-orbit) so it can't leak visible.
       this._drag.hideIndicator();
+      // Report the interrupted rotate drag, if any (#1993 telemetry).
+      this._drag.flushRotateGesture();
     }
   }
 
