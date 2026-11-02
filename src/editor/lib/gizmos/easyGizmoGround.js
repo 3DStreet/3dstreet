@@ -90,6 +90,8 @@ export function placementKindOf(el) {
  * plane, which lying over a road would swallow the road's footprint. Stated as
  * a rule rather than a list of the upload path's current kinds: it admits
  * imported geometry and excludes imported decals, whatever gets added next.
+ * The one decal admitted is a level, visible image, and only for furniture —
+ * see `isLevelImportedImageHit` below.
  */
 export function isUserImportedMeshHit(hit) {
   if (!hit || !hit.object) return false;
@@ -101,9 +103,65 @@ export function isUserImportedMeshHit(hit) {
   );
 }
 
+/** cos(30°): an image face tilted further than this from level is no floor. */
+const LEVEL_IMAGE_MIN_NORMAL_Y = Math.cos((30 * Math.PI) / 180);
+
+function _chainVisible(object) {
+  for (let node = object; node; node = node.parent) {
+    if (node.visible === false) return false;
+  }
+  return true;
+}
+
+function _materialShows(material) {
+  const list = Array.isArray(material) ? material : [material];
+  return list.some(
+    (m) =>
+      !m || (m.visible !== false && !(m.transparent && (m.opacity ?? 1) <= 0))
+  );
+}
+
+/**
+ * An uploaded image laid (nearly) flat and visible: a surface (#2128).
+ *
+ * The decal exclusion above was about images in general; an aerial plan or
+ * a traced site image lifted over the 3D Tiles is the surface the user is
+ * building on, and an object dragged across it should rest on it rather than
+ * on the drape beneath. Ranked with imported meshes, so only furniture rests
+ * on it — a street or building never lands on a logo over the road.
+ *
+ * Unlike a mesh, a flat image is easy to leave in the scene hidden or at
+ * opacity 0 (a terrain-flattening helper), and the probe raycasts invisible
+ * subtrees, so the whole ancestor chain and the material must show. Level is
+ * judged from the world transform of the plane's local X and Y axes, whose
+ * cross product is the face normal under any (non-uniform) scale.
+ */
+export function isLevelImportedImageHit(hit) {
+  const object = hit?.object;
+  if (!object) return false;
+  const el = owningPlacementEntity(hit);
+  if (!el || typeof el.hasAttribute !== 'function') return false;
+  if (el.hasAttribute('gltf-model') || el.hasAttribute('splat')) return false;
+  if (!el.hasAttribute('geometry')) return false;
+  if (
+    !el.hasAttribute('data-asset-id') &&
+    !el.hasAttribute('data-temporary-file')
+  ) {
+    return false;
+  }
+  if (!_chainVisible(object) || !_materialShows(object.material)) return false;
+  const e = object.matrixWorld?.elements;
+  if (!e) return false;
+  const nx = e[1] * e[6] - e[2] * e[5];
+  const ny = e[2] * e[4] - e[0] * e[6];
+  const nz = e[0] * e[5] - e[1] * e[4];
+  const len = Math.hypot(nx, ny, nz);
+  return len > 0 && Math.abs(ny) / len >= LEVEL_IMAGE_MIN_NORMAL_Y;
+}
+
 /** Eligible support for this selection; furniture preserves the widest policy. */
 export function isGizmoGroundHit(hit, selectedKind = 'furniture') {
-  const imported = isUserImportedMeshHit(hit);
+  const imported = isUserImportedMeshHit(hit) || isLevelImportedImageHit(hit);
   const identityHit = placementHitOf(hit);
   if (!isSolidFloorHit(identityHit) && !imported) return false;
   const kind = classifyHitEntity(identityHit);

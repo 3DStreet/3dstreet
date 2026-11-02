@@ -2,6 +2,7 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 import {
   evaluatePath,
   isGizmoGroundHit,
+  isLevelImportedImageHit,
   isUserImportedMeshHit,
   owningPlacementEntity,
   placementKindOf,
@@ -123,6 +124,87 @@ describe('what the gizmo counts as ground', () => {
     // road would swallow the road's footprint.
     expect(isUserImportedMeshHit(importedImage(0))).toBe(false);
     expect(isUserImportedMeshHit(importedSplat(0))).toBe(false);
+  });
+
+  describe('an uploaded image lying flat (#2128)', () => {
+    // Column-major matrixWorld for a plane rotated about X (A-Frame `270 0 0`
+    // lays it flat) with a non-uniform scale.
+    function imagePlane(y, { tiltDeg = 270, opts = {} } = {}) {
+      const a = (tiltDeg * Math.PI) / 180;
+      const [sx, sy, sz] = opts.scale || [17, 22, 28];
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      const hit = hitOn(
+        {
+          geometry: 'primitive: plane',
+          'data-asset-id': 'a',
+          'data-asset-owner-uid': 'u'
+        },
+        y
+      );
+      const entityNode = {
+        visible: opts.entityVisible !== false,
+        parent: null
+      };
+      hit.object = {
+        el: hit.object.el,
+        parent: entityNode,
+        visible: true,
+        material: {
+          visible: true,
+          transparent: true,
+          opacity: opts.opacity ?? 1
+        },
+        matrixWorld: {
+          // columns: X axis, Y axis (rotated about X), Z axis, translation
+          elements: [
+            sx, 0, 0, 0,
+            0, sy * c, sy * s, 0,
+            0, -sz * s, sz * c, 0,
+            0, y, 0, 1
+          ] // prettier-ignore
+        }
+      };
+      return hit;
+    }
+
+    it('is support for furniture, above the tiles beneath it', () => {
+      const image = imagePlane(0.2);
+      expect(isLevelImportedImageHit(image)).toBe(true);
+      expect(isGizmoGroundHit(image, 'furniture')).toBe(true);
+      const best = pickSupportBelow([tiles(0), image], 5);
+      expect(best.hit).toBe(image);
+    });
+
+    it('never supports a street, building or imported mesh', () => {
+      const image = imagePlane(0.2);
+      expect(isGizmoGroundHit(image, 'street')).toBe(false);
+      expect(isGizmoGroundHit(image, 'building')).toBe(false);
+      expect(isGizmoGroundHit(image, 'import')).toBe(false);
+    });
+
+    it('is not a surface standing upright, hidden or fully transparent', () => {
+      expect(isLevelImportedImageHit(imagePlane(0, { tiltDeg: 0 }))).toBe(
+        false
+      );
+      expect(isLevelImportedImageHit(imagePlane(0, { tiltDeg: 300 }))).toBe(
+        false
+      );
+      expect(
+        isLevelImportedImageHit(
+          imagePlane(0, { opts: { entityVisible: false } })
+        )
+      ).toBe(false);
+      expect(
+        isLevelImportedImageHit(imagePlane(0, { opts: { opacity: 0 } }))
+      ).toBe(false);
+    });
+
+    it('excludes an image the user did not upload', () => {
+      const hit = imagePlane(0);
+      hit.object.el = hitOn({ geometry: 'primitive: plane' }, 0).object.el;
+      expect(isLevelImportedImageHit(hit)).toBe(false);
+    });
   });
 
   it('rejects a hit with no owning entity, which is how editor chrome falls out', () => {
