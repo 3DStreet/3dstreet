@@ -6,6 +6,7 @@ import PropertyRow from './PropertyRow';
 import BooleanWidget from '../widgets/BooleanWidget';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
 import SunDial from './SunDial/SunDial';
+import Collapsible from '../Collapsible';
 import { Magnifier20Icon, SunIcon } from '@shared/icons';
 import { geoSourcePhrase } from '@shared/constants/geoSources.js';
 import posthog from 'posthog-js';
@@ -237,98 +238,94 @@ const EnvironmentSection = () => {
   if (!component || !component.schema || !component.data) return null;
 
   return (
-    <div className="collapsible component">
-      <div className="static">
-        <div className="componentHeader collapsible-header">
-          <span
-            className="componentTitle"
-            title={intl.formatMessage({
-              id: 'geoSidebar.environment',
-              defaultMessage: 'Environment'
-            })}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-          >
-            <SunIcon />
-            <span>
-              <FormattedMessage
-                id="geoSidebar.environment"
-                defaultMessage="Environment"
-              />
-            </span>
-          </span>
-        </div>
-      </div>
-      <div className="content">
-        <div className="collapsible-content">
-          <PropertyRow
-            key="preset"
-            name="preset"
-            label={intl.formatMessage({
-              id: 'geoSidebar.preset',
-              defaultMessage: 'Preset'
-            })}
-            schema={component.schema['preset']}
-            data={component.data['preset']}
-            componentname="street-environment"
-            isSingle={false}
-            entity={envEntity}
-            noSelectEntity={true}
-          />
-          <PropertyRow
-            key="background"
-            name="background"
-            label={intl.formatMessage({
-              id: 'geoSidebar.background',
-              defaultMessage: 'Background'
-            })}
-            schema={component.schema['background']}
-            data={component.data['background']}
-            componentname="street-environment"
-            isSingle={false}
-            entity={envEntity}
-            noSelectEntity={true}
-          />
-          {component.data.background === 'color' && (
-            <PropertyRow
-              key="backgroundColor"
-              name="backgroundColor"
-              label={intl.formatMessage({
-                id: 'geoSidebar.backgroundColor',
-                defaultMessage: 'Background Color'
-              })}
-              schema={component.schema['backgroundColor']}
-              data={component.data['backgroundColor']}
-              componentname="street-environment"
-              isSingle={false}
-              entity={envEntity}
-              noSelectEntity={true}
+    <Collapsible sectionKey="geo-environment">
+      <div className="componentHeader collapsible-header">
+        <span
+          className="componentTitle"
+          title={intl.formatMessage({
+            id: 'geoSidebar.environment',
+            defaultMessage: 'Environment'
+          })}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <SunIcon />
+          <span>
+            <FormattedMessage
+              id="geoSidebar.environment"
+              defaultMessage="Environment"
             />
-          )}
-          <SunDial entity={envEntity} />
-          <OpacitySliderRow
-            id="street-environment-shadow-strength"
-            label={intl.formatMessage({
-              id: 'geoSidebar.photoShadowStrength',
-              defaultMessage: 'Photo Shadow Strength (%)'
-            })}
-            min={0}
-            max={100}
-            step={1}
-            value={Math.round(component.data.shadowStrength * 100)}
-            onCommit={(value) =>
-              AFRAME.INSPECTOR.execute('entityupdate', {
-                entity: envEntity,
-                component: 'street-environment',
-                property: 'shadowStrength',
-                value: value / 100,
-                noSelectEntity: true
-              })
-            }
-            showNumberInput
-          />
-        </div>
+          </span>
+        </span>
       </div>
-    </div>
+      <div className="collapsible-content">
+        <PropertyRow
+          key="preset"
+          name="preset"
+          label={intl.formatMessage({
+            id: 'geoSidebar.preset',
+            defaultMessage: 'Preset'
+          })}
+          schema={component.schema['preset']}
+          data={component.data['preset']}
+          componentname="street-environment"
+          isSingle={false}
+          entity={envEntity}
+          noSelectEntity={true}
+        />
+        <PropertyRow
+          key="background"
+          name="background"
+          label={intl.formatMessage({
+            id: 'geoSidebar.background',
+            defaultMessage: 'Background'
+          })}
+          schema={component.schema['background']}
+          data={component.data['background']}
+          componentname="street-environment"
+          isSingle={false}
+          entity={envEntity}
+          noSelectEntity={true}
+        />
+        {component.data.background === 'color' && (
+          <PropertyRow
+            key="backgroundColor"
+            name="backgroundColor"
+            label={intl.formatMessage({
+              id: 'geoSidebar.backgroundColor',
+              defaultMessage: 'Background Color'
+            })}
+            schema={component.schema['backgroundColor']}
+            data={component.data['backgroundColor']}
+            componentname="street-environment"
+            isSingle={false}
+            entity={envEntity}
+            noSelectEntity={true}
+          />
+        )}
+        <SunDial entity={envEntity} />
+        <OpacitySliderRow
+          id="street-environment-shadow-strength"
+          label={intl.formatMessage({
+            id: 'geoSidebar.photoShadowStrength',
+            defaultMessage: 'Photo Shadow Strength (%)'
+          })}
+          min={0}
+          max={100}
+          step={1}
+          value={Math.round(component.data.shadowStrength * 100)}
+          onCommit={(value) =>
+            AFRAME.INSPECTOR.execute('entityupdate', {
+              entity: envEntity,
+              component: 'street-environment',
+              property: 'shadowStrength',
+              value: value / 100,
+              noSelectEntity: true
+            })
+          }
+          showNumberInput
+        />
+      </div>
+    </Collapsible>
   );
 };
 
@@ -911,8 +908,6 @@ const GeoSidebar = ({ entity }) => {
                 </>
               )}
 
-            <EnvironmentSection />
-
             {isActivated && component && component.schema && component.data && (
               <>
                 {/* Opacity applies to google3d tiles, the tiles2d basemap
@@ -921,55 +916,53 @@ const GeoSidebar = ({ entity }) => {
                 {['google3d', 'mapbox2d', 'tiles2d', 'osm3d'].includes(
                   component.data['maps']
                 ) && (
-                  <div className="collapsible component">
-                    <div className="static">
-                      <div className="componentHeader collapsible-header">
-                        <span
-                          className="componentTitle"
-                          title={intl.formatMessage(commonMessages.surface)}
-                        >
-                          <span>
-                            <FormattedMessage
-                              id="geoSidebar.opacityFlattening"
-                              defaultMessage="Opacity & Flattening"
-                            />
-                          </span>
+                  <Collapsible sectionKey="geo-opacity-flattening">
+                    <div className="componentHeader collapsible-header">
+                      <span
+                        className="componentTitle"
+                        title={intl.formatMessage(commonMessages.surface)}
+                      >
+                        <span>
+                          <FormattedMessage
+                            id="geoSidebar.opacityFlattening"
+                            defaultMessage="Opacity & Flattening"
+                          />
                         </span>
-                      </div>
+                      </span>
                     </div>
-                    <div className="content">
-                      <div className="collapsible-content">
-                        <MapOpacityRow
-                          entity={entity}
-                          opacity={component.data['opacity']}
-                        />
-                        {component.data['maps'] === 'google3d' && (
-                          <>
-                            <PropertyRow
-                              key="enableFlattening"
-                              name="enableFlattening"
-                              label={intl.formatMessage({
-                                id: 'geoSidebar.terrainFlattening',
-                                defaultMessage: 'Terrain Flattening'
-                              })}
-                              schema={component.schema['enableFlattening']}
-                              data={component.data['enableFlattening']}
-                              componentname="street-geo"
-                              isSingle={false}
-                              entity={entity}
-                              noSelectEntity={true}
-                            />
-                            {component.data['enableFlattening'] && (
-                              <FlatteningContributors />
-                            )}
-                          </>
-                        )}
-                      </div>
+                    <div className="collapsible-content">
+                      <MapOpacityRow
+                        entity={entity}
+                        opacity={component.data['opacity']}
+                      />
+                      {component.data['maps'] === 'google3d' && (
+                        <>
+                          <PropertyRow
+                            key="enableFlattening"
+                            name="enableFlattening"
+                            label={intl.formatMessage({
+                              id: 'geoSidebar.terrainFlattening',
+                              defaultMessage: 'Terrain Flattening'
+                            })}
+                            schema={component.schema['enableFlattening']}
+                            data={component.data['enableFlattening']}
+                            componentname="street-geo"
+                            isSingle={false}
+                            entity={entity}
+                            noSelectEntity={true}
+                          />
+                          {component.data['enableFlattening'] && (
+                            <FlatteningContributors />
+                          )}
+                        </>
+                      )}
                     </div>
-                  </div>
+                  </Collapsible>
                 )}
               </>
             )}
+
+            <EnvironmentSection />
           </div>
         </div>
       </div>
