@@ -262,8 +262,8 @@ AFRAME.registerComponent('osm-buildings', {
     geometry.setIndex(new THREE.BufferAttribute(indices, 1));
     geometry.computeBoundingSphere();
     const mesh = new THREE.Mesh(geometry, this.material);
-    // The environment's directional light shadow frustum only spans the
-    // street area near the origin, so this is cheap and lands exactly
+    // The environment's directional light shadow box only spans about 70 m
+    // around where the camera looks, so this is cheap and lands exactly
     // where it matters: buildings shade the street and each other.
     mesh.castShadow = true;
     mesh.receiveShadow = true;
