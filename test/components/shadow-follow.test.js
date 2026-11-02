@@ -207,3 +207,66 @@ describe('environment background (#2118)', () => {
     expect(scene.object3D.environment?.isTexture).toBe(true);
   });
 });
+
+describe('sky across scene switches', () => {
+  // Stand in a loaded sky for the download the component just started.
+  function finishSky(component) {
+    const texture = new window.THREE.Texture();
+    texture.userData.skySrc = component.pendingSky;
+    component.pendingSky = null;
+    component.useSkyTexture(texture);
+    return texture;
+  }
+  const readd = (el, value = '') => {
+    el.removeAttribute('street-environment');
+    el.setAttribute('street-environment', value);
+    return el.components['street-environment'];
+  };
+
+  it('keeps the same sky without disposing or downloading it again', async () => {
+    const { scene } = await makeScene();
+    const el = scene.querySelector('#environment');
+    const sky = finishSky(el.components['street-environment']);
+    let disposed = false;
+    sky.addEventListener('dispose', () => (disposed = true));
+
+    const next = readd(el);
+    expect(next.skyTexture).toBe(sky);
+    expect(next.pendingSky ?? null).toBe(null);
+    expect(scene.object3D.background).toBe(sky);
+    expect(disposed).toBe(false);
+  });
+
+  it('disposes the old sky when the next scene uses another', async () => {
+    const { scene } = await makeScene();
+    const el = scene.querySelector('#environment');
+    const sky = finishSky(el.components['street-environment']);
+    let disposed = false;
+    sky.addEventListener('dispose', () => (disposed = true));
+
+    readd(el, 'preset: night');
+    expect(disposed).toBe(true);
+  });
+
+  it('drops a sky download that finishes after the component is removed', async () => {
+    const { scene } = await makeScene();
+    const el = scene.querySelector('#environment');
+    const old = el.components['street-environment'];
+    const path = old.pendingSky;
+    let finish;
+    old.loadSkyTexture = () => new Promise((resolve) => (finish = resolve));
+    old.pendingSky = null;
+    old.setSky(path);
+
+    const next = readd(el, 'preset: night');
+    const nightSky = next.skyTexture;
+    const late = new window.THREE.Texture();
+    let disposed = false;
+    late.addEventListener('dispose', () => (disposed = true));
+    finish(late);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(disposed).toBe(true);
+    expect(scene.object3D.background).toBe(nightSky);
+  });
+});

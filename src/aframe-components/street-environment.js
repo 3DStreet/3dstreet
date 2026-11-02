@@ -237,7 +237,11 @@ AFRAME.registerComponent('street-environment', {
     this.system.env = this;
     this.followLight = null;
     this.restLocal = new THREE.Vector3();
-    this.skyTexture = null;
+    // newScene() removes and re-adds this component: take over the sky the
+    // last instance showed, so the same preset keeps it without a download
+    // and a different one disposes it.
+    this.skyTexture = this.system.skyTexture ?? null;
+    this.system.skyTexture = null;
     this.backgroundColor = new THREE.Color();
     // Bigger shadow map on desktop, chosen once (see shadow-follow.js).
     // isMobile() is false on standalone headsets, so check them separately.
@@ -415,6 +419,12 @@ AFRAME.registerComponent('street-environment', {
 
   remove() {
     if (this.system.env === this) this.system.env = null;
+    // Hand the sky to the next instance (see init). A download still in
+    // flight then finds pendingSky cleared and disposes its texture instead
+    // of replacing the next scene's sky.
+    this.system.skyTexture = this.skyTexture;
+    this.skyTexture = null;
+    this.pendingSky = null;
     this.light1.remove();
     this.light2.remove();
   }
