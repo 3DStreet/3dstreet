@@ -389,8 +389,8 @@ const generateEditorChat = functions
       hasScreenshot: !!screenshot
     });
 
-    // An empty turn produced no answer; refund the slot like an upstream error.
-    if (empty) await refundRateLimit(uid);
+    // Empty turns are NOT refunded: they still bill input + thinking tokens, so
+    // a refund would let a crafted prompt bypass the rate limit.
 
     return {
       text,
