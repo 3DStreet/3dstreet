@@ -113,11 +113,13 @@ function _chainVisible(object) {
   return true;
 }
 
-function _materialShows(material) {
+// Fully opaque: three ignores opacity on a non-transparent material, and an
+// uploaded image is `transparent: true` (for PNG alpha) at opacity 1.
+function _materialOpaque(material) {
   const list = Array.isArray(material) ? material : [material];
   return list.some(
     (m) =>
-      !m || (m.visible !== false && !(m.transparent && (m.opacity ?? 1) <= 0))
+      !m || (m.visible !== false && (!m.transparent || (m.opacity ?? 1) >= 1))
   );
 }
 
@@ -134,9 +136,11 @@ function _materialShows(material) {
  * the higher surface wins, so a logo a centimetre above a road lifts what
  * rests there by that centimetre and no more.
  *
- * Unlike a mesh, a flat image is easy to leave in the scene hidden or at
- * opacity 0 (a terrain-flattening helper), and the probe raycasts invisible
- * subtrees, so the whole ancestor chain and the material must show. Level is
+ * Unlike a mesh, a flat image is easy to leave in the scene hidden, at
+ * opacity 0 (a terrain-flattening helper) or part-transparent (a reference
+ * plan laid over another to trace against), and the probe raycasts all of
+ * them, so the whole ancestor chain must be visible and the material fully
+ * opaque. Anything under full opacity is an overlay, never ground. Level is
  * judged from the world transform of the plane's local X and Y axes, whose
  * cross product is the face normal under any (non-uniform) scale.
  */
@@ -153,7 +157,7 @@ export function isLevelImportedImageHit(hit) {
   ) {
     return false;
   }
-  if (!_chainVisible(object) || !_materialShows(object.material)) return false;
+  if (!_chainVisible(object) || !_materialOpaque(object.material)) return false;
   const e = object.matrixWorld?.elements;
   if (!e) return false;
   const nx = e[1] * e[6] - e[2] * e[5];

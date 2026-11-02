@@ -51,11 +51,15 @@ terrain for every class, including rooftops embedded in the photogrammetric mesh
 Imported mesh identity takes precedence over the catalog building category.
 An uploaded image is ground for every kind (streets, buildings, imported meshes
 and furniture), like the tiles, when it lies within 30° of level and is visible:
-entity and ancestors shown, material not fully transparent (#2128). In a column
+entity and ancestors shown, material fully opaque (#2128). In a column
 it competes as a solid surface: it beats the tiles beneath it, and against a
 street or building the higher surface wins. A traced site plan lifted above the 3D
 Tiles is then the support an object snaps to, instead of the drape beneath it;
-an upright image, a hidden one or an opacity-0 flattening helper is not.
+an upright image, a hidden one or any image under 100% opacity (a
+semi-transparent reference overlay, an opacity-0 flattening helper) is not,
+and an object under such an overlay rests on the surface below it. The check
+reads hits the column ray already returned (no extra raycast), so its cost is a
+few attribute reads and an ancestor walk per hit.
 Each catalog building contributes only its highest intersected surface in the
 column. Separate stacked buildings retain separate roof targets. Intermediate
 surfaces within imported meshes and Google 3D Tiles remain eligible.

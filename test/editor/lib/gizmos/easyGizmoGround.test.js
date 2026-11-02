@@ -184,7 +184,7 @@ describe('what the gizmo counts as ground', () => {
       expect(pickSupportBelow([segment(0.2), under], 5).hit).not.toBe(under);
     });
 
-    it('is not a surface standing upright, hidden or fully transparent', () => {
+    it('is not a surface standing upright, hidden or under full opacity', () => {
       expect(isLevelImportedImageHit(imagePlane(0, { tiltDeg: 0 }))).toBe(
         false
       );
@@ -199,6 +199,16 @@ describe('what the gizmo counts as ground', () => {
       expect(
         isLevelImportedImageHit(imagePlane(0, { opts: { opacity: 0 } }))
       ).toBe(false);
+      expect(
+        isLevelImportedImageHit(imagePlane(0, { opts: { opacity: 0.5 } }))
+      ).toBe(false);
+    });
+
+    it('lets a 50% reference overlay fall through to the opaque plan below', () => {
+      const plan = imagePlane(0.2);
+      const overlay = imagePlane(0.4, { opts: { opacity: 0.5 } });
+      const hits = [overlay, plan, tiles(0)].filter((h) => isGizmoGroundHit(h));
+      expect(pickSupportBelow(hits, 5).hit).toBe(plan);
     });
 
     it('excludes an image the user did not upload', () => {
