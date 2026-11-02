@@ -12,14 +12,14 @@ afterEach(() => {
   while (mounted.length) mounted.pop().remove();
 });
 
-async function makeScene() {
+async function makeScene(preset = 'day') {
   const scene = document.createElement('a-scene');
   scene.setAttribute('embedded', '');
   scene.setAttribute('style', 'width: 32px; height: 32px');
   scene.setAttribute('vr-mode-ui', 'enabled: false');
   scene.innerHTML = `
     <a-entity id="cam" camera position="0 20 0" rotation="-90 0 0"></a-entity>
-    <a-entity id="environment" street-environment="preset: day"></a-entity>
+    <a-entity id="environment" street-environment="preset: ${preset}"></a-entity>
   `;
   document.body.appendChild(scene);
   mounted.push(scene);
@@ -129,5 +129,15 @@ describe('camera-following shadow box', () => {
     expect(light.shadow.autoUpdate).toBe(true);
     expect(shadowCam.right).toBe(shadow.steps[0].halfExtent);
     expect(shadowCam.far).toBe(shadow.steps[0].far);
+  });
+
+  it('gives presets without their own sun the day sun', async () => {
+    for (const preset of ['cloudy', 'cloudy-afternoon', 'night']) {
+      const { light, system } = await makeScene(preset);
+      system.tick();
+      const dir = world(light).sub(light.target.position).normalize();
+      const day = new window.THREE.Vector3(-40, 56, -43).normalize();
+      expect(dir.distanceTo(day)).toBeLessThan(1e-6);
+    }
   });
 });

@@ -8,6 +8,9 @@ import {
 } from '../tested/shadow-follow.js';
 
 const SHADOW_OFF_EXTENT = 0.01;
+// The day preset's sun, also used by presets without their own (the light
+// would otherwise sit at the origin, with no direction at all).
+const DEFAULT_SUN_POSITION = '-40 56 -43';
 
 // Moves the sun's shadow box to wherever the active camera looks (#439):
 // the light and its target shift together by a texel-snapped offset, so the
@@ -86,6 +89,7 @@ AFRAME.registerSystem('street-environment', {
     // The sun's direction: from the light at rest toward the default target
     // at the world origin.
     const sun = lightEl.object3D.localToWorld(this.sun.copy(env.restLocal));
+    if (sun.lengthSq() < 1e-6) return; // no direction yet
     this.camDir.set(-e[8], -e[9], -e[10]).normalize();
     shadowFocus(this.camPos, this.camDir, step.reach, 0, this.focus);
     this.lightDir.copy(sun).negate().normalize();
@@ -174,12 +178,13 @@ AFRAME.registerComponent('street-environment', {
         this.setLights(0.5, 0.15);
         this.backgroundImage = `${assetsPathRoot}images/AdobeStock_286725174-min.jpeg`;
         this.setBackground(this.backgroundImage);
+        this.light2.setAttribute('position', DEFAULT_SUN_POSITION);
         break;
       case 'day':
         this.setLights(0.8, 2.2);
         this.backgroundImage = `${assetsPathRoot}images/skies/2048-polyhaven-wasteland_clouds_puresky.jpeg`;
         this.setBackground(this.backgroundImage);
-        this.light2.setAttribute('position', '-40 56 -43');
+        this.light2.setAttribute('position', DEFAULT_SUN_POSITION);
         break;
       case 'sunny-morning':
         this.setLights(0.8, 2.2);
@@ -191,6 +196,7 @@ AFRAME.registerComponent('street-environment', {
         this.setLights(2, 0.6);
         this.backgroundImage = `${assetsPathRoot}images/skies/2048-mud_road_puresky-sdr.jpeg`;
         this.setBackground(this.backgroundImage);
+        this.light2.setAttribute('position', DEFAULT_SUN_POSITION);
         break;
       case 'sunny-afternoon':
         this.setLights(2, 2.2);
@@ -214,9 +220,11 @@ AFRAME.registerComponent('street-environment', {
         this.setLights(2, 0.6);
         this.backgroundImage = `${assetsPathRoot}images/skies/2048-kloofendal_48d_partly_cloudy_puresky-sdr.jpeg`;
         this.setBackground(this.backgroundImage);
+        this.light2.setAttribute('position', DEFAULT_SUN_POSITION);
         break;
       default: // 'color'
         this.setLights(0.8, 2.2);
+        this.light2.setAttribute('position', DEFAULT_SUN_POSITION);
         this.backgroundImage = null;
         // An in-flight sky download is no longer wanted; its callback
         // checks this and lets go of the texture.
