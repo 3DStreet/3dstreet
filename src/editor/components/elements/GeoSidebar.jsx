@@ -5,6 +5,7 @@ import { useAuthContext } from '@/editor/contexts/index.js';
 import PropertyRow from './PropertyRow';
 import BooleanWidget from '../widgets/BooleanWidget';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
+import SunDial from './SunDial/SunDial';
 import { Magnifier20Icon, SunIcon } from '@shared/icons';
 import { geoSourcePhrase } from '@shared/constants/geoSources.js';
 import posthog from 'posthog-js';
@@ -274,18 +275,56 @@ const EnvironmentSection = () => {
             noSelectEntity={true}
           />
           <PropertyRow
-            key="backgroundColor"
-            name="backgroundColor"
+            key="background"
+            name="background"
             label={intl.formatMessage({
               id: 'geoSidebar.background',
               defaultMessage: 'Background'
             })}
-            schema={component.schema['backgroundColor']}
-            data={component.data['backgroundColor']}
+            schema={component.schema['background']}
+            data={component.data['background']}
             componentname="street-environment"
             isSingle={false}
             entity={envEntity}
             noSelectEntity={true}
+          />
+          {component.data.background === 'color' && (
+            <PropertyRow
+              key="backgroundColor"
+              name="backgroundColor"
+              label={intl.formatMessage({
+                id: 'geoSidebar.backgroundColor',
+                defaultMessage: 'Background Color'
+              })}
+              schema={component.schema['backgroundColor']}
+              data={component.data['backgroundColor']}
+              componentname="street-environment"
+              isSingle={false}
+              entity={envEntity}
+              noSelectEntity={true}
+            />
+          )}
+          <SunDial entity={envEntity} />
+          <OpacitySliderRow
+            id="street-environment-shadow-strength"
+            label={intl.formatMessage({
+              id: 'geoSidebar.photoShadowStrength',
+              defaultMessage: 'Photo Shadow Strength (%)'
+            })}
+            min={0}
+            max={100}
+            step={1}
+            value={Math.round(component.data.shadowStrength * 100)}
+            onCommit={(value) =>
+              AFRAME.INSPECTOR.execute('entityupdate', {
+                entity: envEntity,
+                component: 'street-environment',
+                property: 'shadowStrength',
+                value: value / 100,
+                noSelectEntity: true
+              })
+            }
+            showNumberInput
           />
         </div>
       </div>

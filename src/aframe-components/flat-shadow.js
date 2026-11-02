@@ -14,11 +14,21 @@
 // receiveShadow, which three.js passes as a per-object uniform, so toggling
 // it never recompiles. Every material made here shares one program.
 
-// How much a full shadow darkens the photo. The photo's own shadows are
-// partly lit by sky light, so a black shadow would read as a hole.
-export const UNLIT_SHADOW_STRENGTH = 0.75;
+// How much a full shadow darkens the photo by default. The photo's own
+// shadows are partly lit by sky light, so a black shadow would read as a hole.
+export const DEFAULT_UNLIT_SHADOW_STRENGTH = 0.75;
 
-const PROGRAM_KEY = 'flat-shadow-v1';
+// One uniform object shared by every flat-shadow material, so the scene-level
+// setting (street-environment `shadowStrength`) changes them all at once
+// without recompiling.
+const strengthUniform = { value: DEFAULT_UNLIT_SHADOW_STRENGTH };
+
+/** Set how much a full shadow darkens every unlit surface (0 to 1). */
+export function setUnlitShadowStrength(strength) {
+  strengthUniform.value = Math.min(1, Math.max(0, strength));
+}
+
+const PROGRAM_KEY = 'flat-shadow-v2';
 
 // Each entry must match three's meshlambert fragment shader exactly; if a
 // three.js upgrade changes it, patchShader throws instead of silently
@@ -26,7 +36,7 @@ const PROGRAM_KEY = 'flat-shadow-v1';
 const REPLACEMENTS = [
   [
     '#include <shadowmap_pars_fragment>',
-    '#include <shadowmap_pars_fragment>\n#include <shadowmask_pars_fragment>'
+    '#include <shadowmap_pars_fragment>\n#include <shadowmask_pars_fragment>\nuniform float unlitShadowStrength;'
   ],
   ['#include <lights_lambert_fragment>', ''],
   ['#include <lights_fragment_begin>', ''],
@@ -36,7 +46,7 @@ const REPLACEMENTS = [
   ['#include <envmap_fragment>', ''],
   [
     'vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;',
-    `vec3 outgoingLight = diffuseColor.rgb * mix( 1.0, getShadowMask(), ${UNLIT_SHADOW_STRENGTH.toFixed(3)} );`
+    'vec3 outgoingLight = diffuseColor.rgb * mix( 1.0, getShadowMask(), unlitShadowStrength );'
   ]
 ];
 
@@ -49,6 +59,7 @@ export function patchShader(shader) {
     }
     shader.fragmentShader = shader.fragmentShader.replace(from, to);
   }
+  shader.uniforms.unlitShadowStrength = strengthUniform;
 }
 
 /** A MeshLambertMaterial that renders unlit apart from received shadows. */

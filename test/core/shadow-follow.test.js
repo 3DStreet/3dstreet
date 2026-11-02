@@ -2,6 +2,7 @@
 import assert from 'assert';
 import {
   pickShadowStep,
+  shadowDepth,
   shadowFocus,
   shadowSettings,
   snapToShadowTexels
@@ -129,13 +130,24 @@ describe('shadow steps', () => {
     assert.strictEqual(pickShadowStep(10, 3, steps), 0);
   });
 
-  it('keeps every corner of the ground in front of the light', () => {
-    // Ground across a box tilted toward a sun 40 degrees up spans about
-    // halfExtent / tan(40) in depth either side of the focus.
-    const spread = (h) => h / Math.tan((40 * Math.PI) / 180);
+  it('keeps all the ground in the box in front of the light at any sun', () => {
+    // Ground across a box tilted toward the sun spans halfExtent /
+    // tan(elevation) in depth either side of the focus.
     for (const step of steps) {
-      assert.ok(step.distance - spread(step.halfExtent) > 50);
-      assert.ok(step.far - step.distance > spread(step.halfExtent));
+      for (const elevation of [10, 25, 43, 70, 90]) {
+        const rad = (elevation * Math.PI) / 180;
+        const spread = step.halfExtent / Math.tan(rad);
+        const { distance, far } = shadowDepth(step.halfExtent, Math.sin(rad));
+        assert.ok(distance - spread >= 100, `${elevation}: near side`);
+        assert.ok(far - distance >= spread, `${elevation}: far side`);
+      }
     }
+  });
+
+  it('treats suns below 10 degrees as 10', () => {
+    assert.deepStrictEqual(
+      shadowDepth(70, 0.01),
+      shadowDepth(70, Math.sin(Math.PI / 18))
+    );
   });
 });
