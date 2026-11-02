@@ -951,7 +951,19 @@
     "screenshotModal.outputResolutionLabel": "Output resolution:",
     "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}",
     "screenshotModal.sourceSize": "Source image: {width} × {height}",
-    "screenshotModal.lowResSource": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
+    "screenshotModal.lowResSource": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog.",
+    "geoSidebar.backgroundColor": "Background Color",
+    "geoSidebar.photoShadowStrength": "Photo Shadow Strength (%)",
+    "sunDial.azimuth": "From {azimuth}°",
+    "sunDial.east": "E",
+    "sunDial.elevation": "{elevation}° up",
+    "sunDial.label": "Sun position: drag the dot; the centre is overhead, the rim is near the horizon",
+    "sunDial.north": "N",
+    "sunDial.reset": "Reset to preset",
+    "sunDial.south": "S",
+    "sunDial.sun": "Sun",
+    "sunDial.valueText": "From {azimuth}°, {elevation}° above the horizon",
+    "sunDial.west": "W"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1905,7 +1917,19 @@
     "screenshotModal.outputResolutionLabel": "Output resolution:",
     "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}",
     "screenshotModal.sourceSize": "Source image: {width} × {height}",
-    "screenshotModal.lowResSource": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
+    "screenshotModal.lowResSource": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog.",
+    "geoSidebar.backgroundColor": "Background Color",
+    "geoSidebar.photoShadowStrength": "Photo Shadow Strength (%)",
+    "sunDial.azimuth": "From {azimuth}°",
+    "sunDial.east": "E",
+    "sunDial.elevation": "{elevation}° up",
+    "sunDial.label": "Sun position: drag the dot; the centre is overhead, the rim is near the horizon",
+    "sunDial.north": "N",
+    "sunDial.reset": "Reset to preset",
+    "sunDial.south": "S",
+    "sunDial.sun": "Sun",
+    "sunDial.valueText": "From {azimuth}°, {elevation}° above the horizon",
+    "sunDial.west": "W"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2859,6 +2883,18 @@
     "screenshotModal.outputResolutionLabel": "Output resolution:",
     "screenshotModal.tierTokens": "{count,plural,one{# token} other{# tokens}}",
     "screenshotModal.sourceSize": "Source image: {width} × {height}",
-    "screenshotModal.lowResSource": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
+    "screenshotModal.lowResSource": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog.",
+    "geoSidebar.backgroundColor": "Background Color",
+    "geoSidebar.photoShadowStrength": "Photo Shadow Strength (%)",
+    "sunDial.azimuth": "From {azimuth}°",
+    "sunDial.east": "E",
+    "sunDial.elevation": "{elevation}° up",
+    "sunDial.label": "Sun position: drag the dot; the centre is overhead, the rim is near the horizon",
+    "sunDial.north": "N",
+    "sunDial.reset": "Reset to preset",
+    "sunDial.south": "S",
+    "sunDial.sun": "Sun",
+    "sunDial.valueText": "From {azimuth}°, {elevation}° above the horizon",
+    "sunDial.west": "W"
   }
 }

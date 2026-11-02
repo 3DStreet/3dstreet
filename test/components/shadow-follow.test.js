@@ -1,4 +1,8 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { shadowDepth } from '../../src/tested/shadow-follow.js';
+
+// The day sun, (-40, 56, -43) above the origin.
+const DAY_SIN = 56 / Math.hypot(40, 56, 43);
 
 beforeAll(async () => {
   window.AFRAME_ASYNC = true;
@@ -60,7 +64,10 @@ describe('camera-following shadow box', () => {
     expect(Math.abs(target.z + 200)).toBeLessThan(near.texelSize * 2);
     // The sun direction is unchanged; the light sits the step's distance back.
     const sun = world(light).sub(target);
-    expect(sun.length()).toBeCloseTo(near.distance, 6);
+    expect(sun.length()).toBeCloseTo(
+      shadowDepth(near.halfExtent, DAY_SIN).distance,
+      6
+    );
     expect(sun.normalize().distanceTo(restDir)).toBeLessThan(1e-9);
     // The light's own rest pose (and the entity) are untouched.
     expect(
@@ -69,10 +76,14 @@ describe('camera-following shadow box', () => {
   });
 
   it('sizes the shadow camera and map from the startup settings', async () => {
-    const { light, shadow, near } = await makeScene();
+    const { light, shadow, near, system } = await makeScene();
+    system.tick();
     expect(light.shadow.camera.right).toBe(near.halfExtent);
     expect(light.shadow.camera.left).toBe(-near.halfExtent);
-    expect(light.shadow.camera.far).toBe(near.far);
+    expect(light.shadow.camera.far).toBeCloseTo(
+      shadowDepth(near.halfExtent, DAY_SIN).far,
+      6
+    );
     expect(light.shadow.mapSize.x).toBe(shadow.mapSize);
   });
 
@@ -110,7 +121,10 @@ describe('camera-following shadow box', () => {
     moveCamera(scene, 0, 0, 120);
     system.tick();
     expect(shadowCam.right).toBe(shadow.steps[1].halfExtent);
-    expect(shadowCam.far).toBe(shadow.steps[1].far);
+    expect(shadowCam.far).toBeCloseTo(
+      shadowDepth(shadow.steps[1].halfExtent, DAY_SIN).far,
+      6
+    );
 
     moveCamera(scene, 0, 0, 600);
     system.tick();
@@ -128,7 +142,7 @@ describe('camera-following shadow box', () => {
     system.tick();
     expect(light.shadow.autoUpdate).toBe(true);
     expect(shadowCam.right).toBe(shadow.steps[0].halfExtent);
-    expect(shadowCam.far).toBe(shadow.steps[0].far);
+    expect(shadowCam.far).toBe(system.far);
   });
 
   it('gives presets without their own sun the day sun', async () => {
@@ -139,5 +153,120 @@ describe('camera-following shadow box', () => {
       const day = new window.THREE.Vector3(-40, 56, -43).normalize();
       expect(dir.distanceTo(day)).toBeLessThan(1e-6);
     }
+  });
+
+  it('follows a custom sun and keeps the low sun box in front of the light', async () => {
+    const { scene, light, system, near } = await makeScene();
+    const env = scene.querySelector('#environment');
+    // Sun low in the west (+X north, +Z east, so west is -Z).
+    env.setAttribute('street-environment', {
+      sunCustom: true,
+      sunAzimuth: 270,
+      sunElevation: 10
+    });
+    system.tick();
+    const dir = world(light).sub(light.target.position).normalize();
+    expect(dir.x).toBeCloseTo(0, 6);
+    expect(dir.z).toBeLessThan(0);
+    expect(Math.asin(dir.y) * (180 / Math.PI)).toBeCloseTo(10, 6);
+    const { distance, far } = shadowDepth(near.halfExtent, dir.y);
+    expect(light.shadow.camera.far).toBeCloseTo(far, 6);
+    expect(world(light).distanceTo(light.target.position)).toBeCloseTo(
+      distance,
+      6
+    );
+    // Ground across the tilted box spans halfExtent / tan(10°) in depth.
+    expect(distance).toBeGreaterThan(near.halfExtent / Math.tan(Math.PI / 18));
+  });
+});
+
+describe('environment background (#2118)', () => {
+  it('keeps the sky lighting behind a solid colour background', async () => {
+    const { scene } = await makeScene();
+    const env = scene.querySelector('#environment');
+    env.setAttribute('street-environment', {
+      background: 'color',
+      backgroundColor: '#000000'
+    });
+    const three = scene.object3D;
+    expect(three.background.isColor).toBe(true);
+    expect(three.background.getHexString()).toBe('000000');
+    expect(three.environment?.isTexture).toBe(true);
+
+    env.setAttribute('street-environment', 'background', 'sky');
+    expect(three.background).toBe(three.environment);
+  });
+
+  it('migrates the old color preset to day lighting with a colour background', async () => {
+    const { scene } = await makeScene('color');
+    const data = scene
+      .querySelector('#environment')
+      .getAttribute('street-environment');
+    expect(data.preset).toBe('day');
+    expect(data.background).toBe('color');
+    expect(scene.object3D.environment?.isTexture).toBe(true);
+  });
+});
+
+describe('sky across scene switches', () => {
+  // Stand in a loaded sky for the download the component just started.
+  function finishSky(component) {
+    const texture = new window.THREE.Texture();
+    texture.userData.skySrc = component.pendingSky;
+    component.pendingSky = null;
+    component.useSkyTexture(texture);
+    return texture;
+  }
+  const readd = (el, value = '') => {
+    el.removeAttribute('street-environment');
+    el.setAttribute('street-environment', value);
+    return el.components['street-environment'];
+  };
+
+  it('keeps the same sky without disposing or downloading it again', async () => {
+    const { scene } = await makeScene();
+    const el = scene.querySelector('#environment');
+    const sky = finishSky(el.components['street-environment']);
+    let disposed = false;
+    sky.addEventListener('dispose', () => (disposed = true));
+
+    const next = readd(el);
+    expect(next.skyTexture).toBe(sky);
+    expect(next.pendingSky ?? null).toBe(null);
+    expect(scene.object3D.background).toBe(sky);
+    expect(disposed).toBe(false);
+  });
+
+  it('disposes the old sky when the next scene uses another', async () => {
+    const { scene } = await makeScene();
+    const el = scene.querySelector('#environment');
+    const sky = finishSky(el.components['street-environment']);
+    let disposed = false;
+    sky.addEventListener('dispose', () => (disposed = true));
+
+    readd(el, 'preset: night');
+    expect(disposed).toBe(true);
+  });
+
+  it('drops a sky download that finishes after the component is removed', async () => {
+    const { scene } = await makeScene();
+    const el = scene.querySelector('#environment');
+    const old = el.components['street-environment'];
+    const path = old.pendingSky;
+    let finish;
+    old.loadSkyTexture = () => new Promise((resolve) => (finish = resolve));
+    old.pendingSky = null;
+    old.setSky(path);
+
+    const next = readd(el, 'preset: night');
+    const nightSky = next.skyTexture;
+    const late = new window.THREE.Texture();
+    let disposed = false;
+    late.addEventListener('dispose', () => (disposed = true));
+    finish(late);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(disposed).toBe(true);
+    expect(scene.object3D.background).toBe(nightSky);
   });
 });

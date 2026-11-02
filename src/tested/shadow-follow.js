@@ -47,28 +47,39 @@ export const SHADOW_MAP_SIZE_MOBILE = 2048;
  * GPU's maximum texture size. Per step:
  * - `reach`: the furthest the focus may sit from the camera horizontally;
  *   less than the half extent, so a level view keeps shadows around its feet.
- * - `distance`: how far back along the sun the light sits from the focus. The
- *   ground across a tilted box spans about one half extent in depth either
- *   side of the focus for a sun 40 degrees up or higher, plus tall buildings.
- * - `far`: the shadow camera's depth range, covering both sides.
+ * The light's distance and depth range depend on the sun too: see
+ * shadowDepth.
  */
 export function shadowSettings({ mobile, maxTextureSize = Infinity }) {
   const mapSize = Math.min(
     mobile ? SHADOW_MAP_SIZE_MOBILE : SHADOW_MAP_SIZE_DESKTOP,
     maxTextureSize
   );
-  const steps = SHADOW_STEPS.map(({ upTo, halfExtent }) => {
-    const distance = 1.5 * halfExtent + 150;
-    return {
-      upTo,
-      halfExtent,
-      texelSize: (2 * halfExtent) / mapSize,
-      reach: halfExtent * 0.6,
-      distance,
-      far: 2 * distance
-    };
-  });
+  const steps = SHADOW_STEPS.map(({ upTo, halfExtent }) => ({
+    upTo,
+    halfExtent,
+    texelSize: (2 * halfExtent) / mapSize,
+    reach: halfExtent * 0.6
+  }));
   return { mapSize, steps };
+}
+
+/**
+ * How far back along the sun the light sits from the focus (`distance`), and
+ * the shadow camera's depth range (`far`), for a box of `halfExtent` and a sun
+ * whose elevation has sine `sinElevation`. Ground across the box, which tilts
+ * toward the sun, spans halfExtent / tan(elevation) in depth either side of
+ * the focus; 150 m more keeps tall buildings' tops in front of the light.
+ * Elevation is clamped to 10 degrees (MIN_SUN_ELEVATION in sun-direction.js).
+ */
+export function shadowDepth(halfExtent, sinElevation) {
+  const sin = Math.min(
+    1,
+    Math.max(Math.sin((10 * Math.PI) / 180), sinElevation)
+  );
+  const spread = (halfExtent * Math.sqrt(1 - sin * sin)) / sin;
+  const distance = spread + 150;
+  return { distance, far: distance + spread + 150 };
 }
 
 /**
