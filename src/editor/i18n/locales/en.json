@@ -1463,6 +1463,9 @@
   "geoSidebar.background": {
     "defaultMessage": "Background"
   },
+  "geoSidebar.backgroundColor": {
+    "defaultMessage": "Background Color"
+  },
   "geoSidebar.centerpointTooltip": {
     "defaultMessage": "This scene's centerpoint is {latitude}, {longitude}"
   },
@@ -1531,6 +1534,9 @@
   },
   "geoSidebar.outOfTokens": {
     "defaultMessage": "You're out of free geo tokens."
+  },
+  "geoSidebar.photoShadowStrength": {
+    "defaultMessage": "Photo Shadow Strength (%)"
   },
   "geoSidebar.preset": {
     "defaultMessage": "Preset"
@@ -2635,6 +2641,36 @@
   },
   "signInModal.signingIn": {
     "defaultMessage": "Signing in"
+  },
+  "sunDial.azimuth": {
+    "defaultMessage": "From {azimuth}°"
+  },
+  "sunDial.east": {
+    "defaultMessage": "E"
+  },
+  "sunDial.elevation": {
+    "defaultMessage": "{elevation}° up"
+  },
+  "sunDial.label": {
+    "defaultMessage": "Sun position: drag the dot; the centre is overhead, the rim is near the horizon"
+  },
+  "sunDial.north": {
+    "defaultMessage": "N"
+  },
+  "sunDial.reset": {
+    "defaultMessage": "Reset to preset"
+  },
+  "sunDial.south": {
+    "defaultMessage": "S"
+  },
+  "sunDial.sun": {
+    "defaultMessage": "Sun"
+  },
+  "sunDial.valueText": {
+    "defaultMessage": "From {azimuth}°, {elevation}° above the horizon"
+  },
+  "sunDial.west": {
+    "defaultMessage": "W"
   },
   "toolbar.edit": {
     "defaultMessage": "Edit"
