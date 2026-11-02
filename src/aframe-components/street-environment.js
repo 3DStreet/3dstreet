@@ -240,8 +240,10 @@ AFRAME.registerComponent('street-environment', {
     this.skyTexture = null;
     this.backgroundColor = new THREE.Color();
     // Bigger shadow map on desktop, chosen once (see shadow-follow.js).
+    // isMobile() is false on standalone headsets, so check them separately.
     this.shadow = shadowSettings({
-      mobile: AFRAME.utils.device.isMobile(),
+      mobile:
+        AFRAME.utils.device.isMobile() || AFRAME.utils.device.isMobileVR(),
       maxTextureSize: this.el.sceneEl.renderer?.capabilities.maxTextureSize
     });
     this.textureLoader = new THREE.TextureLoader();
