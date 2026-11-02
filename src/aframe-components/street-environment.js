@@ -1,16 +1,21 @@
 /* global AFRAME, THREE */
 import { createSkyPlaceholderTexture } from '../sky-placeholder.js';
 import {
+  pickShadowStep,
   shadowFocus,
   shadowSettings,
   snapToShadowTexels
 } from '../tested/shadow-follow.js';
 
+const SHADOW_OFF_EXTENT = 0.01;
+
 // Moves the sun's shadow box to wherever the active camera looks (#439):
 // the light and its target shift together by a texel-snapped offset, so the
-// sun direction never changes. A system rather than a component tick because
-// the editor pauses entities but keeps systems ticking; `sceneEl.camera` is
-// the editor camera in edit/view and the rig camera in drive and WebXR.
+// sun direction never changes. The box grows with camera height in steps and
+// switches off high up (shadow-follow.js). A system rather than a component
+// tick because the editor pauses entities but keeps systems ticking;
+// `sceneEl.camera` is the editor camera in edit/view and the rig camera in
+// drive and WebXR.
 AFRAME.registerSystem('street-environment', {
   init: function () {
     this.env = null;
@@ -22,6 +27,7 @@ AFRAME.registerSystem('street-environment', {
     this.lightDir = new THREE.Vector3();
     this.lastSnapped = new THREE.Vector3(NaN, NaN, NaN);
     this.lastSun = new THREE.Vector3(NaN, NaN, NaN);
+    this.step = 0;
   },
 
   tick: function () {
@@ -32,28 +38,58 @@ AFRAME.registerSystem('street-environment', {
     const light = lightEl.getObject3D('light');
     if (!light || !light.castShadow || !light.target) return;
 
-    // Where the light sits inside its entity with no follow offset (A-Frame
-    // nudges directional lights to y = -1). Re-read if A-Frame rebuilt it.
+    // Where the light sits inside its entity with no follow offset. Re-read
+    // if A-Frame rebuilt the light.
     if (env.followLight !== light) {
       env.followLight = light;
       env.restLocal.copy(light.position);
       this.lastSnapped.set(NaN, NaN, NaN);
     }
 
-    // The sun at rest, relative to the default target at the world origin.
-    const sun = lightEl.object3D.localToWorld(this.sun.copy(env.restLocal));
-
     const e = camera.matrixWorld.elements;
     this.camPos.set(e[12], e[13], e[14]);
+    const steps = env.shadow.steps;
+    const index = pickShadowStep(this.camPos.y, this.step, steps);
+    const shadowCam = light.shadow.camera;
+    if (index >= steps.length) {
+      // Off: shrink the box to nothing (ground outside it reads as lit),
+      // render that empty map once, then skip the shadow pass entirely.
+      // Re-applied if a preset change (setLights) reset the shadow camera.
+      if (this.step !== index || shadowCam.right !== SHADOW_OFF_EXTENT) {
+        this.step = index;
+        shadowCam.left = shadowCam.bottom = -SHADOW_OFF_EXTENT;
+        shadowCam.right = shadowCam.top = SHADOW_OFF_EXTENT;
+        shadowCam.updateProjectionMatrix();
+        light.shadow.autoUpdate = false;
+        light.shadow.needsUpdate = true;
+      }
+      return;
+    }
+    const step = steps[index];
+    // Apply the step on a change, and again if a preset change (setLights)
+    // reset the shadow camera through the light component.
+    if (
+      this.step !== index ||
+      shadowCam.right !== step.halfExtent ||
+      shadowCam.far !== step.far
+    ) {
+      this.step = index;
+      shadowCam.left = shadowCam.bottom = -step.halfExtent;
+      shadowCam.right = shadowCam.top = step.halfExtent;
+      shadowCam.near = 0.5;
+      shadowCam.far = step.far;
+      shadowCam.updateProjectionMatrix();
+      light.shadow.autoUpdate = true;
+      this.lastSnapped.set(NaN, NaN, NaN);
+    }
+
+    // The sun's direction: from the light at rest toward the default target
+    // at the world origin.
+    const sun = lightEl.object3D.localToWorld(this.sun.copy(env.restLocal));
     this.camDir.set(-e[8], -e[9], -e[10]).normalize();
-    shadowFocus(this.camPos, this.camDir, env.shadow.reach, 0, this.focus);
+    shadowFocus(this.camPos, this.camDir, step.reach, 0, this.focus);
     this.lightDir.copy(sun).negate().normalize();
-    snapToShadowTexels(
-      this.focus,
-      this.lightDir,
-      env.shadow.texelSize,
-      this.snapped
-    );
+    snapToShadowTexels(this.focus, this.lightDir, step.texelSize, this.snapped);
 
     if (this.snapped.equals(this.lastSnapped) && sun.equals(this.lastSun)) {
       return;
@@ -63,8 +99,10 @@ AFRAME.registerSystem('street-environment', {
 
     light.target.position.copy(this.snapped);
     light.target.updateMatrixWorld();
-    // `sun` is a scratch vector from here on.
-    light.position.copy(lightEl.object3D.worldToLocal(sun.add(this.snapped)));
+    // The light sits `distance` back along the sun from the focus. `sun` is
+    // a scratch vector from here on.
+    sun.copy(this.lightDir).multiplyScalar(-step.distance).add(this.snapped);
+    light.position.copy(lightEl.object3D.worldToLocal(sun));
   }
 });
 
@@ -190,11 +228,12 @@ AFRAME.registerComponent('street-environment', {
   },
 
   setLights: function (intensity1, intensity2) {
-    const { halfExtent: h, mapSize } = this.shadow;
+    const { mapSize, steps } = this.shadow;
+    const h = steps[0].halfExtent;
     this.light1.setAttribute('light', 'intensity', intensity1);
     this.light2.setAttribute(
       'light',
-      `intensity: ${intensity2}; castShadow: true; shadowCameraBottom: ${-h}; shadowCameraLeft: ${-h}; shadowCameraRight: ${h}; shadowCameraTop: ${h}; shadowMapHeight: ${mapSize}; shadowMapWidth: ${mapSize}`
+      `intensity: ${intensity2}; castShadow: true; shadowCameraBottom: ${-h}; shadowCameraLeft: ${-h}; shadowCameraRight: ${h}; shadowCameraTop: ${h}; shadowCameraFar: ${steps[0].far}; shadowMapHeight: ${mapSize}; shadowMapWidth: ${mapSize}`
     );
   },
 

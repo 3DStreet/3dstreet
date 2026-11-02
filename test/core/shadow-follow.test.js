@@ -1,6 +1,7 @@
 /* global describe, it */
 import assert from 'assert';
 import {
+  pickShadowStep,
   shadowFocus,
   shadowSettings,
   snapToShadowTexels
@@ -49,7 +50,7 @@ describe('shadowFocus', () => {
 
 describe('snapToShadowTexels', () => {
   const lightDir = norm(v(40, -55, 43));
-  const t = shadowSettings({ mobile: false }).texelSize;
+  const t = shadowSettings({ mobile: false }).steps[0].texelSize;
 
   it('moves a point less than one texel diagonal', () => {
     const p = v(12.3456, 0, -7.891);
@@ -94,13 +95,47 @@ describe('shadowSettings', () => {
     const mobile = shadowSettings({ mobile: true });
     assert.strictEqual(desktop.mapSize, 4096);
     assert.strictEqual(mobile.mapSize, 2048);
-    assert.strictEqual(desktop.halfExtent, mobile.halfExtent);
-    close(desktop.texelSize, (2 * desktop.halfExtent) / 4096);
-    assert.ok(desktop.texelSize < 0.035);
+    const [near] = desktop.steps;
+    assert.strictEqual(near.halfExtent, mobile.steps[0].halfExtent);
+    close(near.texelSize, (2 * near.halfExtent) / 4096);
+    assert.ok(near.texelSize < 0.035);
   });
 
   it('never exceeds the GPU maximum texture size', () => {
     const s = shadowSettings({ mobile: false, maxTextureSize: 2048 });
     assert.strictEqual(s.mapSize, 2048);
+  });
+});
+
+describe('shadow steps', () => {
+  const { steps } = shadowSettings({ mobile: false });
+
+  it('grows the box with height: 50 m, 200 m, then off above 500 m', () => {
+    assert.deepStrictEqual(
+      steps.map((step) => step.upTo),
+      [50, 200, 500]
+    );
+    assert.strictEqual(pickShadowStep(1.7, 0, steps), 0);
+    assert.strictEqual(pickShadowStep(120, 0, steps), 1);
+    assert.strictEqual(pickShadowStep(300, 0, steps), 2);
+    assert.strictEqual(pickShadowStep(600, 0, steps), 3);
+  });
+
+  it('waits below a boundary before stepping back down', () => {
+    assert.strictEqual(pickShadowStep(48, 1, steps), 1);
+    assert.strictEqual(pickShadowStep(44, 1, steps), 0);
+    assert.strictEqual(pickShadowStep(480, 3, steps), 3);
+    assert.strictEqual(pickShadowStep(100, 3, steps), 1);
+    assert.strictEqual(pickShadowStep(10, 3, steps), 0);
+  });
+
+  it('keeps every corner of the ground in front of the light', () => {
+    // Ground across a box tilted toward a sun 40 degrees up spans about
+    // halfExtent / tan(40) in depth either side of the focus.
+    const spread = (h) => h / Math.tan((40 * Math.PI) / 180);
+    for (const step of steps) {
+      assert.ok(step.distance - spread(step.halfExtent) > 50);
+      assert.ok(step.far - step.distance > spread(step.halfExtent));
+    }
   });
 });

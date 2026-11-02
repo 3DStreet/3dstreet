@@ -16,34 +16,77 @@
  * objects ({x, y, z}; THREE.Vector3 works) because they run every frame.
  */
 
-/** Half the side of the square shadow box, in metres. */
-export const SHADOW_HALF_EXTENT = 70;
-/** Shadow map resolution on desktop: about 3.4 cm per texel. */
+/**
+ * The shadow box grows with camera height above the ground, in steps so the
+ * map's texels stay put between steps: sharp at street level, coarse from
+ * the air, where one screen pixel already covers tens of centimetres. Above
+ * the last step shadows switch off: buildings are a few pixels tall and the
+ * pass would only add cost. Heights and half extents in metres.
+ */
+export const SHADOW_STEPS = [
+  { upTo: 50, halfExtent: 70 },
+  { upTo: 200, halfExtent: 280 },
+  { upTo: 500, halfExtent: 700 }
+];
+/**
+ * Going back down, the camera must drop this fraction below a step's height
+ * before the smaller box returns, so hovering at a boundary can't flicker.
+ */
+export const SHADOW_STEP_HYSTERESIS = 0.9;
+/** Shadow map resolution on desktop: about 3.4 cm per texel at street level. */
 export const SHADOW_MAP_SIZE_DESKTOP = 4096;
 /**
  * Shadow map resolution on phones, tablets and standalone headsets: a quarter
  * of the GPU memory and fill (16 MB instead of 64 MB) at about 6.8 cm per
- * texel, so thin props cast slightly softer, blockier shadows.
+ * texel at street level, so thin props cast slightly softer, blockier shadows.
  */
 export const SHADOW_MAP_SIZE_MOBILE = 2048;
 
 /**
  * Shadow box settings, chosen once at startup. The map never exceeds the
- * GPU's maximum texture size. `reach` is the furthest the focus may sit from
- * the camera horizontally: less than the half extent, so a street-level view
- * still keeps shadows around its feet.
+ * GPU's maximum texture size. Per step:
+ * - `reach`: the furthest the focus may sit from the camera horizontally;
+ *   less than the half extent, so a level view keeps shadows around its feet.
+ * - `distance`: how far back along the sun the light sits from the focus. The
+ *   ground across a tilted box spans about one half extent in depth either
+ *   side of the focus for a sun 40 degrees up or higher, plus tall buildings.
+ * - `far`: the shadow camera's depth range, covering both sides.
  */
 export function shadowSettings({ mobile, maxTextureSize = Infinity }) {
   const mapSize = Math.min(
     mobile ? SHADOW_MAP_SIZE_MOBILE : SHADOW_MAP_SIZE_DESKTOP,
     maxTextureSize
   );
-  return {
-    halfExtent: SHADOW_HALF_EXTENT,
-    mapSize,
-    texelSize: (2 * SHADOW_HALF_EXTENT) / mapSize,
-    reach: SHADOW_HALF_EXTENT * 0.6
-  };
+  const steps = SHADOW_STEPS.map(({ upTo, halfExtent }) => {
+    const distance = 1.5 * halfExtent + 150;
+    return {
+      upTo,
+      halfExtent,
+      texelSize: (2 * halfExtent) / mapSize,
+      reach: halfExtent * 0.6,
+      distance,
+      far: 2 * distance
+    };
+  });
+  return { mapSize, steps };
+}
+
+/**
+ * The step index for a camera `height` above the ground, given the `current`
+ * one. `steps.length` means shadows are off. Steps up switch at once; steps
+ * down wait until the camera is SHADOW_STEP_HYSTERESIS below the boundary.
+ */
+export function pickShadowStep(height, current, steps) {
+  let next = 0;
+  while (next < steps.length && height > steps[next].upTo) next++;
+  if (next >= current) return next;
+  while (
+    current > next &&
+    height <= steps[current - 1].upTo * SHADOW_STEP_HYSTERESIS
+  ) {
+    current--;
+  }
+  return current;
 }
 
 /**
