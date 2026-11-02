@@ -78,6 +78,25 @@ describe('flat-shadow shader', () => {
     expect(shaded.shadowed).toBeLessThan(shaded.sunlit * 0.8);
   });
 
+  it('applies the shared shadow strength to every material at once', async () => {
+    const { setUnlitShadowStrength, DEFAULT_UNLIT_SHADOW_STRENGTH } =
+      await import('../../src/aframe-components/flat-shadow.js');
+    const scene = await makeScene({ shader: 'flat-shadow' });
+    const full = sample(scene);
+    const programs = scene.renderer.info.programs.length;
+    try {
+      setUnlitShadowStrength(0);
+      const none = sample(scene);
+      expect(Math.abs(none.shadowed - none.sunlit)).toBeLessThanOrEqual(1);
+      setUnlitShadowStrength(1);
+      const black = sample(scene);
+      expect(black.shadowed).toBeLessThan(full.shadowed);
+      expect(scene.renderer.info.programs.length).toBe(programs);
+    } finally {
+      setUnlitShadowStrength(DEFAULT_UNLIT_SHADOW_STRENGTH);
+    }
+  });
+
   it('shows no shadow when the mesh does not receive', async () => {
     const off = sample(
       await makeScene({ shader: 'flat-shadow', receive: false })

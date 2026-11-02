@@ -1,0 +1,76 @@
+@use '../../../style/variables.scss';
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dial {
+  flex: none;
+  width: 112px;
+  height: 112px;
+  touch-action: none;
+  cursor: crosshair;
+  border-radius: 50%;
+
+  &:focus-visible {
+    outline: 2px solid variables.$purple;
+    outline-offset: 2px;
+  }
+}
+
+.face {
+  fill: variables.$darkgray-200;
+  stroke: variables.$gray-700;
+}
+
+.guide {
+  stroke: variables.$gray-700;
+}
+
+.cardinal {
+  fill: #999;
+  font-size: 9px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ray {
+  stroke: variables.$purple;
+  stroke-width: 1.5;
+}
+
+.centre {
+  fill: #999;
+}
+
+.sun {
+  fill: variables.$purple;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.reset {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #bbb;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+
+  &:hover {
+    color: #fff;
+  }
+}
