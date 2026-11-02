@@ -1,4 +1,12 @@
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi
+} from 'vitest';
 import { shadowDepth } from '../../src/tested/shadow-follow.js';
 
 // The day sun, (-40, 56, -43) above the origin.
@@ -209,6 +217,17 @@ describe('environment background (#2118)', () => {
 });
 
 describe('sky across scene switches', () => {
+  // The real download (jsdom TextureLoader) settles on its own schedule; if
+  // it errors before a test stands in a loaded sky, pendingSky is already
+  // cleared and the test races it. Keep every download in flight instead.
+  beforeEach(() => {
+    vi.spyOn(
+      window.AFRAME.components['street-environment'].Component.prototype,
+      'loadSkyTexture'
+    ).mockImplementation(() => new Promise(() => {}));
+  });
+  afterEach(() => vi.restoreAllMocks());
+
   // Stand in a loaded sky for the download the component just started.
   function finishSky(component) {
     const texture = new window.THREE.Texture();
