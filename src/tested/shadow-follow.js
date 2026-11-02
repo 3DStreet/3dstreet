@@ -24,7 +24,7 @@
  * pass would only add cost. Heights and half extents in metres.
  */
 export const SHADOW_STEPS = [
-  { upTo: 50, halfExtent: 70 },
+  { upTo: 30, halfExtent: 70 },
   { upTo: 200, halfExtent: 280 },
   { upTo: 500, halfExtent: 700 }
 ];

@@ -110,10 +110,10 @@ describe('shadowSettings', () => {
 describe('shadow steps', () => {
   const { steps } = shadowSettings({ mobile: false });
 
-  it('grows the box with height: 50 m, 200 m, then off above 500 m', () => {
+  it('grows the box with height: 30 m, 200 m, then off above 500 m', () => {
     assert.deepStrictEqual(
       steps.map((step) => step.upTo),
-      [50, 200, 500]
+      [30, 200, 500]
     );
     assert.strictEqual(pickShadowStep(1.7, 0, steps), 0);
     assert.strictEqual(pickShadowStep(120, 0, steps), 1);
@@ -122,8 +122,8 @@ describe('shadow steps', () => {
   });
 
   it('waits below a boundary before stepping back down', () => {
-    assert.strictEqual(pickShadowStep(48, 1, steps), 1);
-    assert.strictEqual(pickShadowStep(44, 1, steps), 0);
+    assert.strictEqual(pickShadowStep(29, 1, steps), 1);
+    assert.strictEqual(pickShadowStep(26, 1, steps), 0);
     assert.strictEqual(pickShadowStep(480, 3, steps), 3);
     assert.strictEqual(pickShadowStep(100, 3, steps), 1);
     assert.strictEqual(pickShadowStep(10, 3, steps), 0);
