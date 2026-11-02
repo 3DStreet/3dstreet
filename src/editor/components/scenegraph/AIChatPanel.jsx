@@ -1155,7 +1155,13 @@ function AIChatPanel() {
 
       const response = result.response;
       const responseText = response.text();
+      // Get function calls
+      const functionCalls = response.functionCalls();
+      const isEmptyTurn =
+        !responseText.trim() && (!functionCalls || functionCalls.length === 0);
 
+      // ai_outcome / ai_finish_reason feed the Tuesday SRE check (empty-turn
+      // rate). $ai_is_error marks the turn as failed in PostHog LLM analytics.
       posthog.capture('$ai_generation', {
         $ai_model: AI_MODEL_ID,
         $ai_provider: 'vertexai',
@@ -1163,11 +1169,15 @@ function AIChatPanel() {
         $ai_input: [{ role: 'user', content: messageText }],
         $ai_input_tokens: response.usageMetadata.promptTokenCount,
         $ai_output_choices: [{ role: 'assistant', content: responseText }],
-        $ai_output_tokens: response.usageMetadata.candidatesTokenCount
+        $ai_output_tokens: response.usageMetadata.candidatesTokenCount,
+        $ai_is_error: isEmptyTurn,
+        ai_outcome: isEmptyTurn
+          ? 'empty'
+          : functionCalls && functionCalls.length
+            ? 'tool_calls'
+            : 'text',
+        ai_finish_reason: response.finishReason || null
       });
-
-      // Get function calls
-      const functionCalls = response.functionCalls();
 
       // Generate a unique response ID for this entire response (text + any function calls)
       const responseId = Date.now() + Math.random().toString(16).slice(2);
@@ -1496,6 +1506,17 @@ function AIChatPanel() {
         error?.message && error.message.toLowerCase() !== 'internal'
           ? error.message
           : '';
+      // Previously failed turns sent no telemetry at all, so an outage looked
+      // like "no usage". Count them so the SRE check can see the error rate.
+      posthog.capture('$ai_generation', {
+        $ai_model: AI_MODEL_ID,
+        $ai_provider: 'vertexai',
+        $ai_trace_id: AI_CONVERSATION_ID,
+        $ai_input: [{ role: 'user', content: messageText }],
+        $ai_is_error: true,
+        $ai_error: error?.code || error?.name || 'unknown',
+        ai_outcome: 'error'
+      });
       const errorResponseId = Date.now() + Math.random().toString(16).slice(2);
       setLatestResponseId(errorResponseId);
       setMessages((prev) => [
