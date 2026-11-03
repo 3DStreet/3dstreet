@@ -1,4 +1,5 @@
 import PropTypes from 'prop-types';
+import { useId } from 'react';
 import { useIntl } from 'react-intl';
 import classNames from 'classnames';
 import useStore from '@/store';
@@ -17,29 +18,33 @@ import {
 // step.
 
 // A checkbox row whose label runs the panel's full width: these labels are
-// sentences, too long for the label column of a property row.
-const PrefRow = ({ id, label, value, onChange, disabled = false, title }) => (
-  <div
-    className={classNames('propertyRow', 'shape-tool-row', {
-      'shape-tool-row--disabled': disabled
-    })}
-    title={title}
-    // BooleanWidget flips its own state on click, so a disabled row has to
-    // stop the click before it gets there.
-    onClickCapture={disabled ? (e) => e.stopPropagation() : undefined}
-  >
-    <BooleanWidget
-      id={id}
-      name={id}
-      value={value}
-      onChange={(_, next) => onChange(next)}
-    />
-    <span className="shape-tool-panel-label">{label}</span>
-  </div>
-);
+// sentences, too long for the label column of a property row. Ids are made per
+// instance, since the display rows can be on screen twice (the tool section
+// and a selected shape's panel).
+const PrefRow = ({ label, value, onChange, disabled = false, title }) => {
+  const id = useId();
+  return (
+    <div
+      className={classNames('propertyRow', 'shape-tool-row', {
+        'shape-tool-row--disabled': disabled
+      })}
+      title={title}
+      // BooleanWidget flips its own state on click, so a disabled row has to
+      // stop the click before it gets there.
+      onClickCapture={disabled ? (e) => e.stopPropagation() : undefined}
+    >
+      <BooleanWidget
+        id={id}
+        name={id}
+        value={value}
+        onChange={(_, next) => onChange(next)}
+      />
+      <span className="shape-tool-panel-label">{label}</span>
+    </div>
+  );
+};
 
 PrefRow.propTypes = {
-  id: PropTypes.string.isRequired,
   label: PropTypes.string.isRequired,
   value: PropTypes.bool.isRequired,
   onChange: PropTypes.func.isRequired,
@@ -65,7 +70,6 @@ export const ShapeDisplayPrefControls = () => {
         </span>
       </div>
       <PrefRow
-        id="shape-pref-measurements"
         label={intl.formatMessage({
           id: 'shapeTool.showMeasurements',
           defaultMessage: 'Measurements'
@@ -74,7 +78,6 @@ export const ShapeDisplayPrefControls = () => {
         onChange={(v) => setSetting('showMeasurements', v)}
       />
       <PrefRow
-        id="shape-pref-angles"
         label={intl.formatMessage({
           id: 'shapeTool.showAngles',
           defaultMessage: 'Angles'
@@ -150,7 +153,6 @@ export const ShapeToolSection = () => {
             </div>
           </div>
           <PrefRow
-            id="shape-pref-align"
             label={intl.formatMessage({
               id: 'shapeTool.alignToAxes',
               defaultMessage: 'Align first side to axes'
@@ -165,7 +167,6 @@ export const ShapeToolSection = () => {
             onChange={(v) => setSetting('alignToAxes', v)}
           />
           <PrefRow
-            id="shape-pref-open-panel"
             label={intl.formatMessage({
               id: 'shapeTool.openPanelOnSelect',
               defaultMessage: 'Open this panel when the Shape Tool is selected'

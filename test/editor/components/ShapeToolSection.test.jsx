@@ -72,6 +72,15 @@ afterEach(() => {
 });
 
 describe('the Shape Tool section', () => {
+  it('shows only while the shape tool is active (fails if it shows whenever the panel is open)', () => {
+    useStore.setState({ shapeDrawActive: false });
+    const view = mount(<ShapeToolSection />);
+    expect(document.querySelector('.shape-tool-section')).toBe(null);
+    act(() => useStore.setState({ shapeDrawActive: true }));
+    expect(document.querySelector('.shape-tool-section')).not.toBe(null);
+    view.unmount();
+  });
+
   it('takes every label and option from the catalog', () => {
     const messages = Object.fromEntries(IDS.map((id) => [id, `[[${id}]]`]));
     mount(<ShapeToolSection />, messages);
@@ -102,6 +111,8 @@ describe('the Shape Tool section', () => {
     const panelRows = screen
       .getByTestId('panel')
       .querySelectorAll('.checkboxAnim');
+    // Both start ticked, so the untick below is seen to change something.
+    expect(panelRows[0].classList.contains('checked')).toBe(true);
     const sectionMeasurements = screen.getAllByText('Measurements')[0];
     fireEvent.click(
       sectionMeasurements.closest('.propertyRow').querySelector('.checkboxAnim')
