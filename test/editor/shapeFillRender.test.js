@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   FILL_LIFT_M,
   FILL_ORDER_BASE,
+  fillAnyPainted,
+  fillLayerState,
+  fillMaterialPainted,
   fillPaintOrder,
-  fillRenderState
+  fillPatternPainted,
+  fillRenderState,
+  wantedPatternKey,
+  wantedSurfaceId
 } from '../../src/aframe-components/shapeFillRender.js';
 import { MARKING_SURFACE_OFFSET } from '../../src/tested/street-segment-utils.js';
 
@@ -220,5 +226,147 @@ describe('FILL_LIFT_M', () => {
       fillPaintOrder(0, 50) - FILL_ORDER_BASE,
       15
     );
+  });
+});
+
+// One table for both layers' paintedness, each row with its LITERAL expected
+// answer, so a rule that two forms got wrong in the same way still fails.
+const PAINTED_ROWS = [
+  { in: { fillOpacity: 40, fillPattern: 'none' }, m: true, p: false },
+  {
+    in: { fillOpacity: 0, fillPattern: 'stripes', fillPatternOpacity: 100 },
+    m: false,
+    p: true
+  },
+  {
+    in: { fillOpacity: 0, fillPattern: 'none', fillPatternOpacity: 100 },
+    m: false,
+    p: false
+  },
+  {
+    in: { fillOpacity: 0, fillPattern: 'zigzag', fillPatternOpacity: 100 },
+    m: false,
+    p: false
+  },
+  {
+    in: { fillOpacity: -5, fillPattern: 'dots', fillPatternOpacity: -5 },
+    m: false,
+    p: false
+  },
+  {
+    in: { fillOpacity: 170, fillPattern: 'dots', fillPatternOpacity: 170 },
+    m: true,
+    p: true
+  },
+  {
+    in: { fillOpacity: NaN, fillPattern: 'dots', fillPatternOpacity: NaN },
+    m: false,
+    p: false
+  },
+  {
+    in: {
+      fillOpacity: '30',
+      fillPattern: 'crosshatch',
+      fillPatternOpacity: '30'
+    },
+    m: true,
+    p: true
+  },
+  {
+    in: { fillOpacity: 0, fillPattern: 'checkerboard', fillPatternOpacity: 0 },
+    m: false,
+    p: false
+  }
+];
+
+describe('fill layer paintedness', () => {
+  it('answers every row with its literal, in every form', () => {
+    for (const row of PAINTED_ROWS) {
+      const state = fillLayerState(row.in);
+      expect(state.material.painted).toBe(row.m);
+      expect(state.pattern.painted).toBe(row.p);
+      expect(state.anyPainted).toBe(row.m || row.p);
+      expect(fillMaterialPainted(row.in)).toBe(row.m);
+      expect(fillPatternPainted(row.in)).toBe(row.p);
+      expect(fillAnyPainted(row.in)).toBe(row.m || row.p);
+      expect(typeof fillAnyPainted(row.in)).toBe('boolean');
+    }
+  });
+
+  it('gives each layer its own clamped opacity', () => {
+    const state = fillLayerState({
+      fillOpacity: 170,
+      fillPattern: 'stripes',
+      fillPatternOpacity: 25
+    });
+    expect(state.material.opacity).toBe(1);
+    expect(state.pattern.opacity).toBe(0.25);
+  });
+});
+
+describe('what each fill layer wants loaded', () => {
+  const closedGrass = { closed: true, fillMaterial: 'grass', fillOpacity: 100 };
+
+  it('wants a surface only when closed, painted and textured', () => {
+    expect(wantedSurfaceId(closedGrass)).toBe('grass-texture');
+    expect(wantedSurfaceId({ ...closedGrass, closed: false })).toBe(null);
+    expect(wantedSurfaceId({ ...closedGrass, fillOpacity: 0 })).toBe(null);
+    expect(wantedSurfaceId({ ...closedGrass, fillMaterial: 'solid' })).toBe(
+      null
+    );
+    expect(wantedSurfaceId({ ...closedGrass, fillMaterial: 'asphalt' })).toBe(
+      null
+    );
+  });
+
+  it('keys a pattern on its exact effective spacing and width', () => {
+    const base = {
+      closed: true,
+      fillPattern: 'stripes',
+      fillPatternOpacity: 100,
+      fillPatternSpacing: 1,
+      fillPatternWidth: 0.15
+    };
+    expect(wantedPatternKey(base)).toBe(wantedPatternKey({ ...base }));
+    // Same ratio, different tuple: different tiles.
+    expect(wantedPatternKey(base)).not.toBe(
+      wantedPatternKey({
+        ...base,
+        fillPatternSpacing: 2,
+        fillPatternWidth: 0.3
+      })
+    );
+    const dots = { ...base, fillPattern: 'dots' };
+    expect(wantedPatternKey(dots)).not.toBe(
+      wantedPatternKey({
+        ...dots,
+        fillPatternSpacing: 2,
+        fillPatternWidth: 0.3
+      })
+    );
+    const checker = { ...base, fillPattern: 'checkerboard' };
+    expect(wantedPatternKey(checker)).not.toBe(
+      wantedPatternKey({ ...checker, fillPatternSpacing: 2 })
+    );
+    // Checkerboard ignores width.
+    expect(wantedPatternKey(checker)).toBe(
+      wantedPatternKey({ ...checker, fillPatternWidth: 0.6 })
+    );
+    // Guarded values key as drawn.
+    expect(wantedPatternKey({ ...base, fillPatternWidth: 5 })).toBe(
+      wantedPatternKey({ ...base, fillPatternWidth: 1 })
+    );
+  });
+
+  it('wants a pattern exactly when closed and the pattern is painted', () => {
+    for (const row of PAINTED_ROWS) {
+      for (const closed of [true, false]) {
+        const data = { ...row.in, closed };
+        expect(wantedPatternKey(data) !== null).toBe(
+          closed && fillPatternPainted(data)
+        );
+        expect(wantedPatternKey(data) !== null).toBe(closed && row.p);
+      }
+    }
   });
 });

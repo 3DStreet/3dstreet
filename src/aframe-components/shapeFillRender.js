@@ -1,4 +1,11 @@
 import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
+import {
+  FILL_MATERIALS,
+  effectivePatternSize,
+  patternKey,
+  resolveFillMaterial,
+  resolveFillPattern
+} from '../tested/shape-fill.js';
 
 // Where a closed shape's fill is painted in the draw order, and how far it sits
 // above the shape's own plane. Pure and dependency-free so the rules can be
@@ -154,8 +161,74 @@ export const FILL_LIFT_M = MARKING_SURFACE_OFFSET + 0.01;
 // There is deliberately no `opaque` flag: 100% is not a distinct render state.
 // See the material's construction in shape.js for why that matters.
 export function fillRenderState(fillOpacityPercent) {
-  const pct = Number(fillOpacityPercent);
-  const clamped = Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : 0;
-  const opacity = clamped / 100;
+  const opacity = opacityFraction(fillOpacityPercent);
   return { opacity, painted: opacity > 0 };
+}
+
+function opacityFraction(percent) {
+  const pct = Number(percent);
+  const clamped = Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : 0;
+  return clamped / 100;
+}
+
+// A fill has two layers - the MATERIAL (a solid colour or a surface texture)
+// and the PATTERN drawn over it - and each is on or off by its own opacity,
+// and nothing else. A layer that is not painted is neither drawn nor exported.
+// These predicates are the one definition of "painted"; everything that asks
+// (the build gate, the cap's draw groups, the export marker, the layer
+// resources) asks here.
+//
+// The three booleans allocate nothing: the build gate and the cap's groups
+// read them on every re-derive, which under a vertex drag is every frame.
+export function fillMaterialPainted(data) {
+  return opacityFraction(data.fillOpacity) > 0;
+}
+
+export function fillPatternPainted(data) {
+  return (
+    resolveFillPattern(data.fillPattern) !== 'none' &&
+    opacityFraction(data.fillPatternOpacity) > 0
+  );
+}
+
+export function fillAnyPainted(data) {
+  return fillMaterialPainted(data) || fillPatternPainted(data);
+}
+
+// Both layers' opacity and paintedness, for the per-edit appearance sync.
+export function fillLayerState(data) {
+  const material = fillRenderState(data.fillOpacity);
+  const pattern = {
+    opacity: opacityFraction(data.fillPatternOpacity),
+    painted: fillPatternPainted(data)
+  };
+  return { material, pattern, anyPainted: material.painted || pattern.painted };
+}
+
+// What each layer needs loaded or drawn right now. A layer's resource is
+// wanted only while the shape is closed and that layer is painted, so the draw
+// tool's preview, an open polyline and a 0% layer download and draw nothing.
+// Asked on every property sync, not when the cap is built, because a shape can
+// be created with a texture already set (a loaded scene, a sticky style, a
+// duplicate) a frame before it has a cap.
+
+// The surface texture's asset id, or null.
+export function wantedSurfaceId(data) {
+  if (!data.closed || !fillMaterialPainted(data)) return null;
+  return FILL_MATERIALS[resolveFillMaterial(data.fillMaterial)].textureId;
+}
+
+// The pattern tile's key (one per exact pattern, spacing and width as drawn),
+// or null. Builds a string, so it is for the per-edit sync, never per frame.
+export function wantedPatternKey(data) {
+  if (!data.closed || !fillPatternPainted(data)) return null;
+  const size = effectivePatternSize(
+    data.fillPatternSpacing,
+    data.fillPatternWidth
+  );
+  return patternKey(
+    resolveFillPattern(data.fillPattern),
+    size.spacing,
+    size.width
+  );
 }
