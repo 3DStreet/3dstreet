@@ -3,10 +3,10 @@ import { defineMessages, useIntl } from 'react-intl';
 import Component from './Component';
 import PropertyRow from './PropertyRow';
 import MaterialControls from './MaterialControls';
-import OpacitySliderRow from '../widgets/OpacitySliderRow';
 import { FocusHotspotSectionControls } from './FocusHotspotSidebar';
 import { BuildAreaSectionControls } from './BuildAreaSidebar';
 import { ViewerStartSectionControls } from './ViewerStartSidebar';
+import { ShapeStyleSectionControls } from './ShapeStyleSectionControls';
 import { AwesomeIcon } from './AwesomeIcon';
 import { faBullseye, faCubes } from '@fortawesome/free-solid-svg-icons';
 import { getFeaturedComponentNames } from '../../lib/featuredComponents';
@@ -23,35 +23,6 @@ function getHiddenGeometryProps(component) {
       HIDDEN_GEOMETRY_PROPS.includes(name) || name.startsWith('segments')
   );
 }
-
-// A shape's fill opacity is stored as an integer percent, so it gets the same
-// slider-plus-number treatment as the map layer's opacity rather than a bare
-// number field: the unit is the whole question ("40" alone reads equally well
-// as 40% or as a 0..1 opacity typed wrong), and a fill is a value users scrub
-// to taste rather than type. The label carries the unit, as the map layer's
-// does.
-const SHAPE_PROPERTY_RENDERERS = {
-  fillOpacity: ({ entity, value }) => (
-    <OpacitySliderRow
-      id="shape-fillOpacity"
-      label="Fill Opacity (%)"
-      min={0}
-      max={100}
-      step={1}
-      value={typeof value === 'number' ? value : 0}
-      onCommit={(newValue) =>
-        AFRAME.INSPECTOR.execute('entityupdate', {
-          entity,
-          component: 'shape',
-          property: 'fillOpacity',
-          value: newValue,
-          noSelectEntity: true
-        })
-      }
-      showNumberInput
-    />
-  )
-};
 
 // The Starting View's fov is the one number row with a reset button: the
 // value is a lens setting whose "right" value is not obvious, so the row
@@ -73,7 +44,6 @@ const VIEWER_START_PROPERTY_RENDERERS = {
 };
 
 const PROPERTY_RENDERERS = {
-  shape: SHAPE_PROPERTY_RENDERERS,
   'viewer-start': VIEWER_START_PROPERTY_RENDERERS
 };
 
@@ -88,14 +58,15 @@ function getHiddenProps(name, component) {
   if (name === 'geo-flatten') {
     return ['mode'];
   }
-  // The shape component's section is titled Style (#2069): its first-class
-  // rows are closed + fill/line appearance (which the alphabetical row sort
-  // already orders as closed, fillColor, fillOpacity, lineColor, lineWidth).
+  // The shape component's section is titled Style (#2069) and is curated
+  // like the two below: the line rows and a Fill group whose rows depend on
+  // the choices made in it (ShapeStyleSectionControls). So a new shape
+  // property does not appear here by itself - add its row deliberately.
   // curveType/filletRadius are curated controls in the Shape section above
-  // (ShapeSidebar); selectInside is an escape valve. All stay reachable under
-  // Advanced Components.
+  // (ShapeSidebar); selectInside is an escape valve. Every property stays
+  // reachable under Advanced Components.
   if (name === 'shape') {
-    return ['selectInside', 'curveType', 'filletRadius'];
+    return Object.keys(component?.schema || {});
   }
   // The hotspot section renders every property through its own curated
   // controls (labelled rows, a real textarea for the description, the
@@ -119,6 +90,9 @@ function getSectionChildren(name, entity) {
   }
   if (name === 'build-area') {
     return <BuildAreaSectionControls entity={entity} />;
+  }
+  if (name === 'shape') {
+    return <ShapeStyleSectionControls entity={entity} />;
   }
   return undefined;
 }

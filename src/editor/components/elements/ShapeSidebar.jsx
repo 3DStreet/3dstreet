@@ -64,7 +64,7 @@ const shapeWorldPos = new THREE.Vector3();
 // way. Implemented as position swaps rather than DOM reordering — the
 // existing shapevertexmove command handles each leg, and a 'multi' makes
 // the whole reversal one undo step.
-function reverseShapeDirection(entity) {
+export function reverseShapeDirection(entity) {
   const els = getShapeVertexEls(entity);
   if (els.length < 2) return false;
   const positions = els.map((el) => {
@@ -642,8 +642,8 @@ ShapeSidebar.propTypes = {
 
 // Curated rows at the foot of the Shape section, after the measurements
 // (#2069): Reverse direction, plus curve style and — for arcs — corner
-// radius. The featured "shape" component section (titled Style) keeps only
-// the schema-driven closed/fill/line rows. curveType/filletRadius are shape props (a
+// radius. The featured "shape" component section (titled Style) holds the
+// line and fill appearance rows (ShapeStyleSectionControls). curveType/filletRadius are shape props (a
 // curve is a property of the drawing, street or no street — any street
 // following this shape as its path reads them from here); their raw fields are
 // hidden from the schema rows in favour of these controls. Values are read
