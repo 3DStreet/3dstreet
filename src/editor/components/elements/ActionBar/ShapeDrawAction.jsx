@@ -2,9 +2,9 @@
 
 // Shape draw tool: click to lay down polyline vertices on the ground plane
 // with live length + angle readouts, finish with Enter / Esc (or double-click
-// to place a last point and finish), step back with Backspace. Generalises the removed Ruler tool from two
-// fixed points to an N-vertex open polyline, and adds the readout layer
-// (ShapeReadouts). Which readouts show follows the editor's display
+// to place a last point and finish), step back with Backspace. Generalises
+// the removed Ruler tool from two fixed points to an N-vertex open polyline,
+// and adds the readout layer (ShapeReadouts). Which readouts show follows the editor's display
 // preferences (shapeToolPrefs.js), read at every render.
 //
 // Angle snap, when on, quantises the direction from the last vertex to the
@@ -220,9 +220,10 @@ function openShapeToolPanelIfWanted() {
 // GUIDE_OVERSHOOT times the side being placed, so it reaches past the pointer,
 // and never shorter than GUIDE_MIN_LENGTH_M.
 //
-// Created once and kept, toggled by `visible`, like the group outline: a fat
-// line sets its own resolution from the renderer on every draw, so one created
-// late draws at the right width. Never raycastable — a fat line's raycast
+// Created once and kept, toggled by `visible`, like the group outline. Safe to
+// create lazily: besides the viewport's resize path (fatLines.js),
+// LineSegments2 sets its material's resolution from the renderer's viewport on
+// every draw, so a line created late draws at the right width. Never raycastable — a fat line's raycast
 // needs a camera, and the scene (which holds the editor's helpers) is probed
 // by camera-less raycasters.
 const GUIDE_OVERSHOOT = 2;
@@ -404,8 +405,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       );
     }
 
-    // First-vertex close-target marker (manual-close mode): a flat ring shown when
-    // the cursor is within CLOSE_PX_TOLERANCE of the first vertex. Tool-owned,
+    // First-vertex close-target marker: a flat ring shown when the pointer is
+    // within CLOSE_PX_TOLERANCE of the first vertex. Tool-owned,
     // created once, hidden by default, disposed on cleanup.
     const highlightGeo = new THREE.TorusGeometry(0.5, 0.06, 8, 24);
     const highlightMat = new THREE.MeshBasicMaterial({
@@ -475,7 +476,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     // Recolour the preview red on an invalid (self-intersecting) placement, and
     // back to the style colour when valid. Idempotent — only acts on a real
-    // flip — so every path (move, miss, close, mode switch) can call it freely
+    // flip — so every path (move, miss, close, step back) can call it freely
     // without leaving the preview stuck red.
     //
     // Goes through the shape's own invalid signal rather than writing
@@ -510,8 +511,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // How closing the committed ring resolves, at the snap step in force now.
     // Computed afresh by every reader — the preview on each armed move and
     // every commit path — so none can see a stale answer. It runs only while
-    // armed, and is cheap: under a millisecond for a 50-vertex shape at a 1°
-    // step, the worst case.
+    // armed: one pass over at most 360 / step candidates, each tested against
+    // every side, which is cheap for any shape drawn by hand.
     const closePlanNow = () =>
       closePlan(
         verticesRef.current,
@@ -644,11 +645,11 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       const n = ring.length;
       // The ring with its first vertex repeated, so index n closes it.
       const closedPolyline = [...ring, ring[0]];
-      const last = n - 1;
+      const lastIdx = n - 1;
       const slidSide = n - 2; // last-but-one → last vertex
       const closingCorners = [
-        [last - 1, last, n], // at the last vertex
-        [last, 0, 1] // at the first vertex
+        [lastIdx - 1, lastIdx, n], // at the last vertex
+        [lastIdx, 0, 1] // at the first vertex
       ];
       let notice = null;
       if (plan.refused && snapIsOn()) {
@@ -668,16 +669,29 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       });
     }
 
-    // A snap step changed from the keyboard while armed sends no pointer
-    // event, so the armed preview is repainted here. Only a repaint: every
-    // commit computes its own plan at the step then in force.
-    const repaintArmed = () => {
-      if (armedRef.current) syncArmed(true);
+    // Where the pointer last was over the canvas, so the preview can be
+    // redrawn for it when something other than a move changes it.
+    let lastPointer = null;
+
+    // A snap step changed from the keyboard (a dropdown left focused) sends no
+    // pointer event, so the preview is redrawn here for the pointer where it
+    // rests: the direction shown is then the one a click there would place.
+    // Only a repaint: every placement and commit reads the step itself.
+    const onSnapStepChanged = () => {
+      if (committingRef.current || !lastPointer) return;
+      previewAt(lastPointer.x, lastPointer.y);
     };
 
     const onPointerMove = (e) => {
       if (committingRef.current) return;
-      const raw = pickForNextVertex(e.clientX, e.clientY);
+      lastPointer = { x: e.clientX, y: e.clientY };
+      previewAt(e.clientX, e.clientY);
+    };
+
+    // The preview for a pointer at (clientX, clientY): armed over the first
+    // vertex, or the next placement with its refusal, readouts and guide.
+    const previewAt = (clientX, clientY) => {
+      const raw = pickForNextVertex(clientX, clientY);
       if (!raw) {
         collapseTrailing();
         readoutsRef.current && readoutsRef.current.clear();
@@ -687,7 +701,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       }
       // Close-gesture arming, on the POINTER — the snapped point is generally
       // on no ray through the first vertex.
-      if (isPointerOverFirstVertex(e.clientX, e.clientY)) {
+      if (isPointerOverFirstVertex(clientX, clientY)) {
         setTrailing(verticesRef.current[0]); // preview the closing edge
         syncArmed(true);
         return;
@@ -701,7 +715,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       const n = verts.length;
       const verdict = placementVerdict(verts, point, MIN_DRAW_VERTEX_SPACING);
       setTrailing(point);
-      // The live corner is at the last placed vertex.
+      // Corners are [previous, corner, next] indices; the live corner is at
+      // the last placed vertex.
       refreshReadouts([...verts, point], {
         corners: n >= 2 ? [[n - 2, n - 1, n]] : []
       });
@@ -722,6 +737,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // same state a pick-miss leaves.
     const onPointerLeave = () => {
       if (committingRef.current) return;
+      lastPointer = null;
       collapseTrailing();
       readoutsRef.current && readoutsRef.current.clear();
       syncArmed(false);
@@ -996,7 +1012,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     window.addEventListener('keyup', onKeyUp, true);
     const unsubscribeStep = useStore.subscribe(
       (state) => state.shapeToolSettings.snapStep,
-      repaintArmed
+      onSnapStepChanged
     );
 
     // --- deactivate (cleanup) --------------------------------------------

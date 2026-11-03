@@ -371,6 +371,7 @@ describe('Shape Tool settings while drawing', () => {
     const second = drawnPoints()[1];
     expect(headingDeg(first, second)).toBeCloseTo(20, 4);
     // The next side snaps square to that free side, not to the world.
+    // A pointer 5° past square to the free side.
     const next = at(second, 20 + 95);
     moveToWorld(next.x, next.z);
     expect(headingDeg(second, trailing())).toBeCloseTo(110, 6);
@@ -391,8 +392,8 @@ describe('Shape Tool settings while drawing', () => {
     drawingTool();
     roughRectangle();
     const before = plainPoints();
-    const oracle = closeTargetFor(before);
-    expectNear(oracle, { x: 0, z: 8 });
+    const closeTarget = closeTargetFor(before);
+    expectNear(closeTarget, { x: 0, z: 8 });
     expectNear(before[3], { x: -3, z: 8 });
     // The pointer over the first point snaps, from the last, to a point well
     // away from it: arming from the snapped point would not arm.
@@ -401,7 +402,7 @@ describe('Shape Tool settings while drawing', () => {
     const b = screenOf(snapped);
     expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(ARM_PX);
     armOverFirst();
-    expectNear(drawnPoints()[3], oracle);
+    expectNear(drawnPoints()[3], closeTarget);
     moveToWorld(-5, 4);
     expectNear(drawnPoints()[3], before[3]);
 
@@ -411,10 +412,10 @@ describe('Shape Tool settings while drawing', () => {
     clickAt(10, 5);
     clickAt(-2, 5);
     const before2 = plainPoints();
-    const oracle2 = closeTargetFor(before2);
-    expectNear(oracle2, { x: 0, z: 5 });
+    const closeTarget2 = closeTargetFor(before2);
+    expectNear(closeTarget2, { x: 0, z: 5 });
     armOverFirst();
-    expectNear(drawnPoints()[3], oracle2);
+    expectNear(drawnPoints()[3], closeTarget2);
     const ring = drawnPoints();
     const s = screenOf(v3(0, 0));
     click(s.x, s.y);
@@ -481,6 +482,25 @@ describe('Shape Tool settings while drawing', () => {
     expect(headingDeg(placed[1], trailing())).toBeCloseTo(45, 6);
     const now = drawnPoints();
     now.forEach((p, i) => expectNear(p, placed[i]));
+  });
+
+  it('redraws the preview for a resting pointer when the step changes, so a click places what is shown (fails if only an armed preview repaints)', () => {
+    setPref('snapStep', 90);
+    drawingTool();
+    clickAt(0, 0);
+    clickAt(10, 0);
+    const placed = drawnPoints();
+    // 40° off the last side: at 90° the shown direction is 0, at 45° it is 45.
+    const rad = (40 * Math.PI) / 180;
+    const rest = v3(10 + 10 * Math.cos(rad), 10 * Math.sin(rad));
+    moveToWorld(rest.x, rest.z);
+    expect(headingDeg(placed[1], trailing())).toBeCloseTo(0, 6);
+    // As an arrow key on a dropdown left focused would: no pointer event.
+    setPref('snapStep', 45);
+    const shown = trailing();
+    expect(headingDeg(placed[1], shown)).toBeCloseTo(45, 6);
+    clickAt(rest.x, rest.z);
+    expectNear(drawnPoints()[2], shown);
   });
 
   it('opens the panels on the properties tab at every activation, unless turned off', () => {
@@ -584,13 +604,13 @@ describe('Shape Tool settings while drawing', () => {
       pickShapeTool();
       roughRectangle();
       const before = plainPoints();
-      const oracle = closeTargetFor(before);
-      expectNear(oracle, { x: 0, z: 8 });
+      const closeTarget = closeTargetFor(before);
+      expectNear(closeTarget, { x: 0, z: 8 });
       armOverFirst();
       exits[name]();
       const created = lastCreate();
       expect(created.shape.closed, name).toBe(true);
-      expectNear(created.vertices[3], oracle);
+      expectNear(created.vertices[3], closeTarget);
     }
   });
 
@@ -833,10 +853,10 @@ describe('Shape Tool settings while drawing', () => {
     // (a) Snap turned off while armed.
     roughRectangle();
     const before = plainPoints();
-    const oracle = closeTargetFor(before);
-    expectNear(oracle, { x: 0, z: 8 });
+    const closeTarget = closeTargetFor(before);
+    expectNear(closeTarget, { x: 0, z: 8 });
     armOverFirst();
-    expectNear(drawnPoints()[3], oracle);
+    expectNear(drawnPoints()[3], closeTarget);
     setPref('snapStep', 0);
     expectNear(drawnPoints()[3], before[3]);
     pressKey('Enter');
