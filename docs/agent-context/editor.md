@@ -84,9 +84,9 @@ in the generator header (`StreetSegmentComponent.jsx`), the clone header, and
 the `detachAllClones` AI tool.
 
 **Shapes:** editor-drawn 2D polylines with an optional filled interior. The code
-spans several directories (see the file map in [docs/shapes.md](../shapes.md)), which is the
-entry point and carries the fill's layers, the vertex-editing commands and the
-sticky-style rule.
+spans several directories; [docs/shapes.md](../shapes.md) is the entry point and carries the
+file map, the fill's layers, the vertex-editing commands and the sticky-style
+rule.
 
 **Custom shaders in the viewport:** the scene renders with a logarithmic
 depth buffer (`index.html`), so any raw `ShaderMaterial` drawn into it (the

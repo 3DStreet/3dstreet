@@ -8,7 +8,7 @@ The code is spread across several directories, so this file is the entry point:
 
 | Where                             | What                                                                                                                                                                   |
 | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`, `shape-fill-layers.js` (a fill's textures)                                         |
+| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`, `shape-fill-textures.js` (a fill's textures)                                       |
 | `src/tested/`                     | `shape-fill.js` (fill catalogues, UV frame, pattern geometry and tile raster)                                                                                          |
 | `src/editor/components/elements/` | `ShapeSidebar.jsx` (properties panel), `ShapeStyleSectionControls.jsx` (the Style section), `SurfaceSwatchOption.jsx`, `ActionBar/ShapeDrawAction.jsx` (the draw tool) |
 | `src/editor/lib/`                 | `shapeStyle.js`, `shapeEditRules.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js`                                            |
@@ -18,10 +18,12 @@ The code is spread across several directories, so this file is the entry point:
 
 ## Fill appearance
 
-A closed shape's fill has two layers: the **material** (Solid color, or a
-street-surface texture at the size a segment paints it) and a **pattern**
-drawn over it (stripes, crosshatch, checkerboard, dots), each on or off by its
-own opacity and nothing else.
+A closed shape's fill has two layers: the **material layer** (Solid color, or
+a street-surface texture at the size a segment paints it) and the **pattern
+layer** drawn over it (stripes, crosshatch, checkerboard, dots), each on or off
+by its own opacity and nothing else. In the code, "material" alone means the
+material layer; each layer is drawn by its own THREE material
+(`fillLayerMaterials`), and `fillTextures` holds the textures they show.
 
 - **One mesh, two materials.** The cap is one mesh whose geometry has a draw
   group per painted layer, `[material, pattern]`, over the same triangles. One
@@ -51,14 +53,19 @@ own opacity and nothing else.
 - **Layer textures are wanted when the shape is closed and that layer is
   painted**, re-checked on every property sync — not when the cap is built — so
   a shape created with a texture already set (a loaded scene, a sticky style, a
-  duplicate, an undone delete) loads it. One per-shape object
-  (`shape-fill-layers.js`) owns them through one transition function.
+  duplicate, an undone delete) loads it, and the draw tool's open preview loads
+  nothing. One per-shape object (`shape-fill-textures.js`) owns them through
+  one transition function.
 - **Surface textures load through the material system** (`loadTexture`), so
   the lazy-texture hook downloads them on first use and they share a source with
-  segments; until one lands the material shows the image's placeholder colour
-  multiplied by the tint, and keeps it if the load fails.
-- **Pattern tiles are drawn in code**, white with the coverage in alpha (the
-  pattern's colour is the material's), shared per scene for each exact
+  segments; until one lands the material layer shows the image's placeholder
+  colour multiplied by the tint, and keeps it if the load fails. A per-scene
+  cache hands a loaded texture to a later shape at once, and tells shapes
+  waiting on a load inside its callback, so a bound texture always belongs to a
+  loaded surface.
+- **Pattern tiles are drawn in code**, white with the coverage in alpha, so the
+  pattern layer's colour (`fillPatternColor`) tints them; shared per scene for
+  each exact
   pattern, spacing and width, and disposed on the last release. A changed tile
   replaces the shown one a frame later; the first is drawn at once, so a
   pattern is never drawn without its tile.
@@ -177,12 +184,12 @@ own working colour and reset it on the next reload.
 floored instead.** A zero material or pattern opacity is that layer off and is
 remembered as such. A zero line width is an outline-off, i.e. a fill-only shape,
 and stays that way on the shape itself — but the remembered default is floored
-at 0.05 m; a pattern's spacing and width have minimums too, so a stored 0 is
-clamped up to them. Zero is a legal width and a
-useless default: a shape drawn with it shows nothing at all until its third
-vertex closes the ring and the fill appears, which reads as a broken tool rather
-than a style. Turning the fill off as well is still reachable and still named by
-the tips block in the shape panel.
+at 0.05 m. Zero is a legal width and a useless default: a shape drawn with it
+shows nothing at all until its third vertex closes the ring and the fill
+appears, which reads as a broken tool rather than a style. Turning the fill off
+as well is still reachable and still named by the tips block in the shape panel.
+A pattern's spacing and width are floored the same way, at their schema
+minimums.
 
 Cold start — nothing persisted, nothing restyled — is the `shape` component's
 own schema defaults, so the first shape a user ever draws is identical to what
