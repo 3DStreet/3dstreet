@@ -59,6 +59,15 @@ describe('snapHeading', () => {
     // band (44 + 9), so the shown 0 is kept; 300 is not.
     expect(s({ rawHeading: 314, currentHeading: 0 })).toBe(0);
     expect(s({ rawHeading: 300, currentHeading: 0 })).toBe(270);
+    // On a later side the reverse is relative to that side, not the world.
+    expect(
+      snapHeading({
+        base: 20,
+        step: 90,
+        excludeReverse: true,
+        rawHeading: 200
+      })
+    ).not.toBe(200);
   });
 
   it('quantises relative to the base, not to the world axes', () => {
@@ -89,11 +98,35 @@ describe('snapPlacement', () => {
     });
     expectPoint(ahead, 0.04, 0);
     expect(ahead.y).toBe(0);
+    // Off the x axis, and keeping the pointer's height, not the vertex's.
+    const from = { x: 1, y: 5, z: 2 };
+    const up = snapPlacement({
+      last: from,
+      raw: { x: 1.3, y: 7, z: 6 },
+      heading: 90
+    });
+    expect(up.x).toBeCloseTo(1, 9);
+    expect(up.z).toBeCloseTo(6, 9);
+    expect(up.y).toBe(7);
+    const diagonal = snapPlacement({
+      last: from,
+      raw: { x: 5, y: 7, z: 2 },
+      heading: 45
+    });
+    expectPoint(diagonal, 3, 4);
   });
 });
 
 describe('closingAdjustment', () => {
   it('slides the last vertex along its own side to square a rough rectangle (fails if the first vertex moves, or the point leaves the side)', () => {
+    // The slid vertex keeps the last vertex's height.
+    const raised = [
+      { x: 0, y: 2, z: 0 },
+      { x: 10, y: 2, z: 0 },
+      { x: 10, y: 2, z: 10 },
+      { x: -3, y: 2, z: 10 }
+    ];
+    expect(adjust(raised, 90).point.y).toBe(2);
     const v0 = p(0, 0);
     const v1 = polar(v0, 10, 20);
     const v2 = polar(v1, 6, 110);

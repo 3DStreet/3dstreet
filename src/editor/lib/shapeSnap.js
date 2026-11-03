@@ -41,7 +41,8 @@ export const ANGLE_EPS_DEG = 1e-4;
 // not make the preview flicker between two sides.
 export const SNAP_HYSTERESIS_FRACTION = 0.1;
 
-const EPS_LENGTH = 1e-9;
+// Metres. Below this a length is rounding noise.
+const LENGTH_EPS = 1e-9;
 
 function normaliseHeading(deg) {
   const h = deg % 360;
@@ -119,35 +120,76 @@ export function snapPlacement({ last, raw, heading }) {
 // vertex and at the first — are snapped turns. Returns { point } or
 // { refused: true }.
 //
-// The closing side's heading φ is h1 − k·step, where h1 is the first side's
-// heading, so the turn at the first vertex is k·step. The turn at the last
-// vertex is then turn(hd, h1) − k·step (hd = the last side's heading), so both
-// are multiples exactly when turn(hd, h1) is — checked once up front; sides
-// drawn at another step, or unsnapped, can fail it.
+// The closing side's heading φ is firstSideHeading − k·step, so the turn at
+// the first vertex is k·step. The turn at the last vertex is then
+// turn(lastSideHeading, firstSideHeading) − k·step, so both are multiples
+// exactly when that turn is — checked once up front; sides drawn at another
+// step, or unsnapped, can fail it.
 //
-// Of the candidates, the one that moves the last vertex least wins (ties to
-// the smaller turn at the first vertex), validated lazily in that order.
+// Of the candidates (closingCandidates), the one that moves the last vertex
+// least wins, validated lazily in that order: the new sliding side and the new
+// closing side must cross no other side, and the ring must enclose a region.
 export function closingAdjustment({ vertices, step, minSpacing }) {
+  const slide = closingCandidates({ vertices, step, minSpacing });
+  if (!slide) return { refused: true };
   const n = vertices.length;
-  if (n < 3) return { refused: true };
-  const vPrev = vertices[n - 2];
-  const vLast = vertices[n - 1];
-  const v0 = vertices[0];
-  const v1 = vertices[1];
+  const sideStart = vertices[n - 2];
+  const first = vertices[0];
+  // Every committed side except the last, which the sliding side replaces:
+  // when the slide shortens it, the new point lies on the old side, and
+  // counting that would refuse a correct close on a rounding residue.
+  const crossesKeptSide = (a, b) => {
+    for (let i = 0; i < n - 2; i++) {
+      if (segmentsIntersectXZ(a, b, vertices[i], vertices[i + 1])) return true;
+    }
+    return false;
+  };
+  for (const { distance } of slide.candidates) {
+    const point = {
+      x: sideStart.x + distance * slide.direction.x,
+      y: vertices[n - 1].y,
+      z: sideStart.z + distance * slide.direction.z
+    };
+    if (crossesKeptSide(sideStart, point) || crossesKeptSide(point, first)) {
+      continue;
+    }
+    if (!ringEnclosesArea(vertices.slice(0, n - 1).concat([point]))) continue;
+    return { point };
+  }
+  return { refused: true };
+}
 
-  const lastLen = Math.hypot(vLast.x - vPrev.x, vLast.z - vPrev.z);
-  if (lastLen < EPS_LENGTH) return { refused: true };
-  const dx = (vLast.x - vPrev.x) / lastLen;
-  const dz = (vLast.z - vPrev.z) / lastLen;
-  const hd = headingDeg(vPrev, vLast);
-  const h1 = headingDeg(v0, v1);
-  if (!isMultipleOf(turnDeg(hd, h1), step)) return { refused: true };
+// The positions the last vertex could slide to, least movement first (ties
+// to the smaller turn at the first vertex), before any crossing or area test:
+// { direction, candidates: [{ distance, firstTurnSteps }] }, where a
+// candidate's point is the last side's start plus `distance` along the unit
+// `direction` of that side. Null when no close can be snapped at all.
+function closingCandidates({ vertices, step, minSpacing }) {
+  const n = vertices.length;
+  if (n < 3) return null;
+  const sideStart = vertices[n - 2]; // the last side runs sideStart → sideEnd
+  const sideEnd = vertices[n - 1];
+  const first = vertices[0];
+  const second = vertices[1];
 
-  // Where the last vertex is now, as a distance along its own side.
-  const tOriginal = lastLen;
-  const wx = v0.x - vPrev.x;
-  const wz = v0.z - vPrev.z;
+  const sideLength = Math.hypot(
+    sideEnd.x - sideStart.x,
+    sideEnd.z - sideStart.z
+  );
+  if (sideLength < LENGTH_EPS) return null;
+  const direction = {
+    x: (sideEnd.x - sideStart.x) / sideLength,
+    z: (sideEnd.z - sideStart.z) / sideLength
+  };
+  const lastSideHeading = headingDeg(sideStart, sideEnd);
+  const firstSideHeading = headingDeg(first, second);
+  if (!isMultipleOf(turnDeg(lastSideHeading, firstSideHeading), step)) {
+    return null;
+  }
 
+  // From the last side's start to the first vertex.
+  const toFirstX = first.x - sideStart.x;
+  const toFirstZ = first.z - sideStart.z;
   const half = 180 / step; // every admissible step divides 180
   const candidates = [];
   for (let k = 1 - half; k <= half; k++) {
@@ -157,40 +199,34 @@ export function closingAdjustment({ vertices, step, minSpacing }) {
     // the edge test does not count it, and the remaining touch is caught only
     // when rounding happens to land the point exactly on that line.
     if (k === 0 || k === half) continue;
-    const phi = h1 - k * step;
+    const closingHeading = firstSideHeading - k * step;
     // The same two turns at the last vertex make the closing side parallel to
     // the sliding side: there is no intersection to slide to.
-    if (isMultipleOf(turnDeg(hd, phi), 180)) continue;
-    const rad = (phi * Math.PI) / 180;
-    const cx = Math.cos(rad);
-    const cz = Math.sin(rad);
-    // vPrev + t·d = v0 − s·c, solved for the signed parameters t and s.
-    const det = dx * cz - dz * cx;
-    if (Math.abs(det) < EPS_LENGTH) continue;
-    const t = (wx * cz - wz * cx) / det;
-    const s = (dx * wz - dz * wx) / det;
-    // Signed t: a negative t would run the sliding side backwards, changing
-    // the corner behind it. (Testing |s| instead of s changes nothing: each
-    // negative-s candidate is the same point as its twin at φ + 180°.)
-    if (t < minSpacing || s < minSpacing) continue;
-    candidates.push({ k, t, move: Math.abs(t - tOriginal) });
+    if (isMultipleOf(turnDeg(lastSideHeading, closingHeading), 180)) continue;
+    const rad = (closingHeading * Math.PI) / 180;
+    const closingX = Math.cos(rad);
+    const closingZ = Math.sin(rad);
+    // sideStart + distance·direction = first − closingLength·closing, solved
+    // for the signed distance along the last side and the closing side's
+    // signed length.
+    const det = direction.x * closingZ - direction.z * closingX;
+    if (Math.abs(det) < LENGTH_EPS) continue;
+    const distance = (toFirstX * closingZ - toFirstZ * closingX) / det;
+    const closingLength =
+      (direction.x * toFirstZ - direction.z * toFirstX) / det;
+    // Signed distance: a negative one would run the last side backwards,
+    // changing the corner behind it. (Testing |closingLength| instead changes
+    // nothing: each negative one is the same point as its twin at +180°.)
+    if (distance < minSpacing || closingLength < minSpacing) continue;
+    candidates.push({
+      distance,
+      firstTurnSteps: k,
+      move: Math.abs(distance - sideLength)
+    });
   }
-  candidates.sort((a, b) => a.move - b.move || Math.abs(a.k) - Math.abs(b.k));
-
-  // Every committed side except the last, which the sliding side replaces:
-  // when the slide shortens it, the new point lies on the old side, and
-  // counting that would refuse a correct close on a rounding residue.
-  const kept = [];
-  for (let i = 0; i < n - 2; i++) kept.push([vertices[i], vertices[i + 1]]);
-  const crossesKept = (a, b) =>
-    kept.some(([c, d]) => segmentsIntersectXZ(a, b, c, d));
-
-  for (const { t } of candidates) {
-    const point = { x: vPrev.x + t * dx, y: vLast.y, z: vPrev.z + t * dz };
-    if (crossesKept(vPrev, point) || crossesKept(point, v0)) continue;
-    const ring = vertices.slice(0, n - 1).concat([point]);
-    if (!ringEnclosesArea(ring)) continue;
-    return { point };
-  }
-  return { refused: true };
+  candidates.sort(
+    (a, b) =>
+      a.move - b.move || Math.abs(a.firstTurnSteps) - Math.abs(b.firstTurnSteps)
+  );
+  return { direction, candidates };
 }
