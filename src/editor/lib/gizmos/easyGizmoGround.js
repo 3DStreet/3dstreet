@@ -271,20 +271,33 @@ export function pickSurfaceAbove(hits, refY) {
  * The landing targets a column offers an object whose base is at `refY`.
  *
  * Normally the nearest support below and the nearest surface above. One rule
- * on top (#2128): an object whose base sits just UNDER a surface, by less
- * than `restingGap`, is resting on that surface (sunk into it by a hair),
- * so nothing beneath it is offered. Without this, an object a centimetre
- * under a plan image lifted over the 3D Tiles is offered the tiles first —
- * the image's own target hidden as "already placed" — and takes two clicks
- * to reach the image. Sunk deeper, it keeps both targets as before.
+ * on top (#2128): when the nearest surface above cuts through the object —
+ * above its base, below its top (`topY`) — the object is stuck in that
+ * surface, and the only sensible correction is up onto it, so nothing
+ * beneath is offered. Without this, a car half-buried in a plan image lifted
+ * over the 3D Tiles was offered the tiles too, and one 1cm under it was
+ * offered ONLY the tiles (the image's own target hidden as already placed).
+ * `restingGap` is a floor for thin objects whose top is barely above their
+ * base: a surface that close above counts as cutting through.
  *
- * Reads only the column already in hand: no ray.
+ * A surface above the object's top (an overpass deck over a car) cuts
+ * nothing, so both targets stay. Neither does the 3D Tiles drape: it lies
+ * over streets and kerbs, routinely a few centimetres above a road an
+ * object stands on, and is terrain rather than something placed to build
+ * on. Reads only values in hand: no ray.
  */
-export function landingTargets(column, refY, restingGap) {
+export function landingTargets(
+  column,
+  refY,
+  { topY = refY, restingGap = 0 } = {}
+) {
   const below = column?.below ?? null;
   const above = column?.above ?? null;
-  const resting = above !== null && above.y - refY < restingGap;
-  return { down: resting ? null : below, up: above };
+  const cuts =
+    above !== null &&
+    above.cls !== 'tiles' &&
+    (above.y < topY || above.y - refY < restingGap);
+  return { down: cuts ? null : below, up: above };
 }
 
 /**

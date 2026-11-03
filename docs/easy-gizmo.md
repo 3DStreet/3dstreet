@@ -62,12 +62,13 @@ reads hits the column ray already returned (no extra raycast), so its cost is a
 few attribute reads and an ancestor walk per hit.
 
 Landing targets appear when the object is more than 2 cm from a surface and
-disappear under 1 cm (centimetre accuracy; the band between stops flicker). An
-object whose base is just under a surface, by less than the 2 cm figure, rests
-on it: nothing beneath is offered (#2128). Without that, an object 1 cm under
-a plan image over the tiles was offered the tiles first and took two clicks to
-reach the image. Sunk deeper, it gets both the target above and the one below.
-This compares two values from the column already probed, so it costs no ray.
+disappear under 1 cm (centimetre accuracy; the band between stops flicker).
+When the nearest surface above cuts through the object (above its base, below
+the top of its bounding box, or within 2 cm above the base for a thin object),
+only that surface is offered: the object is stuck in it, and nothing beneath
+is a sensible correction (#2128). A surface clear above the object's top, such
+as an overpass deck over a car, cuts nothing, and both targets stay. The top
+comes from the same bounding box as the base, so this costs no ray.
 Each catalog building contributes only its highest intersected surface in the
 column. Separate stacked buildings retain separate roof targets. Intermediate
 surfaces within imported meshes and Google 3D Tiles remain eligible.

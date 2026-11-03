@@ -611,7 +611,7 @@ describe('classified rays composed with real move gestures', () => {
     expect(f.controls._landingDownEntity).toBe(image.el);
   });
 
-  it('rests an object sunk a hair under a surface on it, offering nothing beneath (#2128)', () => {
+  it('offers only up onto a surface cutting through the object (#2128)', () => {
     const f = fixture();
     f.surface(-0.2, { kind: 'tiles' });
     const image = f.surface(0.01, { kind: 'image' });
@@ -619,12 +619,40 @@ describe('classified rays composed with real move gestures', () => {
     f.controls._refreshSupport();
     expect(f.controls.landingDownY).toBeNull();
     expect(f.controls.landingUpY).toBeNull();
-    // Sunk deeper than the tolerance: the surface above is offered.
+    // Sunk 11 cm, between the tiles and the image the 1 m object pokes
+    // through: only up onto the image.
     f.object.position.y = -0.1;
     f.object.updateMatrixWorld(true);
     f.controls._refreshSupport();
     expect(f.controls._landingUpEntity).toBe(image.el);
     expect(f.controls.landingUpY).toBeCloseTo(0.01, 6);
+    expect(f.controls.landingDownY).toBeNull();
+  });
+
+  it('keeps both targets under a surface clear of the object top, like a deck (#2128)', () => {
+    const f = fixture();
+    f.surface(-0.2, { kind: 'tiles' });
+    const deck = f.surface(1.5, { kind: 'import' });
+    f.object.position.y = -0.1;
+    f.attach();
+    f.controls._refreshSupport();
+    expect(f.controls._landingUpEntity).toBe(deck.el);
+    expect(f.controls.landingUpY).toBeCloseTo(1.5, 6);
+    expect(f.controls.landingDownY).toBeCloseTo(-0.2, 6);
+  });
+
+  it('never lets the tiles drape cut an object on the road beneath it (#2128)', () => {
+    const f = fixture();
+    const road = f.surface(0);
+    f.surface(0.1, { kind: 'tiles' });
+    f.attach(); // standing on the road, the drape 10 cm up through it
+    f.controls._refreshSupport();
+    expect(f.controls._landingDownEntity).toBe(road.el);
+    // Lifted 5 cm off the road, the road is still offered below it.
+    f.object.position.y = 0.05;
+    f.object.updateMatrixWorld(true);
+    f.controls._refreshSupport();
+    expect(f.controls.landingDownY).toBeCloseTo(0, 6);
   });
 
   it('holds below a tall imported roof and offers it as a landing target', () => {
@@ -796,13 +824,15 @@ describe('placement hierarchy composed with rays and landing gestures', () => {
   }
 
   it.each([
-    ['street', 0, 5],
-    ['building', 0.5, 4],
-    ['import', 1, 3],
-    ['furniture', 1.5, 2.5]
+    ['street', 0, 5, true],
+    ['building', 0.5, 4, true],
+    ['import', 1, 3, true],
+    // The 1 m object spans 2–3 m, so the import at 2.5 cuts through it and
+    // only the target above is offered (#2128).
+    ['furniture', 1.5, 2.5, false]
   ])(
     'filters %s support and targets in both directions',
-    (kind, below, above) => {
+    (kind, below, above, downOffered) => {
       const f = fixture({ base: 2 });
       f.surface(0, { kind: 'tiles' });
       f.surface(5, { kind: 'tiles' });
@@ -816,7 +846,11 @@ describe('placement hierarchy composed with rays and landing gestures', () => {
       f.attach();
       // An unfiltered probe or one filtering only above targets picks different heights.
       expect(f.controls.supportY).toBeCloseTo(below, 6);
-      expect(f.controls.landingDownY).toBeCloseTo(below, 6);
+      if (downOffered) {
+        expect(f.controls.landingDownY).toBeCloseTo(below, 6);
+      } else {
+        expect(f.controls.landingDownY).toBeNull();
+      }
       expect(f.controls.landingUpY).toBeCloseTo(above, 6);
       const expectedHeights = {
         street: [0, 5],
@@ -1758,6 +1792,10 @@ describe('the flattened arc on screen', () => {
     // is shifted well up; a second target above keeps the arc below the strip,
     // on the camera's side.
     const f = fixture({ base: BASE });
+    // Thin, so the target above sits clear of its top rather than cutting
+    // through it (which would withhold the one below, #2128).
+    f.mesh.scale.y = 0.001;
+    f.mesh.position.y = 0.0005;
     viewFrom(f, 5, -2);
     f.surface(BASE - 0.15);
     f.attach();

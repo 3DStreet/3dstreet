@@ -570,22 +570,40 @@ describe('landing targets (#2128)', () => {
   const at = (y) => ({ y });
   const column = { below: at(-0.2), above: at(0.01) };
 
-  it('drops the target beneath an object resting just under a surface', () => {
-    expect(landingTargets(column, 0, 0.02)).toEqual({
+  it('offers only the surface cutting through the object', () => {
+    expect(landingTargets(column, -0.5, { topY: 1, restingGap: 0.02 })).toEqual(
+      { down: null, up: column.above }
+    );
+  });
+
+  it('treats a surface a hair above a thin object as cutting through it', () => {
+    expect(landingTargets(column, 0, { topY: 0, restingGap: 0.02 })).toEqual({
       down: null,
       up: column.above
     });
   });
 
-  it('offers both once the surface above is beyond the tolerance', () => {
-    expect(landingTargets(column, -0.05, 0.02)).toEqual({
-      down: column.below,
-      up: column.above
+  it('keeps both under a surface clear above the object, like a deck', () => {
+    const c = { below: at(-0.2), above: at(5) };
+    expect(landingTargets(c, 0, { topY: 1.5, restingGap: 0.02 })).toEqual({
+      down: c.below,
+      up: c.above
+    });
+  });
+
+  it('never lets the tiles drape cut through an object', () => {
+    const c = { below: at(0), above: { y: 0.1, cls: 'tiles' } };
+    expect(landingTargets(c, 0, { topY: 1, restingGap: 0.02 })).toEqual({
+      down: c.below,
+      up: c.above
     });
   });
 
   it('passes a column with nothing above straight through', () => {
     const c = { below: at(-1), above: null };
-    expect(landingTargets(c, 0, 0.02)).toEqual({ down: c.below, up: null });
+    expect(landingTargets(c, 0, { topY: 1 })).toEqual({
+      down: c.below,
+      up: null
+    });
   });
 });
