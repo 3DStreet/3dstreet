@@ -60,6 +60,14 @@ semi-transparent reference overlay, an opacity-0 flattening helper) is not,
 and an object under such an overlay rests on the surface below it. The check
 reads hits the column ray already returned (no extra raycast), so its cost is a
 few attribute reads and an ancestor walk per hit.
+
+Landing targets appear when the object is more than 2 cm from a surface and
+disappear under 1 cm (centimetre accuracy; the band between stops flicker). An
+object whose base is just under a surface, by less than the 2 cm figure, rests
+on it: nothing beneath is offered (#2128). Without that, an object 1 cm under
+a plan image over the tiles was offered the tiles first and took two clicks to
+reach the image. Sunk deeper, it gets both the target above and the one below.
+This compares two values from the column already probed, so it costs no ray.
 Each catalog building contributes only its highest intersected surface in the
 column. Separate stacked buildings retain separate roof targets. Intermediate
 surfaces within imported meshes and Google 3D Tiles remain eligible.

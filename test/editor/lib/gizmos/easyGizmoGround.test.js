@@ -3,6 +3,7 @@ import {
   evaluatePath,
   isGizmoGroundHit,
   isLevelImportedImageHit,
+  landingTargets,
   isUserImportedMeshHit,
   owningPlacementEntity,
   placementKindOf,
@@ -209,6 +210,12 @@ describe('what the gizmo counts as ground', () => {
       const overlay = imagePlane(0.4, { opts: { opacity: 0.5 } });
       const hits = [overlay, plan, tiles(0)].filter((h) => isGizmoGroundHit(h));
       expect(pickSupportBelow(hits, 5).hit).toBe(plan);
+    });
+
+    it('reads a plane laid flat in its geometry from the hit face', () => {
+      const hit = imagePlane(0, { tiltDeg: 0 }); // upright by its matrix
+      hit.face = { normal: { x: 0, y: 1, z: 0 } }; // but its face points up
+      expect(isLevelImportedImageHit(hit)).toBe(true);
     });
 
     it('excludes an image the user did not upload', () => {
@@ -556,5 +563,29 @@ describe('the sampler and its budget', () => {
     const result = run(band - 1e-6);
     expect(result.overBudget).toBe(false);
     expect(result.demanded).toBe(PATH_PROBE_BUDGET);
+  });
+});
+
+describe('landing targets (#2128)', () => {
+  const at = (y) => ({ y });
+  const column = { below: at(-0.2), above: at(0.01) };
+
+  it('drops the target beneath an object resting just under a surface', () => {
+    expect(landingTargets(column, 0, 0.02)).toEqual({
+      down: null,
+      up: column.above
+    });
+  });
+
+  it('offers both once the surface above is beyond the tolerance', () => {
+    expect(landingTargets(column, -0.05, 0.02)).toEqual({
+      down: column.below,
+      up: column.above
+    });
+  });
+
+  it('passes a column with nothing above straight through', () => {
+    const c = { below: at(-1), above: null };
+    expect(landingTargets(c, 0, 0.02)).toEqual({ down: c.below, up: null });
   });
 });

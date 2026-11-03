@@ -141,8 +141,10 @@ function _materialOpaque(material) {
  * plan laid over another to trace against), and the probe raycasts all of
  * them, so the whole ancestor chain must be visible and the material fully
  * opaque. Anything under full opacity is an overlay, never ground. Level is
- * judged from the world transform of the plane's local X and Y axes, whose
- * cross product is the face normal under any (non-uniform) scale.
+ * judged from the hit face's normal (the plane's +Z when the hit carries no
+ * face) taken to world space by the cofactor of matrixWorld — the inverse
+ * transpose up to scale — so it holds under any non-uniform scale and
+ * whether the plane was laid flat by its entity or in its geometry.
  */
 export function isLevelImportedImageHit(hit) {
   const object = hit?.object;
@@ -160,9 +162,24 @@ export function isLevelImportedImageHit(hit) {
   if (!_chainVisible(object) || !_materialOpaque(object.material)) return false;
   const e = object.matrixWorld?.elements;
   if (!e) return false;
-  const nx = e[1] * e[6] - e[2] * e[5];
-  const ny = e[2] * e[4] - e[0] * e[6];
-  const nz = e[0] * e[5] - e[1] * e[4];
+  const f = hit.face?.normal;
+  const fx = f ? f.x : 0;
+  const fy = f ? f.y : 0;
+  const fz = f ? f.z : 1;
+  // Columns a, b, c of the 3x3; the cofactor's columns are b×c, c×a, a×b.
+  const [a0, a1, a2, , b0, b1, b2, , c0, c1, c2] = e;
+  const nx =
+    fx * (b1 * c2 - b2 * c1) +
+    fy * (c1 * a2 - c2 * a1) +
+    fz * (a1 * b2 - a2 * b1);
+  const ny =
+    fx * (b2 * c0 - b0 * c2) +
+    fy * (c2 * a0 - c0 * a2) +
+    fz * (a2 * b0 - a0 * b2);
+  const nz =
+    fx * (b0 * c1 - b1 * c0) +
+    fy * (c0 * a1 - c1 * a0) +
+    fz * (a0 * b1 - a1 * b0);
   const len = Math.hypot(nx, ny, nz);
   return len > 0 && Math.abs(ny) / len >= LEVEL_IMAGE_MIN_NORMAL_Y;
 }
@@ -248,6 +265,26 @@ export function pickSurfaceAbove(hits, refY) {
     }
   }
   return best;
+}
+
+/**
+ * The landing targets a column offers an object whose base is at `refY`.
+ *
+ * Normally the nearest support below and the nearest surface above. One rule
+ * on top (#2128): an object whose base sits just UNDER a surface, by less
+ * than `restingGap`, is resting on that surface (sunk into it by a hair),
+ * so nothing beneath it is offered. Without this, an object a centimetre
+ * under a plan image lifted over the 3D Tiles is offered the tiles first —
+ * the image's own target hidden as "already placed" — and takes two clicks
+ * to reach the image. Sunk deeper, it keeps both targets as before.
+ *
+ * Reads only the column already in hand: no ray.
+ */
+export function landingTargets(column, refY, restingGap) {
+  const below = column?.below ?? null;
+  const above = column?.above ?? null;
+  const resting = above !== null && above.y - refY < restingGap;
+  return { down: resting ? null : below, up: above };
 }
 
 /**

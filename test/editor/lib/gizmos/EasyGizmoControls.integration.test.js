@@ -289,7 +289,7 @@ describe('classified rays composed with real move gestures', () => {
       new THREE.BoxGeometry(0.1, 0.1, 0.1),
       new THREE.MeshBasicMaterial()
     );
-    child.position.x = 2;
+    child.position.set(2, 0.05, 0); // bottom on the base, not 5 cm under it
     f.object.add(child);
     f.sceneEl.object3D.add(f.helpers);
     const nativeSet = f.el.setAttribute.bind(f.el);
@@ -583,23 +583,48 @@ describe('classified rays composed with real move gestures', () => {
     expect(f.controls.probe.lastHits[0].object.el).toBe(destination.el);
   });
 
-  it('prefers authored support over tiles and excludes a sub-step image plane', () => {
+  it('prefers authored support over tiles', () => {
     const f = fixture();
     const ground = f.surface(0);
-    f.surface(0.1, { kind: 'tiles' });
-    f.surface(0.15, { kind: 'image' });
     f.attach();
+    // Pressed before the tiles exist: at the 2 cm tolerance the tiles' up
+    // target, drawn over the square, would take the press.
     f.start();
+    f.surface(0.1, { kind: 'tiles' });
     f.pointer('pointerup', new THREE.Vector3(0.1, 0, 0));
     f.frame();
     expect(f.object.position.y).toBe(0);
     expect(f.controls._landingDownEntity).toBe(ground.el);
     expect(f.controls.probe.probeColumn(0.1, 0, 0).above.y).toBeCloseTo(0.1, 6);
-    expect(
-      f.controls.probe.lastHits.some(
-        (hit) => hit.object.el.getAttribute('data-asset-id') === 'image'
-      )
-    ).toBe(false);
+  });
+
+  it('steps up onto a level opaque image over the tiles, like a kerb (#2128)', () => {
+    const f = fixture();
+    f.surface(0);
+    f.attach();
+    f.start();
+    f.surface(0.1, { kind: 'tiles' });
+    const image = f.surface(0.15, { kind: 'image' });
+    f.pointer('pointerup', new THREE.Vector3(0.1, 0, 0));
+    f.frame();
+    expect(f.object.position.y).toBeCloseTo(0.15, 6);
+    expect(f.controls._landingDownEntity).toBe(image.el);
+  });
+
+  it('rests an object sunk a hair under a surface on it, offering nothing beneath (#2128)', () => {
+    const f = fixture();
+    f.surface(-0.2, { kind: 'tiles' });
+    const image = f.surface(0.01, { kind: 'image' });
+    f.attach();
+    f.controls._refreshSupport();
+    expect(f.controls.landingDownY).toBeNull();
+    expect(f.controls.landingUpY).toBeNull();
+    // Sunk deeper than the tolerance: the surface above is offered.
+    f.object.position.y = -0.1;
+    f.object.updateMatrixWorld(true);
+    f.controls._refreshSupport();
+    expect(f.controls._landingUpEntity).toBe(image.el);
+    expect(f.controls.landingUpY).toBeCloseTo(0.01, 6);
   });
 
   it('holds below a tall imported roof and offers it as a landing target', () => {
@@ -1799,7 +1824,7 @@ describe('the flattened arc on screen', () => {
     const f = flatScene(8, 10, () => [[-0.15, 'segment']]);
     expect(f.controls.landingDownGroup.visible).toBe(true);
     expect(f.controls._dodge.flipArc).toBe(true);
-    f.object.position.y = BASE - 0.12; // 0.03 m above the surface
+    f.object.position.y = BASE - 0.145; // 0.005 m above the surface
     f.object.updateMatrixWorld(true);
     f.controls._refreshSupport();
     f.frame();

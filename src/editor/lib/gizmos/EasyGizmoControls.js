@@ -34,6 +34,7 @@ import { EasyGizmoProbe } from './easyGizmoProbe.js';
 import {
   evaluatePath,
   isStreetEntity,
+  landingTargets,
   resplitColumn
 } from './easyGizmoGround.js';
 import {
@@ -2110,19 +2111,14 @@ class EasyGizmoControls extends GizmoPointerControls {
   }
 
   _applyColumn(column, baseY) {
-    this._landingDownEntity = column.below ? column.below.entity : null;
-    this._landingUpEntity = column.above ? column.above.entity : null;
+    // Following keeps the support directly below; the targets drop it when
+    // the object rests just under a surface (`landingTargets`, #2128).
+    const { down, up } = landingTargets(column, baseY, LANDING_SHOW_GAP_METRES);
+    this._landingDownEntity = down ? down.entity : null;
+    this._landingUpEntity = up ? up.entity : null;
     this.supportY = column.below ? column.below.y : null;
-    this.landingDownY = this._gateLanding(
-      column.below ? column.below.y : null,
-      baseY,
-      false
-    );
-    this.landingUpY = this._gateLanding(
-      column.above ? column.above.y : null,
-      baseY,
-      true
-    );
+    this.landingDownY = this._gateLanding(down ? down.y : null, baseY, false);
+    this.landingUpY = this._gateLanding(up ? up.y : null, baseY, true);
   }
 
   /**
@@ -3253,8 +3249,12 @@ class EasyGizmoControls extends GizmoPointerControls {
       if (landing.entity && landing.entity.isConnected === false) return;
       const baseY = this.currentBaseY();
       if (landing.entity) {
-        const column = this.probe.probeColumn(_p.x, _p.z, baseY);
-        const target = axis === 'landingUp' ? column.above : column.below;
+        const targets = landingTargets(
+          this.probe.probeColumn(_p.x, _p.z, baseY),
+          baseY,
+          LANDING_SHOW_GAP_METRES
+        );
+        const target = axis === 'landingUp' ? targets.up : targets.down;
         if (
           !target ||
           target.entity !== landing.entity ||
