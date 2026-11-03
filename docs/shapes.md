@@ -4,16 +4,64 @@ Editor-drawn 2D shapes: a closed or open polyline with an optional filled
 interior, drawn with the shape tool in the Action Bar and edited from the
 properties panel.
 
-The code is spread across five directories, so this file is the entry point:
+The code is spread across several directories, so this file is the entry point:
 
-| Where                             | What                                                                                                                                          |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`                                                            |
-| `src/editor/components/elements/` | `ShapeSidebar.jsx` (properties panel), `ActionBar/ShapeDrawAction.jsx` (the draw tool)                                                        |
-| `src/editor/lib/`                 | `shapeStyle.js`, `shapeEditRules.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js`                   |
-| `src/editor/lib/commands/`        | `ShapeVertex{Insert,Move,Remove}Command.js`, `StreetConvertToShapesCommand.js`                                                                |
-| `test/`                           | `editor/shape*.test.js`, `components/shape-*.test.js`                                                                                         |
-| `docs/`                           | `shape-vertex-editing.md` — how the on-canvas vertex handles, the measurement chips and the two buttons divide the work between them, and why |
+| Where                             | What                                                                                                                                                                   |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`, `shape-fill-layers.js` (a fill's textures)                                         |
+| `src/tested/`                     | `shape-fill.js` (fill catalogues, UV frame, pattern geometry and tile raster)                                                                                          |
+| `src/editor/components/elements/` | `ShapeSidebar.jsx` (properties panel), `ShapeStyleSectionControls.jsx` (the Style section), `SurfaceSwatchOption.jsx`, `ActionBar/ShapeDrawAction.jsx` (the draw tool) |
+| `src/editor/lib/`                 | `shapeStyle.js`, `shapeEditRules.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js`                                            |
+| `src/editor/lib/commands/`        | `ShapeVertex{Insert,Move,Remove}Command.js`, `StreetConvertToShapesCommand.js`                                                                                         |
+| `test/`                           | `editor/shape*.test.js`, `editor/shapeFill*.test.js`, `editor/components/ShapeStyle*.test.jsx`, `components/shape-*.test.js`                                           |
+| `docs/`                           | `shape-vertex-editing.md` — how the on-canvas vertex handles, the measurement chips and the two buttons divide the work between them, and why                          |
+
+## Fill appearance
+
+A closed shape's fill has two layers: the **material** (Solid color, or a
+street-surface texture at the size a segment paints it) and a **pattern**
+drawn over it (stripes, crosshatch, checkerboard, dots), each on or off by its
+own opacity and nothing else.
+
+- **One mesh, two materials.** The cap is one mesh whose geometry has a draw
+  group per painted layer, `[material, pattern]`, over the same triangles. One
+  mesh has one `renderOrder`, one depth and one id, so nothing in the scene can
+  sort between a shape's two layers: where shapes overlap, each shape's pattern
+  paints straight after its own material, whatever the sort. Both materials are
+  transparent and non-depth-writing at every opacity, so both stay in the
+  transparent list.
+- **Draw groups are the per-layer switch.** An unpainted layer has no group,
+  so it is neither drawn nor exported; `visible` is never used (the editor's
+  pick list and the exporter's restore pass both key off it). With neither
+  layer painted the material group stays, colour-write off, as the click
+  target under select-inside, and the fill is marked editor-only so it does not
+  export.
+- **One UV set, in metres, in the shape's own frame.** Measured from the entity
+  origin (the gizmo point, which no vertex edit moves), turned by `fillAngle`
+  and slid by `fillOffsetAlong` / `fillOffsetAcross` after the turn. At Angle 0
+  "along" runs toward -z, the direction a segment runs its texture along its
+  length; a positive Angle turns the way a positive rotation does. Each layer's
+  real-world size is its texture's `repeat`, which glTF carries as a scale-only
+  `KHR_texture_transform`. Angle and Offset edits rewrite the UVs in place,
+  with no rebuild. The frame and the pattern geometry are in
+  `src/tested/shape-fill.js`.
+- **Angle is set once**, by the draw tool, from the first side of the shape as
+  drawn; no vertex edit or Reverse writes it. Angle and Offset are per shape and
+  never sticky.
+- **Layer textures are wanted when the shape is closed and that layer is
+  painted**, re-checked on every property sync — not when the cap is built — so
+  a shape created with a texture already set (a loaded scene, a sticky style, a
+  duplicate, an undone delete) loads it. One per-shape object
+  (`shape-fill-layers.js`) owns them through one transition function.
+- **Surface textures load through the material system** (`loadTexture`), so
+  the lazy-texture hook downloads them on first use and they share a source with
+  segments; until one lands the material shows the image's placeholder colour
+  multiplied by the tint, and keeps it if the load fails.
+- **Pattern tiles are drawn in code**, white with the coverage in alpha (the
+  pattern's colour is the material's), shared per scene for each exact
+  pattern, spacing and width, and disposed on the last release. A changed tile
+  replaces the shown one a frame later; the first is drawn at once, so a
+  pattern is never drawn without its tile.
 
 ## Measurements
 
@@ -41,16 +89,17 @@ as controls, and which module owns which gesture — is
 
 ## Sticky style
 
-The **sticky style** is the appearance a newly drawn shape inherits: the
-four-tuple `lineColor`, `lineWidth`, `fillColor`, `fillOpacity`. It lives in
-`src/editor/lib/shapeStyle.js`.
+The **sticky style** is the appearance a newly drawn shape inherits: every key
+of `SHAPE_STYLE_SPEC` in `src/editor/lib/shapeStyle.js` — the line's colour and
+width and the fill's material, pattern, opacities, colours and sizes. The fill's
+Angle and Offsets are deliberately not in it: each shape takes its Angle from
+its own first side, and an Offset lines a pattern up with one shape's edge.
 
 ### The rule
 
 **The drawing default follows the appearance of the shape you have selected,
-whenever that appearance changes.** Restyle a shape's line colour, line width,
-fill colour or fill opacity in the properties panel, and the next shape you draw
-comes out looking like that one.
+whenever that appearance changes.** Restyle a shape's line or fill in the
+properties panel, and the next shape you draw comes out looking like that one.
 
 Properties of the rule, each of which is load-bearing somewhere:
 
@@ -63,7 +112,7 @@ Properties of the rule, each of which is load-bearing somewhere:
   `detail.component === 'shape'` — and then by a third filter in the seed
   function, which rejects a _named_ non-appearance property (`closed`,
   `selectInside`, `updateEvent`). So a single-property edit only ever reseats the
-  default when the property named is one of the four. What gets through
+  default when the property named is one of the sticky keys. What gets through
   unconditionally is a **whole-component write**: one whose `property` is absent
   or empty (`EntityUpdateCommand` sets `this.property = payload.property ?? ''`,
   and its LLM tool schema lists only `entityId` and `component` as required).
@@ -79,7 +128,7 @@ Properties of the rule, each of which is load-bearing somewhere:
   activates and holds that value for the whole drawing gesture, so the preview
   and the committed shape cannot disagree — even if the style changes mid-draw.
 - **The snapshot is of the whole shape, not the edit.** Changing one property
-  captures all four, read back off the entity after the update rather than from
+  captures them all, read back off the entity after the update rather than from
   the event payload. So restyling a yellow-lined shape's fill makes the next
   shape yellow-lined too, even if the stored style was red. `shapeStyle.js`
   reads `entity.getAttribute('shape')` for exactly this reason; simplifying it
@@ -124,10 +173,12 @@ field commits whatever is typed into it verbatim and A-Frame stores it as given,
 so `red` and `rgb(1,2,3)` are real live values; a hex test would reject a user's
 own working colour and reset it on the next reload.
 
-**Zero is a real value on both numeric keys, but only one of them sticks.** A
-zero fill opacity is a fill-off and is remembered as such; a zero line width is
-an outline-off, i.e. a fill-only shape, and stays that way on the shape itself —
-but the remembered default is floored at 0.05 m. Zero is a legal width and a
+**Zero is a real value for the opacities and is remembered; a length is
+floored instead.** A zero material or pattern opacity is that layer off and is
+remembered as such. A zero line width is an outline-off, i.e. a fill-only shape,
+and stays that way on the shape itself — but the remembered default is floored
+at 0.05 m; a pattern's spacing and width have minimums too, so a stored 0 is
+clamped up to them. Zero is a legal width and a
 useless default: a shape drawn with it shows nothing at all until its third
 vertex closes the ring and the fill appears, which reads as a broken tool rather
 than a style. Turning the fill off as well is still reachable and still named by
@@ -149,12 +200,13 @@ the first `localStorage` preference here that changes content authored into a
 document rather than app chrome — two collaborators on one scene will draw
 differently-styled shapes.
 
-A sticky fill opacity of 0 also changes what gets **exported**, not just what is
-displayed: the shape component marks an invisible fill group as inspector-owned,
-and the exporter omits objects carrying that marker. So once a user turns one
-shape's fill off, subsequently drawn shapes export with outlines and no interior
-faces. That marker follows a shape's _current_ opacity, so zeroing an
-already-drawn shape's fill removes its interior from the file too.
+A sticky fill also changes what gets **exported**, not just what is displayed:
+an unpainted layer is absent from the file, and the shape component marks a
+fill with neither layer painted as inspector-owned, which the exporter omits.
+So a sticky 0% material with a sticky pattern exports the pattern alone, and
+only both layers off makes subsequently drawn shapes export with outlines and no
+interior faces. That follows a shape's _current_ opacities, so turning both
+layers of an already-drawn shape off removes its interior from the file too.
 
 ### Why the value is not in the zustand store
 
