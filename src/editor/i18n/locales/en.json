@@ -2453,6 +2453,9 @@
   "shapeDraw.closeFirstPoint": {
     "defaultMessage": "Click the first point to close the shape"
   },
+  "shapeDraw.closeRefused": {
+    "defaultMessage": "This shape can't close here. Add another point, or press Enter to finish it open."
+  },
   "shapeDraw.finishDoubleClick": {
     "defaultMessage": "Double-click places a last point and finishes"
   },

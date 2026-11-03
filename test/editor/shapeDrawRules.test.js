@@ -45,6 +45,13 @@ describe('closePlan', () => {
     expect(plan.ring[3]).not.toEqual(rough[3]);
     expect(plan.ring[3].x).toBeCloseTo(0, 9);
     expect(plan.ring[3].z).toBeCloseTo(10, 9);
+    // Refused: the ring is handed back as it was, unadjusted.
+    const triangle = [p(0, 0), p(10, 0), p(10, 10)];
+    expect(closePlan(triangle, 90, MIN)).toEqual({
+      ring: triangle,
+      refused: true,
+      adjusted: false
+    });
   });
 });
 

@@ -6,12 +6,13 @@
 //
 // What shows follows the editor's display preferences, which the owner pushes
 // in through setDisplay — this layer never reads the store:
-// - Measurements on (the default): a length on each side the chip rule picks.
-//   On a selected shape that length is also the side's insert control.
+// - Measurements on (the default): a length on each segment the label rule
+//   picks (_segmentsToLabel). On a selected shape that length is also the
+//   side's insert control.
 // - Measurements off: no length anywhere. A selected shape's insertable sides
 //   keep their control as a "+"-only chip; the other sides show nothing.
 // - Angles on (off by default): the included angle at the corners beside the
-//   sides shown. An angle caption is never a control — it takes no pointer
+//   segments labelled. An angle caption is never a control — it takes no pointer
 //   event, so a vertex handle under it stays grabbable — and it sits offset
 //   below its corner so it clears a handle drawn at its target size. It does
 //   not try to clear anything larger: angles are opt-in, and at dense or
@@ -58,9 +59,10 @@ const midpoint = (a, b) =>
 
 // The visible chip's look. Its rendered height is what shapeEditRules'
 // CAPTION_HALF_PX is half of — restyle the font size, line-height or vertical
-// padding here and that constant has to follow.
+// padding here and that constant has to follow. Colour is not set here: a
+// length chip sets it inline, and an angle or notice caption takes it from the
+// stylesheet, where its variant lives.
 function styleInner(inner) {
-  inner.style.color = '#fff';
   inner.style.fontFamily = 'sans-serif';
   inner.style.fontSize = '12px';
   inner.style.padding = '2px 4px';
@@ -89,22 +91,25 @@ export default class ShapeReadouts {
     this.units = units || 'metric';
   }
 
-  // The editor's display preferences, applied from the next render.
-  setDisplay({ measurements = true, angles = false } = {}) {
-    this.showMeasurements = !!measurements;
-    this.showAngles = !!angles;
+  // The editor's display preferences, applied from the next render. Takes
+  // the store's settings record as it is; other keys are ignored.
+  setDisplay({ showMeasurements = true, showAngles = false } = {}) {
+    this.showMeasurements = !!showMeasurements;
+    this.showAngles = !!showAngles;
   }
 
   // --- public render entry points -----------------------------------------
 
   // Draw mode. `vertices` are THREE.Vector3 local to el; the last segment is
-  // the active one. `extraSides` names further segments (i → i+1) to measure,
-  // `corners` names [prev, corner, next] index triples to give an angle, and
-  // `notice` is a sentence shown at the first vertex. None of them is ever a
-  // control: a live chip on the draw path would break the draw tool.
+  // the active one. `extraSegments` names further segments (i → i+1) to
+  // measure, `corners` names [prev, corner, next] triples to give an angle, and
+  // `notice` is a sentence shown above the first vertex. All indices are into
+  // `vertices`, which may end with the first vertex repeated to close a ring.
+  // None of them is ever a control: a live chip on the draw path would break
+  // the draw tool.
   renderActive(
     vertices,
-    { corners = [], extraSides = [], notice = null } = {}
+    { corners = [], extraSegments = [], notice = null } = {}
   ) {
     this.clear();
     const n = vertices.length;
@@ -112,7 +117,7 @@ export default class ShapeReadouts {
     if (n < 2) return;
     if (this.showMeasurements) {
       this._addLengthLabel(vertices[n - 2], vertices[n - 1]);
-      for (const i of extraSides) {
+      for (const i of extraSegments) {
         if (i >= 0 && i + 1 < n) {
           this._addLengthLabel(vertices[i], vertices[i + 1]);
         }
@@ -155,7 +160,7 @@ export default class ShapeReadouts {
     const n = vertices.length;
     if (n < 2) return;
     const ring = closed && n >= 3;
-    const sides = this._chipRuleSides(
+    const sides = this._segmentsToLabel(
       vertices,
       maxVertices,
       hoverPoint,
@@ -174,8 +179,9 @@ export default class ShapeReadouts {
     if (this.showAngles) this._addCornerAngles(vertices, sides, ring);
   }
 
-  // The sides a selected shape labels, in label order: the chip rule.
-  _chipRuleSides(vertices, maxVertices, hoverPoint, ring, pinnedSegments) {
+  // The segments a selected shape labels, in label order: every segment up to
+  // the cap, else the pinned ones and the one nearest the pointer.
+  _segmentsToLabel(vertices, maxVertices, hoverPoint, ring, pinnedSegments) {
     const n = vertices.length;
     const sides = [];
     // Number of segments and corners: a closed ring has n of each; an open
@@ -309,21 +315,23 @@ export default class ShapeReadouts {
     );
   }
 
-  // Offset above the first vertex, the opposite way to the angle caption that
-  // can sit at the same corner.
+  // Above the first vertex, anchored by its BOTTOM edge: a sentence wraps to
+  // several lines, so centring it would bring its lower lines down over the
+  // vertex and its close marker. The gap matches the angle caption's offset
+  // below the same corner.
   _addNotice(text, at) {
     this._makeCaption(
       text,
       at,
       'shape-readout--notice',
-      -ANGLE_CAPTION_OFFSET_PX
+      `calc(-50% - ${ANGLE_CAPTION_OFFSET_PX}px)`
     );
   }
 
   // A caption that is never a control, offset vertically on screen from its
-  // anchor. The offset goes on the INNER, since the outer's transform is
-  // CSS2DRenderer's to rewrite every pass.
-  _makeCaption(text, pos, className, offsetPx) {
+  // anchor (a px number, or a CSS length). The offset goes on the INNER, since
+  // the outer's transform is CSS2DRenderer's to rewrite every pass.
+  _makeCaption(text, pos, className, offset) {
     const outer = document.createElement('div');
     outer.className = `shape-readout ${className}`;
     outer.style.pointerEvents = 'none';
@@ -331,7 +339,8 @@ export default class ShapeReadouts {
     inner.className = 'label shape-readout-label';
     styleInner(inner);
     inner.style.pointerEvents = 'none';
-    inner.style.transform = `translate(0px, ${offsetPx}px)`;
+    const y = typeof offset === 'number' ? `${offset}px` : offset;
+    inner.style.transform = `translate(0px, ${y})`;
     inner.textContent = text;
     outer.appendChild(inner);
     const obj = new CSS2DObject(outer);
@@ -363,6 +372,7 @@ export default class ShapeReadouts {
     const inner = document.createElement('div');
     inner.className = 'label shape-readout-label';
     styleInner(inner);
+    inner.style.color = '#fff';
     // The hit target is the outer, so the inner stays transparent: that way a
     // press reports the outer as its target and carries the segment marker.
     inner.style.pointerEvents = 'none';

@@ -6,17 +6,15 @@
 
 import { closingAdjustment } from './shapeSnap.js';
 import { ringEnclosesArea, segmentsIntersectXZ } from './shapeMeasure.js';
+import { SNAP_OFF } from './shapeToolPrefs.js';
 
-const edgesCross = (a, b, edges) =>
-  edges.some(([c, d]) => segmentsIntersectXZ(a, b, c, d));
-
-// Committed non-closing edges [v_i, v_{i+1}], i = 0..n-2.
-function committedEdges(vertices) {
-  const edges = [];
+// Does segment a→b cross any committed side v_i→v_{i+1} (i = 0..n-2)? A
+// shared endpoint is not a crossing, so adjacent sides never count.
+function crossesCommittedSide(a, b, vertices) {
   for (let i = 0; i < vertices.length - 1; i++) {
-    edges.push([vertices[i], vertices[i + 1]]);
+    if (segmentsIntersectXZ(a, b, vertices[i], vertices[i + 1])) return true;
   }
-  return edges;
+  return false;
 }
 
 // Would `point`, placed as the next vertex, be refused — and why?
@@ -34,7 +32,7 @@ function committedEdges(vertices) {
 export function placementVerdict(vertices, point, minSpacing) {
   const n = vertices.length;
   const crosses =
-    n >= 3 && edgesCross(vertices[n - 1], point, committedEdges(vertices));
+    n >= 3 && crossesCommittedSide(vertices[n - 1], point, vertices);
   let tooClose = false;
   if (n) {
     const last = vertices[n - 1];
@@ -64,9 +62,9 @@ export function previewRefused(snapOn, verdict) {
 export function closePlan(vertices, snapStep, minSpacing) {
   const n = vertices.length;
   if (n < 3) return { ring: vertices, refused: true, adjusted: false };
-  if (!snapStep) {
+  if (snapStep === SNAP_OFF) {
     const refused =
-      edgesCross(vertices[n - 1], vertices[0], committedEdges(vertices)) ||
+      crossesCommittedSide(vertices[n - 1], vertices[0], vertices) ||
       !ringEnclosesArea(vertices);
     return { ring: vertices, refused, adjusted: false };
   }

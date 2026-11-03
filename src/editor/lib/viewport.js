@@ -31,8 +31,13 @@ import { DEFAULT_TRANSFORM_MODE } from './transformModes.js';
 import { computeRibbonOutline } from '@/tested/street-path-utils.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import InfiniteGridHelper from './InfiniteGridHelper.js';
+import {
+  createFatLineMaterial,
+  releaseFatLineMaterial,
+  setFatLinePositions,
+  setFatLineResolution
+} from './fatLines.js';
 import {
   ExperimentalControls,
   isStreetLevelNav
@@ -62,49 +67,6 @@ const tempVector3Size = new THREE.Vector3();
 const tempVector3Center = new THREE.Vector3();
 const auxCorner = new THREE.Vector3();
 
-// Selection / hover lines are drawn with three's screen-space "fat" lines:
-// WebGL ignores LineBasicMaterial.linewidth (always 1px), so the helper
-// keeps its stock 1px LineSegments only as the data source and renders a
-// LineSegments2 twin at HIGHLIGHT_LINE_PX. LineMaterial needs the viewport
-// size to convert pixels to clip space; every material is registered so
-// the resize handler can refresh them.
-const HIGHLIGHT_LINE_PX = 2;
-const fatLineMaterials = new Set();
-export function createFatLineMaterial(color) {
-  const material = new LineMaterial({
-    color,
-    linewidth: HIGHLIGHT_LINE_PX,
-    transparent: true,
-    depthTest: false
-  });
-  fatLineMaterials.add(material);
-  return material;
-}
-// CSS pixels, deliberately: the renderer draws at devicePixelRatio, so
-// HIGHLIGHT_LINE_PX comes out as CSS pixels, not device pixels. Guarded
-// against a not-yet-laid-out container (0 would divide by zero in the
-// shader and hide the lines until the first resize).
-function setFatLineResolution(width, height) {
-  const w = Math.max(1, width || 0);
-  const h = Math.max(1, height || 0);
-  fatLineMaterials.forEach((m) => m.resolution.set(w, h));
-}
-// Set a LineSegments2's segments from flat xyz pairs. When the segment
-// count is unchanged the existing interleaved instance buffer is written in
-// place (the box case: 12 segments, updated on every drag frame); otherwise
-// the geometry is rebuilt.
-export function setFatLinePositions(lines, positions) {
-  const buffer = lines.geometry.attributes.instanceStart?.data;
-  if (buffer && buffer.array.length === positions.length) {
-    buffer.array.set(positions);
-    buffer.needsUpdate = true;
-    lines.geometry.computeBoundingBox();
-    lines.geometry.computeBoundingSphere();
-    return;
-  }
-  lines.geometry.dispose();
-  lines.geometry = new LineSegmentsGeometry().setPositions(positions);
-}
 // Expand an indexed LineSegments geometry (BoxHelper's 8 verts / 12 edges)
 // into flat segment pairs, into `out` (sized idx.length * 3).
 function indexedLinePairs(geometry, out) {
@@ -611,7 +573,7 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
     this.conformGroup?.children.forEach((o) => {
       if (o.isLineSegments2) o.geometry.dispose();
     });
-    fatLineMaterials.delete(this.fatMaterial);
+    releaseFatLineMaterial(this.fatMaterial);
     this.fatMaterial.dispose();
   }
 }

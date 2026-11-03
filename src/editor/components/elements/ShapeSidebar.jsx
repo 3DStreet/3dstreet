@@ -191,7 +191,7 @@ const ShapeSidebar = ({ entity }) => {
   // The editor-wide display preferences: what the canvas shows on a selected
   // shape. The panel rows below are never gated on them — they are how the
   // numbers are read with measurements off.
-  const display = useStore((s) => s.shapeToolSettings);
+  const { showMeasurements, showAngles } = useStore((s) => s.shapeToolSettings);
 
   // A freshly selected shape starts with the segment list collapsed.
   useEffect(() => {
@@ -246,17 +246,14 @@ const ShapeSidebar = ({ entity }) => {
       })
     );
     readouts.setUnits(unitsPreference);
-    const prefs = useStore.getState().shapeToolSettings;
-    readouts.setDisplay({
-      measurements: prefs.showMeasurements,
-      angles: prefs.showAngles
-    });
+    const settings = useStore.getState().shapeToolSettings;
+    readouts.setDisplay(settings);
     readoutsRef.current = readouts;
     // The area label is the component's own (it tracks every re-derive) but
     // it shows only for as long as this panel is mounted, i.e. while the shape
     // is selected — the same lifetime as the chips — and only with the
     // measurements preference on. Off again in the cleanup.
-    entity.components.shape?.setAreaLabelVisible(prefs.showMeasurements);
+    entity.components.shape?.setAreaLabelVisible(settings.showMeasurements);
 
     const render = (hoverPoint) =>
       renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef);
@@ -451,14 +448,11 @@ const ShapeSidebar = ({ entity }) => {
   useEffect(() => {
     const r = readoutsRef.current;
     if (!r) return;
-    r.setDisplay({
-      measurements: display.showMeasurements,
-      angles: display.showAngles
-    });
+    r.setDisplay({ showMeasurements, showAngles });
     renderReadouts(r, entity, lastHoverRef.current, lastRenderElsRef);
-    entity.components.shape?.setAreaLabelVisible(display.showMeasurements);
+    entity.components.shape?.setAreaLabelVisible(showMeasurements);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [display.showMeasurements, display.showAngles]);
+  }, [showMeasurements, showAngles]);
 
   const vertices = getShapeVertices(entity);
   // Measure in the WORLD frame: a shape nested inside a scaled (or rotated)
@@ -640,7 +634,7 @@ const ShapeSidebar = ({ entity }) => {
                 </li>
                 <li>
                   •{' '}
-                  {display.showMeasurements
+                  {showMeasurements
                     ? intl.formatMessage({
                         id: 'shapeSidebar.tipInsert',
                         defaultMessage:

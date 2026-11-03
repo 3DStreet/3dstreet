@@ -13,7 +13,7 @@ import Events from '@/editor/lib/Events.js';
 import useStore from '@/store';
 import { Shortcuts } from '@/editor/lib/shortcuts.js';
 import { ActionBar } from '@/editor/components/elements/ActionBar/ActionBar.component.jsx';
-import { shapeDrawMessage } from '@/editor/components/elements/ActionBar/ShapeDrawAction.jsx';
+import { shapeDrawMessage } from '@/editor/lib/shapeDrawMessages.js';
 import { ShapeToolSection } from '@/editor/components/elements/ShapeToolSection.jsx';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
 import { SHAPE_TOOL_DEFAULTS } from '@/editor/lib/shapeToolPrefs.js';
@@ -30,6 +30,8 @@ import { group, mountEditor, solid } from '../lib/groups/_editorHarness.js';
 // done at world points (projected to the harness canvas), so placements and
 // the closes they make can be worked by hand.
 
+// The harness builds the real viewport, as ShapeDraw.groups.test.jsx does;
+// these stand in for its camera and navigation dependencies.
 vi.mock('@/editor/lib/cameras', () => ({ copyCameraPosition: vi.fn() }));
 vi.mock('@/editor/lib/navAnalytics.js', () => ({
   captureNavDiscovery: vi.fn()
@@ -241,18 +243,20 @@ function lastCreate() {
   const calls = execute.mock.calls.filter(([type]) => type === 'entitycreate');
   const payload = calls.at(-1)?.[1];
   if (!payload) return null;
-  const [cx, cy, cz] = String(payload.components.position)
-    .split(' ')
-    .map(Number);
-  const position =
-    typeof payload.components.position === 'object'
-      ? payload.components.position
-      : { x: cx, y: cy, z: cz };
+  // A definition placed under the top-level container carries its position
+  // re-posed as an {x, y, z}; the draw tool's own definition writes a string.
+  const pos = payload.components.position;
+  const position = typeof pos === 'string' ? parseVec(pos) : pos;
   const vertices = payload.children.map((child) => {
-    const [x, y, z] = child.components.position.split(' ').map(Number);
+    const { x, y, z } = parseVec(child.components.position);
     return new THREE.Vector3(position.x + x, position.y + y, position.z + z);
   });
   return { payload, shape: payload.components.shape, vertices };
+}
+
+function parseVec(text) {
+  const [x, y, z] = text.split(' ').map(Number);
+  return { x, y, z };
 }
 
 function expectNear(actual, expected, digits = 6) {
@@ -280,7 +284,10 @@ function armOverFirst() {
   moveToWorld(0, 0);
 }
 
-const oracleOf = (points, step = 90) =>
+// The pure close's answer for these points. Where a test uses it, it shows
+// the preview and the commit agree with it — not that it is right: the tests
+// also state the expected point as a literal, worked by hand.
+const closeTargetFor = (points, step = 90) =>
   closingAdjustment({ vertices: points, step, minSpacing: MIN }).point;
 
 describe('Shape Tool settings while drawing', () => {
@@ -310,6 +317,10 @@ describe('Shape Tool settings while drawing', () => {
     expect(lengthLabels()).toHaveLength(1);
     setPref('showAngles', true);
     clickAt(10, 7);
+    // Before the pointer moves again, the corner the click made keeps its
+    // angle.
+    expect(angleLabels()).toHaveLength(1);
+    expectNear(readoutsObjectFor(angleLabels()[0]).position, drawnPoints()[1]);
     moveToWorld(4, 9);
     const angles = angleLabels();
     expect(angles).toHaveLength(1);
@@ -330,10 +341,48 @@ describe('Shape Tool settings while drawing', () => {
     clickAt(9, 0);
     expect(drawnPoints()).toHaveLength(2);
 
+    // Snap off, a pointer on the last point is too close as well — and is
+    // refused silently, as it always has been.
     setPref('snapStep', 0);
+    moveToWorld(10, 5); // a placeable point first, so the preview is not red
+    expect(lastInvalid()).toBe(false);
     invalid.mockClear();
-    moveToWorld(9, 0);
+    moveToWorld(10, 0);
     expect(invalid).not.toHaveBeenCalledWith(true);
+    clickAt(10, 0);
+    expect(drawnPoints()).toHaveLength(2);
+  });
+
+  it('leaves the first side free with alignment off, and snaps it to the axes with it on (fails if the setting is ignored or inverted)', () => {
+    setPref('snapStep', 90);
+    setPref('alignToAxes', false);
+    drawingTool();
+    clickAt(0, 0);
+    const first = drawnPoints()[0];
+    const at = (from, deg, len = 10) => {
+      const rad = (deg * Math.PI) / 180;
+      return v3(from.x + len * Math.cos(rad), from.z + len * Math.sin(rad));
+    };
+    // 20° off the world's x axis: free, the point goes where the pointer is.
+    const raw = at(first, 20);
+    moveToWorld(raw.x, raw.z);
+    expectNear(trailing(), raw);
+    clickAt(raw.x, raw.z);
+    const second = drawnPoints()[1];
+    expect(headingDeg(first, second)).toBeCloseTo(20, 4);
+    // The next side snaps square to that free side, not to the world.
+    const next = at(second, 20 + 95);
+    moveToWorld(next.x, next.z);
+    expect(headingDeg(second, trailing())).toBeCloseTo(110, 6);
+    pressKey('Enter');
+
+    // Alignment on: the same first side snaps to the world's x axis.
+    setPref('alignToAxes', true);
+    pickShapeTool();
+    clickAt(0, 0);
+    moveToWorld(raw.x, raw.z);
+    const heading = headingDeg(drawnPoints()[0], trailing());
+    expect(Math.min(heading, 360 - heading)).toBeCloseTo(0, 6);
   });
 
   it('arms on the pointer and previews the slid close, which a click then commits, across an edit (fails if it arms from the snapped point, or the preview or commit uses a stale plan)', () => {
@@ -342,10 +391,9 @@ describe('Shape Tool settings while drawing', () => {
     drawingTool();
     roughRectangle();
     const before = plainPoints();
-    const oracle = oracleOf(before);
-    expect(
-      Math.hypot(oracle.x - before[3].x, oracle.z - before[3].z)
-    ).toBeGreaterThan(0.1);
+    const oracle = closeTargetFor(before);
+    expectNear(oracle, { x: 0, z: 8 });
+    expectNear(before[3], { x: -3, z: 8 });
     // The pointer over the first point snaps, from the last, to a point well
     // away from it: arming from the snapped point would not arm.
     const snapped = v3(before[3].x, 0); // the foot on the ray square to the last side
@@ -363,10 +411,8 @@ describe('Shape Tool settings while drawing', () => {
     clickAt(10, 5);
     clickAt(-2, 5);
     const before2 = plainPoints();
-    const oracle2 = oracleOf(before2);
-    expect(
-      Math.hypot(oracle2.x - oracle.x, oracle2.z - oracle.z)
-    ).toBeGreaterThan(0.1);
+    const oracle2 = closeTargetFor(before2);
+    expectNear(oracle2, { x: 0, z: 5 });
     armOverFirst();
     expectNear(drawnPoints()[3], oracle2);
     const ring = drawnPoints();
@@ -515,15 +561,31 @@ describe('Shape Tool settings while drawing', () => {
     }
     lastCreate().vertices.forEach((v, i) => expectNear(v, clicked[i]));
 
+    // Refused whether snapped or not: drawn unsnapped as a bow-tie, whose
+    // closing side would cross its second side, then snap turned on. The
+    // reason given must not send the user to turn snap off.
+    setPref('snapStep', 0);
+    pickShapeTool();
+    clickAt(0, 0);
+    clickAt(10, 0);
+    clickAt(0, 10);
+    clickAt(10, 10);
+    expect(drawnPoints()).toHaveLength(4);
+    setPref('snapStep', 90);
+    armOverFirst();
+    expect(noticeLabels()).toHaveLength(1);
+    expect(noticeLabels()[0].textContent).toBe(
+      shapeDrawMessage('closeRefused')
+    );
+    pressKey('Enter');
+
     // Adjustable: every exit commits the slid ring.
     for (const name of Object.keys(exits)) {
       pickShapeTool();
       roughRectangle();
       const before = plainPoints();
-      const oracle = oracleOf(before);
-      expect(
-        Math.hypot(oracle.x - before[3].x, oracle.z - before[3].z)
-      ).toBeGreaterThan(0.1);
+      const oracle = closeTargetFor(before);
+      expectNear(oracle, { x: 0, z: 8 });
       armOverFirst();
       exits[name]();
       const created = lastCreate();
@@ -771,10 +833,8 @@ describe('Shape Tool settings while drawing', () => {
     // (a) Snap turned off while armed.
     roughRectangle();
     const before = plainPoints();
-    const oracle = oracleOf(before);
-    expect(
-      Math.hypot(oracle.x - before[3].x, oracle.z - before[3].z)
-    ).toBeGreaterThan(0.1);
+    const oracle = closeTargetFor(before);
+    expectNear(oracle, { x: 0, z: 8 });
     armOverFirst();
     expectNear(drawnPoints()[3], oracle);
     setPref('snapStep', 0);
@@ -790,8 +850,8 @@ describe('Shape Tool settings while drawing', () => {
     pickShapeTool();
     roughRectangle(10, -7);
     const b = plainPoints();
-    const at90 = oracleOf(b, 90);
-    const at45 = oracleOf(b, 45);
+    const at90 = closeTargetFor(b, 90);
+    const at45 = closeTargetFor(b, 45);
     expectNear(at90, { x: 0, z: 10 });
     expectNear(at45, { x: -10, z: 10 });
     expectNear(b[3], { x: -7, z: 10 });
@@ -802,21 +862,6 @@ describe('Shape Tool settings while drawing', () => {
     pressKey('Enter');
     created = lastCreate();
     expectNear(created.vertices[3], at45);
-
-    // (c) A second shape at the same revision and step gets its own plan.
-    setPref('snapStep', 90);
-    pickShapeTool();
-    roughRectangle();
-    armOverFirst();
-    pressKey('Backspace');
-    pressKey('Enter');
-    pickShapeTool();
-    roughRectangle(5, -2);
-    const c = plainPoints();
-    const ownOracle = oracleOf(c);
-    armOverFirst();
-    expectNear(drawnPoints()[3], ownOracle);
-    expectNear(ownOracle, { x: 0, z: 5 });
   });
 });
 

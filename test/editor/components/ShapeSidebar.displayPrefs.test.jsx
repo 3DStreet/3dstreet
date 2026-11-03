@@ -117,7 +117,7 @@ describe('a selected shape and the display preferences', () => {
     setPref('showMeasurements', false);
     expect(areaLabel(entity).at(-1)).toBe(false);
     const display = calls.findIndex(
-      ([name, arg]) => name === 'setDisplay' && arg.measurements === false
+      ([name, arg]) => name === 'setDisplay' && arg.showMeasurements === false
     );
     expect(display).toBeGreaterThanOrEqual(0);
     expect(
