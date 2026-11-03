@@ -363,6 +363,11 @@ AFRAME.registerComponent('splat', {
       const sprite = new THREE.Sprite(material);
       sprite.scale.set(0.4, 0.1, 1);
       sprite.renderOrder = 999;
+      // A badge, not geometry: keep it out of every raycast. Sprite.raycast
+      // dereferences raycaster.camera, which editor probes (gizmo support,
+      // nav situation sensor) never set, so it threw mid-select and stalled
+      // the upload flow on "Preparing…".
+      sprite.raycast = () => {};
       this.indicator = { sprite, material, texture, ctx, text };
       this.el.object3D.add(sprite);
     }
