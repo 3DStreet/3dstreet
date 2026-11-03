@@ -29,26 +29,21 @@ export const Shortcuts = {
   // key-up of that same press must not then also leave a group level or
   // clear the selection.
   //
-  // The latch is read and cleared in the CAPTURE phase (onKeyUpCapture),
-  // because tools that act on Escape — the shape draw tool, the vertex
-  // editor, a modal closing — stop its key-up before it reaches the bubble
-  // listener. Cleared only there, it would stay armed after such a press, and
-  // a later lone Escape key-up (an inline rename cancelled on its key-down)
-  // would leave a group level or clear the selection. `stopPropagation` does
-  // not keep other listeners on the same target and phase from running, so
-  // the capture listener sees every Escape key-up, whoever stops it.
+  // The key-down record is read and cleared in the CAPTURE phase, because
+  // tools that act on Escape stop its key-up before the bubble phase (see
+  // docs/groups.md). The bubble listener reads escapePressAccepted: whether
+  // the press now ending had a key-down the editor accepted.
   escapeDown: false,
-  // That press's verdict, for the bubble listener.
-  escapeKeyUpArmed: false,
+  escapePressAccepted: false,
   onKeyUpCapture: function (event) {
     if (event.keyCode !== 27) return;
-    this.escapeKeyUpArmed = this.escapeDown;
+    this.escapePressAccepted = this.escapeDown;
     this.escapeDown = false;
   },
   onKeyUp: function (event) {
     // Cleared before the gate below, so a gated key-up does not leave it set.
-    const escapeDown = event.keyCode === 27 && this.escapeKeyUpArmed;
-    if (event.keyCode === 27) this.escapeKeyUpArmed = false;
+    const pressAccepted = event.keyCode === 27 && this.escapePressAccepted;
+    if (event.keyCode === 27) this.escapePressAccepted = false;
 
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
@@ -57,7 +52,11 @@ export const Shortcuts = {
     var keyCode = event.keyCode;
 
     // esc: leave one open group level if a group is open, else unselect entity
-    if (keyCode === 27 && escapeDown && !this.inspector.groupScope.escape()) {
+    if (
+      keyCode === 27 &&
+      pressAccepted &&
+      !this.inspector.groupScope.escape()
+    ) {
       if (this.inspector.selectedEntity) {
         this.inspector.selectEntity(null);
       }
@@ -253,7 +252,7 @@ export const Shortcuts = {
     }
 
     this.escapeDown = false;
-    this.escapeKeyUpArmed = false;
+    this.escapePressAccepted = false;
     window.addEventListener('keydown', this.onKeyDown, false);
     window.addEventListener('keyup', this.onKeyUpCapture, true);
     window.addEventListener('keyup', this.onKeyUp, false);
@@ -266,12 +265,12 @@ export const Shortcuts = {
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
     this.escapeDown = false;
-    this.escapeKeyUpArmed = false;
+    this.escapePressAccepted = false;
     this.enabled = false;
   },
   onBlur: function () {
     this.escapeDown = false;
-    this.escapeKeyUpArmed = false;
+    this.escapePressAccepted = false;
   },
   checkModuleShortcutCollision: function (keyCode, moduleName, mustBeActive) {
     if (
