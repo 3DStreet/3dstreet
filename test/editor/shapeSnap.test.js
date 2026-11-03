@@ -293,6 +293,12 @@ describe('closingAdjustment', () => {
     const v2 = polar(v1, 10, 90);
     const vertices = [p(0, 0), v1, v2];
     expect(adjust(vertices, 90)).toEqual({ refused: true });
+    // A last side at 120° after a first side at 0°: a close at (0, 17.32)
+    // crosses nothing, but its closing turns (−30° and −60°) are not
+    // multiples of 90°, so the close is refused before any slide is tried.
+    expect(adjust([p(0, 0), p(10, 0), polar(p(10, 0), 10, 120)], 90)).toEqual({
+      refused: true
+    });
     const result = adjust(vertices, 30);
     if (result.point) {
       for (const turn of closingTurns(vertices, result.point)) {
