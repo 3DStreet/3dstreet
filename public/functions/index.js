@@ -22,6 +22,7 @@ const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./sch
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
+const { listGeoSources, getGeoSource } = require('./geo-sources.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -68,6 +69,12 @@ exports.postmarkSubscriptionWebhook = postmarkSubscriptionWebhook;
 exports.sendWelcomeEmail = sendWelcomeEmail;
 exports.lifecycleEmailSweep = lifecycleEmailSweep;
 exports.triggerLifecycleSweep = triggerLifecycleSweep;
+
+// Private geo data sources for outside map apps (Joiner): sign in with 3DStreet,
+// read admin-registered Airtable / Google Sheets / URL sources server-side.
+// See docs/geo-sources.md.
+exports.listGeoSources = listGeoSources;
+exports.getGeoSource = getGeoSource;
 
 // Re-export the user audit functions
 exports.auditUserSubscriptions = auditUserSubscriptions;

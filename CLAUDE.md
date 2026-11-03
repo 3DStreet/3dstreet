@@ -157,7 +157,9 @@ init, `<street-assets>`, texture references or load indicators.**
 
 **Auth:** Google, Email/Password, user claims for plan levels
 
-**Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
+**Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated, listGeoSources, getGeoSource
+
+**Private geo sources (Joiner):** outside apps sign in with 3DStreet Auth and read admin-registered Airtable / Google Sheets / URL sources through `listGeoSources` / `getGeoSource`; source docs (`geoSources/`) and the Airtable token never reach clients, and these callables deliberately skip App Check (cross-origin clients). Read [docs/geo-sources.md](docs/geo-sources.md) before changing them.
 
 **Project Pass (#1922):** one-time time-boxed Pro. Pro = plan claim OR team domain OR `tokenProfile.proUntil > now` (`hasProEntitlement`, `public/functions/pro-pass.js`); never store pass state in claims. All pass fulfilment (Stripe checkout and `#redeem` pass codes) goes through `grantPass` (idempotency key per grant). Read [docs/project-pass.md](docs/project-pass.md) before touching Pro checks, checkout gating or the Stripe webhook.
 

@@ -230,6 +230,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Private geo data sources (docs/geo-sources.md). Admin-curated in the
+    // console; read only by the listGeoSources / getGeoSource callables (Admin
+    // SDK). Docs hold base / sheet ids, private URLs and the access grants, so
+    // clients never read or write them.
+    match /geoSources/{sourceId} {
+      allow read, write: if false;
+    }
+
     // Background-job health heartbeats (System Health admin page).
     // Each scheduled function records its last run + status here via the Admin
     // SDK (writes bypass rules). Admin-only read; never client-writable.
