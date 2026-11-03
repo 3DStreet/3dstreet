@@ -6,14 +6,14 @@ properties panel.
 
 The code is spread across five directories, so this file is the entry point:
 
-| Where                             | What                                                                                                                                                                                  |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`                                                                                                    |
-| `src/editor/components/elements/` | `ShapeSidebar.jsx` (properties panel), `ShapeToolSection.jsx` (the Shape Tool settings), `ActionBar/ShapeDrawAction.jsx` (the draw tool)                                              |
-| `src/editor/lib/`                 | `shapeStyle.js`, `shapeToolPrefs.js`, `shapeEditRules.js`, `shapeDrawRules.js`, `shapeSnap.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js` |
-| `src/editor/lib/commands/`        | `ShapeVertex{Insert,Move,Remove}Command.js`, `StreetConvertToShapesCommand.js`                                                                                                        |
-| `test/`                           | `editor/shape*.test.js`, `components/shape-*.test.js`                                                                                                                                 |
-| `docs/`                           | `shape-vertex-editing.md` — how the on-canvas vertex handles, the measurement chips and the two buttons divide the work between them, and why                                         |
+| Where                             | What                                                                                                                                                                                                          |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`                                                                                                                            |
+| `src/editor/components/elements/` | `ShapeSidebar.jsx` (properties panel), `ShapeToolSection.jsx` (the Shape Tool settings), `ActionBar/ShapeDrawAction.jsx` (the draw tool)                                                                      |
+| `src/editor/lib/`                 | `shapeStyle.js`, `shapeToolPrefs.js`, `shapeEditRules.js`, `shapeDrawRules.js`, `shapeDrawMessages.js`, `shapeSnap.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js` |
+| `src/editor/lib/commands/`        | `ShapeVertex{Insert,Move,Remove}Command.js`, `StreetConvertToShapesCommand.js`                                                                                                                                |
+| `test/`                           | `editor/shape*.test.js`, `components/shape-*.test.js`                                                                                                                                                         |
+| `docs/`                           | `shape-vertex-editing.md` — how the on-canvas vertex handles, the measurement chips and the two buttons divide the work between them, and why                                                                 |
 
 ## Measurements
 
