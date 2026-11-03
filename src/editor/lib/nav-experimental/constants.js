@@ -112,6 +112,17 @@ export const MIN_ORBIT_RADIUS_METRES = 2;
 // `nav-experimental-tuning` component.
 export const MAP_PIVOT_BOUNDS_RADIUS_METRES = 500;
 
+// Selection rotation pivot (TH-82, #1993). While an entity is selected, Map-regime
+// rotation orbits the selected entity's origin instead of the screen-centre /
+// cursor ground point — but only when that origin is in view: in front of the
+// camera and inside this fraction of the viewport's half-extent on both axes
+// (NDC |x|,|y| ≤ margin). The rigid orbit keeps the pivot pinned where it sits
+// on screen, so an off-centre (but visible) selection is still a stable
+// pivot; the margin only rejects a pivot hugging the edge, where the swing
+// would throw most of the view off-screen. Out of view (or no selection) →
+// the normal pivot scheme. Deselect (Escape / click empty space) to get free.
+export const SELECTION_PIVOT_NDC_MARGIN = 0.9;
+
 // Street-level-mode-OFF parity tuning (TH-74): far-acceptance budget for a
 // CLICKED Map-mode rotation pivot. With the street regime off, Map rotation runs at
 // EVERY tilt, and orbiting a far pivot from a low camera swings it violently

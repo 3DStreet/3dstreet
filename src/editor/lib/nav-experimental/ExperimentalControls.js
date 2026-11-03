@@ -190,6 +190,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       get mapPivotFarAcceptGain() {
         return self._mapPivotFarAcceptGain;
       },
+      // The editor's selected entity (#1993 selection rotation pivot). Read
+      // live from the inspector global — null outside the editor or with
+      // nothing selected.
+      get selectedEntity() {
+        const inspector =
+          typeof AFRAME !== 'undefined' ? AFRAME.INSPECTOR : undefined;
+        return (inspector && inspector.selectedEntity) || null;
+      },
       get rotationSpeed() {
         return self.rotationSpeed;
       },
@@ -1217,6 +1225,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // Hide the ring on a window blur (e.g. Alt-Tab
       // mid-orbit) so it can't leak visible.
       this._drag.hideIndicator();
+      // Report the interrupted rotate drag, if any (#1993 telemetry).
+      this._drag.flushRotateGesture();
     }
   }
 

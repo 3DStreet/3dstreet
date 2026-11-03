@@ -7,6 +7,7 @@ import {
   FALLBACK_FORWARD_DIST,
   EYE_MARGIN_METRES,
   MIN_ORBIT_RADIUS_METRES,
+  SELECTION_PIVOT_NDC_MARGIN,
   LB_TWEEN_HYSTERESIS_DEGREES
 } from './constants.js';
 import {
@@ -18,11 +19,36 @@ import {
   shiftRotateStep,
   viewRayGroundPoint
 } from './navMath.js';
-import { captureNavDiscovery } from '../navAnalytics.js';
+import { captureNavDiscovery, captureRotateGesture } from '../navAnalytics.js';
+import { isUserGroup } from '../groups/groupModel.js';
+import { getGroupCenter } from '../groups/groupBounds.js';
 
 // Frozen read-only world-up axis (cross-product operand). Never mutated,
 // never returned.
 const _WORLD_UP = Object.freeze(new THREE.Vector3(0, 1, 0));
+
+// `selected_type` buckets for the rotate telemetry: the first component the
+// selected entity carries wins; otherwise a mixin means a catalog model.
+const _SELECTED_TYPE_COMPONENTS = [
+  'managed-street',
+  'street-segment',
+  'managed-intersection',
+  'intersection',
+  'shape',
+  'splat',
+  'gltf-model'
+];
+
+function selectedTypeOf(el) {
+  if (!el) return null;
+  if (el.isScene) return 'scene';
+  if (!el.hasAttribute) return 'other';
+  for (const name of _SELECTED_TYPE_COMPONENTS) {
+    if (el.hasAttribute(name)) return name === 'gltf-model' ? 'model' : name;
+  }
+  if (el.hasAttribute('mixin')) return 'model';
+  return 'other';
+}
 
 // The drag-gesture controller — the merged pan + rotate mouse gesture core. Owns
 // the letterbox sub-mode comparator (the `nav-experimental:modechange` LB
@@ -43,6 +69,9 @@ export class DragGestureController {
     this._ctx = ctx;
     // The rotation ring (Map-orbit pivot indicator) — private to this controller.
     this._indicator = new RotationIndicator(ctx.sceneEl);
+    // Stats for the rotate sub-gesture in progress, sent as one
+    // `nav_rotate_gesture` event when it ends (#1993). Null outside a rotate.
+    this._rotateStats = null;
     // Last emitted LB sub-mode — the pan sub-mode that also drives the letterbox
     // comparator (glossary: "LB"). Lazily seeded.
     this._currentLbMode = null;
@@ -129,6 +158,11 @@ export class DragGestureController {
       }
     } else if (mode === 'rotate') {
       captureNavDiscovery('rotate');
+      if (this._rotateStats) {
+        this._rotateStats.dxPx += dx;
+        this._rotateStats.dyPx += dy;
+        this._rotateStats.moved = true;
+      }
       this._shiftRotate(dx, dy);
       // The letterbox re-evaluates the moment the tilt crosses T: `_shiftRotate`
       // ends in `funnel.dispatch()`, which resolves it at exact T — no explicit
@@ -145,6 +179,7 @@ export class DragGestureController {
     if (this._ctx.latch.isActive()) {
       // Capture the mode BEFORE latch.end() nulls the value bag.
       endedMode = this._ctx.latch.get('mode');
+      this.flushRotateGesture();
       this._ctx.latch.end();
       this._ctx.emitModeChange(null);
       // Hide the ring on any latch-end via mouseup so it can't leak visible.
@@ -158,6 +193,27 @@ export class DragGestureController {
   // Hide the rotation ring (orchestrator window-blur cleanup).
   hideIndicator() {
     this._indicator.hide();
+  }
+
+  // Send the `nav_rotate_gesture` event for the rotate sub-gesture that is
+  // ending (mouseup, mid-drag switch to pan, WASD takeover, window blur).
+  // Only a rotate that moved the camera reports; a Shift+click that never
+  // drags sends nothing. yaw_deg / pitch_deg are the requested input rotation
+  // (drag right / down positive), before any tilt clamp.
+  flushRotateGesture() {
+    const stats = this._rotateStats;
+    this._rotateStats = null;
+    if (!stats || !stats.moved) return;
+    const toDeg = (px) =>
+      Math.round(THREE.MathUtils.radToDeg(px * this._ctx.rotationSpeed) * 10) /
+      10;
+    captureRotateGesture({
+      pivot_source: stats.pivotSource,
+      selected_type: stats.selectedType,
+      drag_ms: Math.round(performance.now() - stats.startMs),
+      yaw_deg: toDeg(stats.dxPx),
+      pitch_deg: toDeg(stats.dyPx)
+    });
   }
 
   // Release the rotation ring's resources (orchestrator dispose).
@@ -251,6 +307,7 @@ export class DragGestureController {
     // ring left visible by the rotate — otherwise it leaks on the stale
     // pivot for the rest of the drag (it only marks a Map-rotate pivot).
     this._indicator.hide();
+    this.flushRotateGesture();
     const subMode = this._decideLbModeLive();
     const anchor = this._capAnchorReach(
       this._ctx.cursorAnchor.worldPointAt(clientX, clientY)
@@ -417,6 +474,7 @@ export class DragGestureController {
   endRotationForWasd() {
     if (!this._ctx.latch.isActive()) return;
     if (this._ctx.latch.get('mode') !== 'rotate') return;
+    this.flushRotateGesture();
     this._ctx.latch.end();
     this._ctx.emitModeChange(null);
     this._indicator.hide();
@@ -649,9 +707,27 @@ export class DragGestureController {
       pivotX = rect.left + rect.width / 2;
       pivotY = rect.top + rect.height / 2;
     }
-    const center = isMap
-      ? this._mapModePivot(pivotX, pivotY) // bounds sphere + fallback
-      : camera.position.clone(); // street: rotate-in-place
+    // Map regime with a visible selected entity → orbit the selection
+    // (#1993); otherwise the bounds-sphere + fallback pivot.
+    let center;
+    let pivotSource;
+    if (isMap) {
+      const sel = this._selectionPivot(camera);
+      pivotSource = sel.source;
+      center = sel.center || this._mapModePivot(pivotX, pivotY);
+    } else {
+      pivotSource = 'street_inplace';
+      center = camera.position.clone(); // street: rotate-in-place
+    }
+    this.flushRotateGesture();
+    this._rotateStats = {
+      startMs: performance.now(),
+      pivotSource,
+      selectedType: selectedTypeOf(this._ctx.selectedEntity),
+      dxPx: 0,
+      dyPx: 0,
+      moved: false
+    };
     this._ctx.latch.start({
       mode: 'rotate',
       center,
@@ -669,6 +745,63 @@ export class DragGestureController {
     } else {
       this._indicator.hide();
     }
+  }
+
+  // Selection pivot (#1993): the selected entity's world origin (a user
+  // group's center), when it is in view (in front of the camera, within
+  // SELECTION_PIVOT_NDC_MARGIN of the viewport on both axes). Returns `{ center, source }`; `center` is null —
+  // use the normal Map pivot — and `source` says why (also the rotate
+  // telemetry's `pivot_source`):
+  //   fallback_none      — nothing selected, or the scene/camera/a detached
+  //                        entity (nothing orbitable)
+  //   fallback_hidden    — the selection or an ancestor is hidden
+  //   fallback_offscreen — origin behind the camera or outside the margin
+  // Unlike `_mapModePivot` this pivot is NOT forced to the ground: the point
+  // the user picked is the one that stays pinned on screen.
+  _selectionPivot(camera) {
+    const none = { center: null, source: 'fallback_none' };
+    const el = this._ctx.selectedEntity;
+    if (!el || el.isScene || !el.object3D || !el.isConnected) return none;
+    if (el.hasAttribute && el.hasAttribute('camera')) return none;
+    for (let o = el.object3D; o; o = o.parent) {
+      if (!o.visible) return { center: null, source: 'fallback_hidden' };
+    }
+    // A user group turns about its center (stored pin, else the middle of
+    // its member bounds), not its origin: orbit that, as its handles do.
+    const p = new THREE.Vector3();
+    if (isUserGroup(el)) {
+      el.object3D.updateWorldMatrix(true, false);
+      getGroupCenter(el, p).applyMatrix4(el.object3D.matrixWorld);
+    } else {
+      el.object3D.getWorldPosition(p);
+    }
+    // Degenerate: pivot on the camera itself — nothing to orbit.
+    if (p.distanceToSquared(camera.position) < 1e-6) return none;
+    camera.updateMatrixWorld();
+    const ndc = p.clone().project(camera);
+    const m = SELECTION_PIVOT_NDC_MARGIN;
+    if (
+      !Number.isFinite(ndc.x) ||
+      !Number.isFinite(ndc.y) ||
+      ndc.z < -1 ||
+      ndc.z > 1 ||
+      Math.abs(ndc.x) > m ||
+      Math.abs(ndc.y) > m
+    ) {
+      return { center: null, source: 'fallback_offscreen' };
+    }
+    const fwd = this._tmpV3c;
+    camera.getWorldDirection(fwd);
+    return {
+      center: clampOrbitRadius(
+        camera.position,
+        p,
+        MIN_ORBIT_RADIUS_METRES,
+        Infinity,
+        fwd
+      ),
+      source: 'selection'
+    };
   }
 
   // Map-mode pivot. The fallback rotation centre is the screen-centre

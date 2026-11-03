@@ -39,7 +39,15 @@ const { GoogleGenAI } = require('@google/genai');
 const MODEL_ID = 'gemini-3.8-flash';
 const LOCATION = 'global';
 
-const MAX_OUTPUT_TOKENS = 4096;
+// Gemini 3.x "thinking" tokens count against maxOutputTokens. With the old
+// 4096 cap and default (dynamic) thinking, a large scene + screenshot + tool
+// list could spend the whole budget thinking and return no candidate at all
+// (finishReason MAX_TOKENS, empty text, no function calls), which the panel
+// rendered as "No response available" (Oct-Nov 2026, ~12-20% of turns). The
+// Editor's tool-calling turns don't benefit from deep reasoning, so pin
+// thinking LOW and leave headroom for the visible answer.
+const MAX_OUTPUT_TOKENS = 8192;
+const THINKING_LEVEL = 'LOW';
 // Guard against a single giant prompt running up input tokens. The legit prompt
 // (scene JSON + mixin catalog + history) is well under this; it only bounds abuse.
 const MAX_INPUT_CHARS = 300000;
@@ -322,10 +330,14 @@ const generateEditorChat = functions
       { role: 'user', parts: userParts }
     ];
 
-    const config = { maxOutputTokens: MAX_OUTPUT_TOKENS };
+    const config = {
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+      thinkingConfig: { thinkingLevel: THINKING_LEVEL }
+    };
     if (systemInstruction) config.systemInstruction = systemInstruction;
     if (tools && tools.length) config.tools = tools;
 
+    const startedAt = Date.now();
     let response;
     try {
       response = await getClient().models.generateContent({
@@ -334,6 +346,12 @@ const generateEditorChat = functions
         config
       });
     } catch (err) {
+      logOutcome({
+        uid,
+        outcome: 'error',
+        latencyMs: Date.now() - startedAt,
+        error: String(err?.status || err?.code || err?.name || 'unknown')
+      });
       // The slot was reserved before the call; the call produced no answer, so
       // give it back (transient upstream failures shouldn't burn the budget).
       await refundRateLimit(uid);
@@ -349,11 +367,48 @@ const generateEditorChat = functions
 
     // `.text` and `.functionCalls` are getters on the Gen AI response; both can
     // be undefined (text-only or call-only turns).
+    const text = response?.text || '';
+    const functionCalls = response?.functionCalls || [];
+    const usage = response?.usageMetadata || null;
+    const candidate = response?.candidates?.[0];
+    const finishReason =
+      candidate?.finishReason ||
+      response?.promptFeedback?.blockReason ||
+      'NO_CANDIDATE';
+    const empty = !text.trim() && functionCalls.length === 0;
+
+    logOutcome({
+      uid,
+      outcome: empty ? 'empty' : functionCalls.length ? 'tool_calls' : 'text',
+      finishReason,
+      latencyMs: Date.now() - startedAt,
+      promptTokens: usage?.promptTokenCount ?? null,
+      outputTokens: usage?.candidatesTokenCount ?? null,
+      thoughtsTokens: usage?.thoughtsTokenCount ?? null,
+      functionCallCount: functionCalls.length,
+      hasScreenshot: !!screenshot
+    });
+
+    // Empty turns are NOT refunded: they still bill input + thinking tokens, so
+    // a refund would let a crafted prompt bypass the rate limit.
+
     return {
-      text: response?.text || '',
-      functionCalls: response?.functionCalls || [],
-      usageMetadata: response?.usageMetadata || null
+      text,
+      functionCalls,
+      usageMetadata: usage,
+      finishReason
     };
   });
+
+/**
+ * One structured log line per model round-trip (jsonPayload in Cloud Logging,
+ * filter: jsonPayload.message="ai_chat_outcome"). This is the server-side
+ * source of truth the Tuesday SRE check (3dstreet-private scripts/sre-check.js
+ * section 7) reads: outcome ∈ text | tool_calls | empty | error, plus
+ * finishReason and token counts. No prompt or response content is logged.
+ */
+function logOutcome(fields) {
+  functions.logger.info('ai_chat_outcome', { model: MODEL_ID, ...fields });
+}
 
 module.exports = { generateEditorChat };
