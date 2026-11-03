@@ -28,11 +28,27 @@ export const Shortcuts = {
   // accepted. The viewer returns to the editor on Escape's key-down, and the
   // key-up of that same press must not then also leave a group level or
   // clear the selection.
+  //
+  // The latch is read and cleared in the CAPTURE phase (onKeyUpCapture),
+  // because tools that act on Escape — the shape draw tool, the vertex
+  // editor, a modal closing — stop its key-up before it reaches the bubble
+  // listener. Cleared only there, it would stay armed after such a press, and
+  // a later lone Escape key-up (an inline rename cancelled on its key-down)
+  // would leave a group level or clear the selection. `stopPropagation` does
+  // not keep other listeners on the same target and phase from running, so
+  // the capture listener sees every Escape key-up, whoever stops it.
   escapeDown: false,
+  // That press's verdict, for the bubble listener.
+  escapeKeyUpArmed: false,
+  onKeyUpCapture: function (event) {
+    if (event.keyCode !== 27) return;
+    this.escapeKeyUpArmed = this.escapeDown;
+    this.escapeDown = false;
+  },
   onKeyUp: function (event) {
     // Cleared before the gate below, so a gated key-up does not leave it set.
-    const escapeDown = this.escapeDown;
-    if (event.keyCode === 27) this.escapeDown = false;
+    const escapeDown = event.keyCode === 27 && this.escapeKeyUpArmed;
+    if (event.keyCode === 27) this.escapeKeyUpArmed = false;
 
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
@@ -237,20 +253,25 @@ export const Shortcuts = {
     }
 
     this.escapeDown = false;
+    this.escapeKeyUpArmed = false;
     window.addEventListener('keydown', this.onKeyDown, false);
+    window.addEventListener('keyup', this.onKeyUpCapture, true);
     window.addEventListener('keyup', this.onKeyUp, false);
     window.addEventListener('blur', this.onBlur, false);
     this.enabled = true;
   },
   disable: function () {
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUpCapture, true);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
     this.escapeDown = false;
+    this.escapeKeyUpArmed = false;
     this.enabled = false;
   },
   onBlur: function () {
     this.escapeDown = false;
+    this.escapeKeyUpArmed = false;
   },
   checkModuleShortcutCollision: function (keyCode, moduleName, mustBeActive) {
     if (
@@ -289,6 +310,7 @@ export const Shortcuts = {
   init: function (inspector) {
     this.inspector = inspector;
     this.onKeyDown = this.onKeyDown.bind(this);
+    this.onKeyUpCapture = this.onKeyUpCapture.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
     this.onBlur = this.onBlur.bind(this);
   }
