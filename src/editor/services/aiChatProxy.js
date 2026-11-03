@@ -53,13 +53,15 @@ export function createProxyChat({ tools } = {}) {
         ? data.functionCalls
         : [];
       const usageMetadata = data?.usageMetadata || {};
+      const finishReason = data?.finishReason || null;
 
       // Adapt to the Firebase AI Logic response shape the panel expects.
       return {
         response: {
           text: () => text,
           functionCalls: () => functionCalls,
-          usageMetadata
+          usageMetadata,
+          finishReason
         }
       };
     }
