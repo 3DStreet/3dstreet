@@ -165,15 +165,14 @@ const useStore = create(
         // subscribe — the tool section, a selected shape's panel, the draw
         // tool — so the live value is here; the module persists it.
         shapeToolSettings: loadShapeToolSettings(),
-        setShapeToolSetting: (key, value) =>
-          set((state) => {
-            const next = normaliseShapeToolSettings({
-              ...state.shapeToolSettings,
-              [key]: value
-            });
-            persistShapeToolSettings(next);
-            return { shapeToolSettings: next };
-          }),
+        setShapeToolSetting: (key, value) => {
+          const next = normaliseShapeToolSettings({
+            ...useStore.getState().shapeToolSettings,
+            [key]: value
+          });
+          persistShapeToolSettings(next);
+          set({ shapeToolSettings: next });
+        },
         // Whether the shape draw tool is currently active — drives the
         // right-panel instructions block.
         shapeDrawActive: false,

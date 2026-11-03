@@ -32,6 +32,13 @@ describe('shape tool preferences', () => {
     expect(loadShapeToolSettings()).toEqual(DEFAULTS);
   });
 
+  it('offers exactly the steps that divide 180, largest first (fails if one is added or dropped)', async () => {
+    const { SNAP_STEPS } = await freshPrefs();
+    expect(SNAP_STEPS).toEqual([
+      90, 60, 45, 36, 30, 20, 18, 15, 12, 10, 9, 6, 5, 4, 3, 2, 1
+    ]);
+  });
+
   it('survives a reload', async () => {
     const first = await freshPrefs();
     const changed = {
@@ -63,20 +70,19 @@ describe('shape tool preferences', () => {
     }
   });
 
-  it('falls back to defaults when storage throws, and still holds a change for the session', async () => {
+  it('falls back to defaults when storage throws, and the store still holds a change for the session', async () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('blocked');
     });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('blocked');
     });
-    const { loadShapeToolSettings, persistShapeToolSettings } =
-      await freshPrefs();
+    const { loadShapeToolSettings } = await freshPrefs();
     expect(loadShapeToolSettings()).toEqual(DEFAULTS);
     expect(() =>
-      persistShapeToolSettings({ ...DEFAULTS, snapStep: 45 })
+      useStore.getState().setShapeToolSetting('snapStep', 45)
     ).not.toThrow();
-    expect(loadShapeToolSettings().snapStep).toBe(45);
+    expect(useStore.getState().shapeToolSettings.snapStep).toBe(45);
   });
 
   it('is set through the store, which normalises and persists (fails if the store skips either)', () => {
@@ -86,5 +92,13 @@ describe('shape tool preferences', () => {
     useStore.getState().setShapeToolSetting('snapStep', 45);
     expect(useStore.getState().shapeToolSettings.snapStep).toBe(45);
     expect(JSON.parse(localStorage.getItem(KEY)).snapStep).toBe(45);
+  });
+
+  it('starts the store from the stored settings (fails if the store starts from the defaults)', async () => {
+    const stored = { ...DEFAULTS, showAngles: true, snapStep: 30 };
+    localStorage.setItem(KEY, JSON.stringify(stored));
+    vi.resetModules();
+    const { default: freshStore } = await import('@/store');
+    expect(freshStore.getState().shapeToolSettings).toEqual(stored);
   });
 });

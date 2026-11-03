@@ -3,9 +3,10 @@
  * shows on shapes (measurements, angles) and how the draw tool places points
  * (angle snap, axis alignment, whether picking the tool opens the panel).
  * These are editor preferences only — never part of the scene JSON, never on
- * the undo stack. localStorage can be unavailable (private windows, blocked
- * site data), so every access is guarded and the in-memory cache carries the
- * session. The store holds the live value; this module only loads and saves.
+ * the undo stack. The store holds the live value (shapeToolSettings); this
+ * module only loads and saves it. localStorage can be unavailable (private
+ * windows, blocked site data), so every access is guarded: a failed write
+ * leaves the store's value for the session.
  */
 
 // The admissible snap steps, largest first: every whole-degree step from 1 to
@@ -37,8 +38,6 @@ const BOOLEAN_KEYS = [
   'openPanelOnSelect'
 ];
 
-let cached = null;
-
 function isPlainObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -61,22 +60,20 @@ export function normaliseShapeToolSettings(raw) {
 }
 
 export function loadShapeToolSettings() {
-  if (cached) return cached;
   let raw = null;
   try {
     raw = JSON.parse(localStorage.getItem(STORAGE_KEY));
   } catch {
     raw = null;
   }
-  cached = normaliseShapeToolSettings(raw);
-  return cached;
+  return normaliseShapeToolSettings(raw);
 }
 
+// Best effort: `settings` is the store's already-normalised record.
 export function persistShapeToolSettings(settings) {
-  cached = normaliseShapeToolSettings(settings);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cached));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
-    // The preference survives in memory for the session only.
+    // The store keeps the value for the session.
   }
 }
