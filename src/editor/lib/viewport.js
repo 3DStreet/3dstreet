@@ -70,7 +70,7 @@ const auxCorner = new THREE.Vector3();
 // the resize handler can refresh them.
 const HIGHLIGHT_LINE_PX = 2;
 const fatLineMaterials = new Set();
-function createFatLineMaterial(color) {
+export function createFatLineMaterial(color) {
   const material = new LineMaterial({
     color,
     linewidth: HIGHLIGHT_LINE_PX,
@@ -93,7 +93,7 @@ function setFatLineResolution(width, height) {
 // count is unchanged the existing interleaved instance buffer is written in
 // place (the box case: 12 segments, updated on every drag frame); otherwise
 // the geometry is rebuilt.
-function setFatLinePositions(lines, positions) {
+export function setFatLinePositions(lines, positions) {
   const buffer = lines.geometry.attributes.instanceStart?.data;
   if (buffer && buffer.array.length === positions.length) {
     buffer.array.set(positions);

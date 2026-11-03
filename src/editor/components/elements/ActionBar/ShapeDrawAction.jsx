@@ -4,7 +4,18 @@
 // with live length + angle readouts, finish with Enter / Esc (or double-click
 // to place a last point and finish), step back with Backspace. Generalises the removed Ruler tool from two
 // fixed points to an N-vertex open polyline, and adds the readout layer
-// (ShapeReadouts).
+// (ShapeReadouts). Which readouts show follows the editor's display
+// preferences (shapeToolPrefs.js), read at every render.
+//
+// Angle snap, when on, quantises the direction from the last vertex to the
+// pointer (the first side to the scene's axes, or the open group's, unless
+// alignment is off) and places the pointer's perpendicular foot on that ray; a
+// guide line shows the snapped direction. The close is still judged by the
+// pointer being over the first vertex — never by the snapped point — and while
+// it is armed the last vertex is shown slid along its own side to where both
+// closing corners are snapped. Every way of finishing commits exactly that
+// previewed ring, or the shape open when no such ring exists. The geometry is
+// in shapeSnap.js, the rules in shapeDrawRules.js.
 //
 // No exit discards placed work: Enter, Esc, double-click and switching tools
 // all commit through finish(). Recovery is Backspace before finishing and
@@ -17,8 +28,9 @@
 // Closure is refused on TWO questions, not one: the closing edge must not cross
 // a committed edge, AND the ring it completes must enclose a region — a ring of
 // exactly zero area (three collinear points, say) crosses nothing and still has
-// no interior to fill, measure or extrude. Both live in closureRefused, which
-// every closedness decision in this file goes through.
+// no interior to fill, measure or extrude. Both live in closePlan
+// (shapeDrawRules.js), which every closedness decision in this file goes
+// through.
 //
 // The two draw modes select how closure HAPPENS, not what the shape ends up as:
 // auto-close treats the ring as closed by default and drops to open whenever
@@ -26,7 +38,9 @@
 // clicked. Either can therefore produce an open or a closed shape. Letting a
 // ring stay open is what allows a click to never be refused merely because
 // closure would be — which in turn is what makes stars, combs and deep
-// concavities near the first vertex drawable in their natural order.
+// concavities near the first vertex drawable in their natural order. Why a
+// placement is not refused over the provisional closing edge: see
+// placementVerdict.
 //
 // The preview draws the committed vertices PLUS the trailing cursor vertex;
 // finishing drops the cursor vertex, so the committed shape is the preview
@@ -41,12 +55,29 @@
 // isActive so it doesn't tear down/re-add mid-draw.
 
 import { useEffect, useRef } from 'react';
+import { defineMessages } from 'react-intl';
+import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import useStore from '@/store';
+import { getActiveLocale } from '@shared/utils/format';
+import { MESSAGES } from '../../../i18n/messages.js';
 import ShapeReadouts from '../../../lib/ShapeReadouts';
 import {
-  ringEnclosesArea,
-  segmentsIntersectXZ
-} from '../../../lib/shapeMeasure';
+  closePlan,
+  commitOutcome,
+  placementVerdict,
+  previewRefused
+} from '../../../lib/shapeDrawRules.js';
+import {
+  headingDeg,
+  snapHeading,
+  snapPlacement
+} from '../../../lib/shapeSnap.js';
+import { SHAPE_TOOL_SETTINGS_ATTR } from '../../../lib/shapeToolPrefs.js';
+import {
+  createFatLineMaterial,
+  setFatLinePositions
+} from '../../../lib/viewport.js';
 import { intersectPlaneOrNull } from '../../../lib/intersectPlaneOrNull.js';
 // px — a larger press→release move is a drag. Shared with the vertex-editing
 // tool: it is one rule in both places, so the two must not drift apart.
@@ -64,7 +95,9 @@ import { groupMessage } from '../../../lib/groups/groupMessages.js';
 import {
   beginPlacement,
   hideDrawingExtent,
+  localPoseUnder,
   placeDefinition,
+  resolvePlacement,
   showDrawingExtent
 } from '../../../lib/groups/groupPlacement.js';
 
@@ -168,6 +201,65 @@ function worldToScreen(worldPoint) {
   };
 }
 
+// The draw tool runs outside any react-intl provider's reach (a hook driving
+// canvas listeners), so its one sentence is resolved against the active
+// locale's catalog directly, as groupMessages.js does. No placeholders.
+export const shapeDrawMessages = defineMessages({
+  snapCloseRefused: {
+    id: 'shapeDraw.snapCloseRefused',
+    defaultMessage:
+      "This shape can't close on the current angle snap. Add another point, press Enter to finish it open, or turn snap off."
+  }
+});
+
+export function shapeDrawMessage(key) {
+  const descriptor = shapeDrawMessages[key];
+  if (!descriptor) return undefined;
+  const catalog = MESSAGES[getActiveLocale()] || MESSAGES.en;
+  return catalog[descriptor.id] || descriptor.defaultMessage;
+}
+
+// Is `el` one of the Shape Tool section's controls? A native dropdown keeps
+// focus after it is dismissed without a pick, and while it has focus the
+// drawing keys go to it.
+function isShapeToolSettingsControl(el) {
+  return !!el?.closest?.(`[${SHAPE_TOOL_SETTINGS_ATTR}]`);
+}
+
+// The tool's settings are in the right panel, so picking the tool shows it —
+// on every activation, since the tool ends after each shape — unless the user
+// has turned that off.
+function openShapeToolPanelIfWanted() {
+  const state = useStore.getState();
+  if (!state.shapeToolSettings.openPanelOnSelect) return;
+  state.setPanelsVisible(true);
+  state.setRightPanelTab('properties');
+}
+
+// The snapped direction, drawn from the last vertex while snap is on. Created
+// once and kept, toggled by `visible`, like the group outline: a fat line
+// sets its own resolution from the renderer on every draw, so one created
+// late draws at the right width. Never raycastable — a fat line's raycast
+// needs a camera, and the scene is probed by camera-less raycasters.
+const GUIDE_COLOR = 0x00ffcc; // the close marker's colour: both are the tool's
+const SNAP_GUIDE_MIN_M = 1;
+let snapGuide = null;
+
+function attachSnapGuide() {
+  if (!snapGuide) {
+    snapGuide = new LineSegments2(
+      new LineSegmentsGeometry(),
+      createFatLineMaterial(GUIDE_COLOR)
+    );
+    snapGuide.name = 'shapeDrawSnapGuide';
+    snapGuide.raycast = function () {};
+    snapGuide.visible = false;
+  }
+  const helpers = AFRAME.INSPECTOR?.sceneHelpers;
+  if (helpers && snapGuide.parent !== helpers) helpers.add(snapGuide);
+  return snapGuide;
+}
+
 function isTextFieldFocused() {
   const el = document.activeElement;
   if (!el) return false;
@@ -180,6 +272,16 @@ function isTextFieldFocused() {
   );
 }
 
+// Ctrl/Cmd+Z, and Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y.
+const isUndoChord = (e) =>
+  (e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z');
+const isRedoChord = (e) =>
+  (e.ctrlKey || e.metaKey) &&
+  ((e.shiftKey && (e.key === 'z' || e.key === 'Z')) ||
+    e.key === 'y' ||
+    e.key === 'Y');
+const isUndoRedoChord = (e) => isUndoChord(e) || isRedoChord(e);
+
 export function useShapeDrawTool(changeTransformMode, isActive) {
   const verticesRef = useRef([]); // committed world positions [{x,y,z}]
   const committedElsRef = useRef([]); // matching shape-vertex a-entities
@@ -190,8 +292,14 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
   const placedLastRef = useRef(false);
   const committingRef = useRef(false);
   const invalidRef = useRef(false); // preview currently recoloured invalid (red)
-  const closingArmedRef = useRef(false); // cursor is over the first vertex
+  const armedRef = useRef(false); // pointer is over the first vertex
   const highlightRef = useRef(null); // first-vertex close-target marker
+  // Bumped whenever the committed vertices change; with the snap step, it is
+  // what decides whether the memoised close plan is still current.
+  const verticesRevisionRef = useRef(0);
+  // The snapped heading shown, and the side it was shown for, so a pointer on
+  // a boundary keeps it rather than flickering.
+  const heldHeadingRef = useRef(null);
   const setShapeDrawActive = useStore.getState().setShapeDrawActive;
 
   useEffect(() => {
@@ -212,14 +320,21 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     committedElsRef.current = [];
     placedLastRef.current = false;
     invalidRef.current = false;
-    closingArmedRef.current = false;
+    // Direct, not setArmed: its helpers are defined further down.
+    armedRef.current = false;
+    verticesRevisionRef.current = 0;
+    heldHeadingRef.current = null;
     setShapeDrawActive(true);
+    openShapeToolPanelIfWanted();
     // Deselect on entry: nothing should stay selected while drawing (its
     // on-select readouts would linger over the new shape, and a stray
     // Backspace could otherwise target it).
     if (AFRAME.INSPECTOR?.selectedEntity) {
       AFRAME.INSPECTOR.selectEntity(null);
     }
+
+    const guide = attachSnapGuide();
+    guide.visible = false;
 
     // Curated + cached raycast target list (excludes map layers; keeps tiles).
     // Reused from the nav floor probes; recomputes only on scene-graph change.
@@ -256,7 +371,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // root, so its positions are world positions.
     if (ticket) {
       const forEachDrawingPoint = (visit) => {
-        const verts = verticesRef.current;
+        const verts = effectiveVertices();
         for (let i = 0; i < verts.length; i++) {
           visit(verts[i].x, verts[i].y, verts[i].z);
         }
@@ -302,7 +417,12 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // has already nulled the ref and detached the element.
       if (previewElRef.current !== previewEl) return;
       readoutsRef.current = new ShapeReadouts(previewEl);
-      readoutsRef.current.setUnits(useStore.getState().unitsPreference);
+      const state = useStore.getState();
+      readoutsRef.current.setUnits(state.unitsPreference);
+      readoutsRef.current.setDisplay({
+        measurements: state.shapeToolSettings.showMeasurements,
+        angles: state.shapeToolSettings.showAngles
+      });
     };
     previewEl.addEventListener('loaded', onPreviewLoaded);
 
@@ -322,15 +442,24 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       if (verts.length) setTrailing(verts[verts.length - 1]);
     };
 
-    const refreshReadouts = (cursor) => {
+    // `polyline` is world points, the active segment last; `options` as
+    // ShapeReadouts.renderActive. Units and display preferences are re-read on
+    // every render, so a change made mid-draw shows on the next one.
+    let armedReadoutKey = null;
+    const refreshReadouts = (polyline, options) => {
+      armedReadoutKey = null;
       const r = readoutsRef.current;
       if (!r) return;
-      r.setUnits(useStore.getState().unitsPreference); // track live unit toggles
-      const active = verticesRef.current.map(
-        (v) => new THREE.Vector3(v.x, v.y, v.z)
+      const state = useStore.getState();
+      r.setUnits(state.unitsPreference);
+      r.setDisplay({
+        measurements: state.shapeToolSettings.showMeasurements,
+        angles: state.shapeToolSettings.showAngles
+      });
+      r.renderActive(
+        polyline.map((v) => new THREE.Vector3(v.x, v.y, v.z)),
+        options
       );
-      if (cursor) active.push(new THREE.Vector3(cursor.x, cursor.y, cursor.z));
-      r.renderActive(active);
     };
 
     // Recolour the preview red on an invalid (self-intersecting) placement, and
@@ -364,81 +493,121 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       h.mesh.visible = show;
     };
 
-    // Committed non-closing ring edges [v_i, v_{i+1}] for i = 0..n-2.
-    const committedEdges = () => {
-      const verts = verticesRef.current;
-      const edges = [];
-      for (let i = 0; i < verts.length - 1; i++) {
-        edges.push([verts[i], verts[i + 1]]);
+    const settings = () => useStore.getState().shapeToolSettings;
+
+    // How closing the committed ring would resolve, at the snap step in force
+    // now. Memoised on the vertices' revision and the step, so every reader —
+    // preview, readouts, every commit path — sees the same plan and none can
+    // see a stale one. The memo is per activation (a local of this effect):
+    // the revision restarts for every shape, so a memo that outlived the
+    // activation could hand the next shape this one's plan.
+    let planMemo = null;
+    const currentPlan = () => {
+      const revision = verticesRevisionRef.current;
+      const step = settings().snapStep;
+      if (
+        !planMemo ||
+        planMemo.revision !== revision ||
+        planMemo.step !== step
+      ) {
+        planMemo = {
+          revision,
+          step,
+          plan: closePlan(verticesRef.current, step, MIN_DRAW_VERTEX_SPACING)
+        };
       }
-      return edges;
+      return planMemo.plan;
     };
 
-    // Does segment a→b cross any of `edges`? segmentsIntersectXZ returns false
-    // for a shared endpoint, so adjacent edges are excluded automatically.
-    const edgesCross = (a, b, edges) => {
-      for (const [c, d] of edges) {
-        if (segmentsIntersectXZ(a, b, c, d)) return true;
-      }
-      return false;
+    // The vertices as the preview shows them: while a close is armed and
+    // allowed, the ring the close would commit (its last vertex slid, with
+    // snap on); otherwise the committed vertices.
+    const effectiveVertices = () =>
+      armedRef.current && !currentPlan().refused
+        ? currentPlan().ring
+        : verticesRef.current;
+
+    // Show the last committed vertex where the effective ring has it.
+    const syncLastVertexDisplay = () => {
+      const n = verticesRef.current.length;
+      if (!n) return;
+      const el = committedElsRef.current[n - 1];
+      const v = effectiveVertices()[n - 1];
+      if (el?.object3D && v) el.object3D.position.set(v.x, v.y, v.z);
     };
 
-    // Would placing `point` as the next vertex create a self-intersection?
-    // Only the new segment (last→point) is tested — it is a permanent edge, so
-    // a crossing there can never be undone by drawing on. A triangle can never
-    // cross (all candidate edges are adjacent), so this only fires from n≥3.
-    //
-    // The provisional closing edge is deliberately NOT tested here. It is
-    // discarded the moment another vertex is placed, so rejecting a click over
-    // it would enforce "every intermediate ring is simple" — far stronger than
-    // the "the finished ring is simple" that fill and extrusion need, and it
-    // makes whole families of perfectly simple polygons (stars, combs, deep
-    // concavities near the first vertex) impossible to draw in their natural
-    // vertex order. Closure is handled by letting the shape be open instead:
-    // see closureRefused.
-    const placementCrosses = (point) => {
+    const hideGuide = () => {
+      guide.visible = false;
+    };
+
+    const showGuide = (from, heading, length) => {
+      const rad = (heading * Math.PI) / 180;
+      setFatLinePositions(guide, [
+        from.x,
+        from.y,
+        from.z,
+        from.x + length * Math.cos(rad),
+        from.y,
+        from.z + length * Math.sin(rad)
+      ]);
+      guide.visible = true;
+    };
+
+    // The only writer of the armed flag after activation. It re-syncs
+    // everything that depends on the flag on EVERY call, unchanged value or
+    // not: a step change while armed re-arms to repaint.
+    const setArmed = (armed) => {
+      armedRef.current = armed;
+      if (!armed) armedReadoutKey = null;
+      updateHighlight(armed);
+      setInvalid(armed && currentPlan().refused);
+      syncLastVertexDisplay();
+      if (armed) hideGuide();
+    };
+
+    // The axes the first side snaps to: the open group's, when the shape will
+    // land in it, else the world's. The two conditions are the ones under
+    // which placeDefinition keeps the shape in the group — the group still
+    // takes children, and a pose under it exists without distortion — tested
+    // at the first vertex, near where the shape's own position will be.
+    const frameMatrix = new THREE.Matrix4();
+    const frameAxis = new THREE.Vector3();
+    const frameAxisHeading = () => {
+      const groupEl = ticket ? resolvePlacement(ticket) : null;
+      const first = verticesRef.current[0];
+      if (!groupEl || !first) return 0;
+      frameMatrix.makeTranslation(first.x, first.y, first.z);
+      if (!localPoseUnder(groupEl, frameMatrix)) return 0;
+      groupEl.object3D.updateWorldMatrix(true, false);
+      frameAxis.set(1, 0, 0).transformDirection(groupEl.object3D.matrixWorld);
+      return headingDeg({ x: 0, z: 0 }, { x: frameAxis.x, z: frameAxis.z });
+    };
+
+    // Where a pointer at `raw` places the next vertex: `raw` itself unless
+    // snap applies, else the foot on the snapped ray from the last vertex.
+    // The first vertex is never snapped, and the first side only when it is
+    // aligned to axes. `key` names the side the heading was snapped for.
+    const placementFor = (raw) => {
       const verts = verticesRef.current;
       const n = verts.length;
-      if (n < 3) return false;
-      return edgesCross(verts[n - 1], point, committedEdges());
+      const { snapStep: step, alignToAxes } = settings();
+      if (!step || !n || (n === 1 && !alignToAxes)) {
+        return { point: raw, heading: null, key: null };
+      }
+      const last = verts[n - 1];
+      const base =
+        n === 1 ? frameAxisHeading() : headingDeg(verts[n - 2], last);
+      const key = `${verticesRevisionRef.current}|${step}|${base}`;
+      const held = heldHeadingRef.current;
+      const heading = snapHeading({
+        rawHeading: headingDeg(last, raw),
+        base,
+        step,
+        excludeReverse: n > 1,
+        currentHeading: held && held.key === key ? held.heading : null
+      });
+      return { point: snapPlacement({ last, raw, heading }), heading, key };
     };
-
-    // Would a click at `point` be accepted as the next vertex?
-    const canPlace = (point) => {
-      if (placementCrosses(point)) return false;
-      const verts = verticesRef.current;
-      if (!verts.length) return true;
-      const last = verts[verts.length - 1];
-      const d = Math.hypot(
-        point.x - last.x,
-        point.y - last.y,
-        point.z - last.z
-      );
-      return d >= MIN_DRAW_VERTEX_SPACING;
-    };
-
-    // Would closing the current committed ring (last→first) be refused?
-    //
-    // Two questions, not one. The closing edge must not cross a committed edge,
-    // AND the ring it completes must enclose a region — a ring of exactly zero
-    // area (three collinear points, say) crosses nothing and still has no
-    // interior to fill, measure or extrude. Closure is gated on this and
-    // PLACEMENT deliberately is not: an open polyline has no interior to
-    // require, and refusing a click collinear with the two before it would make
-    // whole families of legal shapes undrawable.
-    const closureRefused = () => {
-      const verts = verticesRef.current;
-      if (verts.length < 3) return false;
-      return (
-        closureCrossesFrom(verts[verts.length - 1]) || !ringEnclosesArea(verts)
-      );
-    };
-
-    // Would a closing edge from `point` back to the first vertex cross a
-    // committed edge? Adjacent edges share an endpoint and are excluded by
-    // segmentsIntersectXZ.
-    const closureCrossesFrom = (point) =>
-      edgesCross(point, verticesRef.current[0], committedEdges());
 
     const addCommittedVertex = (point) => {
       verticesRef.current.push({ x: point.x, y: point.y, z: point.z });
@@ -450,6 +619,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // shape's geometry truth — stays [committed…, trailing].
       previewEl.insertBefore(el, trailingElRef.current);
       committedElsRef.current.push(el);
+      verticesRevisionRef.current++;
+      syncLastVertexDisplay();
     };
 
     const removeLastVertex = () => {
@@ -458,10 +629,16 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       verts.pop();
       const el = committedElsRef.current.pop();
       if (el && el.parentNode) el.parentNode.removeChild(el);
+      verticesRevisionRef.current++;
+      syncLastVertexDisplay();
     };
 
     const onPointerDown = (e) => {
       if (committingRef.current) return;
+      // A canvas press hands the drawing keys back from a tool-section
+      // control that kept focus (a dropdown dismissed without a pick).
+      const focused = document.activeElement;
+      if (isShapeToolSettingsControl(focused)) focused.blur();
       downXYRef.current = { x: e.clientX, y: e.clientY };
     };
 
@@ -492,31 +669,94 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       return true;
     };
 
+    // The armed preview's readouts: the closing side, the sliding side when
+    // the close moves it, both closing corners, and the reason when snap
+    // refuses the close. Rebuilt only when something they show has changed —
+    // a pointer resting on the first vertex sends a stream of moves.
+    const renderArmedReadouts = () => {
+      const plan = currentPlan();
+      const state = useStore.getState();
+      const key = {
+        plan,
+        measurements: state.shapeToolSettings.showMeasurements,
+        angles: state.shapeToolSettings.showAngles,
+        units: state.unitsPreference,
+        locale: getActiveLocale()
+      };
+      const prev = armedReadoutKey;
+      if (
+        prev &&
+        prev.plan === key.plan &&
+        prev.measurements === key.measurements &&
+        prev.angles === key.angles &&
+        prev.units === key.units &&
+        prev.locale === key.locale
+      ) {
+        return;
+      }
+      const ring = effectiveVertices();
+      const n = ring.length;
+      refreshReadouts([...ring, ring[0]], {
+        extraSides: plan.adjusted ? [n - 2] : [],
+        corners: [
+          [n - 2, n - 1, n],
+          [n - 1, 0, 1]
+        ],
+        notice:
+          state.shapeToolSettings.snapStep && plan.refused
+            ? shapeDrawMessage('snapCloseRefused')
+            : null
+      });
+      if (readoutsRef.current) armedReadoutKey = key;
+    };
+
+    // A snap step changed from the keyboard while armed sends no pointer
+    // event, so the armed preview is repainted here. Only a repaint: what a
+    // close commits comes from currentPlan(), which reads the step itself.
+    const repaintArmed = () => {
+      if (!armedRef.current) return;
+      setArmed(true);
+      renderArmedReadouts();
+    };
+
     const onPointerMove = (e) => {
       if (committingRef.current) return;
-      const point = pickForNextVertex(e.clientX, e.clientY);
-      if (!point) {
+      const raw = pickForNextVertex(e.clientX, e.clientY);
+      if (!raw) {
         collapseTrailing();
         readoutsRef.current && readoutsRef.current.clear();
-        setInvalid(false); // never leave the preview stuck red on a miss
-        updateHighlight(false);
-        closingArmedRef.current = false;
+        setArmed(false); // also never leaves the preview stuck red on a miss
+        hideGuide();
         return;
       }
-      // Close-gesture arming.
+      // Close-gesture arming, on the POINTER — the snapped point is generally
+      // on no ray through the first vertex.
       if (tryArmClose(e.clientX, e.clientY)) {
-        closingArmedRef.current = true;
-        updateHighlight(true);
+        setArmed(true);
         setTrailing(verticesRef.current[0]); // preview the closing edge
-        setInvalid(closureRefused());
-        refreshReadouts(verticesRef.current[0]);
+        renderArmedReadouts();
         return;
       }
-      closingArmedRef.current = false;
-      updateHighlight(false);
-      setInvalid(placementCrosses(point));
+      if (armedRef.current) setArmed(false);
+      else updateHighlight(false);
+      const { point, heading, key } = placementFor(raw);
+      heldHeadingRef.current = heading === null ? null : { key, heading };
+      const verts = verticesRef.current;
+      const n = verts.length;
+      const verdict = placementVerdict(verts, point, MIN_DRAW_VERTEX_SPACING);
       setTrailing(point);
-      refreshReadouts(point);
+      refreshReadouts([...verts, point], {
+        corners: n >= 2 ? [[n - 2, n - 1, n]] : []
+      });
+      const snapOn = !!settings().snapStep;
+      setInvalid(previewRefused(snapOn, verdict));
+      if (snapOn && heading !== null) {
+        const last = verts[n - 1];
+        const placed = Math.hypot(point.x - last.x, point.z - last.z);
+        showGuide(last, heading, Math.max(2 * placed, SNAP_GUIDE_MIN_M));
+      } else {
+        hideGuide();
+      }
     };
 
     // Cursor off the canvas: collapse the preview to the committed ring — the
@@ -525,9 +765,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       if (committingRef.current) return;
       collapseTrailing();
       readoutsRef.current && readoutsRef.current.clear();
-      setInvalid(false);
-      updateHighlight(false);
-      closingArmedRef.current = false;
+      setArmed(false);
+      hideGuide();
     };
 
     const onPointerUp = (e) => {
@@ -544,8 +783,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // legal one — closure was asked for explicitly here, so quietly handing
       // back an open shape would answer a different question than the one the
       // click asked.
-      if (closingArmedRef.current) {
-        if (closureRefused()) return;
+      if (armedRef.current) {
+        if (currentPlan().refused) return;
         // This release also bubbles to the viewport raycaster's empty-space
         // click handler, which would deselect the polygon the create command
         // is about to select (the first vertex is not a raycastable entity).
@@ -555,14 +794,22 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         finish(); // closing onto the first vertex
         return;
       }
-      const point = pickForNextVertex(e.clientX, e.clientY);
-      if (!point) return; // horizon click — no-op
-      if (!canPlace(point)) return; // crossing, or on top of the previous vertex
+      const raw = pickForNextVertex(e.clientX, e.clientY);
+      if (!raw) return; // horizon click — no-op
+      // The same placement the preview showed for this pointer.
+      const { point } = placementFor(raw);
+      const verdict = placementVerdict(
+        verticesRef.current,
+        point,
+        MIN_DRAW_VERTEX_SPACING
+      );
+      // A crossing, or on top of the previous vertex.
+      if (verdict.crosses || verdict.tooClose) return;
       addCommittedVertex(point);
       placedLastRef.current = true;
       setInvalid(false);
       setTrailing(point);
-      refreshReadouts(point);
+      refreshReadouts([...verticesRef.current, point]);
     };
 
     const onDblClick = () => {
@@ -576,43 +823,40 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       finish();
     };
 
+    // Step back one vertex. The armed state and the guide are cleared first:
+    // the removed vertex changes both, and a pointer resting still sends no
+    // move to clear them. The next pointermove recomputes the preview.
+    const stepBack = () => {
+      setArmed(false);
+      hideGuide();
+      removeLastVertex();
+      collapseTrailing();
+      setInvalid(false);
+      refreshReadouts(verticesRef.current);
+    };
+
     const onKeyDown = (e) => {
-      if (isTextFieldFocused()) return;
+      // A focused field keeps its keys — except undo/redo on a dropdown,
+      // which has no text to undo: there the chord would otherwise reach the
+      // editor's global undo and could undo the previous shape.
+      if (
+        isTextFieldFocused() &&
+        !(isUndoRedoChord(e) && document.activeElement?.tagName === 'SELECT')
+      ) {
+        return;
+      }
       if (e.key === 'Enter') {
         finish();
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
-        removeLastVertex();
-        collapseTrailing();
-        // Clear any red/armed preview state — the removed vertex changed the
-        // candidate-edge set; the next pointermove recomputes it.
-        setInvalid(false);
-        updateHighlight(false);
-        closingArmedRef.current = false;
-        refreshReadouts(null);
-      } else if (
-        (e.ctrlKey || e.metaKey) &&
-        !e.shiftKey &&
-        (e.key === 'z' || e.key === 'Z')
-      ) {
+        stepBack();
+      } else if (isUndoChord(e)) {
         // Mid-draw undo steps back a pending vertex; it must not reach the
         // editor undo stack (which would pop an unrelated entity).
         e.preventDefault();
         e.stopPropagation();
-        removeLastVertex();
-        collapseTrailing();
-        // Clear any red/armed preview state — the removed vertex changed the
-        // candidate-edge set; the next pointermove recomputes it.
-        setInvalid(false);
-        updateHighlight(false);
-        closingArmedRef.current = false;
-        refreshReadouts(null);
-      } else if (
-        (e.ctrlKey || e.metaKey) &&
-        ((e.shiftKey && (e.key === 'z' || e.key === 'Z')) ||
-          e.key === 'y' ||
-          e.key === 'Y')
-      ) {
+        stepBack();
+      } else if (isRedoChord(e)) {
         // Mid-draw redo (Ctrl+Shift+Z / Ctrl+Y): swallow so it can't redo an
         // unrelated previously-undone editor command while drawing. No-op.
         e.preventDefault();
@@ -658,8 +902,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       verticesRef.current = [];
     }
 
-    function commitShape(closed) {
-      const verts = verticesRef.current;
+    function commitShape(closed, verts) {
       // `style` is the activation-time read above — one read per activation, so
       // preview and commit cannot disagree. See docs/shapes.md#sticky-style.
       //
@@ -748,13 +991,19 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       );
     }
 
-    // Does the shape commit as a closed ring? Only via the first-vertex
-    // gesture, and never if the ring would cross itself or enclose nothing.
-    // Under 3 vertices there is no ring.
-    const commitsClosed = () => {
-      if (verticesRef.current.length < 3) return false;
-      if (closureRefused()) return false;
-      return closingArmedRef.current;
+    // What every exit commits. Closed only via the first-vertex gesture — the
+    // close armed — and only as the ring the armed preview showed, at the step
+    // in force now; a refused close, or no close, commits the placed vertices
+    // open. The plan is read BEFORE disarming, which would discard it.
+    const commitPending = () => {
+      const plan = armedRef.current ? currentPlan() : null;
+      const { closed, vertices } = commitOutcome({
+        vertices: verticesRef.current,
+        plan
+      });
+      if (vertices.length >= 2) commitShape(closed, vertices);
+      setArmed(false);
+      hideGuide();
     };
 
     // Every exit (Enter, Esc, double-click, switching tools) drops the
@@ -763,9 +1012,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     function finish() {
       if (committingRef.current) return;
       committingRef.current = true;
-      const verts = verticesRef.current;
-      const commitClosed = commitsClosed();
-      if (verts.length >= 2) commitShape(commitClosed);
+      commitPending();
       teardown();
       // Returns to Move, as `m` would from here; this emits
       // transformmodechange which flips newToolMode to 'off' and re-runs this
@@ -782,6 +1029,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     canvas.addEventListener('dblclick', onDblClick);
     window.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('keyup', onKeyUp, true);
+    const unsubscribeStep = useStore.subscribe(
+      (state) => state.shapeToolSettings.snapStep,
+      repaintArmed
+    );
 
     // --- deactivate (cleanup) --------------------------------------------
     return () => {
@@ -792,6 +1043,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       canvas.removeEventListener('dblclick', onDblClick);
       window.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('keyup', onKeyUp, true);
+      unsubscribeStep();
       previewEl.removeEventListener('loaded', onPreviewLoaded);
       canvas.style.cursor = null;
       setShapeDrawActive(false);
@@ -800,11 +1052,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // above.
       if (!committingRef.current) {
         committingRef.current = true;
-        if (verticesRef.current.length >= 2) {
-          commitShape(commitsClosed());
-        }
+        commitPending();
         teardown();
       }
+      hideGuide();
       // Dispose the close-target marker.
       const h = highlightRef.current;
       if (h) {
