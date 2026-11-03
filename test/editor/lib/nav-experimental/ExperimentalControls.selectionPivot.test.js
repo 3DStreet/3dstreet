@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import posthog from 'posthog-js';
 import * as H from './_harness.js';
+import { USER_GROUP_CLASS } from '../../../../src/editor/lib/groups/groupModel.js';
 
 let Controls;
 beforeAll(async () => {
@@ -60,6 +61,19 @@ describe('rotation — selection pivot (#1993)', () => {
           );
         }
         H.mouseUp(c);
+      });
+
+      it('orbits a selected group about its center, not its origin', () => {
+        // Origin at (0,0,-10), stored center 15 m to its +x and 5 m up.
+        const el = selectAt([0, 0, -10]);
+        el.classList = { contains: (c) => c === USER_GROUP_CLASS };
+        el.components = {
+          'group-center': { data: { pinned: true, pin: { x: 15, y: 5, z: 0 } } }
+        };
+        const { pivot } = latchedPivot({ streetLevel });
+        expect(pivot.x).toBeCloseTo(15, 6);
+        expect(pivot.y).toBeCloseTo(5, 6);
+        expect(pivot.z).toBeCloseTo(-10, 6);
       });
 
       it('falls back to the normal pivot when the selection is out of view', () => {

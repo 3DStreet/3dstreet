@@ -20,6 +20,8 @@ import {
   viewRayGroundPoint
 } from './navMath.js';
 import { captureNavDiscovery, captureRotateGesture } from '../navAnalytics.js';
+import { isUserGroup } from '../groups/groupModel.js';
+import { getGroupCenter } from '../groups/groupBounds.js';
 
 // Frozen read-only world-up axis (cross-product operand). Never mutated,
 // never returned.
@@ -745,9 +747,9 @@ export class DragGestureController {
     }
   }
 
-  // Selection pivot (#1993): the selected entity's world origin, when it is
-  // in view (in front of the camera, within SELECTION_PIVOT_NDC_MARGIN of the
-  // viewport on both axes). Returns `{ center, source }`; `center` is null —
+  // Selection pivot (#1993): the selected entity's world origin (a user
+  // group's center), when it is in view (in front of the camera, within
+  // SELECTION_PIVOT_NDC_MARGIN of the viewport on both axes). Returns `{ center, source }`; `center` is null —
   // use the normal Map pivot — and `source` says why (also the rotate
   // telemetry's `pivot_source`):
   //   fallback_none      — nothing selected, or the scene/camera/a detached
@@ -764,8 +766,15 @@ export class DragGestureController {
     for (let o = el.object3D; o; o = o.parent) {
       if (!o.visible) return { center: null, source: 'fallback_hidden' };
     }
+    // A user group turns about its center (stored pin, else the middle of
+    // its member bounds), not its origin: orbit that, as its handles do.
     const p = new THREE.Vector3();
-    el.object3D.getWorldPosition(p);
+    if (isUserGroup(el)) {
+      el.object3D.updateWorldMatrix(true, false);
+      getGroupCenter(el, p).applyMatrix4(el.object3D.matrixWorld);
+    } else {
+      el.object3D.getWorldPosition(p);
+    }
     // Degenerate: pivot on the camera itself — nothing to orbit.
     if (p.distanceToSquared(camera.position) < 1e-6) return none;
     camera.updateMatrixWorld();
