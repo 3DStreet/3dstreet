@@ -198,7 +198,7 @@ splat asset doc created  (uploaded OR generator-saved)
   service accepts it. `enqueueRadTask` is shared by the trigger and the
   reconciler.
 - **Worker:** `rad-converter/` Cloud Run service (multi-stage Docker: Rust stage
-  compiles `build-lod` from Spark v2.1.0; Node stage runs the handler). Streams
+  compiles `build-lod` from Spark v2.4.0; Node stage runs the handler). Streams
   the `.ply` to `/tmp`, runs `build-lod --quality`, uploads with the
   `saveSplatToGallery` URL/token scheme byte-for-byte (anonymous viewers load via
   the download token).

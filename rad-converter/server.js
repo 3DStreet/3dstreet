@@ -39,7 +39,7 @@ const STORAGE_BUCKET =
 
 admin.initializeApp({ storageBucket: STORAGE_BUCKET });
 
-const SPARK_VERSION = process.env.SPARK_VERSION || '2.1.0';
+const SPARK_VERSION = process.env.SPARK_VERSION || 'unknown';
 // --quality = bhatt-lod base 1.75, single .rad — matches the Hetzner-validated
 // output. --rad (single file) is build-lod's default.
 const LOD_QUALITY = 'quality';

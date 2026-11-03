@@ -1,14 +1,17 @@
 # RAD converter — Cloud Run service that turns a splat .ply into a Spark RAD
 # (LOD) file (the splat "optimized" variant). Multi-stage:
-#   1. builder — compiles the `build-lod` Rust binary from Spark v2.1.0
+#   1. builder — compiles the `build-lod` Rust binary from Spark (SPARK_VERSION)
 #   2. runtime — Node 22 + the binary, runs the HTTP handler
 #
 # Both stages are Debian bookworm so the dynamically-linked binary's glibc
 # matches at runtime. build-lod is CPU-only (no GPU needed).
 
+# Declared before the first FROM so both stages can read it.
+ARG SPARK_VERSION=v2.4.0
+
 # ---- Stage 1: build the Spark build-lod binary ----------------------------
-# Pin Spark to the same version the in-app reader ships (2.1.0) so converter
-# and reader are never skewed. Per the Hetzner README, build from the rust
+# Pin Spark to the same version the in-app reader ships (package.json) so
+# converter and reader are never skewed (v2.4.0+ is needed for SPZ v4 input). Per the Hetzner README, build from the rust
 # workspace root with `-p build-lod`.
 FROM rust:1-bookworm AS builder
 
@@ -17,7 +20,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git cmake pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-ARG SPARK_VERSION=v2.1.0
+ARG SPARK_VERSION
 RUN git clone --branch ${SPARK_VERSION} --depth 1 \
         https://github.com/sparkjsdev/spark.git /spark
 
@@ -36,7 +39,9 @@ RUN cargo build --release -p build-lod
 # ---- Stage 2: runtime ------------------------------------------------------
 FROM node:22-bookworm-slim AS runtime
 
-ENV NODE_ENV=production
+# Report the built Spark version in conversion telemetry (server.js).
+ARG SPARK_VERSION
+ENV NODE_ENV=production SPARK_VERSION=${SPARK_VERSION}
 WORKDIR /app
 
 # Copy the compiled converter binary onto PATH.
