@@ -10,7 +10,7 @@ const DEFAULTS = {
   openPanelOnSelect: true
 };
 
-// The module caches what it loaded, so every test starts from a fresh copy.
+// A fresh copy of the module per test, reading the storage the test set up.
 async function freshPrefs() {
   vi.resetModules();
   return import('../../src/editor/lib/shapeToolPrefs.js');

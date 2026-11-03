@@ -59,7 +59,9 @@ describe('snapHeading', () => {
     // band (44 + 9), so the shown 0 is kept; 300 is not.
     expect(s({ rawHeading: 314, currentHeading: 0 })).toBe(0);
     expect(s({ rawHeading: 300, currentHeading: 0 })).toBe(270);
-    // On a later side the reverse is relative to that side, not the world.
+    // On a later side the reverse is relative to that side, not the world:
+    // from base 20, raw 200 is the reverse, and of the two directions square
+    // to it (110 and 290, equally near) the lower turn is taken.
     expect(
       snapHeading({
         base: 20,
@@ -67,7 +69,7 @@ describe('snapHeading', () => {
         excludeReverse: true,
         rawHeading: 200
       })
-    ).not.toBe(200);
+    ).toBe(110);
   });
 
   it('quantises relative to the base, not to the world axes', () => {
@@ -124,9 +126,9 @@ describe('closingAdjustment', () => {
       { x: 0, y: 2, z: 0 },
       { x: 10, y: 2, z: 0 },
       { x: 10, y: 2, z: 10 },
-      { x: -3, y: 2, z: 10 }
+      { x: -3, y: 3, z: 10 }
     ];
-    expect(adjust(raised, 90).point.y).toBe(2);
+    expect(adjust(raised, 90).point.y).toBe(3);
     const v0 = p(0, 0);
     const v1 = polar(v0, 10, 20);
     const v2 = polar(v1, 6, 110);

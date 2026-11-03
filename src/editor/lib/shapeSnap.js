@@ -41,7 +41,8 @@ export const ANGLE_EPS_DEG = 1e-4;
 // not make the preview flicker between two sides.
 export const SNAP_HYSTERESIS_FRACTION = 0.1;
 
-// Metres. Below this a length is rounding noise.
+// Metres. Far below any drawable length: it only guards divisions by a zero
+// length.
 const LENGTH_EPS = 1e-9;
 
 function normaliseHeading(deg) {
@@ -130,8 +131,8 @@ export function snapPlacement({ last, raw, heading }) {
 // least wins, validated lazily in that order: the new sliding side and the new
 // closing side must cross no other side, and the ring must enclose a region.
 export function closingAdjustment({ vertices, step, minSpacing }) {
-  const slide = closingCandidates({ vertices, step, minSpacing });
-  if (!slide) return { refused: true };
+  const found = closingCandidates({ vertices, step, minSpacing });
+  if (!found) return { refused: true };
   const n = vertices.length;
   const sideStart = vertices[n - 2];
   const first = vertices[0];
@@ -144,11 +145,11 @@ export function closingAdjustment({ vertices, step, minSpacing }) {
     }
     return false;
   };
-  for (const { distance } of slide.candidates) {
+  for (const { distance } of found.candidates) {
     const point = {
-      x: sideStart.x + distance * slide.direction.x,
+      x: sideStart.x + distance * found.direction.x,
       y: vertices[n - 1].y,
-      z: sideStart.z + distance * slide.direction.z
+      z: sideStart.z + distance * found.direction.z
     };
     if (crossesKeptSide(sideStart, point) || crossesKeptSide(point, first)) {
       continue;
@@ -161,9 +162,10 @@ export function closingAdjustment({ vertices, step, minSpacing }) {
 
 // The positions the last vertex could slide to, least movement first (ties
 // to the smaller turn at the first vertex), before any crossing or area test:
-// { direction, candidates: [{ distance, firstTurnSteps }] }, where a
+// { direction, candidates: [{ distance, firstTurnSteps, move }] }, where a
 // candidate's point is the last side's start plus `distance` along the unit
-// `direction` of that side. Null when no close can be snapped at all.
+// `direction` of that side, and `move` (the sort key) is how far the last
+// vertex travels. Null when no close can be snapped at all.
 function closingCandidates({ vertices, step, minSpacing }) {
   const n = vertices.length;
   if (n < 3) return null;

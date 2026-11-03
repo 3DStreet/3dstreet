@@ -2,8 +2,10 @@
 // LineBasicMaterial.linewidth (always 1px), so the selection and hover helpers,
 // the group outline and the shape tool's snap guide render LineSegments2 at
 // HIGHLIGHT_LINE_PX. LineMaterial needs the viewport size to convert pixels to
-// clip space; every material is registered so the viewport's resize handler
-// can refresh them.
+// clip space. Every material is registered so the viewport's resize handler
+// can refresh them; LineSegments2 also sets its material's resolution from the
+// renderer's viewport on every draw, so a material created after start-up
+// draws at the right width too.
 
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';

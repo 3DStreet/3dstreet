@@ -160,14 +160,14 @@ export default class ShapeReadouts {
     const n = vertices.length;
     if (n < 2) return;
     const ring = closed && n >= 3;
-    const sides = this._segmentsToLabel(
+    const segments = this._segmentsToLabel(
       vertices,
       maxVertices,
       hoverPoint,
       ring,
       pinnedSegments
     );
-    for (const i of sides) {
+    for (const i of segments) {
       const a = vertices[i];
       const b = vertices[(i + 1) % n];
       if (this.showMeasurements) {
@@ -176,14 +176,14 @@ export default class ShapeReadouts {
         this._addPlusChip(a, b, i, interaction);
       }
     }
-    if (this.showAngles) this._addCornerAngles(vertices, sides, ring);
+    if (this.showAngles) this._addCornerAngles(vertices, segments, ring);
   }
 
   // The segments a selected shape labels, in label order: every segment up to
   // the cap, else the pinned ones and the one nearest the pointer.
   _segmentsToLabel(vertices, maxVertices, hoverPoint, ring, pinnedSegments) {
     const n = vertices.length;
-    const sides = [];
+    const segments = [];
     // Number of segments and corners: a closed ring has n of each; an open
     // polyline has n-1 segments and n-2 interior corners.
     const segCount = ring ? n : n - 1;
@@ -199,18 +199,18 @@ export default class ShapeReadouts {
         if (i >= 0 && i < segCount) pinned.add(i);
       }
     }
-    for (const i of pinned) sides.push(i);
+    for (const i of pinned) segments.push(i);
 
     if (n <= maxVertices) {
       for (let i = 0; i < segCount; i++) {
-        if (!pinned.has(i)) sides.push(i); // pinned ones are already listed
+        if (!pinned.has(i)) segments.push(i); // pinned ones are already listed
       }
-      return sides;
+      return segments;
     }
     // Above the label cap it is hover-only: with no hover
     // point yet, show nothing beyond the pins rather than dumping all ~2N
     // labels — that dump is the exact jank the cap exists to prevent.
-    if (!hoverPoint) return sides;
+    if (!hoverPoint) return segments;
     // hover: nearest segment only. Search wraps over the wrap segment too when
     // closed (best can be n-1, whose end is vertices[0] via mod n — never
     // vertices[n]).
@@ -227,18 +227,18 @@ export default class ShapeReadouts {
         best = i;
       }
     }
-    if (best >= 0 && !pinned.has(best)) sides.push(best);
-    return sides;
+    if (best >= 0 && !pinned.has(best)) segments.push(best);
+    return segments;
   }
 
   // One angle at each corner beside a labelled side — so a large shape gains
   // at most two per side shown, never one per corner. Both ends of a side on
   // a closed ring; only interior corners (1..n-2) on an open polyline, which
   // has no angle at its ends. Each corner once.
-  _addCornerAngles(vertices, sides, ring) {
+  _addCornerAngles(vertices, segments, ring) {
     const n = vertices.length;
     const corners = new Set();
-    for (const i of sides) {
+    for (const i of segments) {
       for (const c of [i, (i + 1) % n]) {
         if (ring || (c >= 1 && c <= n - 2)) corners.add(c);
       }
@@ -311,7 +311,7 @@ export default class ShapeReadouts {
       formatAngle(deg),
       corner,
       'shape-readout--angle',
-      ANGLE_CAPTION_OFFSET_PX
+      `${ANGLE_CAPTION_OFFSET_PX}px`
     );
   }
 
@@ -329,7 +329,7 @@ export default class ShapeReadouts {
   }
 
   // A caption that is never a control, offset vertically on screen from its
-  // anchor (a px number, or a CSS length). The offset goes on the INNER, since
+  // anchor by a CSS length. The offset goes on the INNER, since
   // the outer's transform is CSS2DRenderer's to rewrite every pass.
   _makeCaption(text, pos, className, offset) {
     const outer = document.createElement('div');
@@ -339,8 +339,7 @@ export default class ShapeReadouts {
     inner.className = 'label shape-readout-label';
     styleInner(inner);
     inner.style.pointerEvents = 'none';
-    const y = typeof offset === 'number' ? `${offset}px` : offset;
-    inner.style.transform = `translate(0px, ${y})`;
+    inner.style.transform = `translate(0px, ${offset})`;
     inner.textContent = text;
     outer.appendChild(inner);
     const obj = new CSS2DObject(outer);

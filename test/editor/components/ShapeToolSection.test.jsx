@@ -121,6 +121,14 @@ describe('the Shape Tool section', () => {
     expect(panelRows[0].classList.contains('checked')).toBe(false);
     expect(globalThis.AFRAME.INSPECTOR.execute).not.toHaveBeenCalled();
     expect(globalThis.AFRAME.INSPECTOR.history.undos).toHaveLength(0);
+    // Two copies of a row on screen: each checkbox keeps its own id, so a
+    // label never activates the other copy's input.
+    const ids = [...document.querySelectorAll('input[type="checkbox"]')].map(
+      (input) => input.id
+    );
+    expect(ids.length).toBeGreaterThan(4);
+    expect(ids.every(Boolean)).toBe(true);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it('arrives expanded whatever the remembered collapse state (fails if it carries a section key)', () => {
