@@ -20,14 +20,20 @@
 const STORAGE_KEY = 'lastShapeStyle';
 
 // The single definition of "a shape's appearance". Everything else in this file
-// — the key set, the defaults, the validation — is derived from it, so adding a
-// fifth appearance property is one line rather than three tables to keep in
+// — the key set, the defaults, the validation — is derived from it, so adding an
+// appearance property is one line rather than three tables to keep in
 // agreement.
 //
 // `closed` and `selectInside` are deliberately absent: `closed` is geometry
 // rather than appearance, and `selectInside` is a per-shape escape valve for a
 // fill big enough to swallow clicks — neither is something a user expresses as
-// a drawing preference.
+// a drawing preference. So are the fill's Angle and Offsets: Angle is taken
+// from each shape's own first side when it is drawn, and an Offset lines a
+// pattern up with one particular shape's edge, so carrying either to the next
+// shape would be wrong for it.
+//
+// `enum` keys hold one of `oneOf`, mirroring the schema's list; anything else
+// (an entry since removed, a typo) normalises to the default.
 const SHAPE_STYLE_SPEC = {
   lineColor: { kind: 'color', default: '#ffe600' },
   // `min` is a floor on the DEFAULT, not on the property: zero is a legal line
@@ -36,7 +42,31 @@ const SHAPE_STYLE_SPEC = {
   // vertex closes the ring and the fill appears.
   lineWidth: { kind: 'number', default: 0.15, min: 0.05 },
   fillColor: { kind: 'color', default: '#ffe600' },
-  fillOpacity: { kind: 'int', default: 40, min: 0, max: 100 }
+  fillOpacity: { kind: 'int', default: 40, min: 0, max: 100 },
+  fillMaterial: {
+    kind: 'enum',
+    default: 'solid',
+    oneOf: [
+      'solid',
+      'concrete',
+      'grass',
+      'sidewalk',
+      'gravel',
+      'sand',
+      'cracked-asphalt',
+      'parking-lot'
+    ]
+  },
+  fillTint: { kind: 'color', default: '#ffffff' },
+  fillPattern: {
+    kind: 'enum',
+    default: 'none',
+    oneOf: ['none', 'stripes', 'crosshatch', 'checkerboard', 'dots']
+  },
+  fillPatternOpacity: { kind: 'int', default: 100, min: 0, max: 100 },
+  fillPatternColor: { kind: 'color', default: '#ffffff' },
+  fillPatternSpacing: { kind: 'number', default: 1, min: 0.05 },
+  fillPatternWidth: { kind: 'number', default: 0.15, min: 0.01 }
 };
 
 const SHAPE_STYLE_KEYS = Object.freeze(Object.keys(SHAPE_STYLE_SPEC));
@@ -44,17 +74,19 @@ const SHAPE_STYLE_KEYS = Object.freeze(Object.keys(SHAPE_STYLE_SPEC));
 /**
  * Cold-start appearance, with nothing persisted and nothing recoloured.
  *
- * These four values deliberately MIRROR the `shape` component's schema defaults
+ * These values deliberately MIRROR the `shape` component's schema defaults
  * rather than reading them, so an upstream reader of that schema still sees a
  * literal default in the place A-Frame schemas normally carry one. The two are
  * kept honest by a components-suite test that compares them; change one and
  * that test fails.
  *
- * A trap worth knowing before changing `fillOpacity`: the scene serializer's
- * default-stripping test is `if ((currentValue || defaultValue) && !deepEqual(...))`
- * (`getModifiedProperty`, `json-utils_1.1.js`). A user's explicit `fillOpacity: 0`
- * survives that falsy guard ONLY because the default (40) is truthy. Setting
- * this default to 0 would silently stop saving every user's explicit zero.
+ * A trap worth knowing before changing a numeric default: the scene
+ * serializer's default-stripping test is
+ * `if ((currentValue || defaultValue) && !deepEqual(...))`
+ * (`getModifiedProperty`, `json-utils_1.1.js`). A user's explicit
+ * `fillOpacity: 0` or `fillPatternOpacity: 0` survives that falsy guard ONLY
+ * because the default (40, 100) is truthy. Setting such a default to 0 would
+ * silently stop saving every user's explicit zero.
  */
 export const DEFAULT_SHAPE_STYLE = Object.freeze(
   Object.fromEntries(
@@ -101,6 +133,10 @@ export function normaliseShapeStyle(raw) {
     if (spec.kind === 'color') {
       out[key] =
         typeof value === 'string' && value !== '' ? value : spec.default;
+      continue;
+    }
+    if (spec.kind === 'enum') {
+      out[key] = spec.oneOf.includes(value) ? value : spec.default;
       continue;
     }
     const n = toUsableNumber(value);

@@ -29,9 +29,21 @@ import useStore from '../store.js';
 import { polygonCentroidXZ, ringSelfIntersects } from './polygonMath.js';
 import {
   FILL_LIFT_M,
+  fillAnyPainted,
+  fillLayerState,
+  fillMaterialPainted,
   fillPaintOrder,
-  fillRenderState
+  fillPatternPainted
 } from './shapeFillRender.js';
+import { createFillLayers } from './shape-fill-layers.js';
+import {
+  FILL_MATERIALS,
+  FILL_MATERIAL_IDS,
+  FILL_PATTERNS,
+  resolveFillMaterial,
+  writeFillUVs
+} from '../tested/shape-fill.js';
+import { getAssetPlaceholderColor } from '../lazy-textures.js';
 import { buildCenterlinePoints } from '../tested/street-path-utils.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -66,6 +78,32 @@ const SHAPE_METALNESS = 0.0;
 // re-derive - which can run every frame under a vertex drag - does not
 // allocate a closure per fill.
 function noFillRaycast() {}
+
+// The fill properties whose change re-syncs the fill's layers (appearance,
+// textures, draw groups). Angle and Offset are not here: they move the UVs
+// only, see update().
+const FILL_LAYER_PROPS = [
+  'fillColor',
+  'fillOpacity',
+  'fillMaterial',
+  'fillTint',
+  'fillPattern',
+  'fillPatternOpacity',
+  'fillPatternColor',
+  'fillPatternSpacing',
+  'fillPatternWidth'
+];
+
+// The properties that can turn a fill layer on or off, and so build or tear
+// down the cap.
+const FILL_PAINTED_PROPS = ['fillOpacity', 'fillPattern', 'fillPatternOpacity'];
+
+function anyChanged(oldData, data, props) {
+  for (let i = 0; i < props.length; i++) {
+    if (oldData[props[i]] !== data[props[i]]) return true;
+  }
+  return false;
+}
 
 // The system owns the per-frame position observation for every shape, so it
 // keeps running even when the shapes' entities are paused (as they are in the
@@ -108,7 +146,8 @@ AFRAME.registerSystem('shape', {
 
 AFRAME.registerComponent('shape', {
   schema: {
-    // The four appearance defaults below deliberately DUPLICATE
+    // The sticky appearance defaults below - the line's colour and width and
+    // every fill key except Angle and Offset - deliberately DUPLICATE
     // `DEFAULT_SHAPE_STYLE` (src/editor/lib/shapeStyle.js) rather than importing
     // it, so this schema still carries literals where a reader expects them. Do
     // not DRY them into an import: a test compares the two and would become a
@@ -128,11 +167,13 @@ AFRAME.registerComponent('shape', {
     // clicks meant for whatever it covers — the outline still selects it.
     // Only meaningful when `closed`; an open polyline has no interior.
     selectInside: { type: 'boolean', default: true },
-    // Fill appearance for a closed shape. `fillOpacity` is the on/off control:
-    // 0% is off (no separate boolean, so there is no state that looks off but
-    // still exports a surface). Clickability is `selectInside`, deliberately
-    // separate — the biggest, most visible fills are the ones most likely to
-    // need to stop swallowing clicks.
+    // Fill appearance for a closed shape, in two layers: the MATERIAL (a solid
+    // colour or a street-surface texture) and a PATTERN drawn over it. Each
+    // layer's opacity is its on/off control: 0% is off (no separate boolean, so
+    // there is no state that looks off but still exports a surface).
+    // `fillOpacity` is the material layer's. Clickability is `selectInside`,
+    // deliberately separate — the biggest, most visible fills are the ones most
+    // likely to need to stop swallowing clicks.
     //
     // Stored as INTEGER PERCENT (0-100) rather than a 0..1 fraction, matching
     // the map layer's opacity: percent is the unit the panel labels and shows,
@@ -147,6 +188,37 @@ AFRAME.registerComponent('shape', {
     // thereafter: changing one never changes the other.
     fillColor: { type: 'color', default: '#ffe600' },
     fillOpacity: { type: 'int', default: 40, min: 0, max: 100 },
+    // The material layer: `solid` paints fillColor; any other entry is a
+    // street-surface image at a fixed real-world size, multiplied by fillTint
+    // (one tint for every texture, separate from fillColor so the yellow
+    // default colour never tints a surface). An unknown stored value renders
+    // as `solid` and is left as stored.
+    fillMaterial: {
+      type: 'string',
+      default: 'solid',
+      oneOf: FILL_MATERIAL_IDS
+    },
+    fillTint: { type: 'color', default: '#ffffff' },
+    // The pattern layer, drawn over the material in its own colour. `none` is
+    // off, as is 0% - and the pattern defaults to 100% because it is chosen
+    // to be seen. Spacing is the pitch between stripe or dot centres (and a
+    // checkerboard's square size); width is a stripe's width (and a dot's
+    // diameter); both are metres. The minimums keep a tile drawable; the
+    // component applies them again (and width <= spacing) when it draws.
+    fillPattern: { type: 'string', default: 'none', oneOf: FILL_PATTERNS },
+    fillPatternOpacity: { type: 'int', default: 100, min: 0, max: 100 },
+    fillPatternColor: { type: 'color', default: '#ffffff' },
+    fillPatternSpacing: { type: 'number', default: 1, min: 0.05 },
+    fillPatternWidth: { type: 'number', default: 0.15, min: 0.01 },
+    // Where both layers sit, in the shape's own frame from its origin. Angle
+    // (degrees) is set once by the draw tool from the shape's first side and is
+    // otherwise just a number - no vertex edit changes it, and it turns with the
+    // shape. Offsets (metres) slide both layers along and across the Angle
+    // direction. These are per shape, never part of the sticky style. See
+    // src/tested/shape-fill.js for the frame.
+    fillAngle: { type: 'number', default: 0 },
+    fillOffsetAlong: { type: 'number', default: 0 },
+    fillOffsetAcross: { type: 'number', default: 0 },
     // How the polyline's corners render — and, when a managed street follows
     // this shape as its path, how its centerline bends (one setting, both
     // consumers; the street-path role component reads it from here):
@@ -214,10 +286,10 @@ AFRAME.registerComponent('shape', {
     // The overlay is always an editor affordance — the see-through-walls twin
     // — so it is permanently marked, and the GLB exporter hides objects marked
     // this way rather than shipping dead weight. The fill's marker is
-    // conditional and owned by _syncFillMaterial: a painted fill is content the
-    // user drew and belongs in the file, an unpainted one would be an invisible
-    // occluder. Seeded here as "not painted"; _syncFillMaterial then confirms
-    // or clears it.
+    // conditional and owned by _applyFillLayers: a fill with a painted layer is
+    // content the user drew and belongs in the file, one with neither would be
+    // an invisible occluder. Seeded here as "not painted"; _applyFillLayers
+    // then confirms or clears it.
     this.fillGroup.userData.source = 'INSPECTOR';
     this.overlayGroup.userData.source = 'INSPECTOR';
 
@@ -227,8 +299,15 @@ AFRAME.registerComponent('shape', {
       metalness: SHAPE_METALNESS
     });
 
-    // A SEPARATE instance from the line's material — the fill needs
-    // transparency and depth behaviour the line must not have — but the same
+    // The fill is ONE mesh with TWO materials, one per layer - [material,
+    // pattern] - drawn as two geometry groups over the same triangles. One mesh
+    // has one renderOrder, one depth and one id, so nothing in the scene can
+    // sort between a shape's two layers: where shapes overlap, each shape's
+    // pattern paints straight after its own material, never under another
+    // shape's. It is also one click target and one node in an export.
+    //
+    // SEPARATE instances from the line's material - the fill needs
+    // transparency and depth behaviour the line must not have - but the same
     // roughness and metalness, so a filled shape reads as one object under one
     // light rather than a lit tube around an unlit panel.
     //
@@ -242,30 +321,35 @@ AFRAME.registerComponent('shape', {
     // default-width outline, and covers the tube outright below a line width
     // narrower than the lift.
     //
-    // transparent and depthWrite are set here and NEVER CHANGE - the fill is a
-    // translucent, non-depth-writing surface at every opacity, including 100%.
-    // That is what stops two overlapping fills depth-fighting, and what lets
-    // one draw order rule them at every opacity rather than only at the top of
-    // the range. Its cost, so this reads as a priced trade and not an
-    // oversight: a fill at 100% occludes nothing in the depth buffer, so an
-    // overlay drawn in the earlier opaque pass can be painted over by it. See
+    // transparent and depthWrite are set here and NEVER CHANGE, on both layers
+    // - the fill is a translucent, non-depth-writing surface at every opacity,
+    // including 100%. That is what stops two overlapping fills depth-fighting,
+    // and what lets one draw order rule them at every opacity rather than only
+    // at the top of the range. It also keeps both layers in the transparent
+    // list: an opaque layer would be drawn in the earlier pass, apart from its
+    // twin. Its cost, so this reads as a priced trade and not an oversight: a
+    // fill at 100% occludes nothing in the depth buffer, so an overlay drawn in
+    // the earlier opaque pass can be painted over by it. See
     // shapeFillRender.js.
     //
     // The state-dependent fields (color, opacity, colorWrite) are owned by
-    // _syncFillMaterial. castShadow / receiveShadow
-    // are deliberately left at THREE's false defaults: a thin marking casting a
-    // shadow is wrong, and receiving one would double the shading already on
-    // the road beneath.
-    this.fillMaterial = new THREE.MeshStandardMaterial({
-      side: THREE.DoubleSide,
-      roughness: SHAPE_ROUGHNESS,
-      metalness: SHAPE_METALNESS,
-      transparent: true,
-      opacity: 0,
-      depthWrite: false,
-      colorWrite: false
+    // _applyFillLayers, and each layer's map by the fill layers object below.
+    this.fillLayerMaterials = [
+      this._createFillLayerMaterial(),
+      this._createFillLayerMaterial()
+    ];
+    this._fillColorScratch = new THREE.Color();
+    // The layers' textures - a surface image for the material, a drawn tile
+    // for the pattern - with their loading and sharing. A load landing or a
+    // deferred tile swap reports back through onChange.
+    this.fillLayers = createFillLayers({
+      sceneEl: this.el.sceneEl,
+      materials: this.fillLayerMaterials,
+      onChange: () => {
+        if (!this.destroyed) this._applyFillLayers();
+      }
     });
-    this._syncFillMaterial();
+    this._syncFillLayers();
 
     // Unlit, translucent, always-on-top material for the x-ray overlay copy.
     this.overlayMaterial = new THREE.MeshBasicMaterial({
@@ -375,6 +459,10 @@ AFRAME.registerComponent('shape', {
     }
 
     if (oldData.closed !== undefined && oldData.closed !== this.data.closed) {
+      // Closing a shape is what makes its fill's textures wanted (and opening
+      // it releases them), so the layers re-sync now, not when the cap is next
+      // built.
+      this._syncFillLayers();
       this.requestRederive();
     }
 
@@ -398,23 +486,35 @@ AFRAME.registerComponent('shape', {
 
     if (
       oldData.fillColor !== undefined &&
-      oldData.fillColor !== this.data.fillColor
+      anyChanged(oldData, this.data, FILL_LAYER_PROPS)
     ) {
-      this._syncFillMaterial();
+      this._syncFillLayers();
+      // A layer turning on or off can build or tear down the cap itself,
+      // because a shape can be painted without being clickable and vice versa.
+      // Within the painted range the material and group update is the whole
+      // change - no rebuild, so an opacity scrub costs no geometry.
+      if (
+        anyChanged(oldData, this.data, FILL_PAINTED_PROPS) &&
+        fillAnyPainted(oldData) !== fillAnyPainted(this.data)
+      ) {
+        this.requestRederive();
+      }
     }
 
+    // Angle and Offset move both layers over the cap, which is a rewrite of
+    // its UVs in place - not a re-derive, which would rebuild every outline
+    // mesh and re-lay any street following this shape on every step of a
+    // scrub. With no cap (an open polyline, or a closed shape with nothing to
+    // paint or click) there is nothing to rewrite; the next build reads the
+    // stored values.
     if (
-      oldData.fillOpacity !== undefined &&
-      oldData.fillOpacity !== this.data.fillOpacity
+      oldData.fillAngle !== undefined &&
+      (oldData.fillAngle !== this.data.fillAngle ||
+        oldData.fillOffsetAlong !== this.data.fillOffsetAlong ||
+        oldData.fillOffsetAcross !== this.data.fillOffsetAcross)
     ) {
-      this._syncFillMaterial();
-      // Crossing zero builds or tears down the cap itself, because a shape can
-      // be painted without being clickable and vice versa. Within the painted
-      // range the material mutation is the whole change - no rebuild, so an
-      // opacity scrub costs no geometry.
-      const wasBuilt = oldData.fillOpacity > 0;
-      const isBuilt = this.data.fillOpacity > 0;
-      if (wasBuilt !== isBuilt) this.requestRederive();
+      const mesh = this.fillGroup.children[0];
+      if (mesh) this._writeFillUVs(mesh);
     }
   },
 
@@ -449,7 +549,9 @@ AFRAME.registerComponent('shape', {
     this.clearGroup(this.fillGroup);
     this.material.dispose();
     this.overlayMaterial.dispose();
-    this.fillMaterial.dispose();
+    this.fillLayers.dispose();
+    this.fillLayerMaterials[0].dispose();
+    this.fillLayerMaterials[1].dispose();
     if (this.el.getObject3D('mesh')) this.el.removeObject3D('mesh');
     if (this.el.getObject3D('shapeVertices')) {
       this.el.removeObject3D('shapeVertices');
@@ -677,20 +779,18 @@ AFRAME.registerComponent('shape', {
           radius
         );
       }
-      // The cap is built when it is needed for EITHER job - painting or
-      // clicking. The two are independent properties, so all four combinations
-      // are reachable: a visible fill whose clicks pass through (a backdrop
-      // polygon that must not swallow clicks meant for the street it covers),
-      // and an invisible one that is still an easy click target.
+      // The cap is built when it is needed for EITHER job - painting (either
+      // layer) or clicking. The two are independent properties, so all four
+      // combinations are reachable: a visible fill whose clicks pass through (a
+      // backdrop polygon that must not swallow clicks meant for the street it
+      // covers), and an invisible one that is still an easy click target.
       //
-      // Reads the schema value directly rather than going through the
-      // render-state helper: this line runs on every re-derive, which is every
-      // frame while a vertex is being dragged, and the helper returns a fresh
-      // object. A negative out-of-range value is not painted, which is what the
-      // helper's clamp would also say.
+      // Asks the boolean predicate rather than the layer-state helper: this
+      // line runs on every re-derive, which is every frame while a vertex is
+      // being dragged, and the helper returns fresh objects.
       if (
         !selfIntersecting &&
-        (this.data.selectInside || this.data.fillOpacity > 0)
+        (this.data.selectInside || fillAnyPainted(this.data))
       ) {
         this._addFill(linePts || this._ringPts(verts), ringArea);
       }
@@ -802,30 +902,71 @@ AFRAME.registerComponent('shape', {
     this._addOverlayMesh(mesh);
   },
 
-  // Fill opacity as a 0..1 fraction. Named to match the percent->fraction
-  // boundary the map layers already use.
-  fillOpacityFraction: function () {
-    return fillRenderState(this.data.fillOpacity).opacity;
+  _createFillLayerMaterial: function () {
+    return new THREE.MeshStandardMaterial({
+      side: THREE.DoubleSide,
+      roughness: SHAPE_ROUGHNESS,
+      metalness: SHAPE_METALNESS,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      colorWrite: false
+    });
   },
 
-  // The fill's APPEARANCE - colour and lighting response only. A future
-  // extruded volume's top cap applies the same call to its own material; the
-  // flat cap's render state (side / depthWrite / colorWrite / lift / draw
-  // order) is deliberately NOT part of it, because a closed volume wants
-  // FrontSide and sorts its own faces differently.
-  _applyFillAppearance: function (material) {
-    material.color.set(this.data.fillColor);
-    material.opacity = this.fillOpacityFraction();
-    material.roughness = SHAPE_ROUGHNESS;
-    material.metalness = SHAPE_METALNESS;
+  // The fill's APPEARANCE - each layer's colour, opacity and lighting response
+  // only. A future extruded volume's top cap applies the same call to its own
+  // pair of materials; the flat cap's render state (side / depthWrite /
+  // colorWrite / lift / draw order) is deliberately NOT part of it, because a
+  // closed volume wants FrontSide and sorts its own faces differently. The
+  // maps are not part of it either: the fill layers object owns them.
+  //
+  // A texture shows its tint once its image is bound. Until then - and for
+  // good if the download fails - it shows the image's average-colour
+  // placeholder multiplied by the tint, as a street segment does; an image with
+  // no placeholder shows the tint alone.
+  _applyFillAppearance: function (materialLayer, patternLayer, layers) {
+    const data = this.data;
+    const textureId =
+      FILL_MATERIALS[resolveFillMaterial(data.fillMaterial)].textureId;
+    if (!textureId) {
+      materialLayer.color.set(data.fillColor);
+    } else {
+      const surface = this.fillLayers.state.surface;
+      const placeholder =
+        surface.bound && surface.id === textureId
+          ? null
+          : getAssetPlaceholderColor(document.getElementById(textureId));
+      if (placeholder) {
+        materialLayer.color
+          .set(placeholder)
+          .multiply(this._fillColorScratch.set(data.fillTint));
+      } else {
+        materialLayer.color.set(data.fillTint);
+      }
+    }
+    materialLayer.opacity = layers.material.opacity;
+    patternLayer.color.set(data.fillPatternColor);
+    patternLayer.opacity = layers.pattern.opacity;
+    materialLayer.roughness = SHAPE_ROUGHNESS;
+    materialLayer.metalness = SHAPE_METALNESS;
+    patternLayer.roughness = SHAPE_ROUGHNESS;
+    patternLayer.metalness = SHAPE_METALNESS;
   },
 
-  // Push appearance and paintedness onto the shared fill material, and set
-  // whether the fill is exported. THE SINGLE OWNER of the OPACITY-DEPENDENT
-  // state, called from init and from update, so there is one place where
-  // "painted" is defined and nothing can drift out of step with it. The
-  // opacity-INdependent render state (transparent, depthWrite, side) is
-  // constructor state - see there.
+  // Re-sync the fill after a fill property, `closed` or init changed: the
+  // layers' textures first (what is wanted may have changed), then everything
+  // that reads them.
+  _syncFillLayers: function () {
+    this.fillLayers.update(this.data);
+    this._applyFillLayers();
+  },
+
+  // Push appearance and paintedness onto both layer materials and the cap's
+  // draw groups, and set whether the fill is exported. THE SINGLE OWNER of the
+  // OPACITY-DEPENDENT state, so there is one place where "painted" is applied
+  // and nothing can drift out of step with it. The opacity-INdependent render
+  // state (transparent, depthWrite, side) is constructor state - see there.
   //
   // Not painted is colorWrite: false, NEVER visible: false. Two systems key
   // off `visible` and both break: the editor raycaster drops any object with
@@ -834,30 +975,73 @@ AFRAME.registerComponent('shape', {
   // hide-and-restore pass sets visible back to TRUE unconditionally, so an
   // unpainted fill would come back painted after any export.
   //
-  // Export follows visibility: the exporter hides objects marked INSPECTOR for
-  // the duration of the export, re-reading the marker by traversal at export
-  // time. A visible fill is content the user drew and must be in the file; an
-  // invisible one would be a silent occluder.
-  _syncFillMaterial: function () {
-    const { painted } = fillRenderState(this.data.fillOpacity);
-    const m = this.fillMaterial;
-    this._applyFillAppearance(m);
-    m.colorWrite = painted;
+  // Export follows paint: the exporter hides objects marked INSPECTOR for the
+  // duration of the export, re-reading the marker by traversal at export time.
+  // A fill with a painted layer is content the user drew and must be in the
+  // file; one with neither would be a silent occluder. Within the file, an
+  // unpainted layer is absent because its draw group is (see _writeFillGroups).
+  _applyFillLayers: function () {
+    const layers = fillLayerState(this.data);
+    const [materialLayer, patternLayer] = this.fillLayerMaterials;
+    this._applyFillAppearance(materialLayer, patternLayer, layers);
+    materialLayer.colorWrite = layers.material.painted;
+    patternLayer.colorWrite = layers.pattern.painted;
     // Note what is NOT here: transparent and depthWrite are constructor state
     // and never move. An opacity change is a uniform update - no render pass
     // change, so no needsUpdate, so no program rebuild on any step of an
     // opacity scrub, and no discontinuity between 99% and 100%.
-    if (painted) {
+    if (layers.anyPainted) {
       delete this.fillGroup.userData.source;
     } else {
       this.fillGroup.userData.source = 'INSPECTOR';
     }
+    const mesh = this.fillGroup.children[0];
+    if (mesh) this._writeFillGroups(mesh.geometry);
+  },
+
+  // The cap's draw groups are the per-layer switch: one group per painted
+  // layer, [material, pattern], each over every triangle. The renderer draws
+  // and the exporter writes only the groups present, so an unpainted layer is
+  // neither drawn nor exported - and no `visible` flag is involved (see
+  // _applyFillLayers). The pattern counts only once its tile is bound, so it is
+  // never drawn as a bare sheet of its colour. With neither layer painted the
+  // material group stays, colour-write off, as the click target.
+  //
+  // Reads the boolean predicates, which allocate nothing beyond the group
+  // records: this runs on every re-derive, which is every frame of a vertex
+  // drag.
+  _writeFillGroups: function (geometry) {
+    const count = geometry.index
+      ? geometry.index.count
+      : geometry.attributes.position.count;
+    const patternDrawn =
+      fillPatternPainted(this.data) && this.fillLayers.state.pattern.bound;
+    geometry.clearGroups();
+    if (fillMaterialPainted(this.data) || !patternDrawn) {
+      geometry.addGroup(0, count, 0);
+    }
+    if (patternDrawn) geometry.addGroup(0, count, 1);
+  },
+
+  // Write the cap's UVs - metres, in the shape's own frame from its origin,
+  // turned by Angle and slid by the two Offsets - over the ShapeGeometry's
+  // own. In place, allocation-free. See src/tested/shape-fill.js.
+  _writeFillUVs: function (mesh) {
+    const attributes = mesh.geometry.attributes;
+    writeFillUVs(
+      attributes.position.array,
+      attributes.uv.array,
+      this.data.fillAngle,
+      this.data.fillOffsetAlong,
+      this.data.fillOffsetAcross
+    );
+    attributes.uv.needsUpdate = true;
   },
 
   // Build the interior surface for a closed ring: a triangulated cap in the x/z
-  // plane, matching the area the shape reports. It is painted when
-  // `fillOpacity` is above zero and picked when `selectInside` is set, and the
-  // caller builds it when either is true — so a click anywhere inside the
+  // plane, matching the area the shape reports. It is painted when either fill
+  // layer is painted and picked when `selectInside` is set, and the caller
+  // builds it when either is true — so a click anywhere inside the
   // polygon can select it rather than requiring a hit on the outline, and a
   // filled region reads as a region.
   //
@@ -886,7 +1070,18 @@ AFRAME.registerComponent('shape', {
     const geometry = new THREE.ShapeGeometry(new THREE.Shape(points));
     geometry.rotateX(-Math.PI / 2);
 
-    const mesh = new THREE.Mesh(geometry, this.fillMaterial);
+    const mesh = new THREE.Mesh(geometry, this.fillLayerMaterials);
+    // The layers' textures and colours live on the materials, which outlive
+    // the mesh, and every path to a build has already synced them; the new
+    // geometry needs only its UVs and its draw groups.
+    this._writeFillUVs(mesh);
+    this._writeFillGroups(geometry);
+    // The fill RECEIVES shadows - a 100% grass or concrete fill that ignored
+    // them would wipe out every tree and building shadow over its area, and a
+    // translucent one would wash out the shade on the road showing through -
+    // but does not cast them: a marking a few centimetres thick casting a
+    // shadow is wrong.
+    mesh.receiveShadow = true;
     // Cap height is the first vertex's y plus a physical lift - the same lift
     // for every fill. See shapeFillRender.js for why a real height difference
     // rather than a depth bias, and why it is measured from the street's
