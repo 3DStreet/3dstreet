@@ -215,6 +215,9 @@ describe('fill layout maths (period, width, phase)', () => {
         3 * s
       );
       const { widths, pitches } = measure(edges);
+      // Squares alternate over a 2s period, so ±3s holds at least two whole.
+      expect(widths.length).toBeGreaterThanOrEqual(2);
+      expect(pitches.length).toBeGreaterThanOrEqual(1);
       for (const w of widths) expect(Math.abs(w - s)).toBeLessThan(TOL);
       for (const p of pitches) expect(Math.abs(p - 2 * s)).toBeLessThan(TOL);
       // An edge at across = 0, i.e. at t = offset across (mod s) along this

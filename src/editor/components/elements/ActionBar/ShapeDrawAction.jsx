@@ -240,7 +240,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // setInvalidSignal deliberately leaves the fill alone, so the invalid-red
       // signal never overwrites these and nothing needs restoring. (An open
       // preview loads no fill texture and draws no pattern tile; see
-      // shape-fill-layers.js.)
+      // docs/shapes.md "Fill appearance".)
       ...style,
       // The preview is always open: closure happens only at commit, via the
       // first-vertex gesture, which snaps the trailing vertex onto the first so

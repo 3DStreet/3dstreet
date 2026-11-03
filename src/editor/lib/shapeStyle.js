@@ -6,9 +6,17 @@
 // `docs/shapes.md#sticky-style` for the rule, its over-trigger and why it is
 // shaped this way.
 //
-// This module imports NOTHING — no store, no Events, no THREE. That is what
-// keeps it unit-testable with no stubbing, and what makes an import cycle
-// structurally impossible now that it owns state.
+// This module imports no store, no Events and no THREE — only the fill
+// catalogue, a pure module. That is what keeps it unit-testable with no
+// stubbing, and what makes an import cycle structurally impossible now that it
+// owns state.
+
+import {
+  FILL_MATERIAL_IDS,
+  FILL_PATTERNS,
+  PATTERN_SPACING_MIN,
+  PATTERN_WIDTH_MIN
+} from '../../tested/shape-fill.js';
 
 // Retained deliberately despite reading like "last shape drawn" — which is NOT
 // the rule (see the doc). The key is the identity of every user's already-
@@ -32,8 +40,8 @@ const STORAGE_KEY = 'lastShapeStyle';
 // pattern up with one particular shape's edge, so carrying either to the next
 // shape would be wrong for it.
 //
-// `enum` keys hold one of `oneOf`, mirroring the schema's list; anything else
-// (an entry since removed, a typo) normalises to the default.
+// `enum` keys hold one of `oneOf`, the same list the schema takes; anything
+// else (an entry since removed, a typo) normalises to the default.
 const SHAPE_STYLE_SPEC = {
   lineColor: { kind: 'color', default: '#ffe600' },
   // `min` is a floor on the DEFAULT, not on the property: zero is a legal line
@@ -46,27 +54,22 @@ const SHAPE_STYLE_SPEC = {
   fillMaterial: {
     kind: 'enum',
     default: 'solid',
-    oneOf: [
-      'solid',
-      'concrete',
-      'grass',
-      'sidewalk',
-      'gravel',
-      'sand',
-      'cracked-asphalt',
-      'parking-lot'
-    ]
+    oneOf: FILL_MATERIAL_IDS
   },
   fillTint: { kind: 'color', default: '#ffffff' },
   fillPattern: {
     kind: 'enum',
     default: 'none',
-    oneOf: ['none', 'stripes', 'crosshatch', 'checkerboard', 'dots']
+    oneOf: FILL_PATTERNS
   },
   fillPatternOpacity: { kind: 'int', default: 100, min: 0, max: 100 },
   fillPatternColor: { kind: 'color', default: '#ffffff' },
-  fillPatternSpacing: { kind: 'number', default: 1, min: 0.05 },
-  fillPatternWidth: { kind: 'number', default: 0.15, min: 0.01 }
+  fillPatternSpacing: {
+    kind: 'number',
+    default: 1,
+    min: PATTERN_SPACING_MIN
+  },
+  fillPatternWidth: { kind: 'number', default: 0.15, min: PATTERN_WIDTH_MIN }
 };
 
 const SHAPE_STYLE_KEYS = Object.freeze(Object.keys(SHAPE_STYLE_SPEC));

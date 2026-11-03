@@ -1,9 +1,9 @@
 // The pure half of a closed shape's fill appearance: the material and pattern
 // catalogues, the fill's UV frame, and the pattern geometry. No THREE and no
 // DOM, so every rule here is tested directly; the A-Frame side
-// (shape.js, shape-fill-layers.js) wraps these in materials and textures.
+// (shape.js, shape-fill-textures.js) wraps these in materials and textures.
 //
-// THE FRAME. Both layers share one UV set, in METRES, in the shape's own
+// The frame. Both layers share one UV set, in metres, in the shape's own
 // (entity-local) x/z frame, measured from the entity origin - the gizmo point,
 // which no vertex edit moves. So a pattern never stretches with the outline,
 // and dragging a vertex never slides it.
@@ -27,7 +27,8 @@ import { SURFACE_ASSET_IDS } from './street-segment-utils.js';
 
 // --- Catalogues ------------------------------------------------------------
 
-// The fill's material list, in panel order. `tileAcross` x `tileAlong` is the
+// The fill's material list, in panel order. shapeStyle.js and the shape
+// schema take their lists from here. `tileAcross` x `tileAlong` is the
 // real-world size of one image in metres, the same size a street segment of
 // that surface paints it at (calculateTextureRepeat in street-segment.js), so a
 // shape beside a segment shows the same grain. Sand and gravel have no fixed
@@ -84,14 +85,15 @@ export function resolveFillMaterial(value) {
 }
 
 export function resolveFillPattern(value) {
-  return FILL_PATTERNS.indexOf(value) > 0 ? value : 'none';
+  return FILL_PATTERNS.includes(value) ? value : 'none';
 }
 
 // --- Pattern size guards ---------------------------------------------------
 
-// Schema defaults and minimums for the pattern lengths, in metres. The
-// minimums bind only the properties panel; the render guard below applies
-// them again, as fillRenderState does for opacity.
+// The pattern lengths' fallbacks and floors, in metres, for the render guard
+// below and the sticky style. They match the literals in the shape schema
+// (a components-suite test compares them); the schema's minimums bind only
+// the properties panel, so the guard applies them again.
 export const PATTERN_SPACING_DEFAULT = 1;
 export const PATTERN_WIDTH_DEFAULT = 0.15;
 export const PATTERN_SPACING_MIN = 0.05;
@@ -161,7 +163,8 @@ function finiteOr0(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// The fill UV of one entity-local point, as [across, along] in metres.
+// The fill UV of one entity-local point, as [across, along] in metres. The
+// reference the in-place writer below is tested against; keep the two in step.
 export function fillUV(x, z, angleDeg, offsetAlong, offsetAcross) {
   const t = finiteOr0(angleDeg) / RAD_TO_DEG;
   const c = Math.cos(t);
@@ -241,7 +244,7 @@ function coverageInTile(pattern, r, tu, tv) {
 }
 
 // A pattern's tile: its period in spacings, and its coverage in tile units.
-export function patternTile(pattern, ratio) {
+function patternTile(pattern, ratio) {
   return {
     periodInSpacings: patternPeriodInSpacings(pattern),
     coverage: (tu, tv) => coverageInTile(pattern, ratio, tu, tv)
@@ -276,8 +279,8 @@ export function patternTileSize(pattern, ratio) {
 }
 
 // The tile's RGBA8 pixels, row 0 at tv = 0. RGB is white everywhere and the
-// coverage is in alpha (from 2x2 samples per texel); the pattern's colour is
-// the material's. White gaps rather than transparent black matter: mipmaps
+// coverage is in alpha (from 2x2 samples per texel), so the pattern layer's
+// material colour (fillPatternColor) tints it. White gaps rather than transparent black matter: mipmaps
 // average the gaps' RGB into the lines, and black would darken them at
 // distance.
 export function rasterPatternTile(pattern, ratio, size) {

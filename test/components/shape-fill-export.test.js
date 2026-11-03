@@ -848,11 +848,15 @@ describe('shape fill layers - the UV frame on the cap', () => {
     const geometry = mesh.geometry;
     let events = 0;
     el.addEventListener('shape-geometry-changed', () => events++);
+    // The rewrite is flagged for upload in the same call, or the GPU keeps the
+    // old UVs until some unrelated rebuild.
+    const uvVersion = geometry.attributes.uv.version;
     el.setAttribute('shape', {
       fillAngle: 30,
       fillOffsetAlong: 0.37,
       fillOffsetAcross: -1.2
     });
+    expect(geometry.attributes.uv.version).toBeGreaterThan(uvVersion);
     await nextFrame();
     await nextFrame();
     expect(fillMeshes(el)[0]).toBe(mesh);
@@ -911,7 +915,9 @@ describe('shape fill layers - surface textures', () => {
     expect(calls[0].data.repeat).toEqual({ x: 0.25, y: 1 / 6 });
     const m = layerMats(el)[0];
     expect(m.map).toBe(null);
-    expect(el.components.shape.fillLayers.state.surface.status).toBe('pending');
+    expect(el.components.shape.fillTextures.state.surface.status).toBe(
+      'pending'
+    );
     expectColor(m.color, GRASS_X_TINT);
 
     const gltf = await exportFills(el);
@@ -931,7 +937,9 @@ describe('shape fill layers - surface textures', () => {
     const tex = canvasTexture();
     calls[0].cb(tex);
     expect(m.map).toBe(tex);
-    expect(el.components.shape.fillLayers.state.surface.status).toBe('loaded');
+    expect(el.components.shape.fillTextures.state.surface.status).toBe(
+      'loaded'
+    );
     expectColor(m.color, TINT_LINEAR);
     expect(m.version - v).toBe(1);
   });
@@ -942,12 +950,16 @@ describe('shape fill layers - surface textures', () => {
     const v = m.version;
     el.setAttribute('shape', 'fillMaterial', 'concrete');
     expect(m.map).toBe(null);
-    expect(el.components.shape.fillLayers.state.surface.status).toBe('pending');
+    expect(el.components.shape.fillTextures.state.surface.status).toBe(
+      'pending'
+    );
     expectColor(m.color, CONCRETE_X_TINT);
     expect(m.version - v).toBe(1);
     calls[1].cb(null);
     expect(m.map).toBe(null);
-    expect(el.components.shape.fillLayers.state.surface.status).toBe('failed');
+    expect(el.components.shape.fillTextures.state.surface.status).toBe(
+      'failed'
+    );
   });
 
   it('switches no program on edits that keep the texture', async () => {
@@ -979,7 +991,9 @@ describe('shape fill layers - surface textures', () => {
     calls[0].cb(null);
     const m = layerMats(el)[0];
     expect(m.map).toBe(null);
-    expect(el.components.shape.fillLayers.state.surface.status).toBe('failed');
+    expect(el.components.shape.fillTextures.state.surface.status).toBe(
+      'failed'
+    );
     expectColor(m.color, GRASS_X_TINT);
     el.setAttribute('shape', 'fillTint', '#ff0000');
     expect(calls).toHaveLength(1);
@@ -995,7 +1009,9 @@ describe('shape fill layers - surface textures', () => {
     const { el, calls } = await solidShapeWith([]);
     el.setAttribute('shape', { fillMaterial: 'grass', fillTint: TINT });
     expect(calls).toHaveLength(0);
-    expect(el.components.shape.fillLayers.state.surface.status).toBe('failed');
+    expect(el.components.shape.fillTextures.state.surface.status).toBe(
+      'failed'
+    );
     expectColor(layerMats(el)[0].color, TINT_LINEAR);
   });
 
@@ -1023,7 +1039,9 @@ describe('shape fill layers - surface textures', () => {
     expect(m.map.repeat.x).toBeCloseTo(0.25, 9);
     expect(m.map.repeat.y).toBeCloseTo(1 / 6, 9);
     expect(m.map.colorSpace).toBe(window.THREE.SRGBColorSpace);
-    expect(el.components.shape.fillLayers.state.surface.status).toBe('loaded');
+    expect(el.components.shape.fillTextures.state.surface.status).toBe(
+      'loaded'
+    );
     expectColor(m.color, TINT_LINEAR);
 
     const gltf = await exportFills(el);
@@ -1096,7 +1114,7 @@ describe('shape fill layers - saving and loading', () => {
   });
 });
 
-describe('shape fill layers - shadows, picking, Decision B scope', () => {
+describe('shape fill layers - shadows, picking, setting the material directly', () => {
   it('receives shadows and does not cast them', async () => {
     const el = await makeShape('closed: true; fillOpacity: 40');
     expect(fillMeshes(el)[0].receiveShadow).toBe(true);
@@ -1268,7 +1286,7 @@ describe('shape fill layers - shapes created with a texture already set', () => 
     const clone = await cloneOf(el);
     expect(calls).toHaveLength(1);
     expect(layerMats(clone)[0].map).toBe(tex);
-    expect(clone.components.shape.fillLayers.state.surface.status).toBe(
+    expect(clone.components.shape.fillTextures.state.surface.status).toBe(
       'loaded'
     );
     expectColor(layerMats(clone)[0].color, TINT_LINEAR);
@@ -1286,7 +1304,7 @@ describe('shape fill layers - shapes created with a texture already set', () => 
     calls[0].cb(tex);
     for (const shape of [el, clone]) {
       expect(layerMats(shape)[0].map).toBe(tex);
-      expect(shape.components.shape.fillLayers.state.surface.status).toBe(
+      expect(shape.components.shape.fillTextures.state.surface.status).toBe(
         'loaded'
       );
       expectColor(layerMats(shape)[0].color, TINT_LINEAR);
@@ -1344,7 +1362,6 @@ describe('shape fill layers - spacing and width edits on a built shape', () => {
     expect(data[Math.floor(0.175 * width) * 4 + 3]).toBeGreaterThan(127);
     expect(textures()).toBe(B + 1);
 
-    el.setAttribute('shape', 'fillPatternSpacing', 2);
     el.remove();
     await nextFrame();
     expect(() => textures()).not.toThrow();

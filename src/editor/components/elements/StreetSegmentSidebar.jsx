@@ -275,7 +275,7 @@ SlopeGlyph.propTypes = { startHigher: PropTypes.bool };
 // Material dropdown option: texture swatch + name. The swatch reads the same
 // A-Frame <img> texture asset the segment mesh uses (SURFACE_TEXTURE_IDS),
 // so it always matches what renders; textureless surfaces (none, solid,
-// water) get a flat chip. Exported so its output can be checked directly.
+// water) get a flat chip.
 export const formatSurfaceOption = (option) => (
   <SurfaceSwatchOption
     label={option.label}

@@ -8,8 +8,8 @@ import {
 } from '../tested/shape-fill.js';
 
 // Where a closed shape's fill is painted in the draw order, and how far it sits
-// above the shape's own plane. Pure and dependency-free so the rules can be
-// tested directly.
+// above the shape's own plane, and which of its layers are painted. THREE-free
+// so the rules can be tested directly.
 //
 // TWO OVERLAPPING FILLS ARE ORDERED BY PAINT ORDER, NOT BY DEPTH. The material
 // is transparent and non-depth-writing at every opacity (see shape.js), so the
@@ -153,15 +153,15 @@ export function fillPaintOrder(planeY, area) {
 // fill follows it down rather than floating at a figure nobody can justify.
 export const FILL_LIFT_M = MARKING_SURFACE_OFFSET + 0.01;
 
-// Fill opacity as a 0..1 fraction, plus whether the fill is painted at all. The
-// schema's 0-100 min/max binds the properties panel only; a value out of range
+// One fill layer's opacity percent as a 0..1 fraction, plus whether that alone
+// paints it. The schema's 0-100 min/max binds the properties panel only; a value out of range
 // can still arrive by setAttribute or from a hand-edited scene, exactly as for
 // lineWidth.
 //
 // There is deliberately no `opaque` flag: 100% is not a distinct render state.
 // See the material's construction in shape.js for why that matters.
-export function fillRenderState(fillOpacityPercent) {
-  const opacity = opacityFraction(fillOpacityPercent);
+export function layerOpacityState(opacityPercent) {
+  const opacity = opacityFraction(opacityPercent);
   return { opacity, painted: opacity > 0 };
 }
 
@@ -171,15 +171,10 @@ function opacityFraction(percent) {
   return clamped / 100;
 }
 
-// A fill has two layers - the MATERIAL (a solid colour or a surface texture)
-// and the PATTERN drawn over it - and each is on or off by its own opacity,
-// and nothing else. A layer that is not painted is neither drawn nor exported.
-// These predicates are the one definition of "painted"; everything that asks
-// (the build gate, the cap's draw groups, the export marker, the layer
-// resources) asks here.
-//
-// The three booleans allocate nothing: the build gate and the cap's groups
-// read them on every re-derive, which under a vertex drag is every frame.
+// The one definition of whether each fill layer is painted (docs/shapes.md
+// "Fill appearance"). The three booleans allocate nothing: the build gate and
+// the cap's groups read them on every re-derive, which under a vertex drag is
+// every frame.
 export function fillMaterialPainted(data) {
   return opacityFraction(data.fillOpacity) > 0;
 }
@@ -197,7 +192,7 @@ export function fillAnyPainted(data) {
 
 // Both layers' opacity and paintedness, for the per-edit appearance sync.
 export function fillLayerState(data) {
-  const material = fillRenderState(data.fillOpacity);
+  const material = layerOpacityState(data.fillOpacity);
   const pattern = {
     opacity: opacityFraction(data.fillPatternOpacity),
     painted: fillPatternPainted(data)
@@ -205,12 +200,8 @@ export function fillLayerState(data) {
   return { material, pattern, anyPainted: material.painted || pattern.painted };
 }
 
-// What each layer needs loaded or drawn right now. A layer's resource is
-// wanted only while the shape is closed and that layer is painted, so the draw
-// tool's preview, an open polyline and a 0% layer download and draw nothing.
-// Asked on every property sync, not when the cap is built, because a shape can
-// be created with a texture already set (a loaded scene, a sticky style, a
-// duplicate) a frame before it has a cap.
+// What each layer needs loaded or drawn right now: a layer's texture is wanted
+// only while the shape is closed and that layer is painted (docs/shapes.md).
 
 // The surface texture's asset id, or null.
 export function wantedSurfaceId(data) {

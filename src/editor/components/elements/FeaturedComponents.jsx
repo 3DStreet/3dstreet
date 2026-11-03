@@ -58,13 +58,10 @@ function getHiddenProps(name, component) {
   if (name === 'geo-flatten') {
     return ['mode'];
   }
-  // The shape component's section is titled Style (#2069) and is curated
-  // like the two below: the line rows and a Fill group whose rows depend on
-  // the choices made in it (ShapeStyleSectionControls). So a new shape
-  // property does not appear here by itself - add its row deliberately.
-  // curveType/filletRadius are curated controls in the Shape section above
-  // (ShapeSidebar); selectInside is an escape valve. Every property stays
-  // reachable under Advanced Components.
+  // The shape component's Style section (#2069) renders its rows through
+  // ShapeStyleSectionControls, as the hotspot and build-area sections do, so a
+  // new shape property does not appear here by itself — add its row
+  // deliberately. Every property stays reachable under Advanced Components.
   if (name === 'shape') {
     return Object.keys(component?.schema || {});
   }

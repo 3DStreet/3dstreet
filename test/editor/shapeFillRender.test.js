@@ -7,7 +7,7 @@ import {
   fillMaterialPainted,
   fillPaintOrder,
   fillPatternPainted,
-  fillRenderState,
+  layerOpacityState,
   wantedPatternKey,
   wantedSurfaceId
 } from '../../src/aframe-components/shapeFillRender.js';
@@ -27,15 +27,15 @@ const LOWEST_WEBGL_OVERLAY = 100;
 
 const STREET = 0;
 
-describe('fillRenderState', () => {
+describe('layerOpacityState', () => {
   it('reports 0% as unpainted', () => {
-    expect(fillRenderState(0)).toEqual({ opacity: 0, painted: false });
+    expect(layerOpacityState(0)).toEqual({ opacity: 0, painted: false });
   });
 
   it('reports anything above 0 as painted', () => {
-    expect(fillRenderState(0.5)).toMatchObject({ painted: true });
-    expect(fillRenderState(99)).toEqual({ opacity: 0.99, painted: true });
-    expect(fillRenderState(100)).toEqual({ opacity: 1, painted: true });
+    expect(layerOpacityState(0.5)).toMatchObject({ painted: true });
+    expect(layerOpacityState(99)).toEqual({ opacity: 0.99, painted: true });
+    expect(layerOpacityState(100)).toEqual({ opacity: 1, painted: true });
   });
 
   it('has no `opaque` flag: 100% is not a distinct render state', () => {
@@ -43,8 +43,8 @@ describe('fillRenderState', () => {
     // is what stops two fills depth-fighting. A reader reintroducing an
     // `opaque` flag should find this red rather than a silently unused field.
     // Probed at 100%, which is the only opacity the flag ever described.
-    expect(fillRenderState(100)).not.toHaveProperty('opaque');
-    expect(Object.keys(fillRenderState(100)).sort()).toEqual([
+    expect(layerOpacityState(100)).not.toHaveProperty('opaque');
+    expect(Object.keys(layerOpacityState(100)).sort()).toEqual([
       'opacity',
       'painted'
     ]);
@@ -53,16 +53,16 @@ describe('fillRenderState', () => {
   it('clamps an out-of-range value rather than trusting the schema bounds', () => {
     // The schema min/max bind the properties panel only; setAttribute and a
     // hand-edited scene can both deliver anything.
-    expect(fillRenderState(170)).toEqual({ opacity: 1, painted: true });
-    expect(fillRenderState(-20)).toEqual({ opacity: 0, painted: false });
+    expect(layerOpacityState(170)).toEqual({ opacity: 1, painted: true });
+    expect(layerOpacityState(-20)).toEqual({ opacity: 0, painted: false });
   });
 
   it('treats a non-numeric value as unpainted', () => {
-    expect(fillRenderState(NaN)).toEqual({ opacity: 0, painted: false });
+    expect(layerOpacityState(NaN)).toEqual({ opacity: 0, painted: false });
   });
 
   it('accepts the string a hand-edited scene delivers', () => {
-    expect(fillRenderState('40')).toEqual({ opacity: 0.4, painted: true });
+    expect(layerOpacityState('40')).toEqual({ opacity: 0.4, painted: true });
   });
 });
 

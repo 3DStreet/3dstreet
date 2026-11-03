@@ -1,45 +1,11 @@
 /* global THREE */
 
-// A closed shape's fill has two layers on one mesh - the material (a solid
-// colour or a surface texture) and a pattern drawn over it - and each layer
-// may need a texture: a street-surface image for the material, a drawn tile
-// for the pattern. This module owns those textures for one shape, through one
-// transition function, update(data), that compares what the shape WANTS now
-// with what it HOLDS and moves between them. shape.js only wires it in; the
-// colour, opacity and draw groups stay shape.js's.
-//
-// "Wanted" (shapeFillRender.js) is closed AND that layer painted. It is
-// re-checked on every property sync, including init and a `closed` change, so
-// a shape created with a texture already set - a loaded scene, a sticky draw
-// style, a duplicate, an undone delete - loads it, and the draw tool's open
-// preview loads nothing.
-//
-// SURFACE TEXTURES are scene assets. They load through the A-Frame material
-// system's loadTexture, the path the lazy-texture hook patches (download on
-// first use, the asset-load tracker's events, one source shared with every
-// street segment on that surface), and are held for the scene's life. A
-// per-scene cache hands a loaded texture to every later shape at once:
-//   - a cache hit is a RETURN VALUE, read inside update(), with no callback;
-//   - on a miss the shape records itself as pending and joins the entry's
-//     waiters BEFORE the request goes out;
-//   - waiters are told synchronously inside the load callback;
-//   - so a bound map always belongs to a loaded surface, and shape.js never
-//     multiplies a real texture by the placeholder colour.
-// A failed load is not retried by an edit to the same shape; the placeholder
-// stays (it is retried when the surface is chosen again, or by another shape).
-//
-// PATTERN TILES are drawn in code (src/tested/shape-fill.js) and shared per
-// scene, one texture per exact (pattern, spacing, width), refcounted and
-// disposed on the last release - the shared texture is the object three
-// uploads, so disposing it frees the GPU copy. A change of tuple on a shape
-// that already shows a tile waits for the next frame (several edits in one
-// frame - a slider scrub - cost one raster), and the old tile stays bound
-// until the new one replaces it, so the pattern never flashes off. The first
-// tile is drawn synchronously, so a pattern never appears without its map.
-//
-// Program switches: three compiles a separate shader for a material with and
-// without a map, so a material that gains or loses one needs needsUpdate. A
-// swap of one map for another does not.
+// The textures one shape's fill needs: a street-surface image for the material
+// layer and a drawn tile for the pattern layer. update(data) compares what the
+// shape wants now with what it holds and moves between them; shape.js owns
+// the colours, opacities and draw groups. When a texture is wanted, how
+// surfaces are cached and how tiles are shared: docs/shapes.md
+// "Fill appearance".
 
 import {
   FILL_MATERIALS,
@@ -75,13 +41,13 @@ function surfaceCache(sceneEl) {
 
 // The scene's cache entry for a surface asset id - { status: 'pending' |
 // 'loaded', texture, waiters } - or undefined.
-export function lookupSurface(sceneEl, id) {
+function lookupSurface(sceneEl, id) {
   return surfaceCache(sceneEl).get(id);
 }
 
-// Create the pending entry and send the request. The caller has already
-// joined the entry's waiters, so even a loader that answered re-entrantly
-// would find it there.
+// Create the pending entry and send the request. The waiter is in the entry
+// before the request goes out, so even a loader that answered re-entrantly
+// would find it there. Waiters are told inside the load callback itself.
 function requestSurface(sceneEl, id, img, loadTexture, waiter) {
   const entry = {
     status: 'pending',
@@ -151,7 +117,7 @@ function drawPatternTexture(key) {
 }
 
 // The scene's tile for `key`, drawn on first use. Every acquire is matched by
-// one release.
+// one release; the last release disposes the texture, which frees its GPU copy.
 export function acquirePatternTexture(sceneEl, key) {
   const cache = patternCache(sceneEl);
   let entry = cache.get(key);
@@ -174,12 +140,13 @@ export function releasePatternTexture(sceneEl, key) {
   }
 }
 
-// --- Per-shape layer resources ---------------------------------------------
+// --- Per-shape fill textures -----------------------------------------------
 
-// `materials` is [materialLayer, patternLayer]. The other functions are
+// `materials` is the fill's two THREE materials, [material layer, pattern
+// layer]; this object sets only their `map`. The other functions are
 // injectable for tests; the surface cache always runs in front of
 // `loadTexture`.
-export function createFillLayers({
+export function createFillTextures({
   sceneEl,
   materials,
   loadTexture = (img, data, cb) =>
@@ -190,16 +157,23 @@ export function createFillLayers({
   cancel = (handle) => cancelAnimationFrame(handle),
   onChange = () => {}
 }) {
-  const [surfaceMaterial, patternMaterial] = materials;
-  // Read-only to callers. `surface.id` is kept when the surface stops being
-  // wanted, so wanting it again needs no new request.
+  const [materialLayerMat, patternLayerMat] = materials;
+  // Read-only to callers.
+  //   surface.status: 'none' (nothing asked for yet), 'pending' (loading),
+  //     'loaded' or 'failed'. `surface.id` is kept when the surface stops being
+  //     wanted, so wanting it again needs no new request. A bound map always
+  //     has status 'loaded'.
+  //   pattern.swapFrame: the frame handle of a scheduled tile swap, or null.
   const state = {
     surface: { id: null, status: 'none', texture: null, bound: false },
-    pattern: { key: null, texture: null, bound: false, pending: null }
+    pattern: { key: null, texture: null, bound: false, swapFrame: null }
   };
   let disposed = false;
   let lastData = null;
 
+  // Three compiles a separate program for a material with and without a map,
+  // so gaining or losing one needs needsUpdate; swapping one map for another
+  // does not.
   function setMap(material, texture) {
     const hadMap = !!material.map;
     material.map = texture;
@@ -209,12 +183,12 @@ export function createFillLayers({
   // --- surface ---
 
   function bindSurface() {
-    setMap(surfaceMaterial, state.surface.texture);
+    setMap(materialLayerMat, state.surface.texture);
     state.surface.bound = true;
   }
 
   function unbindSurface() {
-    setMap(surfaceMaterial, null);
+    setMap(materialLayerMat, null);
     state.surface.bound = false;
   }
 
@@ -251,6 +225,8 @@ export function createFillLayers({
       s.status = 'failed';
       return;
     }
+    // A texture another shape already loaded is bound at once, with no
+    // callback.
     const entry = lookupSurface(sceneEl, wanted);
     if (entry && entry.status === 'loaded') {
       s.status = 'loaded';
@@ -268,46 +244,50 @@ export function createFillLayers({
 
   // --- pattern ---
 
-  function cancelPending() {
+  function cancelSwap() {
     const p = state.pattern;
-    if (p.pending !== null) {
-      cancel(p.pending);
-      p.pending = null;
+    if (p.swapFrame !== null) {
+      cancel(p.swapFrame);
+      p.swapFrame = null;
     }
   }
 
-  function unwantPattern() {
+  // Release and unbind the held tile. Returns whether a tile was held.
+  function releaseHeldPattern() {
     const p = state.pattern;
     if (p.key === null) return false;
     releasePattern(p.key);
-    if (p.bound) setMap(patternMaterial, null);
+    if (p.bound) setMap(patternLayerMat, null);
     p.key = null;
     p.texture = null;
     p.bound = false;
     return true;
   }
 
-  function takePattern(key) {
+  // Acquire and bind the tile for `key`, then release the one it replaces.
+  function bindPattern(key) {
     const p = state.pattern;
     const texture = acquirePattern(key);
     const old = p.key;
     p.key = key;
     p.texture = texture;
-    setMap(patternMaterial, texture);
+    setMap(patternLayerMat, texture);
     p.bound = true;
     if (old !== null) releasePattern(old);
   }
 
-  function runDeferredPattern() {
+  // A scheduled swap re-reads what is wanted when it runs, so edits made since
+  // it was scheduled - including turning the pattern off - win.
+  function runSwap() {
     const p = state.pattern;
-    p.pending = null;
+    p.swapFrame = null;
     if (disposed) return;
     const wanted = wantedPatternKey(lastData);
     let changed = false;
     if (wanted === null) {
-      changed = unwantPattern();
+      changed = releaseHeldPattern();
     } else if (wanted !== p.key) {
-      takePattern(wanted);
+      bindPattern(wanted);
       changed = true;
     }
     if (changed) onChange();
@@ -316,20 +296,23 @@ export function createFillLayers({
   function updatePattern(wanted) {
     const p = state.pattern;
     if (wanted === null) {
-      cancelPending();
-      unwantPattern();
+      cancelSwap();
+      releaseHeldPattern();
       return;
     }
+    // The first tile is drawn at once, so the pattern never shows without it.
     if (p.key === null) {
-      cancelPending();
-      takePattern(wanted);
+      cancelSwap();
+      bindPattern(wanted);
       return;
     }
     if (p.key === wanted) {
-      cancelPending();
+      cancelSwap();
       return;
     }
-    if (p.pending === null) p.pending = schedule(runDeferredPattern);
+    // A different tile waits a frame, so a scrub costs one raster per frame;
+    // the old tile stays bound until then.
+    if (p.swapFrame === null) p.swapFrame = schedule(runSwap);
   }
 
   return {
@@ -342,8 +325,8 @@ export function createFillLayers({
     },
     dispose() {
       if (disposed) return;
-      cancelPending();
-      unwantPattern();
+      cancelSwap();
+      releaseHeldPattern();
       disposed = true;
     }
   };

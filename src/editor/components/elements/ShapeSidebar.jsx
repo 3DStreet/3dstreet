@@ -643,11 +643,12 @@ ShapeSidebar.propTypes = {
 // Curated rows at the foot of the Shape section, after the measurements
 // (#2069): Reverse direction, plus curve style and — for arcs — corner
 // radius. The featured "shape" component section (titled Style) holds the
-// line and fill appearance rows (ShapeStyleSectionControls). curveType/filletRadius are shape props (a
-// curve is a property of the drawing, street or no street — any street
-// following this shape as its path reads them from here); their raw fields are
-// hidden from the schema rows in favour of these controls. Values are read
-// straight off the component; the tick only forces a re-render.
+// line and fill appearance rows (ShapeStyleSectionControls).
+// curveType/filletRadius are shape props (a curve is a property of the
+// drawing, street or no street — any street following this shape as its path
+// reads them from here); their raw fields are hidden from the schema rows in
+// favour of these controls. Values are read straight off the component; the
+// tick only forces a re-render.
 const ShapeSectionControls = ({ entity }) => {
   const intl = useIntl();
   const [, setCurveTick] = useState(0);

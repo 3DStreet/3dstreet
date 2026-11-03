@@ -24,7 +24,7 @@ vi.mock('@/editor/components/elements/AdvancedComponents.jsx', () => ({
   default: () => null
 }));
 
-// The spec's help sentences, verbatim.
+// The help sentences as the panel shows them, verbatim.
 const HELP = {
   material: 'The surface of the shape.',
   materialOpacity:

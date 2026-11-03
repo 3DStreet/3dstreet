@@ -166,13 +166,41 @@ const patternNames = defineMessages({
 });
 
 // A small picture of each pattern for its dropdown option, drawn in the
-// swatch's 20 px box (`.surface-swatch`).
-const PATTERN_SWATCH_PATHS = {
+// swatch's 20 px box (`.surface-swatch`): white ink on a mid grey.
+const SWATCH_BACKGROUND = '#555';
+const SWATCH_INK = '#fff';
+// The chip for a texture whose image is not in the scene, as the segment
+// picker shows for a surface without a texture.
+const MISSING_TEXTURE_CHIP = '#dddddd';
+
+const STRIPES_PATH = 'M-2 8 L8 -2 M-2 16 L16 -2 M4 22 L22 4 M12 22 L22 12';
+const PATTERN_SWATCHES = {
   none: null,
-  stripes: 'M-2 8 L8 -2 M-2 16 L16 -2 M4 22 L22 4 M12 22 L22 12',
-  crosshatch:
-    'M-2 8 L8 -2 M-2 16 L16 -2 M4 22 L22 4 M12 22 L22 12 ' +
-    'M12 -2 L22 8 M4 -2 L22 16 M-2 4 L16 22 M-2 12 L8 22'
+  stripes: (
+    <path d={STRIPES_PATH} stroke={SWATCH_INK} strokeWidth="2" fill="none" />
+  ),
+  crosshatch: (
+    <path
+      d={`${STRIPES_PATH} M12 -2 L22 8 M4 -2 L22 16 M-2 4 L16 22 M-2 12 L8 22`}
+      stroke={SWATCH_INK}
+      strokeWidth="2"
+      fill="none"
+    />
+  ),
+  checkerboard: (
+    <path
+      d="M0 0 H5 V5 H0 Z M10 0 H15 V5 H10 Z M5 5 H10 V10 H5 Z M15 5 H20 V10 H15 Z M0 10 H5 V15 H0 Z M10 10 H15 V15 H10 Z M5 15 H10 V20 H5 Z M15 15 H20 V20 H15 Z"
+      fill={SWATCH_INK}
+    />
+  ),
+  dots: (
+    <g fill={SWATCH_INK}>
+      <circle cx="5" cy="5" r="2.5" />
+      <circle cx="15" cy="5" r="2.5" />
+      <circle cx="5" cy="15" r="2.5" />
+      <circle cx="15" cy="15" r="2.5" />
+    </g>
+  )
 };
 
 const PatternSwatch = ({ pattern }) => (
@@ -180,28 +208,9 @@ const PatternSwatch = ({ pattern }) => (
     className="surface-swatch"
     viewBox="0 0 20 20"
     aria-hidden="true"
-    style={{ background: '#555' }}
+    style={{ background: SWATCH_BACKGROUND }}
   >
-    {PATTERN_SWATCH_PATHS[pattern] && (
-      <path
-        d={PATTERN_SWATCH_PATHS[pattern]}
-        stroke="#fff"
-        strokeWidth="2"
-        fill="none"
-      />
-    )}
-    {pattern === 'checkerboard' && (
-      <path
-        d="M0 0 H5 V5 H0 Z M10 0 H15 V5 H10 Z M5 5 H10 V10 H5 Z M15 5 H20 V10 H15 Z M0 10 H5 V15 H0 Z M10 10 H15 V15 H10 Z M5 15 H10 V20 H5 Z M15 15 H20 V20 H15 Z"
-        fill="#fff"
-      />
-    )}
-    {pattern === 'dots' &&
-      [5, 15].flatMap((x) =>
-        [5, 15].map((y) => (
-          <circle key={`${x},${y}`} cx={x} cy={y} r="2.5" fill="#fff" />
-        ))
-      )}
+    {PATTERN_SWATCHES[pattern]}
   </svg>
 );
 
@@ -415,7 +424,9 @@ export const ShapeStyleSectionControls = ({ entity }) => {
           <SurfaceSwatchOption
             label={t(materialNames[option.value])}
             textureId={FILL_MATERIALS[option.value].textureId || undefined}
-            flatColor={option.value === 'solid' ? data.fillColor : '#dddddd'}
+            flatColor={
+              option.value === 'solid' ? data.fillColor : MISSING_TEXTURE_CHIP
+            }
           />
         )}
         onChange={onMaterialChange}

@@ -1,6 +1,15 @@
 /* global AFRAME */
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_SHAPE_STYLE } from '../../src/editor/lib/shapeStyle.js';
+import {
+  DEFAULT_SHAPE_STYLE,
+  normaliseShapeStyle
+} from '../../src/editor/lib/shapeStyle.js';
+import {
+  PATTERN_SPACING_DEFAULT,
+  PATTERN_SPACING_MIN,
+  PATTERN_WIDTH_DEFAULT,
+  PATTERN_WIDTH_MIN
+} from '../../src/tested/shape-fill.js';
 
 // shape.js statically imports the app store, which pulls in the Firebase/PostHog
 // dependency chain at module scope — the same two-method stub the other shape
@@ -39,9 +48,9 @@ describe('shape schema defaults vs DEFAULT_SHAPE_STYLE', () => {
     }
   });
 
-  // Literals from the fill-appearance spec: once shipped these are frozen,
-  // because a saved scene omits any value equal to its default.
-  it('ships the specified fill defaults', () => {
+  // The shipped fill defaults. Frozen once released, because a saved scene
+  // omits any value equal to its default.
+  it('keeps the shipped fill defaults', () => {
     const schema = AFRAME.components.shape.schema;
     const defaults = Object.fromEntries(
       [
@@ -84,5 +93,37 @@ describe('shape schema defaults vs DEFAULT_SHAPE_STYLE', () => {
     expect(schema.lineWidth.min).toBe(0);
     expect(schema.fillOpacity.min).toBe(0);
     expect(schema.fillOpacity.max).toBe(100);
+  });
+});
+
+// The fill's lists and pattern floors are restated as schema literals and
+// used by the sticky style and the render guard; these keep them in step.
+describe('shape schema fill lists and floors vs the sticky style', () => {
+  it('keeps every material and pattern the schema offers', () => {
+    const schema = AFRAME.components.shape.schema;
+    for (const fillMaterial of schema.fillMaterial.oneOf) {
+      expect(normaliseShapeStyle({ fillMaterial }).fillMaterial).toBe(
+        fillMaterial
+      );
+    }
+    for (const fillPattern of schema.fillPattern.oneOf) {
+      expect(normaliseShapeStyle({ fillPattern }).fillPattern).toBe(
+        fillPattern
+      );
+    }
+  });
+
+  it('floors pattern lengths where the schema does, and defaults them alike', () => {
+    const schema = AFRAME.components.shape.schema;
+    expect(schema.fillPatternSpacing.min).toBe(PATTERN_SPACING_MIN);
+    expect(schema.fillPatternWidth.min).toBe(PATTERN_WIDTH_MIN);
+    expect(schema.fillPatternSpacing.default).toBe(PATTERN_SPACING_DEFAULT);
+    expect(schema.fillPatternWidth.default).toBe(PATTERN_WIDTH_DEFAULT);
+    expect(
+      normaliseShapeStyle({ fillPatternSpacing: 0 }).fillPatternSpacing
+    ).toBe(schema.fillPatternSpacing.min);
+    expect(normaliseShapeStyle({ fillPatternWidth: 0 }).fillPatternWidth).toBe(
+      schema.fillPatternWidth.min
+    );
   });
 });
