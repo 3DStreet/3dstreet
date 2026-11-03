@@ -692,6 +692,44 @@ body.aframe-inspector-opened {
     0 1px 1px rgba(0, 0, 0, 0.9);
 }
 
+// A side's insert control with measurements off: the chip shows only a "+".
+// With no number to hold a footprint for, the glyph is in flow and at the
+// label's own 12 px, so the chip keeps the caption height CAPTION_HALF_PX
+// assumes; the minimum width that keeps it finger-sized is written inline.
+.shape-readout-plus-glyph {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+}
+
+// The "+"-only chip's accessible name: read out, not shown.
+.shape-readout-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+// An angle: a reading, never a control, so it looks unlike a length chip —
+// no fill, the number in the accent colour.
+.shape-readout--angle .shape-readout-label {
+  background: rgba(0, 0, 0, 0.35);
+  color: #ffd166 !important;
+  font-style: italic;
+}
+
+// Why a close is refused, beside the first vertex: a sentence, so it wraps.
+.shape-readout--notice .shape-readout-label {
+  background: rgba(176, 58, 46, 0.92);
+  max-width: 240px;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.3;
+}
+
 // The vertex delete button, which until now answered a pointer not at all —
 // inert beside a measurement chip that lights up under one. (The insert "+"
 // already has the treatment, above.)
@@ -726,6 +764,30 @@ body.aframe-inspector-opened {
 // chip with inline styles of its own (see shape.js). That duplication is known
 // and left alone — the area readout is not a control and never will be one, and
 // unifying it means editing an A-Frame component for no behavioural gain.
+
+// The Shape Tool section. While drawing, nothing is selected, so it sits in
+// the empty state, which centres its text and pads its sides: cancel both, so
+// the section lines up with a selected shape's "Shape" section. (Not the top
+// padding: the draw instructions sit above it.)
+.properties-empty-state .shape-tool-panel {
+  text-align: left;
+  margin: 0 -16px;
+}
+
+// A full-width preference row's label: a sentence rather than a property
+// name, so it takes the row's width instead of the label column.
+.shape-tool-panel-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: variables.$lightgray-200;
+}
+
+// Inert while snap is off; the click itself is stopped in the component.
+.shape-tool-row--disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 
 // Right-side properties panel rendered inside RightPanel's content area.
 .properties-panel {

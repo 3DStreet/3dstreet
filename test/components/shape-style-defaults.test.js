@@ -39,6 +39,24 @@ describe('shape schema defaults vs DEFAULT_SHAPE_STYLE', () => {
   // clamps — the store floors `lineWidth` above zero because zero is a poor
   // DEFAULT, while zero remains a legal width on the component. What the store
   // clamps to is covered by the unit suite (test/editor/shapeStyle.test.js).
+  // Every editor preference about shapes (what the canvas shows, how the
+  // tool snaps) is kept out of the scene, so the schema gains no property.
+  it('keeps the schema to the shape’s own properties', () => {
+    expect(Object.keys(AFRAME.components.shape.schema).sort()).toEqual(
+      [
+        'lineColor',
+        'lineWidth',
+        'closed',
+        'selectInside',
+        'fillColor',
+        'fillOpacity',
+        'curveType',
+        'filletRadius',
+        'updateEvent'
+      ].sort()
+    );
+  });
+
   it('declares the expected schema bounds on the numeric properties', () => {
     const schema = AFRAME.components.shape.schema;
     expect(schema.lineWidth.min).toBe(0);
