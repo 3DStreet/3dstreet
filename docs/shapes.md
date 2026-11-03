@@ -6,23 +6,47 @@ properties panel.
 
 The code is spread across five directories, so this file is the entry point:
 
-| Where                             | What                                                                                                                                          |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`                                                            |
-| `src/editor/components/elements/` | `ShapeSidebar.jsx` (properties panel), `ActionBar/ShapeDrawAction.jsx` (the draw tool)                                                        |
-| `src/editor/lib/`                 | `shapeStyle.js`, `shapeEditRules.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js`                   |
-| `src/editor/lib/commands/`        | `ShapeVertex{Insert,Move,Remove}Command.js`, `StreetConvertToShapesCommand.js`                                                                |
-| `test/`                           | `editor/shape*.test.js`, `components/shape-*.test.js`                                                                                         |
-| `docs/`                           | `shape-vertex-editing.md` — how the on-canvas vertex handles, the measurement chips and the two buttons divide the work between them, and why |
+| Where                             | What                                                                                                                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/aframe-components/`          | `shape.js` (the component and its schema), `shape-vertex.js`, `shapeFillRender.js`                                                                                                    |
+| `src/editor/components/elements/` | `ShapeSidebar.jsx` (properties panel), `ShapeToolSection.jsx` (the Shape Tool settings), `ActionBar/ShapeDrawAction.jsx` (the draw tool)                                              |
+| `src/editor/lib/`                 | `shapeStyle.js`, `shapeToolPrefs.js`, `shapeEditRules.js`, `shapeDrawRules.js`, `shapeSnap.js`, `shapeMeasure.js`, `ShapeReadouts.js`, `ShapeVertexControls.js`, `convertToShapes.js` |
+| `src/editor/lib/commands/`        | `ShapeVertex{Insert,Move,Remove}Command.js`, `StreetConvertToShapesCommand.js`                                                                                                        |
+| `test/`                           | `editor/shape*.test.js`, `components/shape-*.test.js`                                                                                                                                 |
+| `docs/`                           | `shape-vertex-editing.md` — how the on-canvas vertex handles, the measurement chips and the two buttons divide the work between them, and why                                         |
 
 ## Measurements
 
-The side lengths and angles are editor chips (`ShapeReadouts`) that exist only
-while the shape is selected. The enclosed area is a label the `shape`
-component itself builds and positions, so it tracks every re-derive, but it is
-shown only while the shape is selected too: `ShapeSidebar` calls
-`setAreaLabelVisible(true)` on mount and `false` on unmount. Nothing measures
-an unselected shape, in the viewer or during play.
+The side lengths are editor chips (`ShapeReadouts`) that exist only while the
+shape is selected, and only while the **Measurements** preference is on (the
+default). With it off, a side that can take a new vertex keeps that control as
+a "+"-only chip, and the other sides show nothing. Angles show at the corners
+beside the sides shown when the **Angles** preference is on (off by default).
+The enclosed area is a label the `shape` component itself builds and
+positions, so it tracks every re-derive, but it is shown only while the shape
+is selected and the Measurements preference is on: `ShapeSidebar` calls
+`setAreaLabelVisible` with the preference on mount, and `false` on unmount. The
+properties panel's Area and side rows do not depend on either preference.
+Nothing measures an unselected shape, in the viewer or during play.
+
+## Shape Tool settings
+
+While the shape tool is active, the right panel shows a **Shape Tool** section
+(`ShapeToolSection.jsx`): the two display preferences, an angle snap step, whether
+the first side aligns to the axes (the scene's, or the open group's when
+drawing into one), and whether picking the tool opens the panel. All five are
+per-device editor preferences (`shapeToolPrefs.js`): never in the scene and
+never on the undo stack. The two display preferences also appear in a selected
+shape's Shape section, and both places change the same value.
+
+With snap on, the draw tool quantises the direction from the last vertex and
+places the pointer's foot on that ray. A close is still armed by the pointer
+over the first vertex; the last vertex then slides along its own side so that
+both closing corners are snapped, or the close is refused with a reason. The
+mechanics are in the `shapeSnap.js` header, and the rules every way of
+finishing shares are in `shapeDrawRules.js`. An Escape key-up outside a text
+field finishes the shape; the editor's own Escape handling is described in
+`docs/groups.md`.
 
 ## Vertex editing commands
 
@@ -168,6 +192,11 @@ Its only reader calls it imperatively when the draw tool activates. Putting it
 in the store would re-render every selector-less `useStore()` component once per
 animation frame during a fill-opacity drag, in exchange for reactivity no one
 uses. `aframe-components/play/best-times.js` is the same shape.
+
+The Shape Tool settings are the inverse case, and do live in the store
+(`shapeToolSettings`, persisted by `shapeToolPrefs.js`): several views subscribe
+to them — the tool section, a selected shape's panel and the draw tool — and
+they change only on a click.
 
 The read is lazy and then **cached for the session**. That is not only a
 startup-ordering convenience: it is why the feature keeps working for a whole
