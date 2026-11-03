@@ -3,6 +3,7 @@
 // orbits the selection instead of the screen-centre / cursor ground point.
 // Out of view (or nothing selected) falls back to the normal pivot scheme.
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import posthog from 'posthog-js';
 import * as H from './_harness.js';
 
 let Controls;
@@ -13,6 +14,7 @@ beforeAll(async () => {
 beforeEach(() => {
   H.stubClock();
   H.clearSceneGlobals();
+  posthog.capture.mockClear();
 });
 afterEach(() => H.teardownAll());
 
@@ -77,4 +79,86 @@ describe('rotation — selection pivot (#1993)', () => {
       });
     });
   }
+});
+
+// The `nav_rotate_gesture` telemetry event (#1993): one per rotate drag that
+// moved the camera, carrying why the pivot was chosen.
+function rotateEvents() {
+  return posthog.capture.mock.calls
+    .filter(([name]) => name === 'nav_rotate_gesture')
+    .map(([, props]) => props);
+}
+
+function rotateDrag({ streetLevel = false, cam, steps = 5 } = {}) {
+  const scene = H.representativeScene();
+  const camera =
+    cam || H.makePerspectiveCam({ pos: [0, 80, 60], lookAt: [0, 12, 0] });
+  const c = H.makeControls({ camera, scene, streetLevel });
+  H.mouseDown(c, { clientX: 640, clientY: 360, button: 0, shiftKey: true });
+  for (let i = 1; i <= steps; i++) {
+    H.mouseMove(c, { clientX: 640 + i * 10, clientY: 360 + i * 2 });
+  }
+  return c;
+}
+
+describe('rotation — nav_rotate_gesture telemetry (#1993)', () => {
+  it('reports a selection-pivot rotate once, at drag end', () => {
+    selectAt([15, 5, -10]);
+    const c = rotateDrag();
+    expect(rotateEvents()).toHaveLength(0); // nothing per move
+    H.mouseUp(c);
+    const events = rotateEvents();
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      pivot_source: 'selection',
+      selected_type: 'other',
+      nav_mode: 'standard'
+    });
+    expect(events[0].yaw_deg).toBeGreaterThan(0); // dragged right
+    expect(events[0].pitch_deg).toBeGreaterThan(0); // dragged down
+    expect(events[0].drag_ms).toBeGreaterThanOrEqual(0);
+  });
+
+  it('labels each fallback reason', () => {
+    const cases = [
+      [() => {}, 'fallback_none'],
+      [() => selectAt([0, 0, 5000]), 'fallback_offscreen'],
+      [
+        () => (selectAt([15, 5, -10]).object3D.visible = false),
+        'fallback_hidden'
+      ]
+    ];
+    for (const [setup, source] of cases) {
+      H.clearSceneGlobals();
+      posthog.capture.mockClear();
+      setup();
+      H.mouseUp(rotateDrag());
+      expect(rotateEvents().map((e) => e.pivot_source)).toEqual([source]);
+      H.teardownAll();
+    }
+  });
+
+  it('reports street_inplace for a street-level rotate', () => {
+    selectAt([15, 5, -10]);
+    const cam = H.makePerspectiveCam({ pos: [0, 2, 0], lookAt: [10, 2, 0] });
+    H.mouseUp(rotateDrag({ streetLevel: true, cam }));
+    expect(rotateEvents().map((e) => e.pivot_source)).toEqual([
+      'street_inplace'
+    ]);
+  });
+
+  it('sends nothing for a Shift+click that never drags', () => {
+    selectAt([15, 5, -10]);
+    H.mouseUp(rotateDrag({ steps: 0 }));
+    expect(rotateEvents()).toHaveLength(0);
+  });
+
+  it('reports the rotate when a drag switches to pan mid-gesture', () => {
+    const c = rotateDrag();
+    H.keyUp(c, 'ShiftLeft', { shiftKey: false }); // rotate → pan
+    expect(rotateEvents()).toHaveLength(1);
+    H.mouseMove(c, { clientX: 720, clientY: 380 });
+    H.mouseUp(c);
+    expect(rotateEvents()).toHaveLength(1); // the pan adds nothing
+  });
 });
