@@ -26,7 +26,15 @@ const path = require('path');
 const os = require('os');
 
 const express = require('express');
-const admin = require('firebase-admin');
+const { initializeApp } = require('firebase-admin/app');
+// firebase-admin v14 dropped the namespaced firestore/storage API; use the
+// modular entry points.
+const {
+  getFirestore,
+  FieldValue,
+  Timestamp
+} = require('firebase-admin/firestore');
+const { getStorage } = require('firebase-admin/storage');
 
 // On Cloud Run the runtime service account supplies credentials. The default
 // Storage bucket isn't inferrable from ADC, so pass it explicitly via env
@@ -37,7 +45,7 @@ const STORAGE_BUCKET =
     ? `${process.env.GCLOUD_PROJECT}.appspot.com`
     : undefined);
 
-admin.initializeApp({ storageBucket: STORAGE_BUCKET });
+initializeApp({ storageBucket: STORAGE_BUCKET });
 
 const SPARK_VERSION = process.env.SPARK_VERSION || 'unknown';
 // --quality = bhatt-lod base 1.75, single .rad — matches the Hetzner-validated
@@ -134,7 +142,7 @@ async function convert({ uid, assetId, plyPath }, perf = {}) {
     throw new Error('Missing plyPath');
   }
 
-  const bucket = admin.storage().bucket();
+  const bucket = getStorage().bucket();
 
   // 1. Download the source splat to local scratch, PRESERVING ITS REAL
   //    EXTENSION. build-lod dispatches on the file extension (it does NOT
@@ -207,8 +215,7 @@ async function convert({ uid, assetId, plyPath }, perf = {}) {
 
     // 5. Patch the asset doc. The renderer + placement already prefer
     //    optimizedSourceUrl ?? storageUrl, so this flips the splat to RAD.
-    await admin
-      .firestore()
+    await getFirestore()
       .collection('users')
       .doc(uid)
       .collection('assets')
@@ -231,9 +238,9 @@ async function convert({ uid, assetId, plyPath }, perf = {}) {
             inputBytes: perf.inputBytes,
             optimizedSourceSize,
             runtime: perf.runtime || runtimeInfo(),
-            completedAt: admin.firestore.Timestamp.now()
+            completedAt: Timestamp.now()
           },
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          updatedAt: FieldValue.serverTimestamp()
         },
         { merge: true }
       );
@@ -252,14 +259,13 @@ async function convert({ uid, assetId, plyPath }, perf = {}) {
 async function writeJobStatus(uid, jobId, fields) {
   if (!jobId) return;
   try {
-    await admin
-      .firestore()
+    await getFirestore()
       .collection('users')
       .doc(uid)
       .collection('generationJobs')
       .doc(jobId)
       .set(
-        { ...fields, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+        { ...fields, updatedAt: FieldValue.serverTimestamp() },
         { merge: true }
       );
   } catch (err) {
@@ -283,7 +289,7 @@ app.post('/', async (req, res) => {
   const startWall = performance.now();
   // Common perf payload for the terminal writeback (both success and failure).
   const perfFields = () => ({
-    completedAt: admin.firestore.FieldValue.serverTimestamp(),
+    completedAt: FieldValue.serverTimestamp(),
     durationMs:
       typeof perf.durationMs === 'number'
         ? perf.durationMs
@@ -297,7 +303,7 @@ app.post('/', async (req, res) => {
     // from a dropped task. Includes startedAt for stall detection.
     await writeJobStatus(uid, jobId, {
       status: 'running',
-      startedAt: admin.firestore.FieldValue.serverTimestamp()
+      startedAt: FieldValue.serverTimestamp()
     });
     const result = await convert({ uid, assetId, plyPath }, perf);
     await writeJobStatus(uid, jobId, {
