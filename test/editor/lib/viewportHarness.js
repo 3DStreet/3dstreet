@@ -28,6 +28,7 @@ export function mountViewport() {
   Viewport(inspector);
   function dispose() {
     inspector.easyGizmoControls.dispose();
+    inspector.groupStockGesture.dispose();
     inspector.shapeVertexControls.dispose();
     inspector.streetNodeControls.dispose();
     inspector.segmentWidthControls.dispose();

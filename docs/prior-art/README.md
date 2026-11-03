@@ -23,6 +23,7 @@ needs a license check first (our code is AGPL-3.0).
 | [alzin/japan-rail-sim](https://github.com/alzin/japan-rail-sim) | rail sim; track profile, sleeper and catenary dimensions | MIT | see the issue | #2004 rail fidelity |
 | [mkturkcan/valdrada](https://github.com/mkturkcan/valdrada) (Valdrada, formerly BoundlessNYC) | four NYC boroughs compiled from municipal records (footprints joined to PLUTO by BBL, CSCL centrelines, city registries) into `CTL1` tiles; traffic, perception ground truth, CARLA-style API; OpenUSD export rendered in Blender Cycles and Unreal Engine 5; the architecture procedural-tokyo follows | MIT code; compiled city ODbL | `f453c1d` (v0.2.1), `bef9783` (v0.3.1, 2026-10-09) | #2090, #1930, #2004, #2083, play mode, AI rendering; [notes](valdrada.md) |
 | [ericrius1/SanFrancisco](https://github.com/ericrius1/SanFrancisco) | open-world multiplayer San Francisco on three.js WebGPU: OSM + DEM → 800 m GLB tiles (quantized, meshopt; 14 MB gzipped for the city), CityGen buildings with OSM IDs, per-building "alive" texture, film-style post chain | **none** (all rights reserved) | `696f7f7` (2026-10-01) | #2090, #2083, play mode, rendering; [notes](sanfrancisco-webgpu.md) |
+| [mrdoob/slop-newyork](https://github.com/mrdoob/slop-newyork) | drivable 1:1 Manhattan on three.js WebGPU: CSCL centrelines, NYC Parks and OSM compiled into one 1.1 MB module; blocks are what's left after stamping roadways at curb width; every building procedural by neighbourhood profile; IDM traffic on a lane graph derived from the built curbs | MIT code; NYC Open Data + OSM (ODbL) | `1b54e16` (2026-10-24) | #2090, #2083, #2004, #1930, play mode, rendering; [notes](slop-newyork.md) |
 | [Teleoperator](https://mindblown.ai/games/teleoperator) (Mindblown) | the r/threejs "real SF city on WebGPU" robotaxi game: OSM layout, procedural components, look matched to reference photos by an agent | closed; no source | game page and Reddit thread (2026-10-13) | #2090, #2083 (cautionary); [notes](teleoperator.md) |
 
 ## The pattern they converge on
@@ -42,6 +43,7 @@ source adapter        →  normalized facts           →  streamable tiles     
 - strassenraumkarte: osm2pgsql flex + `lanes.lua` → PostGIS → vector tiles
 - Valdrada (formerly BoundlessNYC): NYC Open Data + OSM gap-fill → (in memory) → `CTL1` binary tiles (512 m near, 2,048 m far)
 - procedural-tokyo: PLATEAU/OSM/GSI fetchers → (in memory) → `TKY1` binary tiles
+- slop-newyork: CSCL/NYC Parks/OSM → (in memory) → one 1.1 MB generated module, no tiles (buildings aren't data, so the facts stay small)
 
 **The expensive alternative: a visual feedback loop.** fable51-worlds builds a
 twin by having agents author each place, render it, compare it with

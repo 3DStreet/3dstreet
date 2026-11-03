@@ -310,7 +310,7 @@ function vec3String(value) {
 
 /**
  * Entity definition (the `entitycreate` command's payload shape, see
- * createEntity/objectToElement in entity.js) for the plain entity that
+ * createEntity/objectToElement in entity.jsx) for the plain entity that
  * replaces `cloneEl`. `pose` may override any of position/rotation/scale as
  * "x y z" strings or {x, y, z} objects — the viewport passes the pose the
  * user dragged the clone to — and defaults to the clone's current pose.

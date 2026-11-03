@@ -192,6 +192,18 @@ const MESSAGES = {
     'pt-BR': 'Dimensões',
     fr: 'Dimensions'
   },
+  'image.outputResolution': {
+    en: 'Output resolution',
+    es: 'Resolución de salida',
+    'pt-BR': 'Resolução de saída',
+    fr: 'Résolution de sortie'
+  },
+  'image.tierTokens': {
+    en: '{count} tokens',
+    es: '{count} tokens',
+    'pt-BR': '{count} tokens',
+    fr: '{count} jetons'
+  },
   'image.orientationSquare': {
     en: 'Square',
     es: 'Cuadrada',

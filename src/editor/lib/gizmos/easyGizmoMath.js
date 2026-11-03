@@ -1,6 +1,7 @@
 // Pure arithmetic for the easy gizmo: the sizing law, the regime latch, the
-// flattened layout's dodge rules, the press decision, and the box-union rule
-// behind the object's base.
+// flattened layout's dodge rules, the press decision, the box-union rule
+// behind the object's base, and the pose formatter both gesture owners (the
+// easy gizmo and a group's Advanced-mode handles) commit through.
 //
 // Nothing here touches THREE at module scope, so the module is importable and
 // testable without a scene. Functions may still read the `THREE` global that
@@ -23,12 +24,14 @@ import {
   HEAD_BASE_FLAT_FRAC,
   HEAD_BASE_FRAC,
   LANDING_BAR_HEIGHT_FRAC,
+  POSITION_DECIMALS,
   SQUARE_MAX_METRES,
   SQUARE_MIN_METRES,
   SQUARE_TARGET_METRES,
   SQUARE_TARGET_PX,
   STEP_METRES,
-  STRIP_NARROW_FRAC
+  STRIP_NARROW_FRAC,
+  YAW_DECIMALS
 } from './easyGizmoConstants.js';
 
 export function lerp(a, b, t) {
@@ -409,4 +412,29 @@ export function deriveLocalBoxOf(object) {
   });
 
   return found && !box.isEmpty() ? box : null;
+}
+
+export function quantise(value, decimals) {
+  return Number(value.toFixed(decimals));
+}
+
+/**
+ * Both sides of the unchanged-value comparison come from THIS formatter, at
+ * the same quantisation. The stock gizmo snapshots the live, unrounded
+ * transform, and copying that shape is exactly the build in which a gesture
+ * released where it started still writes an undo entry — the snapshot and the
+ * value it is compared against would have been through different roundings.
+ *
+ * Pitch and roll are written as read: the gizmo never edits them, and
+ * rounding them would change an axis the user did not touch (and turn a
+ * yaw of an entity that may only yaw into a refused pitch edit).
+ */
+export function formatGesturePose(el) {
+  const pos = el.getAttribute('position');
+  const rot = el.getAttribute('rotation');
+  const p = (v) => quantise(v, POSITION_DECIMALS);
+  return {
+    position: `${p(pos.x)} ${p(pos.y)} ${p(pos.z)}`,
+    rotation: `${rot.x} ${quantise(rot.y, YAW_DECIMALS)} ${rot.z}`
+  };
 }

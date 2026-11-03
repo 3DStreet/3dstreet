@@ -25,7 +25,11 @@ import {
   isTokenExhaustedError
 } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
-import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import {
+  REPLICATE_MODELS,
+  getOutputTiers,
+  getTierTokenCost
+} from '@shared/constants/replicateModels.js';
 import { fitScale } from '@shared/utils/imageScale.js';
 import { computeRenderGridCell, RENDER_GRID_GAP } from './renderGridLayout.js';
 import {
@@ -46,6 +50,11 @@ import { getLocalizedStyleLabels } from './renderStyleMessages';
 
 // Available AI models (use shared constants)
 const AI_MODELS = REPLICATE_MODELS;
+
+// Below this long edge (the 2K output size) the model has to invent detail
+// the source doesn't have, so the modal flags the capture as low-res (#1887).
+// The capture is window size × device pixel ratio, invisible to the user.
+const LOW_RES_SOURCE_LONG_EDGE = 2048;
 
 // AI renders are async generation jobs since #1835: the submit callable
 // returns a jobId immediately and the server saves the finished image to the
@@ -73,6 +82,8 @@ function ScreenshotModal() {
   const isPro = currentUser?.isPro || currentUser?.isProTeam;
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState(null);
+  // Pixel size of the capture the AI render will use (#1887).
+  const [sourceSize, setSourceSize] = useState(null);
   const [aiImageUrl, setAiImageUrl] = useState(null);
   const [showOriginal, setShowOriginal] = useState(true);
   const [comparisonMode, setComparisonMode] = useState(false);
@@ -82,6 +93,13 @@ function ScreenshotModal() {
   const [renderStartTime, setRenderStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [selectedModel, setSelectedModel] = useState('nano-banana-pro');
+  // 1x output resolution (#1887); null = the model's default tier. 4x always
+  // renders at each model's default.
+  const [outputTier, setOutputTier] = useState(null);
+  const selectedModelTiers = getOutputTiers(AI_MODELS[selectedModel]);
+  const activeOutputTier = selectedModelTiers.includes(outputTier)
+    ? outputTier
+    : null;
   const [renderMode, setRenderMode] = useState('1x'); // '1x' or '4x'
   const [aiImages, setAiImages] = useState({}); // Store multiple AI images with model keys
   const [renderTimers, setRenderTimers] = useState({}); // Individual timers for each model
@@ -193,6 +211,7 @@ function ScreenshotModal() {
 
   const resetModalState = () => {
     setOriginalImageUrl(null);
+    setSourceSize(null);
     setAiImageUrl(null);
     setShowOriginal(true);
     setComparisonMode(false);
@@ -423,7 +442,9 @@ function ScreenshotModal() {
     // users hit the paywall up front instead of round-tripping to the cloud
     // function and surfacing a toast on rejection. Pro/ProTeam users skip
     // this gate — canUseImageFeature below handles their monthly auto-refill.
-    const tokenCost = getTokenCost(targetModel);
+    // Only a 1x render (no slot key) takes the chosen output tier.
+    const requestedTier = modelKey ? null : activeOutputTier;
+    const tokenCost = getTierTokenCost(AI_MODELS[targetModel], requestedTier);
     if (!isPro && (tokenProfile?.genToken ?? 0) < tokenCost) {
       startCheckout('image');
       return;
@@ -589,6 +610,7 @@ function ScreenshotModal() {
           model_id: baseModelKey,
           scene_id: sceneId || null,
           gallery_metadata: galleryMetadata,
+          ...(requestedTier && { resolution: requestedTier }),
           notify
         });
       }
@@ -707,6 +729,8 @@ function ScreenshotModal() {
           model: baseModelKey,
           render_style: promptStyle,
           render_mode: renderMode,
+          output_resolution:
+            requestedTier || selectedModelConfig.resolution || null,
           is_pro_user: currentUser?.isPro || false,
           tokens_available: tokenProfile?.genToken || 0
         });
@@ -717,6 +741,8 @@ function ScreenshotModal() {
           model: baseModelKey,
           render_style: promptStyle,
           render_mode: renderMode,
+          output_resolution:
+            requestedTier || selectedModelConfig.resolution || null,
           is_pro_user: currentUser?.isPro || false,
           scene_id: STREET.utils.getCurrentSceneId()
         });
@@ -1014,6 +1040,7 @@ function ScreenshotModal() {
       captureScreenshotAsJpeg(isPro)
         .then(({ dataUrl, width, height, pngSrc }) => {
           setOriginalImageUrl(pngSrc);
+          setSourceSize({ width, height });
           if (!currentUser?.uid) {
             console.log('User not logged in, skipping gallery save');
             return;
@@ -1103,6 +1130,44 @@ function ScreenshotModal() {
                 </div>
               )}
 
+              {renderMode === '1x' && selectedModelTiers.length > 0 && (
+                <div className={styles.modelSelector}>
+                  <label className={styles.modelLabel}>
+                    <FormattedMessage
+                      id="screenshotModal.outputResolutionLabel"
+                      defaultMessage="Output resolution:"
+                    />
+                  </label>
+                  <div className={styles.renderModeTabs}>
+                    {selectedModelTiers.map((tier, index) => {
+                      const isActive =
+                        (activeOutputTier || selectedModelTiers[0]) === tier;
+                      return (
+                        <button
+                          key={tier}
+                          type="button"
+                          className={`${styles.tabButton} ${isActive ? styles.active : ''}`}
+                          onClick={() => setOutputTier(index ? tier : null)}
+                          disabled={isAnyRendering}
+                        >
+                          {tier} ·{' '}
+                          <FormattedMessage
+                            id="screenshotModal.tierTokens"
+                            defaultMessage="{count, plural, one {# token} other {# tokens}}"
+                            values={{
+                              count: getTierTokenCost(
+                                AI_MODELS[selectedModel],
+                                tier
+                              )
+                            }}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {renderMode === '4x' && (
                 <div className={styles.modelMixToggle}>
                   <label className={styles.toggleLabel}>
@@ -1133,6 +1198,25 @@ function ScreenshotModal() {
                       onChange={setSelectedModel}
                       disabled={isAnyRendering}
                     />
+                  )}
+                </div>
+              )}
+
+              {sourceSize && (
+                <div className={styles.sourceSize}>
+                  <FormattedMessage
+                    id="screenshotModal.sourceSize"
+                    defaultMessage="Source image: {width} × {height}"
+                    values={sourceSize}
+                  />
+                  {Math.max(sourceSize.width, sourceSize.height) <
+                    LOW_RES_SOURCE_LONG_EDGE && (
+                    <p className={styles.lowResWarning}>
+                      <FormattedMessage
+                        id="screenshotModal.lowResSource"
+                        defaultMessage="Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
+                      />
+                    </p>
                   )}
                 </div>
               )}
@@ -1332,7 +1416,10 @@ function ScreenshotModal() {
                     </span>
                     {tokenProfile && (
                       <TokenDisplayInner
-                        count={getTokenCost(selectedModel)}
+                        count={getTierTokenCost(
+                          AI_MODELS[selectedModel],
+                          activeOutputTier
+                        )}
                         inline={true}
                       />
                     )}

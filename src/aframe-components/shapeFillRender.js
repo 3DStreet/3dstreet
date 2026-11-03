@@ -107,17 +107,11 @@ function areaTerm(area) {
 // The whole band tops out just above 3, which stays clear of every editor
 // overlay in the WebGL queue (the lowest is 100).
 //
-// `planeY` is read in the shape's PARENT frame rather than in world space. All
-// shapes share one parent and shapes cannot be reparented, so a transform on
-// that parent shifts every fill equally and cancels out of the comparison.
-//
-// Two things sit outside that guarantee. A scene file can nest a shape under a
-// translated group - no in-app route does, but scene JSON is not a route, and
-// such a shape orders against the others by the wrong number. And the draw
-// tool's live preview is parented to the scene rather than to the shared
-// parent, so while you are drawing, the preview's number is in a different
-// frame; harmless while that parent sits at the origin, which is every scene
-// today.
+// `planeY` is the fill plane's WORLD height. Shapes can sit in different groups
+// as well as at the top level, so only a height in one frame orders them
+// against each other, and a group that moves reorders the fills inside it.
+// The draw tool's live preview is parented to the scene, so its world height
+// is also what it reports.
 export function fillPaintOrder(planeY, area) {
   const y = Number.isFinite(planeY) ? planeY : 0;
   const heightTerm =

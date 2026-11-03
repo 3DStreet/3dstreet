@@ -52,7 +52,16 @@ describe('raycaster hover when the cursor is hidden', () => {
     raycaster = initRaycaster({
       container,
       sceneEl: { appendChild() {}, canvas },
-      selectedEntity: null
+      selectedEntity: null,
+      // The group scope controller with no group in the scene.
+      groupScope: {
+        hasGroupPickTargets: () => false,
+        groupSelectedOrOpen: () => false,
+        openElements: () => [],
+        clearHover() {},
+        hoverOpens: null,
+        consumeDoubleClick: () => false
+      }
     });
     Events.on('raycastermouseenter', onEnter);
     Events.on('raycastermouseleave', onLeave);

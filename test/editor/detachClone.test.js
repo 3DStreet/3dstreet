@@ -18,6 +18,8 @@ import {
   resolveDetachToolArgs,
   routeCloneEdit
 } from '../../src/editor/lib/detachClone.js';
+import { routeKindLimits } from '../../src/editor/lib/groups/groupLevel.js';
+import { resolveCommand } from '../../src/editor/lib/resolveCommand.js';
 
 // A segment element with a live generator component (the shape
 // getCloneSlot/buildDetachCommands read: `components[name]` present and
@@ -1009,6 +1011,175 @@ describe('detachClone (#2011)', () => {
         rotation: '0 180 0',
         scale: '1 1 1'
       });
+    });
+  });
+
+  describe('a class write that makes a clone a group', () => {
+    it('detaches it level, with an explicit unit scale outranking its mixin (fails if the group rewrite ignores a detach)', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      clone.setAttribute('rotation', '5 30 0');
+      const nativeGetAttribute = clone.getAttribute.bind(clone);
+      // The scale its mixin gives it.
+      clone.getAttribute = (name) =>
+        name === 'scale' ? { x: 1, y: 1.5, z: 1 } : nativeGetAttribute(name);
+
+      const routed = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'class',
+        value: 'user-group'
+      });
+      expect(routed.cmdName).toBe('detachclone');
+      const levelled = routeKindLimits(routed.cmdName, routed.payload);
+      expect(levelled.cmdName).toBe('detachclone');
+      expect(levelled.payload.pose).toEqual({
+        rotation: '0 30 0',
+        scale: '1 1 1'
+      });
+      expect(levelled.levelled).toEqual({
+        rotation: { x: 5, y: 30, z: 0 },
+        scale: { x: 1, y: 1.5, z: 1 },
+        becameKind: true,
+        kind: 'group'
+      });
+
+      const definition = buildDetachedDefinition(
+        clone,
+        levelled.payload.pose,
+        levelled.payload
+      );
+      expect(definition.components.rotation).toBe('0 30 0');
+      expect(definition.components.scale).toBe('1 1 1');
+      expect(definition.components.class).toBe('user-group');
+
+      const notAGroup = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'class',
+        value: 'foo'
+      });
+      expect(routeKindLimits(notAGroup.cmdName, notAGroup.payload)).toBe(null);
+    });
+  });
+
+  describe('a component write that makes a clone a managed street or a shape', () => {
+    function tiltedTallClone() {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      clone.setAttribute('rotation', '5 30 0');
+      const nativeGetAttribute = clone.getAttribute.bind(clone);
+      // The scale its mixin gives it.
+      clone.getAttribute = (name) =>
+        name === 'scale' ? { x: 1, y: 1.5, z: 1 } : nativeGetAttribute(name);
+      return clone;
+    }
+
+    it('detaches a managed street at unit scale with its tilt, and a shape level and unit (fails if the detach is levelled only for a class, or writes every component into the pose)', () => {
+      const clone = tiltedTallClone();
+      const street = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'managed-street',
+        value: ''
+      });
+      const levelledStreet = routeKindLimits(street.cmdName, street.payload);
+      expect(levelledStreet).not.toBeNull();
+      expect(levelledStreet.cmdName).toBe('detachclone');
+      expect(levelledStreet.payload.pose.scale).toBe('1 1 1');
+      expect(levelledStreet.payload.pose.rotation).toBeUndefined();
+      const definition = buildDetachedDefinition(
+        clone,
+        levelledStreet.payload.pose,
+        levelledStreet.payload
+      );
+      expect(definition.components.rotation).toBe('5 30 0');
+      expect(definition.components.scale).toBe('1 1 1');
+      expect(levelledStreet.levelled).toEqual({
+        scale: { x: 1, y: 1.5, z: 1 },
+        becameKind: true,
+        kind: 'managed-street'
+      });
+
+      const shape = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'shape',
+        value: ''
+      });
+      const levelledShape = routeKindLimits(shape.cmdName, shape.payload);
+      expect(levelledShape.payload.pose).toEqual({
+        rotation: '0 30 0',
+        scale: '1 1 1'
+      });
+      expect(levelledShape.levelled).toEqual({
+        rotation: { x: 5, y: 30, z: 0 },
+        scale: { x: 1, y: 1.5, z: 1 },
+        becameKind: true,
+        kind: 'shape'
+      });
+    });
+  });
+
+  describe('resolveCommand', () => {
+    it('routes a pose write on a clone to a detach and drops the caller label, as the editor does (fails if the clone route is not part of the resolver)', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const resolved = resolveCommand(
+        'entityupdate',
+        { entity: clone, component: 'position', value: '2 0 -12' },
+        'Move'
+      );
+      expect(resolved.cmdName).toBe('detachclone');
+      expect(resolved.optionalName).toBeUndefined();
+      expect(resolved.refusal).toBe(null);
+    });
+
+    it('levels the detach a class write on a clone becomes, so the clone route runs before the group route (fails if the two routes run in the other order)', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      clone.setAttribute('rotation', '170 30 0');
+      const resolved = resolveCommand('entityupdate', {
+        entity: clone,
+        component: 'class',
+        value: 'user-group'
+      });
+      expect(resolved.cmdName).toBe('detachclone');
+      expect(resolved.payload.pose).toEqual({
+        rotation: '0 -150 0',
+        scale: '1 1 1'
+      });
+      expect(resolved.levelled.becameKind).toBe(true);
+    });
+  });
+
+  describe('a batch holding a write that makes a group', () => {
+    it('is rewritten member by member, keeping each member callback on its own member (fails if batches are not rewritten, or a callback is lost)', () => {
+      const item = document.createElement('a-entity');
+      item.setAttribute('rotation', '10 30 0');
+      const other = document.createElement('a-entity');
+      const first = () => {};
+      const second = () => {};
+      const classWrite = {
+        entity: item,
+        component: 'class',
+        value: 'user-group'
+      };
+      const move = { entity: other, component: 'position', value: '1 0 0' };
+      const routed = routeKindLimits('multi', [
+        ['entityupdate', classWrite, first],
+        ['entityupdate', move, second]
+      ]);
+      expect(routed.cmdName).toBe('multi');
+      expect(
+        routed.payload.map(([type, payload, callback]) => [
+          type,
+          payload.component,
+          payload.value,
+          callback
+        ])
+      ).toEqual([
+        ['entityupdate', 'class', 'user-group', first],
+        ['entityupdate', 'rotation', '0 30 0', undefined],
+        ['entityupdate', 'position', '1 0 0', second]
+      ]);
+      expect(routed.levelled.rotation).toEqual({ x: 10, y: 30, z: 0 });
     });
   });
 });

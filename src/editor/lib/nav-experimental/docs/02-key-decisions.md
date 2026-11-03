@@ -632,6 +632,10 @@ to the nearest ground. Only an *inside-solid* standoff pulls inward. The
 collision-validated; the path is not per-frame clamped, so a teleport can
 descend through an intervening roof to a clear lane below.
 
+Content inside a closed user group is the exception: the double-click that
+selects or opens the group leaves the camera where it is (see
+`01-overview.md`).
+
 ### KD-24 — Category B aims at the building centre; height encodes air-vs-street
 
 A building double-click looks at the building's **centre**, not the
@@ -670,6 +674,9 @@ boundary (cursor over the car vs the asphalt beside it) visible and
 anticipatable. Applied in both the experimental and the legacy
 (`?nav=classic`) flows **only if** an audit confirms the two paths haven't
 diverged for a legitimate reason; otherwise experimental-only.
+
+User groups follow the same rule: hovering a member of a closed group
+highlights the group, because that is what a click selects.
 
 ---
 

@@ -14,6 +14,7 @@ import IntersectionSidebar from './IntersectionSidebar';
 import ManagedIntersectionSidebar from './ManagedIntersectionSidebar';
 import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
+import LegacyStreetNotice from './LegacyStreetNotice';
 import ShapeSidebar, { ShapeDrawInstructions } from './ShapeSidebar';
 import DriveControlsSidebar from './DriveControlsSidebar';
 import FlyControlsSidebar from './FlyControlsSidebar';
@@ -229,6 +230,9 @@ export default class Sidebar extends React.Component {
                 </>
               )}
               {entity.getAttribute('shape') && <ShapeSidebar entity={entity} />}
+              {entity.hasAttribute('street') && (
+                <LegacyStreetNotice entity={entity} />
+              )}
               {!entity.getAttribute('drive-controls') &&
                 !entity.getAttribute('fly-controls') &&
                 !entity.getAttribute('street-traffic-replay') && (

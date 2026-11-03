@@ -227,6 +227,12 @@ Warnings and errors for real problems stay ungated.
 - React → A-Frame: `entity.setAttribute()` or `AFRAME.INSPECTOR.execute()`
 - A-Frame → React: `Events.emit()` or `useStore.setState()`
 
+**Unlit surfaces & shadows (#2123):** photographic surfaces (placed images,
+3D Tiles) stay unlit but receive shadows via the `flat-shadow` material
+(`src/aframe-components/flat-shadow.js`); a plain `flat`/MeshBasicMaterial can
+never show a shadow. Adding a receiving `shadow` component to a `flat` entity
+switches it (`ComponentAddCommand`). Unlit receivers must not cast (self-shadow acne).
+
 **Visibility:** use `setAttribute('visible', ...)`, never raw `object3D.visible`
 (mesh batching).
 
