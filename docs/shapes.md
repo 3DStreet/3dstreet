@@ -193,11 +193,6 @@ in the store would re-render every selector-less `useStore()` component once per
 animation frame during a fill-opacity drag, in exchange for reactivity no one
 uses. `aframe-components/play/best-times.js` is the same shape.
 
-The Shape Tool settings are the inverse case, and do live in the store
-(`shapeToolSettings`, persisted by `shapeToolPrefs.js`): several views subscribe
-to them — the tool section, a selected shape's panel and the draw tool — and
-they change only on a click.
-
 The read is lazy and then **cached for the session**. That is not only a
 startup-ordering convenience: it is why the feature keeps working for a whole
 session when storage is unavailable or throwing. The first read fails safely
@@ -205,3 +200,8 @@ into defaults and later writes still update the in-memory value, so the
 preference degrades to "does not survive a reload" rather than to "does
 nothing". The cost is that an external edit to the stored value does not take
 effect until a reload.
+
+The Shape Tool settings are the inverse case, and do live in the store
+(`shapeToolSettings`, persisted by `shapeToolPrefs.js`): several views subscribe
+to them — the tool section, a selected shape's panel and the draw tool — and
+they change only on a click.
