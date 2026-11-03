@@ -280,9 +280,9 @@ export function patternTileSize(pattern, ratio) {
 
 // The tile's RGBA8 pixels, row 0 at tv = 0. RGB is white everywhere and the
 // coverage is in alpha (from 2x2 samples per texel), so the pattern layer's
-// material colour (fillPatternColor) tints it. White gaps rather than transparent black matter: mipmaps
-// average the gaps' RGB into the lines, and black would darken them at
-// distance.
+// material colour (fillPatternColor) tints it. White gaps rather than
+// transparent black matter: mipmaps average the gaps' RGB into the lines, and
+// black would darken them at distance.
 export function rasterPatternTile(pattern, ratio, size) {
   const data = new Uint8Array(size * size * 4);
   for (let j = 0; j < size; j++) {

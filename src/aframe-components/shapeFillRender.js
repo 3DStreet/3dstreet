@@ -154,9 +154,9 @@ export function fillPaintOrder(planeY, area) {
 export const FILL_LIFT_M = MARKING_SURFACE_OFFSET + 0.01;
 
 // One fill layer's opacity percent as a 0..1 fraction, plus whether that alone
-// paints it. The schema's 0-100 min/max binds the properties panel only; a value out of range
-// can still arrive by setAttribute or from a hand-edited scene, exactly as for
-// lineWidth.
+// paints it. The schema's 0-100 min/max binds the properties panel only; a
+// value out of range can still arrive by setAttribute or from a hand-edited
+// scene, exactly as for lineWidth.
 //
 // There is deliberately no `opaque` flag: 100% is not a distinct render state.
 // See the material's construction in shape.js for why that matters.

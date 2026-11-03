@@ -21,9 +21,9 @@ The code is spread across several directories, so this file is the entry point:
 A closed shape's fill has two layers: the **material layer** (Solid color, or
 a street-surface texture at the size a segment paints it) and the **pattern
 layer** drawn over it (stripes, crosshatch, checkerboard, dots), each on or off
-by its own opacity and nothing else. In the code, "material" alone means the
-material layer; each layer is drawn by its own THREE material
-(`fillLayerMaterials`), and `fillTextures` holds the textures they show.
+by its own opacity (the pattern layer also by Pattern None). Each layer is drawn
+by its own THREE material (`fillLayerMaterials`), and `fillTextures` holds the
+textures they show.
 
 - **One mesh, two materials.** The cap is one mesh whose geometry has a draw
   group per painted layer, `[material, pattern]`, over the same triangles. One
@@ -59,16 +59,17 @@ material layer; each layer is drawn by its own THREE material
 - **Surface textures load through the material system** (`loadTexture`), so
   the lazy-texture hook downloads them on first use and they share a source with
   segments; until one lands the material layer shows the image's placeholder
-  colour multiplied by the tint, and keeps it if the load fails. A per-scene
+  colour multiplied by the tint, and keeps it if the load fails; an edit to the
+  same shape does not retry a failed load, choosing the surface again does. A
+  per-scene
   cache hands a loaded texture to a later shape at once, and tells shapes
   waiting on a load inside its callback, so a bound texture always belongs to a
   loaded surface.
 - **Pattern tiles are drawn in code**, white with the coverage in alpha, so the
   pattern layer's colour (`fillPatternColor`) tints them; shared per scene for
-  each exact
-  pattern, spacing and width, and disposed on the last release. A changed tile
-  replaces the shown one a frame later; the first is drawn at once, so a
-  pattern is never drawn without its tile.
+  each exact pattern, spacing and width, and disposed on the last release. A
+  changed tile replaces the shown one a frame later; the first is drawn at once,
+  so a pattern is never drawn without its tile.
 
 ## Measurements
 

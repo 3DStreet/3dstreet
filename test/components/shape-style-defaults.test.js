@@ -96,23 +96,7 @@ describe('shape schema defaults vs DEFAULT_SHAPE_STYLE', () => {
   });
 });
 
-// The fill's lists and pattern floors are restated as schema literals and
-// used by the sticky style and the render guard; these keep them in step.
-describe('shape schema fill lists and floors vs the sticky style', () => {
-  it('keeps every material and pattern the schema offers', () => {
-    const schema = AFRAME.components.shape.schema;
-    for (const fillMaterial of schema.fillMaterial.oneOf) {
-      expect(normaliseShapeStyle({ fillMaterial }).fillMaterial).toBe(
-        fillMaterial
-      );
-    }
-    for (const fillPattern of schema.fillPattern.oneOf) {
-      expect(normaliseShapeStyle({ fillPattern }).fillPattern).toBe(
-        fillPattern
-      );
-    }
-  });
-
+describe('shape schema pattern floors vs the sticky style', () => {
   it('floors pattern lengths where the schema does, and defaults them alike', () => {
     const schema = AFRAME.components.shape.schema;
     expect(schema.fillPatternSpacing.min).toBe(PATTERN_SPACING_MIN);

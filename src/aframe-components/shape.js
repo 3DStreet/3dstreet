@@ -201,9 +201,9 @@ AFRAME.registerComponent('shape', {
     fillTint: { type: 'color', default: '#ffffff' },
     // The pattern layer, drawn over the material layer in its own colour.
     // `none` is off, as is 0% - and the pattern defaults to 100% because it is
-    // chosen to be seen. Spacing is the pitch between stripe or dot centres (and a
-    // checkerboard's square size); width is a stripe's width (and a dot's
-    // diameter); both are metres. The minimums keep a tile drawable; the
+    // chosen to be seen. Spacing is the pitch between stripe or dot centres
+    // (and a checkerboard's square size); width is a stripe's width (and a
+    // dot's diameter); both are metres. The minimums keep a tile drawable; the
     // component applies them again (and width <= spacing) when it draws.
     fillPattern: { type: 'string', default: 'none', oneOf: FILL_PATTERNS },
     fillPatternOpacity: { type: 'int', default: 100, min: 0, max: 100 },
@@ -322,10 +322,9 @@ AFRAME.registerComponent('shape', {
     // depth-fighting, and what lets one draw order rule them at every opacity
     // rather than only at the top of the range. It also keeps both layers in
     // the transparent list together. Its cost, so this reads as a priced trade
-    // and not an oversight: a
-    // fill at 100% occludes nothing in the depth buffer, so an overlay drawn in
-    // the earlier opaque pass can be painted over by it. See
-    // shapeFillRender.js.
+    // and not an oversight: a fill at 100% occludes nothing in the depth
+    // buffer, so an overlay drawn in the earlier opaque pass can be painted
+    // over by it. See shapeFillRender.js.
     //
     // The state-dependent fields (color, opacity, colorWrite) are owned by
     // _applyFillState, and each material's map by fillTextures below.

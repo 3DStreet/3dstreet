@@ -166,11 +166,10 @@ const patternNames = defineMessages({
 });
 
 // A small picture of each pattern for its dropdown option, drawn in the
-// swatch's 20 px box (`.surface-swatch`): white ink on a mid grey.
+// swatch's 20 px box (`.surface-swatch`).
 const SWATCH_BACKGROUND = '#555';
 const SWATCH_INK = '#fff';
-// The chip for a texture whose image is not in the scene, as the segment
-// picker shows for a surface without a texture.
+// The chip for a texture whose image is not in the scene.
 const MISSING_TEXTURE_CHIP = '#dddddd';
 
 const STRIPES_PATH = 'M-2 8 L8 -2 M-2 16 L16 -2 M4 22 L22 4 M12 22 L22 12';
