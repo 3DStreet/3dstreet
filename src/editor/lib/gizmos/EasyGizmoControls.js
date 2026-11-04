@@ -34,6 +34,7 @@ import { EasyGizmoProbe } from './easyGizmoProbe.js';
 import {
   evaluatePath,
   isStreetEntity,
+  landingTargets,
   resplitColumn
 } from './easyGizmoGround.js';
 import {
@@ -271,6 +272,8 @@ class EasyGizmoControls extends GizmoPointerControls {
     this.squareSide = 1;
     this.baseY = 0;
     this.baseOffset = 0;
+    // Box top above the origin; with baseOffset, the object's own height.
+    this.topOffset = 0;
     this._mpp = 0;
     this._anchor = new THREE.Vector3();
 
@@ -2020,10 +2023,14 @@ class EasyGizmoControls extends GizmoPointerControls {
       this.baseY = _v2
         .set(0, localY, 0)
         .applyMatrix4(this.object.matrixWorld).y;
+      this.topOffset = this.baseY - _p.y; // a road has no height to cut
+    } else if (this.localBox) {
+      _box.copy(this.localBox).applyMatrix4(this.object.matrixWorld);
+      this.baseY = _box.min.y;
+      this.topOffset = _box.max.y - _p.y;
     } else {
-      this.baseY = this.localBox
-        ? _box.copy(this.localBox).applyMatrix4(this.object.matrixWorld).min.y
-        : _p.y;
+      this.baseY = _p.y;
+      this.topOffset = 0;
     }
     this.baseOffset = this.baseY - _p.y;
     this._anchor.set(_p.x, this.baseY, _p.z);
@@ -2041,9 +2048,14 @@ class EasyGizmoControls extends GizmoPointerControls {
     else this._policy.pivotLocal(this.el, _pivot);
     _pivot.applyMatrix4(matrixWorld);
     const box = this._policy.localBox(this.el);
-    this.baseY = box
-      ? _box.copy(box).applyMatrix4(matrixWorld).min.y
-      : _pivot.y;
+    if (box) {
+      _box.copy(box).applyMatrix4(matrixWorld);
+      this.baseY = _box.min.y;
+      this.topOffset = _box.max.y - _p.y;
+    } else {
+      this.baseY = _pivot.y;
+      this.topOffset = this.baseY - _p.y;
+    }
     this.baseOffset = this.baseY - _p.y;
     _p.x = _pivot.x;
     _p.z = _pivot.z;
@@ -2109,20 +2121,27 @@ class EasyGizmoControls extends GizmoPointerControls {
     this._applyColumn(column, baseY);
   }
 
+  /** The object's top for a base at `baseY`, from the same box (no ray). */
+  _landingOpts(baseY) {
+    return {
+      topY: baseY + Math.max(0, this.topOffset - this.baseOffset),
+      restingGap: LANDING_SHOW_GAP_METRES
+    };
+  }
+
   _applyColumn(column, baseY) {
-    this._landingDownEntity = column.below ? column.below.entity : null;
-    this._landingUpEntity = column.above ? column.above.entity : null;
+    // Following keeps the support directly below; the targets drop it when
+    // a surface cuts through the object (`landingTargets`, #2128).
+    const { down, up } = landingTargets(
+      column,
+      baseY,
+      this._landingOpts(baseY)
+    );
+    this._landingDownEntity = down ? down.entity : null;
+    this._landingUpEntity = up ? up.entity : null;
     this.supportY = column.below ? column.below.y : null;
-    this.landingDownY = this._gateLanding(
-      column.below ? column.below.y : null,
-      baseY,
-      false
-    );
-    this.landingUpY = this._gateLanding(
-      column.above ? column.above.y : null,
-      baseY,
-      true
-    );
+    this.landingDownY = this._gateLanding(down ? down.y : null, baseY, false);
+    this.landingUpY = this._gateLanding(up ? up.y : null, baseY, true);
   }
 
   /**
@@ -3253,8 +3272,12 @@ class EasyGizmoControls extends GizmoPointerControls {
       if (landing.entity && landing.entity.isConnected === false) return;
       const baseY = this.currentBaseY();
       if (landing.entity) {
-        const column = this.probe.probeColumn(_p.x, _p.z, baseY);
-        const target = axis === 'landingUp' ? column.above : column.below;
+        const targets = landingTargets(
+          this.probe.probeColumn(_p.x, _p.z, baseY),
+          baseY,
+          this._landingOpts(baseY)
+        );
+        const target = axis === 'landingUp' ? targets.up : targets.down;
         if (
           !target ||
           target.entity !== landing.entity ||

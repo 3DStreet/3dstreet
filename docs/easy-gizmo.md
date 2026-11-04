@@ -49,6 +49,26 @@ Placement ranks streets, buildings, imported meshes and furniture in that order.
 An item can use only item surfaces earlier in the list. Google 3D Tiles count as
 terrain for every class, including rooftops embedded in the photogrammetric mesh.
 Imported mesh identity takes precedence over the catalog building category.
+An uploaded image is ground for every kind (streets, buildings, imported meshes
+and furniture), like the tiles, when it lies within 30° of level and is visible:
+entity and ancestors shown, material fully opaque (#2128). In a column
+it competes as a solid surface: it beats the tiles beneath it, and against a
+street or building the higher surface wins. A traced site plan lifted above the 3D
+Tiles is then the support an object snaps to, instead of the drape beneath it;
+an upright image, a hidden one or any image under 100% opacity (a
+semi-transparent reference overlay, an opacity-0 flattening helper) is not,
+and an object under such an overlay rests on the surface below it. The check
+reads hits the column ray already returned (no extra raycast), so its cost is a
+few attribute reads and an ancestor walk per hit.
+
+Landing targets appear when the object is more than 2 cm from a surface and
+disappear under 1 cm (centimetre accuracy; the band between stops flicker).
+When the nearest surface above cuts through the object (above its base, below
+the top of its bounding box, or within 2 cm above the base for a thin object),
+only that surface is offered: the object is stuck in it, and nothing beneath
+is a sensible correction (#2128). A surface clear above the object's top, such
+as an overpass deck over a car, cuts nothing, and both targets stay. The top
+comes from the same bounding box as the base, so this costs no ray.
 Each catalog building contributes only its highest intersected surface in the
 column. Separate stacked buildings retain separate roof targets. Intermediate
 surfaces within imported meshes and Google 3D Tiles remain eligible.
