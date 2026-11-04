@@ -91,7 +91,7 @@ Both are cents/conversion; Cloud Run wins on large files purely via egress:
 ### 1. Cloud Run converter service — `rad-converter/` (new dir)
 
 - **`Dockerfile`** (multi-stage):
-  - builder: `git clone --branch v2.1.0 --depth 1 https://github.com/sparkjsdev/spark.git`,
+  - builder: `git clone --branch v2.4.0 --depth 1 https://github.com/sparkjsdev/spark.git`,
     then `cd rust && cargo build --release -p build-lod` (per the Hetzner README).
     Binary at `rust/target/release/build-lod`.
   - runtime: slim Debian + Node 22; copy the binary in.
