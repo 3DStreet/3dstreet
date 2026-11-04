@@ -12,7 +12,7 @@ import {
 } from '../utils.js';
 import { getEmptyDragImage } from '@shared/utils/dragImage.js';
 
-const MeshPlaceholder = () => (
+export const MeshPlaceholder = () => (
   <div className={styles.meshPlaceholder} aria-label="3D model">
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -33,7 +33,7 @@ const MeshPlaceholder = () => (
 // Splats have no cheap client-side preview, so they show a point-cloud icon
 // placeholder (reusing the mesh placeholder styling) until/unless a thumbnail
 // is ever attached.
-const SplatPlaceholder = () => (
+export const SplatPlaceholder = () => (
   <div className={styles.meshPlaceholder} aria-label="Gaussian splat">
     <svg
       xmlns="http://www.w3.org/2000/svg"

@@ -34,6 +34,7 @@ export { default as AssetsContent } from './components/AssetsContent';
 export { default as AssetsPanelBody } from './components/AssetsPanelBody';
 export { default as MeshDetailsModal } from './components/MeshDetailsModal';
 export { default as AssetDetailModal } from './components/AssetDetailModal';
+export { default as AssetPickerModal } from './components/AssetPickerModal';
 
 // Formatters
 export { formatBytes, formatDate, getServedUrl, is3dViewerType } from './utils';

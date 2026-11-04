@@ -989,6 +989,44 @@ const SHARED_MESSAGES = {
     fr: 'Chargement de la galerie...'
   },
 
+  // Asset picker / replace asset (#2142)
+  replace: {
+    en: 'Replace',
+    es: 'Reemplazar',
+    'pt-BR': 'Substituir',
+    fr: 'Remplacer'
+  },
+  replaceAssetTitleMesh: {
+    en: 'Replace with a 3D model from your assets',
+    es: 'Reemplazar con un modelo 3D de tus recursos',
+    'pt-BR': 'Substituir por um modelo 3D dos seus recursos',
+    fr: 'Remplacer par un modèle 3D de vos actifs'
+  },
+  replaceAssetTitleSplat: {
+    en: 'Replace with a splat from your assets',
+    es: 'Reemplazar con un splat de tus recursos',
+    'pt-BR': 'Substituir por um splat dos seus recursos',
+    fr: 'Remplacer par un splat de vos actifs'
+  },
+  replaceAssetTitleImage: {
+    en: 'Replace with an image from your assets',
+    es: 'Reemplazar con una imagen de tus recursos',
+    'pt-BR': 'Substituir por uma imagem dos seus recursos',
+    fr: 'Remplacer par une image de vos actifs'
+  },
+  assetPickerSelectHint: {
+    en: 'Select an asset',
+    es: 'Selecciona un recurso',
+    'pt-BR': 'Selecione um recurso',
+    fr: 'Sélectionnez un actif'
+  },
+  assetReplaced: {
+    en: 'Asset replaced',
+    es: 'Recurso reemplazado',
+    'pt-BR': 'Recurso substituído',
+    fr: 'Actif remplacé'
+  },
+
   // Assets panel chrome
   signInToViewAssets: {
     en: 'Sign in to view your assets.',
