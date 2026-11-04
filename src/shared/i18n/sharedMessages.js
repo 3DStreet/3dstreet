@@ -997,22 +997,29 @@ const SHARED_MESSAGES = {
     fr: 'Remplacer'
   },
   replaceAssetTitleMesh: {
-    en: 'Replace with a 3D model from your assets',
-    es: 'Reemplazar con un modelo 3D de tus recursos',
-    'pt-BR': 'Substituir por um modelo 3D dos seus recursos',
-    fr: 'Remplacer par un modèle 3D de vos actifs'
+    en: 'Choose a replacement 3D model',
+    es: 'Elige un modelo 3D de reemplazo',
+    'pt-BR': 'Escolha um modelo 3D substituto',
+    fr: 'Choisissez un modèle 3D de remplacement'
   },
   replaceAssetTitleSplat: {
-    en: 'Replace with a splat from your assets',
-    es: 'Reemplazar con un splat de tus recursos',
-    'pt-BR': 'Substituir por um splat dos seus recursos',
-    fr: 'Remplacer par un splat de vos actifs'
+    en: 'Choose a replacement splat',
+    es: 'Elige un splat de reemplazo',
+    'pt-BR': 'Escolha um splat substituto',
+    fr: 'Choisissez un splat de remplacement'
   },
   replaceAssetTitleImage: {
-    en: 'Replace with an image from your assets',
-    es: 'Reemplazar con una imagen de tus recursos',
-    'pt-BR': 'Substituir por uma imagem dos seus recursos',
-    fr: 'Remplacer par une image de vos actifs'
+    en: 'Choose a replacement image',
+    es: 'Elige una imagen de reemplazo',
+    'pt-BR': 'Escolha uma imagem substituta',
+    fr: 'Choisissez une image de remplacement'
+  },
+  // Generic confirm for pickers that fill a slot rather than replace.
+  choose: {
+    en: 'Choose',
+    es: 'Elegir',
+    'pt-BR': 'Escolher',
+    fr: 'Choisir'
   },
   assetPickerSelectHint: {
     en: 'Select an asset',

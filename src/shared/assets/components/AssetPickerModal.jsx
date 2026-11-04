@@ -11,7 +11,15 @@
  * click all close without side effects.
  *
  * Shared and scene-free: the caller decides what "confirm" does with the
- * chosen display item (see useAssets.assetToDisplayItem for its shape).
+ * chosen display item (see useAssets.assetToDisplayItem for its shape), and
+ * words the request through `title` ("Choose a replacement image", "Choose an
+ * image to edit", ...) and `confirmLabel`. The editor renders it from the
+ * entity info panel; the generator opens it with openAssetPicker()
+ * (src/generator/mount-asset-picker.jsx).
+ *
+ * Two exports: the default AssetPickerModal reads the signed-in user's
+ * library through useAssets(); AssetPickerModalView takes that state as a
+ * `gallery` prop, so Storybook and tests can render it with mock items.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -46,7 +54,8 @@ const PickerThumb = ({ item }) => {
 
 PickerThumb.propTypes = { item: PropTypes.object.isRequired };
 
-const AssetPickerModal = ({
+export const AssetPickerModalView = ({
+  gallery,
   type,
   title,
   confirmLabel,
@@ -57,7 +66,7 @@ const AssetPickerModal = ({
 }) => {
   const t = useSharedMessages();
   const { items, isLoading, isLoggedIn, hasMore, isLoadingMore, loadMore } =
-    useAssets();
+    gallery;
   const [selectedId, setSelectedId] = useState(null);
   const [isConfirming, setIsConfirming] = useState(false);
   const sentinelRef = useRef(null);
@@ -221,9 +230,10 @@ const AssetPickerModal = ({
   );
 };
 
-AssetPickerModal.propTypes = {
+const pickerPropTypes = {
   // One of ASSET_TYPES: only assets of this type are offered.
   type: PropTypes.string.isRequired,
+  // The request, in the caller's words: the dialog heading.
   title: PropTypes.string.isRequired,
   // Defaults to "Replace".
   confirmLabel: PropTypes.string,
@@ -235,5 +245,26 @@ AssetPickerModal.propTypes = {
   onCancel: PropTypes.func.isRequired,
   onSignIn: PropTypes.func
 };
+
+AssetPickerModalView.propTypes = {
+  ...pickerPropTypes,
+  // useAssets()-shaped state: { items, isLoading, isLoggedIn, hasMore,
+  // isLoadingMore, loadMore }.
+  gallery: PropTypes.shape({
+    items: PropTypes.array.isRequired,
+    isLoading: PropTypes.bool,
+    isLoggedIn: PropTypes.bool,
+    hasMore: PropTypes.bool,
+    isLoadingMore: PropTypes.bool,
+    loadMore: PropTypes.func
+  }).isRequired
+};
+
+const AssetPickerModal = (props) => {
+  const gallery = useAssets();
+  return <AssetPickerModalView {...props} gallery={gallery} />;
+};
+
+AssetPickerModal.propTypes = pickerPropTypes;
 
 export default AssetPickerModal;
