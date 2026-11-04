@@ -44,6 +44,11 @@ load-time migration — pre-move scenes were never released and load straight.)
 One path can be followed by several streets, and closed shapes make loop
 streets (the ribbon runs the full circumference, no end caps).
 
+A copy that includes both a street and its path (duplicating, or copying or
+cutting and pasting, a group that holds them) makes the copied street follow
+the copied path; a street copied on its own keeps following the original.
+The rule is in `src/tested/copied-street-path.js`.
+
 **The shape draws its own curve too.** A curve-styled shape renders its
 outline (and a closed shape's fill and area) through the sampled curve —
 the same `buildCenterlinePoints` call the street runs — so a selected path

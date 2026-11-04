@@ -40,7 +40,9 @@ async function getSceneHandler() {
     throw new Error('street-container not found');
   }
   const sceneObject = STREET.utils.convertDOMElToObject(root);
-  const filtered = STREET.utils.filterJSONstreet(JSON.stringify(sceneObject));
+  // filterJSONstreet stringifies (and filters) the object itself; passing a
+  // pre-stringified scene skipped the filter and returned a string.
+  const filtered = STREET.utils.filterJSONstreet(sceneObject);
   const sceneJSON = JSON.parse(filtered);
   const selectedId = AFRAME.INSPECTOR?.selectedEntity?.id || null;
   const sceneId = STREET.utils.getCurrentSceneId?.() || null;

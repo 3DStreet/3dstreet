@@ -10,6 +10,7 @@ import { useAuthContext } from '../../editor/contexts';
 import { auth } from '@shared/services/firebase';
 import useImageGenStore from '../store';
 import posthog from 'posthog-js';
+import FluxUI from '../main.js';
 
 const ProfileButton = () => {
   const { currentUser, isLoading } = useAuthContext();
@@ -24,6 +25,12 @@ const ProfileButton = () => {
 
   const handleAnalytics = (eventName, properties) => {
     posthog.capture(eventName, properties);
+  };
+
+  // Surface sign-in errors (e.g. email already linked to another provider)
+  // through the generator's toast, as the editor does with STREET.notify.
+  const handleNotification = (type, message) => {
+    FluxUI.showNotification(message, type);
   };
 
   return (
@@ -43,6 +50,7 @@ const ProfileButton = () => {
         message="Sign in to use AI image generation."
         firebaseAuth={auth}
         onAnalytics={handleAnalytics}
+        onNotification={handleNotification}
       />
     </>
   );

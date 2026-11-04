@@ -1,5 +1,6 @@
 import { ComponentAddCommand } from './ComponentAddCommand.js';
 import { ComponentRemoveCommand } from './ComponentRemoveCommand.js';
+import { DetachAllClonesCommand } from './DetachAllClonesCommand.js';
 import { DetachCloneCommand } from './DetachCloneCommand.js';
 import { EntityCloneCommand } from './EntityCloneCommand.js';
 import { EntityCreateCommand } from './EntityCreateCommand.js';
@@ -15,12 +16,14 @@ import { SegmentUpdateCommand } from './SegmentUpdateCommand.js';
 import { ShapeVertexInsertCommand } from './ShapeVertexInsertCommand.js';
 import { ShapeVertexMoveCommand } from './ShapeVertexMoveCommand.js';
 import { ShapeVertexRemoveCommand } from './ShapeVertexRemoveCommand.js';
+import { StreetConvertToManagedCommand } from './StreetConvertToManagedCommand.js';
 import { StreetConvertToShapesCommand } from './StreetConvertToShapesCommand.js';
 import { StreetReloadCommand } from './StreetReloadCommand.js';
 
 export const commandsByType = new Map();
 commandsByType.set('componentadd', ComponentAddCommand);
 commandsByType.set('componentremove', ComponentRemoveCommand);
+commandsByType.set('detachallclones', DetachAllClonesCommand);
 commandsByType.set('detachclone', DetachCloneCommand);
 commandsByType.set('entityclone', EntityCloneCommand);
 commandsByType.set('entitycreate', EntityCreateCommand);
@@ -36,5 +39,6 @@ commandsByType.set('segmentupdate', SegmentUpdateCommand);
 commandsByType.set('shapevertexinsert', ShapeVertexInsertCommand);
 commandsByType.set('shapevertexmove', ShapeVertexMoveCommand);
 commandsByType.set('shapevertexremove', ShapeVertexRemoveCommand);
+commandsByType.set('streetconverttomanaged', StreetConvertToManagedCommand);
 commandsByType.set('streetconverttoshapes', StreetConvertToShapesCommand);
 commandsByType.set('streetreload', StreetReloadCommand);

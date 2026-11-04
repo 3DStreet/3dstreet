@@ -204,6 +204,50 @@ describe('batch-models capacity (tier 3 primitives)', () => {
   });
 });
 
+// three.js frustum-culls a BatchedMesh as one object against its cached boundingSphere, which
+// setMatrixAt / addInstance never refresh: a member moved or folded in outside the sphere the
+// batch had at first render vanished with it (#2101, a detached car dragged off its lane).
+describe('batch-models whole-mesh bounds', () => {
+  it('a member folded in after first render is inside the recomputed bounds', () => {
+    const { bm, geometryId, geometry } = makeBatchedMesh(2);
+    const group = makeGroup(bm, geometryId, geometry, fakeSceneEl());
+    batch._test.addMemberToBatchedMeshes(group, fakeEl());
+    bm.computeBoundingSphere(); // what the first frustum test does
+
+    const late = fakeEl();
+    late.object3D.position.set(0, 0, 200);
+    late.object3D.updateMatrixWorld();
+    batch._test.addMemberToBatchedMeshes(group, late);
+
+    expect(bm.boundingSphere).toBeNull(); // recomputed lazily by the next frustum test
+    bm.computeBoundingSphere();
+    expect(bm.boundingSphere.containsPoint(new THREE.Vector3(0, 0, 200))).toBe(
+      true
+    );
+  });
+
+  it('moving a batched member invalidates the bounds', () => {
+    const { bm, geometryId, geometry } = makeBatchedMesh(2);
+    const group = makeGroup(bm, geometryId, geometry, fakeSceneEl());
+    const m1 = fakeEl();
+    const m2 = Object.assign(fakeEl(), { querySelectorAll: () => [] });
+    batch._test.addMemberToBatchedMeshes(group, m1);
+    batch._test.addMemberToBatchedMeshes(group, m2);
+    bm.computeBoundingSphere();
+    bm.computeBoundingBox();
+
+    m2.object3D.position.set(-25, 0, 120);
+    batch.syncBatchedSubtree(m2);
+
+    expect(bm.boundingSphere).toBeNull();
+    expect(bm.boundingBox).toBeNull();
+    bm.computeBoundingSphere();
+    expect(
+      bm.boundingSphere.containsPoint(new THREE.Vector3(-25, 0, 120))
+    ).toBe(true);
+  });
+});
+
 describe('batch-models late-batch tally (tier 3)', () => {
   it('does not track entities carrying a blocking component', () => {
     const sceneEl = fakeSceneEl();

@@ -1,0 +1,1177 @@
+import { nanoid } from 'nanoid';
+import * as THREE from 'three';
+import capitalize from 'lodash-es/capitalize';
+import Events from './Events';
+import { equal } from './utils';
+import posthog from 'posthog-js';
+import { faBullseye, faCubes } from '@fortawesome/free-solid-svg-icons';
+import { captureFocusPose } from './focusPose.js';
+import { DEFAULT_FOV_DEGREES } from '../../tested/scene-camera-pose.js';
+import { reseededGeneratorAttributes } from '../../tested/generator-seeds.js';
+import { retargetStreetPath } from '../../tested/copied-street-path.js';
+import { innermostOpenGroup } from './groups/groupPlacement.js';
+import { isUserGroup } from './groups/groupModel.js';
+import {
+  GeospatialIcon,
+  ManagedStreetIcon,
+  ManagedIntersectionIcon,
+  SegmentIcon,
+  AutoIcon,
+  SunIcon,
+  VideoCameraIcon,
+  LayersIcon,
+  Object24IconCyan,
+  Geometry24Icon,
+  ShapeIcon,
+  GroupIcon,
+  ViewerStartIcon
+} from '@shared/icons';
+
+/**
+ * Update a component.
+ *
+ * @param {Element} entity - Entity to modify.
+ * @param {string} component - component name
+ * @param {string} property - property name, use empty string if component is single property or if value is an object
+ * @param {string|number|object} value - New value.
+ */
+export function updateEntity(entity, component, property, value) {
+  // Special handling for vector components (position, rotation, scale)
+  const vectorComponents = ['position', 'rotation', 'scale'];
+
+  if (property && vectorComponents.includes(component)) {
+    // Get current values
+    const currentValues = entity.getAttribute(component) || {};
+
+    // Update specific property (x, y, or z)
+    currentValues[property] = value;
+
+    // Set entire vector component
+    entity.setAttribute(component, currentValues);
+  } else if (property) {
+    if (value === null || value === undefined) {
+      // Remove property
+      entity.removeAttribute(component, property);
+    } else {
+      // Set property
+      entity.setAttribute(component, property, value);
+    }
+  } else {
+    if (value === null || value === undefined) {
+      // Remove component
+      entity.removeAttribute(component);
+    } else {
+      // Set component
+      entity.setAttribute(component, value);
+    }
+  }
+
+  // Track street positioning events for workflow analytics
+  if (
+    component === 'position' &&
+    (entity.hasAttribute('managed-street') || entity.hasAttribute('street'))
+  ) {
+    posthog.capture('street_positioned', {
+      property: property,
+      value: value,
+      entity_id: entity.id,
+      scene_id: STREET.utils.getCurrentSceneId()
+    });
+  }
+
+  // A pure rename doesn't change street-segment data, so managed-street never
+  // re-emits segments-changed; refresh the 3D street labels directly so they
+  // pick up the new name (also runs on undo/redo of a rename).
+  if (component === 'data-layer-name') {
+    entity.parentElement?.components?.['street-label']?.updateLabels();
+  }
+
+  Events.emit('entityupdate', { entity, component, property, value });
+}
+
+/**
+ * Remove an entity.
+ *
+ * @param {Element} entity Entity to remove.
+ * @param {boolean} [force=false] If true it won't ask for confirmation.
+ */
+export function removeEntity(entity, force = false) {
+  if (entity) {
+    if (
+      force === true ||
+      confirm(
+        'Do you really want to remove entity `' +
+          getEntityDisplayName(entity) +
+          '`?'
+      )
+    ) {
+      AFRAME.INSPECTOR.execute('entityremove', entity);
+    }
+  }
+}
+
+export function findClosestEntity(entity) {
+  // First we try to find the after the entity
+  var nextEntity = entity.nextElementSibling;
+  while (nextEntity && (!nextEntity.isEntity || nextEntity.isInspector)) {
+    nextEntity = nextEntity.nextElementSibling;
+  }
+
+  // Return if we found it
+  if (nextEntity && nextEntity.isEntity && !nextEntity.isInspector) {
+    return nextEntity;
+  }
+  // Otherwise try to find before the entity
+  var prevEntity = entity.previousElementSibling;
+  while (prevEntity && (!prevEntity.isEntity || prevEntity.isInspector)) {
+    prevEntity = prevEntity.previousElementSibling;
+  }
+
+  // Return if we found it
+  if (prevEntity && prevEntity.isEntity && !prevEntity.isInspector) {
+    return prevEntity;
+  }
+
+  return null;
+}
+
+/**
+ * Remove the selected entity
+ * @param {boolean} [force=false] If true it won't ask for confirmation.
+ */
+export function removeSelectedEntity(force = false) {
+  if (AFRAME.INSPECTOR.selectedEntity) {
+    removeEntity(AFRAME.INSPECTOR.selectedEntity, force);
+  }
+}
+
+/**
+ * Insert an node after a referenced node.
+ * @param  {Element} newNode       Node to insert.
+ * @param  {Element} referenceNode Node used as reference to insert after it.
+ */
+export function insertAfter(newNode, referenceNode) {
+  if (!referenceNode.parentNode) {
+    referenceNode = AFRAME.INSPECTOR.selectedEntity;
+  }
+
+  if (!referenceNode) {
+    AFRAME.INSPECTOR.sceneEl.appendChild(newNode);
+  } else {
+    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+  }
+}
+
+/**
+ * Reorder an entity next to a sibling (or move it under another parent) via
+ * the undoable entityreparent command. Shared by scene-graph drag-drop and
+ * the segment sidebar's move buttons.
+ * @param {Element} entity        Entity to move.
+ * @param {Element} targetEntity  Sibling to insert relative to.
+ * @param {string}  insertionMode 'before' or 'after' the target.
+ */
+export function reorderEntityRelativeTo(
+  entity,
+  targetEntity,
+  insertionMode,
+  select
+) {
+  const targetParent = targetEntity.parentNode;
+  if (!targetParent) {
+    return;
+  }
+  // entityreparent looks parents up by id (undo needs the old parent's id
+  // too), so make sure both ends have one.
+  ensureId(targetParent);
+  ensureId(entity.parentNode);
+  const targetIndex = Array.from(targetParent.children).indexOf(targetEntity);
+  AFRAME.INSPECTOR.execute('entityreparent', {
+    entity,
+    parentEl: targetParent.id,
+    indexInParent: insertionMode === 'after' ? targetIndex + 1 : targetIndex,
+    select
+  });
+}
+
+/**
+ * Clone an entity, inserting it after the cloned one.
+ * @param {Element} entity Entity to clone
+ * @returns {Element} The clone
+ */
+export function cloneEntity(entity) {
+  // One start pose per scene: the viewer-start system only ever honors the
+  // first, so a second copy would silently do nothing.
+  if (entity?.hasAttribute?.('viewer-start')) {
+    STREET.notify.warningMessage('A scene has one Starting View');
+    return;
+  }
+  return AFRAME.INSPECTOR.execute('entityclone', entity);
+}
+
+// Gives the element and its descendants new ids. `idMap` records old id -> new
+// id for every element that had one, for retargetStreetPathsInClone.
+function recursivelyRegenerateId(element, idMap) {
+  if (element.id) {
+    const oldId = element.id;
+    // if it's a nanoid, create a new one, otherwise use getUniqueId
+    element.id = oldId.length === 21 ? createUniqueId() : getUniqueId(oldId);
+    idMap.set(oldId, element.id);
+  } else {
+    element.id = createUniqueId();
+  }
+
+  for (const child of element.childNodes) {
+    recursivelyRegenerateId(child, idMap);
+  }
+}
+
+/**
+ * Point each copied street at the copy of the path shape it follows, when the
+ * copy holds that shape; a street copied without its path keeps following the
+ * original. Written as the raw attribute on the detached copy, like the
+ * reseeding below.
+ */
+function retargetStreetPathsInClone(element, idMap) {
+  if (element.nodeType !== Node.ELEMENT_NODE) return;
+  const value = element.getAttribute('managed-street');
+  if (typeof value === 'string') {
+    const next = retargetStreetPath(value, idMap);
+    if (next !== value) {
+      HTMLElement.prototype.setAttribute.call(element, 'managed-street', next);
+    }
+  }
+  for (const child of element.childNodes) {
+    retargetStreetPathsInClone(child, idMap);
+  }
+}
+
+/**
+ * Drop the persisted `seed` from every seeded generator on the element and
+ * its descendants so each generator rolls its own seed when the copy loads:
+ * a duplicated lane should not carry literally identical traffic (#1975).
+ */
+function recursivelyReseedGenerators(element) {
+  if (element.nodeType !== Node.ELEMENT_NODE) return;
+  // The copy is a detached, uninitialized entity: write the raw attribute
+  // (as optimizeComponents does) rather than going through A-Frame's
+  // component-aware setAttribute.
+  for (const { name, value } of reseededGeneratorAttributes(
+    element.attributes
+  )) {
+    HTMLElement.prototype.setAttribute.call(element, name, value);
+  }
+  for (const child of element.childNodes) {
+    recursivelyReseedGenerators(child);
+  }
+}
+
+/**
+ * Clone an entity. This is used by the the entityclone command.
+ * @param {Element} entity Entity to clone
+ * @returns {Element} The clone
+ */
+export function cloneEntityImpl(entity) {
+  entity.flushToDOM();
+  const clone = prepareForSerialization(entity);
+  if (clone !== null) {
+    const idMap = new Map();
+    recursivelyRegenerateId(clone, idMap);
+    retargetStreetPathsInClone(clone, idMap);
+    recursivelyReseedGenerators(clone);
+    const nextName = getUniqueLayerName(clone.getAttribute('data-layer-name'));
+    if (nextName) clone.setAttribute('data-layer-name', nextName);
+  }
+  return clone;
+}
+
+/**
+ * Next free layer name for a duplicate. Names get " 2" (then 3, …). A
+ * trailing number is bumped instead ("Shape • Polyline 2" → "… 3") only when
+ * the scene already holds the series' stem or another member of it —
+ * otherwise the number is part of the name ("Street • Highway 101" →
+ * "… 101 2", not "… 102"). Returns null when there is nothing to rename.
+ */
+export function getUniqueLayerName(name) {
+  if (!name) return null;
+  const taken = new Set();
+  document
+    .querySelectorAll('a-scene [data-layer-name]')
+    .forEach((el) => taken.add(el.getAttribute('data-layer-name')));
+  const match = name.match(/^(.*?)(\d+)$/);
+  const isCounter =
+    match &&
+    (taken.has(match[1].trimEnd()) ||
+      [...taken].some(
+        (t) =>
+          t !== name &&
+          t.startsWith(match[1]) &&
+          /^\d+$/.test(t.slice(match[1].length))
+      ));
+  const stem = isCounter ? match[1] : `${name} `;
+  let n = isCounter ? parseInt(match[2], 10) + 1 : 2;
+  while (taken.has(`${stem}${n}`)) n++;
+  return `${stem}${n}`;
+}
+
+/**
+ * Clone the selected entity
+ */
+export function cloneSelectedEntity() {
+  if (AFRAME.INSPECTOR.selectedEntity) {
+    cloneEntity(AFRAME.INSPECTOR.selectedEntity);
+  }
+}
+
+/**
+ * Return the clipboard representation to be used to copy to the clipboard
+ * @param  {Element} entity Entity to copy to clipboard
+ * @return {string}        Entity clipboard representation
+ */
+export function getEntityClipboardRepresentation(entity) {
+  entity.flushToDOM();
+  var clone = prepareForSerialization(entity);
+  if (clone === null) return '';
+  return clone.outerHTML;
+}
+
+/**
+ * Returns a copy of the DOM hierarchy prepared for serialization.
+ * The process optimises component representation to avoid values coming from
+ * primitive attributes, mixins and defaults.
+ *
+ * @param {Element} entity Root of the DOM hierarchy.
+ * @param {Function} filterFunc Function to filter out nodes from the serialization
+ * @return {Element}        Copy of the DOM hierarchy ready for serialization.
+ */
+export function prepareForSerialization(
+  entity,
+  filterFunc = (entity) => !entity.classList.contains('autocreated')
+) {
+  if (!filterFunc(entity)) return null;
+
+  var clone = entity.cloneNode(false);
+  var children = entity.childNodes;
+  for (var i = 0, l = children.length; i < l; i++) {
+    var child = children[i];
+    if (
+      child.nodeType !== Node.ELEMENT_NODE ||
+      (!child.hasAttribute('aframe-injected') &&
+        !child.hasAttribute('data-aframe-inspector') &&
+        !child.hasAttribute('data-aframe-canvas'))
+    ) {
+      const childClone = prepareForSerialization(children[i], filterFunc);
+      if (childClone !== null) {
+        clone.appendChild(childClone);
+      }
+    }
+  }
+  optimizeComponents(clone, entity);
+  return clone;
+}
+
+/**
+ * Removes from copy those components or components' properties that comes from
+ * primitive attributes, mixins, injected default components or schema defaults.
+ *
+ * @param {Element} copy   Destinatary element for the optimization.
+ * @param {Element} source Element to be optimized.
+ */
+function optimizeComponents(copy, source) {
+  var removeAttribute = HTMLElement.prototype.removeAttribute;
+  var setAttribute = HTMLElement.prototype.setAttribute;
+  var components = source.components || {};
+  Object.keys(components).forEach(function (name) {
+    var component = components[name];
+    var result = getImplicitValue(component, source);
+    var isInherited = result[1];
+    var implicitValue = result[0];
+    var currentValue = source.getAttribute(name);
+    var optimalUpdate = getOptimalUpdate(
+      component,
+      implicitValue,
+      currentValue
+    );
+    var doesNotNeedUpdate = optimalUpdate === null;
+    if (isInherited && doesNotNeedUpdate) {
+      removeAttribute.call(copy, name);
+      return;
+    }
+
+    var schema = component.schema;
+    var value = stringifyComponentValue(schema, optimalUpdate);
+    // Remove special components if they use the default value
+    if (
+      value === '' &&
+      (name === 'visible' ||
+        name === 'position' ||
+        name === 'rotation' ||
+        name === 'scale')
+    ) {
+      removeAttribute.call(copy, name);
+      return;
+    }
+
+    setAttribute.call(copy, name, value);
+  });
+}
+
+/**
+ * @param  {Schema} schema The component schema.
+ * @param  {any}    data   The component value.
+ * @return {string}        The string representation of data according to the
+ *                         passed component's schema.
+ */
+function stringifyComponentValue(schema, data) {
+  data = typeof data === 'undefined' ? {} : data;
+  if (data === null) {
+    return '';
+  }
+  return (isSingleProperty(schema) ? _single : _multi)();
+
+  function _single() {
+    return schema.stringify(data);
+  }
+
+  function _multi() {
+    var propertyBag = {};
+    Object.keys(data).forEach(function (name) {
+      if (schema[name] && data[name] !== undefined) {
+        propertyBag[name] = schema[name].stringify(data[name]);
+      }
+    });
+    return AFRAME.utils.styleParser.stringify(propertyBag);
+  }
+}
+
+/**
+ * Computes the value for a component coming from primitive attributes,
+ * mixins, primitive defaults, a-frame default components and schema defaults.
+ * In this specific order.
+ *
+ * In other words, it is the value of the component if the author would have not
+ * overridden it explicitly.
+ *
+ * @param {Component} component Component to calculate the value of.
+ * @param {Element}   source    Element owning the component.
+ * @return                      A pair with the computed value for the component of source and a flag indicating if the component is completely inherited from other sources (`true`) or genuinely owned by the source entity (`false`).
+ */
+function getImplicitValue(component, source) {
+  var isInherited = false;
+  var value = (isSingleProperty(component.schema) ? _single : _multi)();
+  return [value, isInherited];
+
+  function _single() {
+    var value = getMixedValue(component, null, source);
+    if (value === undefined) {
+      value = getInjectedValue(component, null, source);
+    }
+    if (value !== undefined) {
+      isInherited = true;
+    } else {
+      value = getDefaultValue(component, null);
+    }
+    if (value !== undefined) {
+      // XXX: This assumes parse is idempotent
+      return component.schema.parse(value);
+    }
+    return value;
+  }
+
+  function _multi() {
+    var value;
+
+    // Set isInherited to true if the component is inherited from primitive defaultComponents and is empty object
+    var defaults = source.defaultComponentsFromPrimitive;
+    isInherited =
+      defaults &&
+      /* eslint-disable-next-line no-prototype-builtins */
+      defaults.hasOwnProperty(component.attrName) &&
+      Object.keys(defaults[component.attrName]).length === 0;
+    Object.keys(component.schema).forEach(function (propertyName) {
+      var propertyValue = getFromAttribute(component, propertyName, source);
+      if (propertyValue === undefined) {
+        propertyValue = getMixedValue(component, propertyName, source);
+      }
+      if (propertyValue === undefined) {
+        propertyValue = getInjectedValue(component, propertyName, source);
+      }
+      if (propertyValue !== undefined) {
+        isInherited = isInherited || true;
+      } else {
+        propertyValue = getDefaultValue(component, propertyName);
+      }
+      if (propertyValue !== undefined) {
+        var parse = component.schema[propertyName].parse;
+        value = value || {};
+        // XXX: This assumes parse is idempotent
+        value[propertyName] = parse(propertyValue);
+      }
+    });
+
+    return value;
+  }
+}
+
+/**
+ * Gets the value for the component's property coming from a primitive
+ * attribute.
+ *
+ * Primitives have mappings from attributes to component's properties.
+ * The function looks for a present attribute in the source element which
+ * maps to the specified component's property.
+ *
+ * @param  {Component} component    Component to be found.
+ * @param  {string}    propertyName Component's property to be found.
+ * @param  {Element}   source       Element owning the component.
+ * @return {any}                    The value of the component's property coming
+ *                                  from the primitive's attribute if any or
+ *                                  `undefined`, otherwise.
+ */
+function getFromAttribute(component, propertyName, source) {
+  var value;
+  var mappings = source.mappings || {};
+  var route = component.name + '.' + propertyName;
+  var primitiveAttribute = findAttribute(mappings, route);
+  if (primitiveAttribute && source.hasAttribute(primitiveAttribute)) {
+    value = source.getAttribute(primitiveAttribute);
+  }
+  return value;
+
+  function findAttribute(mappings, route) {
+    var attributes = Object.keys(mappings);
+    for (var i = 0, l = attributes.length; i < l; i++) {
+      var attribute = attributes[i];
+      if (mappings[attribute] === route) {
+        return attribute;
+      }
+    }
+    return undefined;
+  }
+}
+
+/**
+ * Gets the value for a component or component's property coming from mixins of
+ * an element.
+ *
+ * If the component or component's property is not provided by mixins, the
+ * functions will return `undefined`.
+ *
+ * @param {Component} component      Component to be found.
+ * @param {string}    [propertyName] If provided, component's property to be
+ *                                   found.
+ * @param {Element}   source         Element owning the component.
+ * @return                           The value of the component or components'
+ *                                   property coming from mixins of the source.
+ */
+function getMixedValue(component, propertyName, source) {
+  var value;
+  var reversedMixins = source.mixinEls.toReversed();
+  for (var i = 0; value === undefined && i < reversedMixins.length; i++) {
+    var mixin = reversedMixins[i];
+    /* eslint-disable-next-line no-prototype-builtins */
+    if (mixin.attributes.hasOwnProperty(component.attrName)) {
+      if (!propertyName) {
+        value = mixin.getAttribute(component.attrName);
+      } else {
+        value = mixin.getAttribute(component.attrName)[propertyName];
+      }
+    }
+  }
+  return value;
+}
+
+/**
+ * Gets the value for a component or component's property coming from primitive
+ * defaults.
+ *
+ * @param {Component} component      Component to be found.
+ * @param {string}    [propertyName] If provided, component's property to be
+ *                                   found.
+ * @param {Element}   source         Element owning the component.
+ * @return                           The component value coming from the
+ *                                   injected default components of source.
+ */
+function getInjectedValue(component, propertyName, source) {
+  var value;
+  var primitiveDefaults = source.defaultComponentsFromPrimitive;
+  if (
+    primitiveDefaults &&
+    /* eslint-disable-next-line no-prototype-builtins */
+    primitiveDefaults.hasOwnProperty(component.attrName)
+  ) {
+    if (!propertyName) {
+      value = primitiveDefaults[component.attrName];
+    } else {
+      value = primitiveDefaults[component.attrName][propertyName];
+    }
+  }
+  return value;
+}
+
+/**
+ * Gets the value for a component or component's property coming from schema
+ * defaults.
+ *
+ * @param {Component} component      Component to be found.
+ * @param {string}    [propertyName] If provided, component's property to be
+ *                                   found.
+ * @return                           The component value coming from the schema
+ *                                   default.
+ */
+function getDefaultValue(component, propertyName) {
+  if (!propertyName) {
+    return component.schema.default;
+  }
+  return component.schema[propertyName].default;
+}
+
+/**
+ * Returns the minimum value for a component with an implicit value to equal a
+ * reference value. A `null` optimal value means that there is no need for an
+ * update since the implicit value and the reference are equal.
+ *
+ * @param {Component} component Component of the computed value.
+ * @param {any}       implicit  The implicit value of the component.
+ * @param {any}       reference The reference value for the component.
+ * @return                      the minimum value making the component to equal
+ *                              the reference value.
+ */
+function getOptimalUpdate(component, implicit, reference) {
+  if (equal(implicit, reference)) {
+    return null;
+  }
+  if (isSingleProperty(component.schema)) {
+    return reference;
+  }
+  var optimal = {};
+  Object.keys(reference).forEach(function (key) {
+    var needsUpdate = !equal(reference[key], implicit[key]);
+    if (needsUpdate) {
+      optimal[key] = reference[key];
+    }
+  });
+  return optimal;
+}
+
+/**
+ * @param {Schema} schema Component's schema to test if it is single property.
+ * @return                `true` if component is single property.
+ */
+function isSingleProperty(schema) {
+  return AFRAME.schema.isSingleProperty(schema);
+}
+
+/**
+ * Detect element's Id collision and returns a valid one
+ * @param  {string} baseId Proposed Id
+ * @return {string}        Valid Id based on the proposed Id
+ */
+function getUniqueId(baseId) {
+  if (!document.getElementById(baseId)) {
+    return baseId;
+  }
+
+  var i = 2;
+  // If the baseId ends with _#, it extracts the baseId removing the suffix
+  var groups = baseId.match(/(\w+)-(\d+)/);
+  if (groups) {
+    baseId = groups[1];
+    i = groups[2];
+  }
+
+  while (document.getElementById(baseId + '-' + i)) {
+    i++;
+  }
+
+  return baseId + '-' + i;
+}
+
+/**
+ * Create a unique id that can be used on a DOM element.
+ * @return {string} Valid Id
+ */
+export function createUniqueId() {
+  let id = nanoid();
+  do {
+    id = nanoid();
+    // be sure to not return an id starting with a number
+  } while (/^[-\d]/.test(id));
+  return id;
+}
+
+/**
+ * Give `el` a unique id if it has none, and return its id. Commands and the
+ * group scope look elements up by id.
+ */
+export function ensureId(el) {
+  if (!el) return undefined;
+  if (!el.id) el.setAttribute('id', createUniqueId());
+  return el.id;
+}
+
+export function getComponentClipboardRepresentation(entity, componentName) {
+  entity.flushToDOM();
+  let data = entity.getDOMAttribute(componentName);
+  if (!data) {
+    return componentName;
+  }
+
+  const component = entity.components[componentName];
+  const schema = component.schema;
+  // If multi-properties component, filter out properties that are the same as their default value
+  if (!isSingleProperty(schema)) {
+    data = { ...data };
+
+    for (const [propertyName, value] of Object.entries(data)) {
+      const defaultValue = getDefaultValue(component, propertyName);
+      if (equal(value, defaultValue)) {
+        delete data[propertyName];
+      }
+    }
+  }
+
+  const properties = stringifyComponentValue(schema, data);
+  return `${componentName}="${properties}"`;
+}
+
+/**
+ * Whether an entity's display name can be renamed by the user. The fixed
+ * pseudo-layers (environment, reference layers, user layers) and no-transform
+ * entities never had a rename affordance. Shared by the properties panel
+ * title label and the scene graph's right-click context menu.
+ * @param {Element} entity
+ * @returns {boolean}
+ */
+export function canRenameEntity(entity) {
+  return (
+    !['reference-layers', 'environment', 'street-container'].includes(
+      entity.id
+    ) &&
+    !entity.hasAttribute('data-no-transform') &&
+    // A generated clone is regenerated by its generator: a name would not
+    // persist (detach it first; the plain entity renames like any other).
+    !entity.classList.contains('autocreated')
+  );
+}
+
+/**
+ * Whether the entity is a street-segment laid out by a managed street.
+ * `street-align` owns segment transforms — any re-layout (width, order,
+ * length change) rewrites segment positions, silently resetting manual
+ * edits — so these segments never get the stock translate/rotate/scale
+ * gizmo (#1806). Their editing affordances are the width bars, the segment
+ * sidebar and the reorder buttons. Shared by the viewport gizmo routing and
+ * the action-bar mode buttons.
+ * @param {Element} entity
+ * @returns {boolean}
+ */
+export function isManagedStreetSegment(entity) {
+  return !!(
+    entity?.components?.['street-segment'] &&
+    entity.parentElement?.components?.['managed-street']
+  );
+}
+
+export function getEntityDisplayName(entity) {
+  // User-set display name wins.
+  const layerName = entity.getAttribute('data-layer-name');
+  if (layerName) return layerName;
+
+  if (!entity.isScene) {
+    const mixinAttr = entity.getAttribute('mixin');
+    if (mixinAttr) {
+      // Mixin ids are kebab/snake-case (e.g. "box-truck-rig"); format for
+      // display ("Box truck rig"). Classes are returned as-is.
+      return capitalize(
+        mixinAttr.split(' ')[0].replaceAll('-', ' ').replaceAll('_', ' ')
+      );
+    }
+    const classAttr = entity.getAttribute('class');
+    if (classAttr) return classAttr.split(' ')[0];
+  }
+
+  return entity.tagName.toLowerCase();
+}
+
+export function getEntityIcon(entity) {
+  // Check for component-based icons first
+  if (entity.getAttribute('managed-street')) {
+    return <ManagedStreetIcon />;
+  }
+  if (entity.getAttribute('managed-intersection')) {
+    return <ManagedIntersectionIcon />;
+  }
+  if (entity.getAttribute('street-segment')) {
+    return <SegmentIcon />;
+  }
+  if (entity.getAttribute('shape')) {
+    return <ShapeIcon />;
+  }
+  if (entity.getAttribute('viewer-start')) {
+    return <ViewerStartIcon />;
+  }
+  if (isUserGroup(entity)) {
+    return <GroupIcon />;
+  }
+
+  // Check for class-based icons
+  if (entity.classList.contains('autocreated')) {
+    return <AutoIcon />;
+  }
+
+  // Primitive geometry reads differently from a 3D-model-backed entity
+  // (uploaded glTF or catalog mixin), so it gets its own icon (#1999);
+  // model rows keep the wireframe cube default below.
+  if (!entity.getAttribute('gltf-model') && entity.getAttribute('geometry')) {
+    return <Geometry24Icon />;
+  }
+
+  // Check for ID-based icons
+  switch (entity.id) {
+    case 'environment':
+      return <SunIcon />;
+    case 'reference-layers':
+      return <GeospatialIcon />;
+    case 'street-container':
+      return <LayersIcon />;
+    case 'cameraRig':
+      return <VideoCameraIcon />;
+    default:
+      return <Object24IconCyan />;
+  }
+}
+
+/**
+ * Status badges for a scene-graph row: role components attached to an
+ * entity, shown inline after the name, in addition to (never instead of)
+ * the entity's type icon. Passive: each is a { key, icon }; the row owns
+ * the tooltip text (Entity.jsx, so the strings are extractable).
+ */
+export function getEntityBadges(entity) {
+  const badges = [];
+  if (entity.hasAttribute('focus-hotspot')) {
+    badges.push({ key: 'focus-hotspot', icon: faBullseye });
+  }
+  if (entity.hasAttribute('build-area')) {
+    badges.push({ key: 'build-area', icon: faCubes });
+  }
+  return badges;
+}
+
+const NOT_COMPONENTS = ['id', 'class', 'mixin'];
+
+/**
+ * Helper function to add a new entity with a list of components
+ * @param  {object} definition Entity definition to add, all keys are optional:
+ *   {element: 'a-entity', id: "hbiuSdYL2", class: "box", components: {geometry: 'primitive:box'}}
+ * @param  {function} cb Callback to call when the entity is created
+ * @param  {Element} parentEl Element to append the entity to
+ * @return {Element} Entity created
+ */
+export function createEntity(definition, cb, parentEl = undefined) {
+  const entity = objectToElement(definition);
+
+  // Ensure the components are loaded before update the UI
+  entity.addEventListener(
+    'loaded',
+    () => {
+      Events.emit('entitycreated', entity);
+      cb(entity);
+    },
+    { once: true }
+  );
+
+  // `beforeEl` (an id) inserts before that sibling, when it is still a child
+  // of the parent; otherwise the entity goes at the end.
+  const beforeEl =
+    definition.beforeEl && document.getElementById(definition.beforeEl);
+  if (parentEl && beforeEl?.parentNode === parentEl) {
+    parentEl.insertBefore(entity, beforeEl);
+  } else if (parentEl) {
+    parentEl.appendChild(entity);
+  } else {
+    document
+      .querySelector(AFRAME.INSPECTOR.config.defaultParent)
+      .appendChild(entity);
+  }
+
+  return entity;
+}
+
+/**
+ * Converts an entity object definition into an A-Frame element.
+ *
+ * @param {EntityObject} definition
+ * @returns {Entity}
+ */
+export function objectToElement(definition) {
+  const entity = document.createElement(definition.element || 'a-entity');
+  if (definition.id) {
+    entity.id = definition.id;
+  } else {
+    entity.id = createUniqueId();
+  }
+
+  // Set class, mixin
+  for (const attribute of NOT_COMPONENTS) {
+    if (attribute !== 'id' && definition[attribute]) {
+      entity.setAttribute(attribute, definition[attribute]);
+    }
+  }
+
+  // Set data attributes
+  for (const key in definition) {
+    if (key.startsWith('data-')) {
+      entity.setAttribute(key, definition[key]);
+    }
+  }
+
+  // Set components
+  if (definition.components) {
+    for (const componentName in definition.components) {
+      const componentValue = definition.components[componentName];
+      entity.setAttribute(componentName, componentValue);
+    }
+  }
+
+  if (definition.children) {
+    for (const childDefinition of definition.children) {
+      const child = objectToElement(childDefinition);
+      entity.appendChild(child);
+    }
+  }
+
+  return entity;
+}
+
+/**
+ * Converts an A-Frame element into a serializable object representation.
+ *
+ * @param {Entity} element
+ * @returns {EntityObject}
+ */
+export function elementToObject(element) {
+  const obj = {};
+
+  if (element.tagName !== 'A-ENTITY') {
+    obj.element = element.tagName.toLowerCase();
+  }
+
+  if (element.attributes.length > 0) {
+    const components = {};
+
+    for (const attribute of element.attributes) {
+      if (
+        NOT_COMPONENTS.includes(attribute.name) ||
+        attribute.name.startsWith('data-')
+      ) {
+        obj[attribute.name] = attribute.value;
+        continue;
+      }
+
+      /* if int has more then 6 decimal round it for position rotation and scale */
+      if (
+        attribute.name === 'position' ||
+        attribute.name === 'rotation' ||
+        attribute.name === 'scale'
+      ) {
+        const values = attribute.value.split(' ').map(parseFloat);
+        // Round rotation values to 1 degree, position and scale to 0.001
+        const precision = attribute.name === 'rotation' ? 1 : 1000;
+        const roundedValues = values.map(
+          (v) => Math.round(v * precision) / precision
+        );
+        components[attribute.name] = roundedValues.join(' ');
+        continue;
+      }
+
+      components[attribute.name] = attribute.value;
+    }
+
+    obj.components = components;
+  }
+
+  if (element.childNodes.length > 0) {
+    const children = [];
+
+    for (const child of element.childNodes) {
+      if (child.nodeType === Node.ELEMENT_NODE) {
+        children.push(elementToObject(child));
+      }
+    }
+
+    if (children.length > 0) {
+      obj.children = children;
+    }
+  }
+
+  return obj;
+}
+
+/**
+ * Converts an entity to a serializable object representation with blacklist filtering.
+ * This function prepares an entity for export by applying serialization optimizations,
+ * filtering out blacklisted properties, and adding parent relationship metadata.
+ *
+ * @param {Entity} entity
+ * @returns {EntityObject|null} serialized entity with blacklist filtering and parentEl
+ */
+export function exportEntityToObject(entity) {
+  entity.flushToDOM();
+  // prepare entity for serialization and check if it's blacklisted
+  const preparedElement = prepareForSerialization(entity);
+  if (!preparedElement) return null;
+  // convert entity to object
+  const entityObj = elementToObject(preparedElement);
+
+  // Add parentEl and indexInParent if entity has a parent that's not the default scene container
+  const parentEl = entity.parentElement;
+  const defaultParentId = AFRAME.INSPECTOR.config.defaultParent.replace(
+    '#',
+    ''
+  );
+  if (parentEl && parentEl.id) {
+    if (parentEl.id !== defaultParentId) {
+      entityObj.parentEl = parentEl.id;
+    }
+    // Store the index position within the parent for precise reinsertion
+    entityObj.indexInParent = Array.from(parentEl.children).indexOf(entity);
+  }
+
+  return entityObj;
+}
+
+/**
+ * Write the current editor camera's world pose into a viewer-start entity's
+ * position/rotation (expressed in its parent's space), so "where I'm looking
+ * now" becomes where Start begins. Two entityupdate commands, both undoable.
+ */
+// Current editor camera pose expressed in `parent`'s space, as the
+// position/rotation/fov component values a viewer-start entity stores.
+function viewerStartValuesFromCamera(parent) {
+  const camera = AFRAME.INSPECTOR.camera;
+  camera.updateMatrixWorld();
+  parent.updateMatrixWorld(true);
+  const worldPos = new THREE.Vector3();
+  const worldQuat = new THREE.Quaternion();
+  camera.getWorldPosition(worldPos);
+  camera.getWorldQuaternion(worldQuat);
+  const localPos = parent.worldToLocal(worldPos.clone());
+  const parentQuat = new THREE.Quaternion();
+  parent.getWorldQuaternion(parentQuat);
+  const localQuat = parentQuat.invert().multiply(worldQuat);
+  const euler = new THREE.Euler().setFromQuaternion(localQuat, 'YXZ');
+  const deg = THREE.MathUtils.radToDeg;
+  return {
+    position: { x: localPos.x, y: localPos.y, z: localPos.z },
+    rotation: { x: deg(euler.x), y: deg(euler.y), z: deg(euler.z) },
+    fov: camera.fov || DEFAULT_FOV_DEGREES
+  };
+}
+
+/**
+ * Write the current editor camera's world pose into a viewer-start entity's
+ * position/rotation/fov (expressed in its parent's space), so "where I'm
+ * looking now" becomes the scene's start pose. Undoable entityupdates.
+ */
+export function setViewerStartToCurrentView(entity, { notify = true } = {}) {
+  const values = viewerStartValuesFromCamera(entity.object3D.parent);
+  // An update selects its entity when another is selected, which would close
+  // an open group around that selection; the Starting View is not the user's
+  // to select there (nor when the move is undone).
+  const noSelectEntity = innermostOpenGroup() !== null;
+  // One undo step for the whole pose.
+  AFRAME.INSPECTOR.execute('multi', [
+    [
+      'entityupdate',
+      { entity, component: 'position', value: values.position, noSelectEntity }
+    ],
+    [
+      'entityupdate',
+      { entity, component: 'rotation', value: values.rotation, noSelectEntity }
+    ],
+    [
+      'entityupdate',
+      {
+        entity,
+        component: 'viewer-start',
+        property: 'fov',
+        value: values.fov,
+        noSelectEntity
+      }
+    ]
+  ]);
+  if (notify) {
+    STREET.notify.successMessage('Starting View set to current camera view');
+  }
+}
+
+/** The scene's Starting View (viewer-start) entity or null. One per scene. */
+export function getViewerStartEntity() {
+  return document.querySelector('[viewer-start]');
+}
+
+/**
+ * Move the scene's Starting View (viewer-start) to the current editor
+ * view, creating it if the scene has none. Two callers: "set thumbnail"
+ * (so the thumbnail view and the start pose are one thing) and View › Set
+ * as Starting View. Returns the entity. `select` is ignored while a group is
+ * open: the Starting View is a system item, and selecting it would close the
+ * group the user is working in.
+ */
+export function ensureViewerStartAtCurrentView({ select = false } = {}) {
+  const groupOpen = innermostOpenGroup() !== null;
+  const existing = getViewerStartEntity();
+  if (existing) {
+    setViewerStartToCurrentView(existing, { notify: false });
+    if (select && !groupOpen) AFRAME.INSPECTOR.selectEntity(existing);
+    return existing;
+  }
+  const parent = document.querySelector(AFRAME.INSPECTOR.config.defaultParent);
+  const values = viewerStartValuesFromCamera(parent.object3D);
+  const definition = {
+    components: {
+      position: values.position,
+      rotation: values.rotation,
+      'viewer-start': { fov: values.fov },
+      'data-layer-name': 'Starting View'
+    }
+  };
+  if (groupOpen) definition.noSelectEntity = true;
+  // entitycreate selects the new entity once it has loaded, unless told not
+  // to; when called from set-thumbnail, put the author's selection back
+  // afterwards.
+  const previous = AFRAME.INSPECTOR.selectedEntity;
+  // execute(cmdName, payload, optionalName, callback)
+  return AFRAME.INSPECTOR.execute('entitycreate', definition, undefined, () => {
+    if (!select && !definition.noSelectEntity) {
+      AFRAME.INSPECTOR.selectEntity(previous || null);
+    }
+  });
+}
+
+export function setFocusCameraPose(entity) {
+  // Full pose (position + orientation + fov) in the entity's frame, so the
+  // focus glide lands exactly as framed. One undo step either way. An
+  // existing pose is updated per property: a whole-object entityupdate
+  // would undo through A-Frame's merging setAttribute and leave a hybrid
+  // (old position, new rotation) behind.
+  const pose = captureFocusPose(entity.object3D, AFRAME.INSPECTOR.camera);
+  const component = 'focus-camera-pose';
+  if (entity.hasAttribute(component)) {
+    AFRAME.INSPECTOR.execute(
+      'multi',
+      Object.entries(pose).map(([property, value]) => [
+        'entityupdate',
+        { entity, component, property, value }
+      ])
+    );
+  } else {
+    AFRAME.INSPECTOR.execute('componentadd', {
+      entity,
+      component,
+      value: pose
+    });
+  }
+  STREET.notify.successMessage('Focus camera pose set');
+}

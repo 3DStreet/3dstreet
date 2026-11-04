@@ -17,7 +17,10 @@ import { getEditableEntity } from './commands/llmToolGuards.js';
  * `autocreated` marker so it saves, moves, duplicates and deletes like any
  * hand-placed object. This module holds the pure/DOM-only pieces that
  * DetachCloneCommand, the sidebar Detach button and the viewport's
- * drag-to-detach share. Entry point: docs/per-object-detach.md.
+ * drag-to-detach share, plus the per-generator rung built on them:
+ * "Detach all" (DetachAllClonesCommand, #2036) turns every live clone of one
+ * generator into such a plain entity and removes the generator. Entry point:
+ * docs/per-object-detach.md.
  */
 
 export const DETACHED_LAYER_PREFIX = 'Detached Model • ';
@@ -97,6 +100,122 @@ export function listCloneSlots(segmentEl, componentName) {
     if (Number.isInteger(index) && index >= 0) slots.push(index);
   }
   return slots.sort((a, b) => a - b);
+}
+
+/**
+ * The live clones a generator currently has in the DOM, in creation (slot)
+ * order: the elements a "Detach all" turns into plain entities (#2036).
+ * Only detachable clones count (see getCloneSlot); a generator whose
+ * clones predate slot stamping yields none.
+ */
+export function listGeneratorClones(segmentEl, componentName) {
+  const clones = [];
+  if (!segmentEl) return clones;
+  for (const child of segmentEl.children) {
+    if (child.getAttribute?.('data-parent-component') !== componentName) {
+      continue;
+    }
+    if (getCloneSlot(child)) clones.push(child);
+  }
+  return clones.sort(
+    (a, b) =>
+      Number(a.getAttribute(CLONE_INDEX_ATTR)) -
+      Number(b.getAttribute(CLONE_INDEX_ATTR))
+  );
+}
+
+/** Whether a generator has at least one live detachable clone (early exit). */
+export function hasGeneratorClones(segmentEl, componentName) {
+  if (!segmentEl) return false;
+  for (const child of segmentEl.children) {
+    if (
+      child.getAttribute?.('data-parent-component') === componentName &&
+      getCloneSlot(child)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Why "Detach all" cannot run on this generator, or null when it can: the
+ * one rule set the command builder, the AI tool resolver and the UI gate
+ * share. `code` is 'missing' (no such component on the segment), 'surface'
+ * (a generator whose output is not per-object detachable: striping, rail)
+ * or 'empty' (no live clones left); `message` is readable as is.
+ */
+export function getDetachAllBlocker(segmentEl, componentName) {
+  if (!segmentEl?.components?.[componentName]) {
+    return {
+      code: 'missing',
+      message: `Segment has no '${componentName}' generator`
+    };
+  }
+  if (!isDetachableGenerator(componentName)) {
+    return {
+      code: 'surface',
+      message: `'${componentName}' is a surface generator and cannot be detached per object (only clones, stencil and pedestrians can)`
+    };
+  }
+  if (!hasGeneratorClones(segmentEl, componentName)) {
+    return {
+      code: 'empty',
+      message: `'${componentName}' has no live clones to detach (all detached already, or it places nothing)`
+    };
+  }
+  return null;
+}
+
+/**
+ * The UI door for "Detach all": re-check the live DOM at click time (the
+ * pill is gated by a render-time census, and the clones can be gone before
+ * React re-renders) and say so in a toast instead of letting the command
+ * constructor throw out of the click handler. `focus` is the clone whose
+ * panel the user pressed it in: the selection follows that object to its
+ * plain replacement instead of jumping to the segment.
+ */
+export function requestDetachAll(segmentEl, componentName, { focus } = {}) {
+  const blocker = getDetachAllBlocker(segmentEl, componentName);
+  if (blocker) {
+    globalThis.STREET?.notify?.warningMessage?.(
+      'Nothing to detach: this generator has no objects right now.'
+    );
+    return false;
+  }
+  const payload = { entity: segmentEl, component: componentName };
+  if (focus) payload.focus = focus;
+  AFRAME.INSPECTOR.execute('detachallclones', payload);
+  return true;
+}
+
+/**
+ * Resolve the `detachAllClones` AI tool's arguments to the
+ * `{ entity, component }` payload DetachAllClonesCommand takes, or throw a
+ * readable error the model can correct from: the segment's detachable
+ * generators when `component` is missing, unknown or a surface generator,
+ * or that the generator has no live clones left.
+ */
+export function resolveDetachAllToolArgs(args = {}) {
+  const { segmentId, component } = args;
+  const segmentEl = getEditableEntity(segmentId, { role: 'segment' });
+  const generators = Object.keys(segmentEl.components || {}).filter(
+    isDetachableGenerator
+  );
+  const available = `Detachable generators on ${segmentId}: ${generators.join(', ') || '(none)'}`;
+  // Function-calling models emit null for fields they mean to omit.
+  if (component == null || component === '') {
+    throw new Error(`component is required. ${available}`);
+  }
+  const blocker = getDetachAllBlocker(segmentEl, component);
+  if (blocker) {
+    throw new Error(
+      blocker.code === 'empty'
+        ? `${blocker.message} on ${segmentId}. Use componentRemove to remove the generator itself.`
+        : `${blocker.message}. ${available}`
+    );
+  }
+  return { entity: segmentEl, component };
 }
 
 /**
@@ -191,7 +310,7 @@ function vec3String(value) {
 
 /**
  * Entity definition (the `entitycreate` command's payload shape, see
- * createEntity/objectToElement in entity.js) for the plain entity that
+ * createEntity/objectToElement in entity.jsx) for the plain entity that
  * replaces `cloneEl`. `pose` may override any of position/rotation/scale as
  * "x y z" strings or {x, y, z} objects — the viewport passes the pose the
  * user dragged the clone to — and defaults to the clone's current pose.
@@ -248,18 +367,26 @@ export function forgetDetached(cloneEl) {
 
 const POSE_COMPONENT_SET = new Set(POSE_COMPONENTS);
 
-// One axis of a vec3 edit merged into the clone's current value (A-Frame
-// hands back a {x, y, z} object; a plain DOM element a string).
-function mergeAxis(cloneEl, component, property, value) {
-  const raw = cloneEl.getAttribute(component);
-  let current = { x: 0, y: 0, z: 0 };
+// A vec3 in either of the shapes a pose value takes: the {x, y, z} object
+// A-Frame hands back (or the panel sends) or the "x y z" string a plain DOM
+// element / the AI chat carries.
+function toVec3(raw) {
   if (raw && typeof raw === 'object') {
-    current = { x: raw.x, y: raw.y, z: raw.z };
-  } else if (typeof raw === 'string') {
-    const [x, y, z] = raw.trim().split(/\s+/).map(Number);
-    current = { x: x || 0, y: y || 0, z: z || 0 };
+    return { x: raw.x, y: raw.y, z: raw.z };
   }
-  return { ...current, [property]: Number(value) };
+  if (typeof raw === 'string') {
+    const [x, y, z] = raw.trim().split(/\s+/).map(Number);
+    return { x: x || 0, y: y || 0, z: z || 0 };
+  }
+  return { x: 0, y: 0, z: 0 };
+}
+
+// One axis of a vec3 edit merged into the clone's current value.
+function mergeAxis(cloneEl, component, property, value) {
+  return {
+    ...toVec3(cloneEl.getAttribute(component)),
+    [property]: Number(value)
+  };
 }
 
 /**
@@ -267,20 +394,32 @@ function mergeAxis(cloneEl, component, property, value) {
  * whose first edit detaches it (#2011). Inspector.execute calls this before
  * building a command; a non-null result replaces the command name and
  * payload. Every door goes through here — properties panel, model dropdown,
- * keyboard, layers panel, AI tools — so none of them needs to know about
- * clones. The viewport gizmo is the one exception: it defers its commit to
- * mouseUp and calls detachclone itself, because re-attaching the gizmo to a
- * new object mid-drag would break the drag.
+ * keyboard, layers panel, AI tools, the easy gizmo's one-shot commit — so
+ * none of them needs to know about clones. The stock TransformControls gizmo
+ * is the one exception: it defers its commit to mouseUp and calls detachclone
+ * itself, because it would otherwise record a command per drag frame and
+ * re-attaching the gizmo to a new object mid-drag would break the drag.
  *
  *   entityupdate  → detachclone carrying the edit (pose, mixin or any
  *                   other component) so it is one undo step
  *   entityremove  → detachclone { remove: true }: the spot stays empty
  *   entityclone   → entitycreate of a plain copy; the clone stays generated
+ *   multi         → each member routed as above; every member aimed at the
+ *                   same clone folds into ONE detachclone (a position and a
+ *                   rotation tuple from one gizmo release are one detach at
+ *                   the merged pose, not two). A batch that folds to a
+ *                   single command is returned as that command, so it keeps
+ *                   its own name and toast. MultiCommand builds its members
+ *                   directly, not through Inspector.execute, so a batch not
+ *                   unwrapped here would bypass the rule entirely — which is
+ *                   how the easy gizmo's drag silently moved a clone in place.
  *
  * An update aimed at a clone element that was already detached (removed
  * from the DOM by its generator) is re-aimed at the plain entity it became.
  */
 export function routeCloneEdit(cmdName, payload) {
+  if (cmdName === 'multi') return routeMultiCloneEdit(payload);
+
   // entityremove / entityclone take the entity itself as the payload.
   const entity = payload?.nodeType === 1 ? payload : payload?.entity;
   if (!entity) return null;
@@ -333,6 +472,88 @@ export function routeCloneEdit(cmdName, payload) {
 }
 
 /**
+ * The `multi` branch of routeCloneEdit: `tuples` is MultiCommand's list of
+ * `[type, payload, callback?]`. Returns null when no member needed routing
+ * (the batch runs untouched), otherwise the routed batch — or, when it
+ * folds to one command, that command on its own.
+ */
+function routeMultiCloneEdit(tuples) {
+  if (!Array.isArray(tuples)) return null;
+  const out = [];
+  // clone element → index in `out` of the detachclone tuple it folded into
+  const detachAt = new Map();
+  let routedAny = false;
+  for (const tuple of tuples) {
+    if (!Array.isArray(tuple)) {
+      out.push(tuple);
+      continue;
+    }
+    const [type, payload, ...rest] = tuple;
+    const routed = routeCloneEdit(type, payload);
+    if (!routed) {
+      out.push(tuple);
+      continue;
+    }
+    routedAny = true;
+    if (routed.cmdName !== 'detachclone') {
+      out.push([routed.cmdName, routed.payload, ...rest]);
+      continue;
+    }
+    const cloneEl = routed.payload.entity;
+    const at = detachAt.get(cloneEl);
+    if (at === undefined) {
+      detachAt.set(cloneEl, out.length);
+      out.push(['detachclone', routed.payload, ...rest]);
+    } else {
+      out[at][1] = mergeDetachPayload(
+        out[at][1],
+        routed.payload,
+        POSE_COMPONENT_SET.has(payload?.component) ? payload.property : null
+      );
+    }
+  }
+  if (!routedAny) return null;
+  if (out.length === 1 && Array.isArray(out[0])) {
+    const [cmdName, payload, callback] = out[0];
+    return callback ? { cmdName, payload, callback } : { cmdName, payload };
+  }
+  return { cmdName: 'multi', payload: out };
+}
+
+/**
+ * Two detachclone payloads for the same clone, later edits winning. `axis`
+ * names the one axis the later member edited, when it was a per-axis edit:
+ * such a member builds its vector from the clone's CURRENT attribute
+ * (mergeAxis), which knows nothing of the members before it, so only that
+ * axis is taken from it and the rest keeps what earlier members set.
+ */
+function mergeDetachPayload(a, b, axis = null) {
+  const merged = { ...a, ...b };
+  if (a.pose || b.pose) {
+    merged.pose = { ...a.pose };
+    for (const [component, value] of Object.entries(b.pose ?? {})) {
+      const prev = merged.pose[component];
+      merged.pose[component] =
+        axis && prev !== undefined
+          ? { ...toVec3(prev), [axis]: value[axis] }
+          : value;
+    }
+  }
+  if (a.components || b.components) {
+    merged.components = { ...a.components };
+    for (const [name, value] of Object.entries(b.components ?? {})) {
+      const prev = merged.components[name];
+      merged.components[name] =
+        prev && typeof prev === 'object' && value && typeof value === 'object'
+          ? { ...prev, ...value }
+          : value;
+    }
+  }
+  if (a.remove || b.remove) merged.remove = true;
+  return merged;
+}
+
+/**
  * The two undoable steps a detach is made of, as `[type, payload]` tuples for
  * MultiCommand: append the clone's placement key to its generator's `skip`
  * (the generator regenerates minus that placement, removing the clone), then
@@ -373,6 +594,34 @@ export function buildDetachCommands(cloneEl, pose = {}, extra = {}) {
     ]);
   }
   return { slot, commands };
+}
+
+/**
+ * The undoable steps of "Detach all" (#2036), as `[type, payload]` tuples
+ * for MultiCommand: one `entitycreate` per live clone of the generator (the
+ * same plain `Detached Model` entity a per-object detach makes, same mixin,
+ * pose and segment), then a `componentremove` of the generator itself, so
+ * nothing regenerates and its `skip` bookkeeping goes with it. Undo runs
+ * them in reverse: the generator comes back with its previous data (holes
+ * included) and regenerates the clones exactly where they were, and the
+ * plain entities are removed. Throws (getDetachAllBlocker's message) when
+ * the generator is missing, not per-object detachable or has no live clones;
+ * UI doors go through requestDetachAll, which checks first.
+ */
+export function buildDetachAllCommands(segmentEl, componentName) {
+  const blocker = getDetachAllBlocker(segmentEl, componentName);
+  if (blocker) throw new Error(blocker.message);
+  const clones = listGeneratorClones(segmentEl, componentName);
+  const commands = clones.map((cloneEl) => [
+    'entitycreate',
+    // The batch lands the selection on the segment once, at the end.
+    { ...buildDetachedDefinition(cloneEl), noSelectEntity: true }
+  ]);
+  commands.push([
+    'componentremove',
+    { entity: segmentEl, component: componentName }
+  ]);
+  return { clones, commands };
 }
 
 /**

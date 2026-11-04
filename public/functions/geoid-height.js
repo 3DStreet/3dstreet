@@ -4,6 +4,7 @@ const { getGeoidHeightFromPGM } = require('./geoid.js');
 const { Client: GoogleMapsClient } = require('@googlemaps/google-maps-services-js');
 const { isUserProInternal } = require('./token-management.js');
 const { assertAppCheck } = require('./app-check.js');
+const { pickReverseGeocodeResult } = require('./reverse-geocode.js');
 
 // WebMCP hackathon demo carve-out (PR #1931): anonymous location lookups are
 // allowed within California until the demo window closes, so browser agents
@@ -146,7 +147,8 @@ exports.getGeoidHeight = functions
           }
         })
         .then((r) => {
-          const addressComponents = r.data.results[0]?.address_components || [];
+          const addressComponents =
+            pickReverseGeocodeResult(r.data.results, lat, lon)?.address_components || [];
           // Extract everything except the street number
           const streetName = addressComponents.find(c => c.types.includes('route'))?.long_name || '';
           const locality = addressComponents.find(c => c.types.includes('locality'))?.long_name || '';

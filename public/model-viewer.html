@@ -93,6 +93,27 @@
         mv.src = src;
         mv.addEventListener('load', () => {
           loader.hidden = true;
+          // Post a framed capture up to MeshDetailsModal, which uploads it as
+          // the thumbnail if the asset has none (server-generated meshes from
+          // models without a preview). Mirrors splat-viewer's
+          // 3dstreet:splat-thumbnail. Two frames so the first render lands.
+          if (window.parent === window) return;
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              mv.toBlob({
+                mimeType: 'image/jpeg',
+                qualityArgument: 0.82,
+                idealAspect: true
+              })
+                .then((blob) =>
+                  window.parent.postMessage(
+                    { type: '3dstreet:mesh-thumbnail', blob, src },
+                    location.origin
+                  )
+                )
+                .catch(() => {});
+            })
+          );
         });
         mv.addEventListener('error', () => {
           loader.hidden = true;

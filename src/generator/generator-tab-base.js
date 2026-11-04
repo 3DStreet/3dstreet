@@ -8,7 +8,12 @@ import useImageGenStore from './store.js';
 import ImageUploadUtils from './image-upload-utils.js';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@shared/services/firebase.js';
-import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import {
+  REPLICATE_MODELS,
+  getOutputTiers,
+  getTierTokenCost
+} from '@shared/constants/replicateModels.js';
+import { fitScale } from '@shared/utils/imageScale.js';
 import {
   getStyleSentence,
   describeStyleText,
@@ -202,6 +207,12 @@ class GeneratorTabBase {
     );
     this.elements.aspectRatioSelector = document.getElementById(
       getId('aspect-ratio-selector')
+    );
+    this.elements.outputTierGroup = document.getElementById(
+      getId('output-tier-group')
+    );
+    this.elements.outputTierButtons = document.getElementById(
+      getId('output-tier-buttons')
     );
 
     // Image prompt (if applicable)
@@ -553,6 +564,12 @@ class GeneratorTabBase {
                         </div>
                     </div>
 
+                    <!-- Output resolution tiers (#1887), for models that offer them -->
+                    <div id="${getId('output-tier-group')}" class="mb-4 param-group hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">${t('image.outputResolution')}</label>
+                        <div id="${getId('output-tier-buttons')}" class="flex gap-2"></div>
+                    </div>
+
                     <!-- Aspect Ratio (for Ultra model) -->
                     <div id="${getId('aspect-ratio-group')}" class="mb-4 param-group hidden">
                         <label class="block text-sm font-medium text-gray-700 mb-1">${t('image.aspectRatio')}</label>
@@ -729,6 +746,15 @@ class GeneratorTabBase {
       );
     }
 
+    if (this.elements.outputTierButtons) {
+      this.elements.outputTierButtons.addEventListener('click', (e) => {
+        const button = e.target.closest('[data-tier]');
+        if (!button) return;
+        this.selectedOutputTier = button.dataset.tier;
+        this.updateModelParams();
+      });
+    }
+
     // Setup action buttons
     if (this.elements.openImageBtn) {
       this.elements.openImageBtn.addEventListener(
@@ -824,6 +850,50 @@ class GeneratorTabBase {
   }
 
   /**
+   * The output tier to request for a model (#1887): the user's pick when the
+   * model offers it and it isn't the default, else null (default tier).
+   */
+  getRequestedOutputTier(modelConfig) {
+    const tiers = getOutputTiers(modelConfig);
+    return tiers.indexOf(this.selectedOutputTier) > 0
+      ? this.selectedOutputTier
+      : null;
+  }
+
+  /**
+   * Show the output resolution toggle (with each tier's token cost) for
+   * models that offer paid tiers; hide it otherwise.
+   */
+  updateOutputTierUI(modelConfig) {
+    const { outputTierGroup, outputTierButtons } = this.elements;
+    if (!outputTierGroup || !outputTierButtons) return;
+    const tiers = getOutputTiers(modelConfig);
+    outputTierGroup.classList.toggle('hidden', tiers.length === 0);
+    const active = this.getRequestedOutputTier(modelConfig) || tiers[0];
+    outputTierButtons.innerHTML = '';
+    tiers.forEach((tier) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.tier = tier;
+      // Colors live on .output-tier-btn[.selected] in styles/styles.css
+      // (with .dark variants), shared with the Splat tab's tier buttons.
+      button.className = `output-tier-btn flex-1 border rounded-lg px-1 py-2 text-sm text-center transition-colors${
+        tier === active ? ' selected' : ''
+      }`;
+      const label = document.createElement('span');
+      label.className = 'block font-medium';
+      label.textContent = tier;
+      const cost = document.createElement('span');
+      cost.className = 'block text-xs mt-0.5';
+      cost.textContent = t('image.tierTokens', {
+        count: getTierTokenCost(modelConfig, tier)
+      });
+      button.append(label, cost);
+      outputTierButtons.appendChild(button);
+    });
+  }
+
+  /**
    * Update model parameters based on selected model
    */
   updateModelParams() {
@@ -831,11 +901,13 @@ class GeneratorTabBase {
 
     // Update token cost display based on selected model
     const modelConfig = REPLICATE_MODELS[model];
-    if (modelConfig && this.elements.tokenCost) {
-      this.elements.tokenCost.textContent = modelConfig.tokenCost || 1;
-    } else if (this.elements.tokenCost) {
-      // Default to 1 for non-Replicate models
-      this.elements.tokenCost.textContent = 1;
+    this.updateOutputTierUI(modelConfig);
+    if (this.elements.tokenCost) {
+      // getTierTokenCost defaults to 1 for non-Replicate models
+      this.elements.tokenCost.textContent = getTierTokenCost(
+        modelConfig,
+        this.getRequestedOutputTier(modelConfig)
+      );
     }
 
     // Keep the source-image `*` in sync: red when this model requires an image.
@@ -856,10 +928,12 @@ class GeneratorTabBase {
     switch (model) {
       case 'nano-banana-pro':
       case 'nano-banana-2':
-      case 'seedream-4.5':
-      case 'fal-flux-2-max-edit':
-      case 'fal-flux-2-pro-edit':
-        // These endpoints ignore dimensions (a fixed image_size is sent).
+      case 'seedream-5-pro':
+      case 'fal-flux-3-edit':
+      case 'grok-imagine-image-2':
+      case 'fal-muse-image-edit':
+      case 'fal-flux-2-klein-9b-edit':
+        // These endpoints ignore dimensions (output size is fixed server-side).
         showDimensions = false;
         showAspectRatio = false;
         break;
@@ -1276,15 +1350,17 @@ class GeneratorTabBase {
   /**
    * Convert image to JPEG with specified quality
    */
-  convertToJpeg(dataUrl, quality = 0.9) {
+  convertToJpeg(dataUrl, quality = 0.9, maxMegapixels = null) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
+        // Downscale to at most maxMegapixels when the model caps input size.
+        const scale = fitScale(img.width, img.height, maxMegapixels);
         const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = Math.floor(img.width * scale);
+        canvas.height = Math.floor(img.height * scale);
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         // Convert to JPEG with specified quality (0.9 = 90%)
         const jpegDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(jpegDataUrl);
@@ -1296,9 +1372,10 @@ class GeneratorTabBase {
 
   /**
    * Prepare the source image (if any) for submission: normalize to a data URL
-   * and re-encode as JPEG at 90% quality to reduce upload time.
+   * and re-encode as JPEG at 90% quality to reduce upload time, downscaled to
+   * the model's maxInputMegapixels if it has one.
    */
-  async prepareInputImage() {
+  async prepareInputImage(modelConfig) {
     if (!this.imagePromptData) return null;
 
     let inputImageSrc = this.imagePromptData.startsWith('data:')
@@ -1307,7 +1384,11 @@ class GeneratorTabBase {
 
     if (inputImageSrc.startsWith('data:image/')) {
       try {
-        inputImageSrc = await this.convertToJpeg(inputImageSrc, 0.9);
+        inputImageSrc = await this.convertToJpeg(
+          inputImageSrc,
+          0.9,
+          modelConfig?.maxInputMegapixels
+        );
       } catch (error) {
         console.warn('Failed to convert to JPEG, using original:', error);
       }
@@ -1359,7 +1440,8 @@ class GeneratorTabBase {
         style: this.elements.styleInput.value
       });
       const promptStyle = describeStyleText(this.elements.styleInput.value);
-      const inputImageSrc = await this.prepareInputImage();
+      const inputImageSrc = await this.prepareInputImage(modelConfig);
+      const outputTier = this.getRequestedOutputTier(modelConfig);
 
       const result = await generateReplicateImage({
         prompt: prompt,
@@ -1368,6 +1450,7 @@ class GeneratorTabBase {
         num_inference_steps: 30,
         model_version: modelConfig.version,
         model_id: model,
+        ...(outputTier && { resolution: outputTier }),
         scene_id: null,
         source: 'generator',
         // The gallery save happens server-side (#1835); ride the style label
@@ -1420,7 +1503,7 @@ class GeneratorTabBase {
         style: this.elements.styleInput.value
       });
       const promptStyle = describeStyleText(this.elements.styleInput.value);
-      const inputImageSrc = await this.prepareInputImage();
+      const inputImageSrc = await this.prepareInputImage(modelConfig);
 
       const result = await generateFalImage({
         prompt: prompt,

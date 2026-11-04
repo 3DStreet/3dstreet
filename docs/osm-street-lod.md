@@ -214,3 +214,7 @@ filtered. Real lane data arrives with the Overpass-backed hydrator
   `docs/curved-street-path.md`, `docs/geospatial-2d-25d-upgrade-plan.md`
   §5 (shared OSM fetch service; no architectural dependency between the
   LOD0 layer and the node-graph pillars).
+- Prior art: [`docs/prior-art/`](prior-art/README.md), including
+  procedural-tokyo's road graph, vertical (bridge/ramp) rules, measured
+  carriageway and right-of-way split
+  ([notes](prior-art/procedural-tokyo.md)).

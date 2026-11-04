@@ -92,7 +92,7 @@ Both are cents/conversion; Cloud Run wins on large files purely via egress:
 ### 1. Cloud Run converter service — `rad-converter/` (new dir)
 
 - **`Dockerfile`** (multi-stage):
-  - builder: `git clone --branch v2.1.0 --depth 1 https://github.com/sparkjsdev/spark.git`,
+  - builder: `git clone --branch v2.4.0 --depth 1 https://github.com/sparkjsdev/spark.git`,
     then `cd rust && cargo build --release -p build-lod` (per the Hetzner README).
     Binary at `rust/target/release/build-lod`.
   - runtime: slim Debian + Node 22; copy the binary in.
@@ -195,8 +195,7 @@ properties, no reload:
    LOD budget on its own (`HUGE_SCAN_*`). Reported by the component from
    `PagedSplats.getRadMeta()` before any chunk is queued.
 4. **On-demand rendering** (Spark maintainers' recommendation; needs Spark
-   ≥ 2.3.1: 2.3.0 fixed `onDirty` for streamed chunks, and its published
-   builds were broken, fixed in 2.3.1). Spark's sort, LoD
+   ≥ 2.3.1 for `onDirty` on streamed chunks; the app is on 2.4.0). Spark's sort, LoD
    traversal and chunk uploads all run from `SparkRenderer.onBeforeRender`,
    so an A-Frame scene that redraws every frame re-sorts and re-draws
    millions of splats 60 times a second while nothing changes. The

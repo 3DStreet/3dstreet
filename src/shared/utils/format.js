@@ -61,6 +61,27 @@ export function formatCurrency(
 }
 
 /**
+ * Formats a calendar date (Date, epoch ms or ISO string) in the active
+ * locale, e.g. "Jan 5, 2027" (en) · "5 janv. 2027" (fr). Returns '' for an
+ * unparseable value.
+ */
+export function formatDate(
+  value,
+  { locale = getActiveLocale(), ...options } = {}
+) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: 'medium',
+      ...options
+    }).format(date);
+  } catch {
+    return date.toISOString().slice(0, 10);
+  }
+}
+
+/**
  * Formats a number with locale-aware grouping/decimal separators.
  */
 export function formatNumber(

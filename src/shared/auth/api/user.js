@@ -3,14 +3,20 @@
  * client code. The server still uses the legacy field name `isProDomain`;
  * we expose the friendlier `isProTeam` to the client and drop the unused
  * `isProSubscription` field. End-state client shape: { isPro, isProTeam,
- * teamDomain, plan }.
+ * teamDomain, plan, isProPass, proUntil }.
+ *
+ * isProPass / proUntil (#1922): a one-time pass grants Pro until `proUntil`
+ * (ISO string) with no plan claim. The server evaluates expiry on every call;
+ * proUntil is returned even after it lapses, so the UI can say when it ended.
  */
 
 const FREE_USER = {
   isPro: false,
   isProTeam: false,
   teamDomain: null,
-  plan: null
+  plan: null,
+  isProPass: false,
+  proUntil: null
 };
 
 const isUserPro = async (user) => {
@@ -23,21 +29,31 @@ const isUserPro = async (user) => {
     const checkProStatus = httpsCallable(functions, 'checkUserProStatus');
     const result = await checkProStatus();
 
-    const { isPro, isProSubscription, isProDomain, teamDomain, plan } =
-      result.data;
+    const {
+      isPro,
+      isProSubscription,
+      isProDomain,
+      teamDomain,
+      plan,
+      isProPass,
+      proUntil
+    } = result.data;
 
     if (isPro) {
       if (isProSubscription) console.log('PRO PLAN USER (subscription)');
       if (isProDomain) console.log(`PRO PLAN USER (domain: ${teamDomain})`);
+      if (isProPass) console.log(`PRO PLAN USER (pass until ${proUntil})`);
       return {
         isPro: true,
         isProTeam: !!isProDomain,
         teamDomain,
-        plan: plan || null
+        plan: plan || null,
+        isProPass: !!isProPass,
+        proUntil: proUntil || null
       };
     }
     console.log('FREE PLAN USER');
-    return FREE_USER;
+    return { ...FREE_USER, proUntil: proUntil || null };
   } catch (error) {
     console.error('Error checking PRO plan:', error);
 
@@ -49,11 +65,12 @@ const isUserPro = async (user) => {
       // MAX is a superset of Pro — both unlock all Pro features.
       if (claimPlan === 'PRO' || claimPlan === 'MAX') {
         console.log('PRO PLAN USER (fallback - cached claims)');
-        // Claims fallback can only confirm subscription Pro, not team Pro.
+        // Claims fallback can only confirm subscription Pro — not team Pro,
+        // and not a one-time pass (proUntil lives in Firestore, not claims),
+        // so a pass holder reads as free until the callable recovers.
         return {
+          ...FREE_USER,
           isPro: true,
-          isProTeam: false,
-          teamDomain: null,
           plan: claimPlan
         };
       }

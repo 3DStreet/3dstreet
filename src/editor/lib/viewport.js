@@ -2,6 +2,32 @@ import { TransformControls } from './TransformControls.js';
 import { ShapeVertexControls } from './ShapeVertexControls.js';
 import { StreetNodeControls } from './gizmos/StreetNodeControls.js';
 import { SegmentWidthControls } from './gizmos/SegmentWidthControls.js';
+import { EasyGizmoControls } from './gizmos/EasyGizmoControls.js';
+import { installEasyGizmoOutline } from './gizmos/easyGizmoOutline.js';
+import { easyGizmoCommandName } from './gizmos/easyGizmoMessages.js';
+import {
+  FRAME_ORDER,
+  PER_ITEM_PASS_MAX_THROWS,
+  installEditorFrame
+} from './editorFrame.js';
+import {
+  getGroupBounds,
+  getGroupCenter,
+  groupFocusFrame,
+  holdGroupBounds,
+  releaseGroupBounds,
+  trackLiveGroupBounds
+} from './groups/groupBounds.js';
+import {
+  isHiddenInHierarchy,
+  isUserGroup,
+  userGroupAncestors
+} from './groups/groupModel.js';
+import { positionForRotationAboutCenter } from './groups/groupTransformMath.js';
+import { isSelectedClosedGroup } from './groups/groupScope.js';
+import { installGroupScope } from './groups/groupScopeController.js';
+import { createGroupStockGesture } from './groups/groupStockGesture.js';
+import { DEFAULT_TRANSFORM_MODE } from './transformModes.js';
 import { computeRibbonOutline } from '@/tested/street-path-utils.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
@@ -34,6 +60,7 @@ const tempBox3 = new THREE.Box3();
 const auxLocalBbox = new THREE.Box3();
 const tempVector3Size = new THREE.Vector3();
 const tempVector3Center = new THREE.Vector3();
+const auxCorner = new THREE.Vector3();
 
 // Selection / hover lines are drawn with three's screen-space "fat" lines:
 // WebGL ignores LineBasicMaterial.linewidth (always 1px), so the helper
@@ -97,12 +124,37 @@ const boxPairsScratch = new Float32Array(24 * 3);
 // tick marks, low enough that the top/side corners (90°) always do.
 const RIBBON_OUTLINE_THRESHOLD_DEG = 30;
 
+// A SkinnedMesh (rigged vehicles) caches its own boundingBox/boundingSphere
+// the first time either is asked for, computed from bindMatrixInverse, which
+// only SkinnedMesh.updateMatrixWorld refreshes (updateWorldMatrix does not).
+// A model measured right after it loads, before its first render, caches
+// bounds offset by its world placement: the selection box and click
+// hit-test then miss the model until a reload (#2117). Recompute both once
+// from a consistent pose; they are mesh-local, so they stay valid wherever
+// the entity moves, and recomputing them per frame (every vertex through the
+// skeleton) makes dragging a bus lag. The bind inverse is put back after: it
+// was taken at the parked measuring pose, and a click's per-triangle test
+// before the next render would read it.
+const skinnedBoundsRefreshed = new WeakSet();
+const savedBindMatrixInverse = new THREE.Matrix4();
+function refreshSkinnedBounds(object) {
+  object.traverse((node) => {
+    if (!node.isSkinnedMesh || skinnedBoundsRefreshed.has(node)) return;
+    savedBindMatrixInverse.copy(node.bindMatrixInverse);
+    node.updateMatrixWorld();
+    node.computeBoundingBox();
+    node.computeBoundingSphere();
+    node.bindMatrixInverse.copy(savedBindMatrixInverse);
+    skinnedBoundsRefreshed.add(node);
+  });
+}
+
 // Note on structure: the inherited BoxHelper (a 1px LineSegments) is kept
 // purely as the box's DATA source — its constructor, setFromObject and
 // update() write the 8 corner positions we then copy into the fat-line
 // twin (`fatBox`) that actually renders. Its own material is invisible for
 // the helper's whole life; that is intentional, not a bug.
-class OrientedBoxHelper extends THREE.BoxHelper {
+export class OrientedBoxHelper extends THREE.BoxHelper {
   constructor(object, color = 0xffff00, fill = false) {
     super(object, color);
     this.helperColor = color;
@@ -317,114 +369,117 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     // how Spark's SplatMesh handles matrix updates
     const isSplatEntity = this.object?.el?.hasAttribute('splat');
 
-    // this.object.parent is null when the tracked object has been detached from
-    // the scene graph (deleted/undo'd) while still hovered or selected; the
-    // parent-relative rezeroing below would then throw on matrixWorld.
-    const hasParent = this.object?.parent != null;
-
-    if (this.object !== undefined && hasParent && !isSplatEntity) {
-      auxEuler.copy(this.object.rotation);
-      auxLocalPosition.copy(this.object.position);
-      this.object.rotation.set(0, 0, 0);
-      this.object.position.set(0, 0, 0);
-
-      this.object.parent.matrixWorld.decompose(
-        auxPosition,
-        auxQuaternion,
-        auxScale
-      );
-      auxMatrix.compose(origin, identityQuaternion, auxScale);
-      this.object.parent.matrixWorld.copy(auxMatrix);
-      tempBox3.setFromObject(this.object);
-
-      // Batched entities have their original mesh tree stripped at batch time, so
-      // setFromObject finds no geometry under them. batch-models stashes a per-entity-local
-      // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in. A model
-      // still downloading has no mesh either; model-placeholder mirrors its ghost box's
-      // local bounds the same way (#2009).
-      const cachedBbox =
-        this.object._batchLocalBbox || this.object._placeholderBbox;
-      if (cachedBbox) {
-        this.object.updateWorldMatrix(false, false);
-        auxLocalBbox.copy(cachedBbox).applyMatrix4(this.object.matrixWorld);
-        tempBox3.union(auxLocalBbox);
-      }
-
-      if (!this.object.el?.getObject3D('mesh') && !cachedBbox) {
-        // For a group of several models to include the group origin.
-        tempBox3.expandByPoint(this.object.position);
-      }
-
-      if (this.boxFill) {
-        tempBox3.getSize(tempVector3Size);
-        tempBox3.getCenter(tempVector3Center);
-        this.boxFill.position.copy(tempVector3Center);
-        this.boxFill.scale.copy(tempVector3Size);
-      }
-    } else if (this.object !== undefined && isSplatEntity) {
-      const splatComponent = this.object.el.components['splat'];
-      const splatBox = splatComponent?.getBoundingBox?.();
-      if (splatBox) {
-        tempBox3.copy(splatBox);
-        // Transform the box to world space
-        tempBox3.applyMatrix4(this.object.matrixWorld);
-      } else {
-        tempBox3.setFromObject(this.object);
-      }
+    // this.object.parent is null when the tracked object has left the scene
+    // graph (deleted, undone, or a generated clone removed by the detach its
+    // own drag committed) while still hovered or selected. The parent-relative
+    // rezeroing below would throw on matrixWorld, and there is nothing to draw
+    // for it: the previous geometry would be kept and placed at the object's
+    // LOCAL position read as world, a ghost box somewhere else in the scene
+    // (#2054). Draw nothing until it is parented again. `this.visible` stays
+    // the caller's (objectselect and the hover path own it); only the parts
+    // this helper draws are hidden, and the next measured update shows them.
+    if (this.object !== undefined && this.object.parent == null) {
+      this.setPartsVisible(false);
+      return;
     }
 
-    if (!tempBox3.isEmpty()) {
-      const min = tempBox3.min;
-      const max = tempBox3.max;
+    // A user group has no geometry of its own: its box is its members' bounds
+    // in its own axes, never its origin, and is read from the bounds store
+    // rather than measured here (see groups/groupBounds.js).
+    if (this.object !== undefined && isUserGroup(this.object.el)) {
+      this.updateForGroup();
+      return;
+    }
 
-      const position = this.geometry.attributes.position;
-      const array = position.array;
+    // The bounds are measured at a temporary pose: the entity is parked at
+    // its parent's origin with no rotation, and the parent's world matrix is
+    // replaced by its scale alone. Everything from here to the restore runs
+    // under try/finally, because a throw while measuring (a skinned vehicle
+    // rig mid-load, a geometry stripped by batching between two frames) used
+    // to leave the ENTITY parked there for good: its object3D at 0 0 0 while
+    // its batched instance still drew where the user dropped it, the box and
+    // the click hit-test both wrong until a reload rebuilt the scene (#2054).
+    let zeroed = false;
+    try {
+      if (this.object !== undefined && !isSplatEntity) {
+        auxEuler.copy(this.object.rotation);
+        auxLocalPosition.copy(this.object.position);
+        this.object.rotation.set(0, 0, 0);
+        this.object.position.set(0, 0, 0);
+        zeroed = true;
 
-      array[0] = max.x;
-      array[1] = max.y;
-      array[2] = max.z;
-      array[3] = min.x;
-      array[4] = max.y;
-      array[5] = max.z;
-      array[6] = min.x;
-      array[7] = min.y;
-      array[8] = max.z;
-      array[9] = max.x;
-      array[10] = min.y;
-      array[11] = max.z;
-      array[12] = max.x;
-      array[13] = max.y;
-      array[14] = min.z;
-      array[15] = min.x;
-      array[16] = max.y;
-      array[17] = min.z;
-      array[18] = min.x;
-      array[19] = min.y;
-      array[20] = min.z;
-      array[21] = max.x;
-      array[22] = min.y;
-      array[23] = min.z;
-
-      position.needsUpdate = true;
-
-      this.geometry.computeBoundingSphere();
-      if (this.fatBox) {
-        setFatLinePositions(
-          this.fatBox,
-          indexedLinePairs(this.geometry, boxPairsScratch)
+        this.object.parent.matrixWorld.decompose(
+          auxPosition,
+          auxQuaternion,
+          auxScale
         );
-      }
-    }
+        auxMatrix.compose(origin, identityQuaternion, auxScale);
+        this.object.parent.matrixWorld.copy(auxMatrix);
+        this.object.updateWorldMatrix(false, true);
+        refreshSkinnedBounds(this.object);
+        tempBox3.setFromObject(this.object);
 
-    // Restore rotations (skip for splat entities since we didn't modify them).
-    if (this.object !== undefined && hasParent && !isSplatEntity) {
-      this.object.parent.matrixWorld.compose(
-        auxPosition,
-        auxQuaternion,
-        auxScale
+        // Batched entities have their original mesh tree stripped at batch time, so
+        // setFromObject finds no geometry under them. batch-models stashes a per-entity-local
+        // AABB — apply the entity's now-zeroed-rotation matrixWorld and union it in. A model
+        // still downloading has no mesh either; model-placeholder mirrors its ghost box's
+        // local bounds the same way (#2009).
+        const cachedBbox =
+          this.object._batchLocalBbox || this.object._placeholderBbox;
+        if (cachedBbox) {
+          this.object.updateWorldMatrix(false, false);
+          auxLocalBbox.copy(cachedBbox).applyMatrix4(this.object.matrixWorld);
+          tempBox3.union(auxLocalBbox);
+        }
+
+        if (!this.object.el?.getObject3D('mesh') && !cachedBbox) {
+          // For a group of several models to include the group origin.
+          tempBox3.expandByPoint(this.object.position);
+        }
+
+        if (this.boxFill) {
+          tempBox3.getSize(tempVector3Size);
+          tempBox3.getCenter(tempVector3Center);
+          this.boxFill.position.copy(tempVector3Center);
+          this.boxFill.scale.copy(tempVector3Size);
+        }
+      } else if (this.object !== undefined && isSplatEntity) {
+        const splatComponent = this.object.el.components['splat'];
+        const splatBox = splatComponent?.getBoundingBox?.(true, tempBox3);
+        if (splatBox) {
+          tempBox3.copy(splatBox);
+          // Transform the box to world space
+          tempBox3.applyMatrix4(this.object.matrixWorld);
+        } else {
+          tempBox3.setFromObject(this.object);
+        }
+      }
+
+      if (!tempBox3.isEmpty()) {
+        this.setBoxCorners(tempBox3);
+      }
+    } catch (error) {
+      console.error(
+        '[viewport] selection box measurement failed for',
+        this.object?.el?.id ||
+          this.object?.el?.getAttribute?.('data-layer-name') ||
+          this.object,
+        error
       );
-      this.object.rotation.copy(auxEuler);
-      this.object.position.copy(auxLocalPosition);
+    } finally {
+      // Restore the pose (skipped for splat entities, which were not modified).
+      if (zeroed) {
+        this.object.parent.matrixWorld.compose(
+          auxPosition,
+          auxQuaternion,
+          auxScale
+        );
+        this.object.rotation.copy(auxEuler);
+        this.object.position.copy(auxLocalPosition);
+        // Bounds were measured at a temporary pose. Restore descendant render
+        // matrices too: this helper can run after the scene's matrix traversal.
+        this.object.updateWorldMatrix(true, true);
+      }
     }
 
     // Update helper position for all objects
@@ -437,6 +492,107 @@ class OrientedBoxHelper extends THREE.BoxHelper {
     // After the box (and this helper's own world pose) are settled, swap in
     // the conforming overlay for curved street surfaces.
     this.updateConformingHighlight();
+  }
+
+  // The drawn box, in this helper's local frame (the tracked object's world
+  // position and rotation, without its scale).
+  setBoxCorners(box) {
+    const min = box.min;
+    const max = box.max;
+
+    const position = this.geometry.attributes.position;
+    const array = position.array;
+
+    array[0] = max.x;
+    array[1] = max.y;
+    array[2] = max.z;
+    array[3] = min.x;
+    array[4] = max.y;
+    array[5] = max.z;
+    array[6] = min.x;
+    array[7] = min.y;
+    array[8] = max.z;
+    array[9] = max.x;
+    array[10] = min.y;
+    array[11] = max.z;
+    array[12] = max.x;
+    array[13] = max.y;
+    array[14] = min.z;
+    array[15] = min.x;
+    array[16] = max.y;
+    array[17] = min.z;
+    array[18] = min.x;
+    array[19] = min.y;
+    array[20] = min.z;
+    array[21] = max.x;
+    array[22] = min.y;
+    array[23] = min.z;
+
+    position.needsUpdate = true;
+
+    this.geometry.computeBoundingSphere();
+    if (this.fatBox) {
+      setFatLinePositions(
+        this.fatBox,
+        indexedLinePairs(this.geometry, boxPairsScratch)
+      );
+    }
+  }
+
+  // A user group's box: its members' bounds in the group's own axes, scaled
+  // by the group's world scale because this helper takes only the group's
+  // world position and rotation. No bounds (an empty group, or members with
+  // no geometry yet) draws nothing; the group's center marker stands in.
+  updateForGroup() {
+    const box = getGroupBounds(this.object.el);
+    if (!box) {
+      this.setPartsVisible(false);
+      this.recordGroupPose();
+      return;
+    }
+    this.object.getWorldScale(auxScale);
+    tempBox3.makeEmpty();
+    tempBox3.expandByPoint(auxCorner.copy(box.min).multiply(auxScale));
+    tempBox3.expandByPoint(auxCorner.copy(box.max).multiply(auxScale));
+    this.setBoxCorners(tempBox3);
+    if (this.boxFill) {
+      tempBox3.getSize(tempVector3Size);
+      tempBox3.getCenter(tempVector3Center);
+      this.boxFill.position.copy(tempVector3Center);
+      this.boxFill.scale.copy(tempVector3Size);
+    }
+    this.object.getWorldQuaternion(this.quaternion);
+    this.object.getWorldPosition(this.position);
+    this.updateMatrix();
+    this.updateConformingHighlight();
+    this.recordGroupPose();
+  }
+
+  // The group's world matrix this box was last drawn for. Recorded only once
+  // an update has finished, so an update that throws is tried again.
+  recordGroupPose() {
+    this.groupPose ??= new THREE.Matrix4();
+    this.groupPose.copy(this.object.matrixWorld);
+  }
+
+  // Has the group this box is drawn for moved or turned since it was drawn?
+  // Its bounds are in its own axes, so a whole-group move leaves them as they
+  // were and only its world matrix tells.
+  groupPoseChanged() {
+    return !this.groupPose || !this.groupPose.equals(this.object.matrixWorld);
+  }
+
+  // Everything this helper draws: the box, its fill, and the curved-street
+  // overlays. updateConformingHighlight() re-derives which of them show on
+  // every measured update; this only turns them all off, for an object with
+  // nothing to draw.
+  setPartsVisible(visible) {
+    // BoxHelper's constructor runs update() before our fields exist
+    if (!this.fatBox) return;
+    this.fatBox.visible = visible;
+    if (this.boxFill) this.boxFill.visible = visible;
+    if (this.outlineLines) this.outlineLines.visible = visible;
+    if (this.conformGroup) this.conformGroup.visible = visible;
   }
 
   dispose() {
@@ -534,6 +690,15 @@ export function Viewport(inspector) {
   hoverBox.visible = false;
   sceneHelpers.add(hoverBox);
 
+  // The selected, closed group's hover: a dark magenta (#808) box saying
+  // "click to open", distinct from the red hover that previews a selection.
+  // It is not a scene surface, so nothing raycasting the scene can land on it.
+  const groupHoverBox = new OrientedBoxHelper(undefined, 0x880088, true);
+  groupHoverBox.visible = false;
+  groupHoverBox.raycast = function () {};
+  groupHoverBox.boxFill.raycast = function () {};
+  sceneHelpers.add(groupHoverBox);
+
   // A street bending along / straightening off its path re-meshes segments
   // in place — no mouseenter or entityupdate fires, so a helper snapshotted
   // before the change keeps showing the stale (box vs conforming) highlight.
@@ -543,7 +708,31 @@ export function Viewport(inspector) {
     if (selectionBox.visible && selectionBox.object) selectionBox.update();
   });
 
-  Events.on('raycastermouseenter', (el) => {
+  // The scene's own hover highlight, extracted so the easy gizmo's controls or
+  // the group's stock control's handles can suppress it while the cursor is
+  // on one of them — a landing square often sits out on open ground, and
+  // lighting up the street segment beneath it while the user aims at it is
+  // exactly wrong.
+  // On a group's stock handle, a click is the control's and never selects
+  // what lies beneath, so a red preview of that would be false.
+  let lastHoveredEl = null;
+  // The cursor is on one of the easy gizmo's controls, or on a handle of the
+  // group's stock control (their axisHoverChange). The router never attaches
+  // both.
+  let gizmoControlHovered = false;
+  // A gesture control's gesture has just committed and the pointer has not
+  // moved since. A drag-to-detach commit (#2011) removes the dragged clone and
+  // selects the entity created in its place, which re-attaches the gizmo to
+  // it; until the next pointer move the new gizmo does not know the cursor is
+  // still on the control the user released, so a raycaster poll in that gap
+  // would draw the hover box for whatever sits under the handle, usually the
+  // segment (#2054). The move that ends the hold is what resolves hover for
+  // real: the gizmo picks its control first (window capture), then the
+  // canvas listener below re-applies the last raycaster target if it did not.
+  let hoverHeldForPointerMove = false;
+  const hoverSuppressed = () => gizmoControlHovered || hoverHeldForPointerMove;
+
+  function applyHoverHighlight(el) {
     // update hoverBox to match el.object3D bounding box
     //
     // Hover-highlight parity (KD-27). Street-level OFF: the hover box is
@@ -565,15 +754,105 @@ export function Viewport(inspector) {
           ? inspector.cursor.components.cursor
           : null;
       const raw = cursorComp ? cursorComp.intersectedEl : null;
-      if (raw) target = raw;
+      // Inside a closed group, or anywhere while a group is open, a click
+      // selects by the group rules rather than teleporting, so hover shows
+      // what the click selects.
+      if (raw && !groupOpenOrHitInGroup(raw)) target = raw;
     }
     if (!target || target === inspector.selectedEntity) return;
+    // The hovered entity can leave the DOM under the cursor: a generated
+    // clone is removed by the detach its own drag committed while the
+    // raycaster still names it. Nothing sensible can be drawn for it (#2054).
+    if (!target.isConnected || !target.object3D?.parent) {
+      hoverBox.visible = false;
+      return;
+    }
     hoverBox.visible = true;
     hoverBox.setFromObject(target.object3D);
+  }
+
+  // Is a group open, or is `rawEl` inside a user group? Then a click on it in
+  // street-level navigation selects by the group rules instead of teleporting.
+  function groupOpenOrHitInGroup(rawEl) {
+    return (
+      inspector.groupScope.openStack.length > 0 ||
+      userGroupAncestors(rawEl).length > 0
+    );
+  }
+
+  // Shown while a click at the hovered spot would open the selected closed
+  // group (its box or marker is the nearest target). Independent of the red
+  // hover and of the gizmo's control hover: over a handle on the box, both
+  // show.
+  function applyGroupHover(el) {
+    if (pressedGroup) return;
+    const show =
+      el === inspector.groupScope.hoverOpens &&
+      isSelectedClosedGroup(
+        el,
+        inspector.selectedEntity,
+        inspector.groupScope.openElements()
+      );
+    if (!show) {
+      groupHoverBox.visible = false;
+      return;
+    }
+    groupHoverBox.visible = true;
+    groupHoverBox.setFromObject(el.object3D);
+  }
+
+  // A press held on a group's handle over the selected closed group's box:
+  // releasing it without moving opens the group, so the magenta box shows,
+  // a little stronger, until the press ends, for touch as much as for mouse.
+  const GROUP_HOVER_FILL = groupHoverBox.boxFill.material.opacity;
+  const GROUP_PRESSED_FILL = 0.4;
+  let pressedGroup = null;
+  function showPressedGroup(groupEl) {
+    pressedGroup = groupEl;
+    groupHoverBox.boxFill.material.opacity = GROUP_PRESSED_FILL;
+    groupHoverBox.visible = true;
+    groupHoverBox.setFromObject(groupEl.object3D);
+  }
+  function clearPressedGroup() {
+    if (!pressedGroup) return;
+    pressedGroup = null;
+    groupHoverBox.boxFill.material.opacity = GROUP_HOVER_FILL;
+    if (lastHoveredEl) applyGroupHover(lastHoveredEl);
+    else groupHoverBox.visible = false;
+  }
+
+  Events.on('raycastermouseenter', (el) => {
+    lastHoveredEl = el;
+    applyGroupHover(el);
+    if (hoverSuppressed()) return;
+    applyHoverHighlight(el);
   });
 
+  function holdHoverUntilPointerMove() {
+    hoverHeldForPointerMove = true;
+    // Registered once per hold: a second add of the same listener is a no-op.
+    inspector.container.addEventListener('pointermove', endHoverHold, {
+      once: true
+    });
+  }
+  function endHoverHold() {
+    if (!hoverHeldForPointerMove) return;
+    hoverHeldForPointerMove = false;
+    if (!hoverSuppressed() && lastHoveredEl) applyHoverHighlight(lastHoveredEl);
+  }
+
+  // Deliberately not gated: entry is blocked while a gizmo control is hovered,
+  // exit never is. A stale highlight can always be cleared; what must not
+  // happen is one being re-armed under the gizmo.
   Events.on('raycastermouseleave', (el) => {
+    lastHoveredEl = null;
     hoverBox.visible = false;
+    if (!pressedGroup) groupHoverBox.visible = false;
+  });
+  // What the magenta box stood for is gone: the group opened or closed.
+  Events.on('groupscopechanged', () => {
+    clearPressedGroup();
+    groupHoverBox.visible = false;
   });
 
   function updateHelpers(object) {
@@ -586,7 +865,13 @@ export function Viewport(inspector) {
 
   const camera = inspector.camera;
   const transformControls = new TransformControls(camera, inspector.container);
-  transformControls.size = 0.75;
+  // A second stock control, for user groups in the Advanced move and rotate
+  // modes. It has no canvas listeners of its own: groupStockGesture owns its
+  // presses and drives it (see there). Every setting the item control takes
+  // is given to both.
+  const groupTransformControls = new TransformControls(camera, null);
+  const stockControls = [transformControls, groupTransformControls];
+  stockControls.forEach((stock) => (stock.size = 0.75));
 
   // A second helper, alongside the transform controls: vertex handles for the selected
   // shape. It reads the inspector camera fresh each frame rather than being
@@ -623,6 +908,18 @@ export function Viewport(inspector) {
     camera,
     inspector.container
   );
+  // Published for the same reason shapeVertexControls is: the easy gizmo has to
+  // ask, positively, whether one of these handles is under a press before it
+  // claims one, and a rule naming a control it cannot reach is not a rule. Read
+  // only — nothing outside this closure writes them.
+  inspector.streetNodeControls = streetNodeControls;
+  inspector.segmentWidthControls = segmentWidthControls;
+
+  // The app's transform mode, tracked here because `'easy'` deliberately never
+  // reaches TransformControls.setMode() — see the transformmodechange handler.
+  // Published read-only so a toolbar mounted later starts from the live mode.
+  let transformMode = DEFAULT_TRANSFORM_MODE;
+  inspector.transformMode = transformMode;
 
   // Pose snapshot taken on the gizmo's mouseDown, BEFORE TransformControls
   // mutates the object. The undo command can't capture this itself:
@@ -791,12 +1088,232 @@ export function Viewport(inspector) {
     });
   });
 
+  // The wiring for a control that owns its gestures and commits each one
+  // whole: the easy gizmo, and a group's stock control (groupStockGesture).
+  // Both speak the same events.
+  function wireGestureControl(emitter, commandName) {
+    // A group's box is held for the length of a gesture on it: the handles
+    // and the center stay where the gesture started, and nothing re-measures
+    // the members while they move together.
+    let heldGroup = null;
+    emitter.addEventListener('mouseDown', () => {
+      controls.enabled = false;
+      hoverBox.visible = false;
+      if (isUserGroup(emitter.el)) {
+        heldGroup = emitter.el;
+        holdGroupBounds(heldGroup);
+      }
+    });
+    emitter.addEventListener('mouseUp', () => {
+      controls.enabled = true;
+      if (heldGroup) {
+        releaseGroupBounds(heldGroup);
+        heldGroup = null;
+      }
+    });
+    // A press held on a group's handle: the magenta box while it would open
+    // the group, and the click it turns out to be.
+    emitter.addEventListener('handlePress', (evt) => {
+      const hits = mouseCursor.groupHitsAt(evt.clientX, evt.clientY);
+      const opens = inspector.groupScope.handleClickOpens(hits);
+      if (opens) showPressedGroup(opens);
+    });
+    emitter.addEventListener('handlePressEnd', clearPressedGroup);
+    emitter.addEventListener('handleClick', (evt) => {
+      inspector.groupScope.applyHandleClick(
+        mouseCursor.groupHitsAt(evt.clientX, evt.clientY),
+        evt.detail
+      );
+    });
+    emitter.addEventListener('objectChange', () => {
+      const object = emitter.object;
+      if (!object) return;
+      // Batched models and descendants render outside the entity hierarchy.
+      syncBatchedSubtree(object.el);
+      selectionBox.setFromObject(object);
+      updateHelpers(object);
+      // Keeps the properties panel in step with the drag. An event rather than
+      // a command: the whole gesture is committed once, as one undo step, on
+      // release. Only for the selected entity, because a detach caused by a
+      // new selection restores the old one after the selection has moved on,
+      // and its panel is being replaced.
+      if (emitter.el !== inspector.selectedEntity) return;
+      const rotating = emitter.axis === 'rotate';
+      const d = THREE.MathUtils.radToDeg;
+      Events.emit('entityupdate', {
+        entity: object.el,
+        component: rotating ? 'rotation' : 'position',
+        value: rotating
+          ? `${d(object.rotation.x)} ${d(object.rotation.y)} ${d(
+              object.rotation.z
+            )}`
+          : `${object.position.x} ${object.position.y} ${object.position.z}`
+      });
+      // A group turns about its center, so its origin moves as it turns.
+      if (rotating && isUserGroup(object.el)) {
+        Events.emit('entityupdate', {
+          entity: object.el,
+          component: 'position',
+          value: `${object.position.x} ${object.position.y} ${object.position.z}`
+        });
+      }
+    });
+    // The scene's hover box tracks the gizmo's own hover state rather than
+    // being cleared once on mouseDown: hovering a control and moving away
+    // without pressing is the commonest interaction with it, and the selection
+    // raycaster re-arms the box on its next poll.
+    emitter.addEventListener('axisHoverChange', (evt) => {
+      gizmoControlHovered = !!evt.axis;
+      if (gizmoControlHovered) {
+        hoverBox.visible = false;
+        return;
+      }
+      if (hoverHeldForPointerMove) return;
+      // detach() dispatches this lift with no object: the gizmo is leaving
+      // its entity because the selection is changing, not because the cursor
+      // left a control. Re-applying here drew the last raycaster target (the
+      // segment under the handle) at the moment a detach selected the entity
+      // it created (#2054); the next pointer move or raycaster poll re-arms.
+      if (!emitter.el) return;
+      if (lastHoveredEl) applyHoverHighlight(lastHoveredEl);
+    });
+    // Dispatched as 'multi' even for a single change, and always with a name.
+    // History coalesces updatable commands on entity + component within half a
+    // second with no notion of a gesture, so a bare entityupdate would merge
+    // two separate drags of the same object into one undo entry; a multi
+    // command opts out of that. It also defaults its own label to "Multiple
+    // changes", so every gesture supplies its own.
+    emitter.addEventListener('commitDrag', (evt) => {
+      holdHoverUntilPointerMove();
+      const changed = evt.changes.filter((c) => c.value !== c.oldValue);
+      if (changed.length === 0) return;
+      const commands = changed.map((c) => [
+        'entityupdate',
+        { entity: evt.entity, ...c }
+      ]);
+      inspector.execute('multi', commands, commandName(evt.name));
+      // Visitor build session: an object dragged out of its build area snaps
+      // back (build-area system, docs/visitor-build.md).
+      if (useStore.getState().buildSessionActive) {
+        const position = evt.changes.find((c) => c.component === 'position');
+        sceneEl.systems['build-area']?.onGizmoRelease(evt.entity, {
+          position: position?.oldValue
+        });
+      }
+    });
+  }
+
   sceneHelpers.add(transformControls.getHelper());
   // Added once, here — attach()/detach() only arm and disarm it, they do not
   // re-add it.
   sceneHelpers.add(shapeVertexControls);
   sceneHelpers.add(streetNodeControls);
   sceneHelpers.add(segmentWidthControls);
+  // The easy gizmo is the default transform control, so it is constructed with
+  // the viewport. It is one combined move/rotate handle that follows the
+  // ground: the stock gizmo's alternative for a transform mode, not an
+  // additive handle.
+  const easyGizmoControls = new EasyGizmoControls(
+    inspector.camera,
+    inspector.container,
+    sceneEl
+  );
+  easyGizmoControls.registry.add(
+    installEasyGizmoOutline(sceneEl, easyGizmoControls)
+  );
+  wireGestureControl(easyGizmoControls, easyGizmoCommandName);
+  sceneHelpers.add(easyGizmoControls);
+  inspector.easyGizmoControls = easyGizmoControls;
+
+  // A group's stock control. Its drawing is added to the helper scene when it
+  // attaches (so after the item control's, added above) and removed when it
+  // detaches.
+  const groupStockGesture = createGroupStockGesture({
+    controls: groupTransformControls,
+    canvas: inspector.container,
+    sceneHelpers,
+    isEditorOpen: () => !!inspector.opened
+  });
+  wireGestureControl(groupStockGesture, easyGizmoCommandName);
+  inspector.groupStockGesture = groupStockGesture;
+
+  // How the easy gizmo handles a user group (see EasyGizmoControls.attach).
+  // A group has no base of its own: its handles stand at its center on the
+  // bottom of its members' box, a move keeps its height, and it turns about
+  // the center. A click on a handle can mean "open the group", so presses are
+  // held until they are known to be drags. The group's center is what the
+  // gizmo calls its pivot.
+  const groupGizmoPolicy = {
+    pivotLocal: getGroupCenter,
+    localBox: getGroupBounds,
+    positionForRotation: positionForRotationAboutCenter,
+    followsGround: false,
+    endsGestureOnDescendantGeometry: false,
+    deferPress: true
+  };
+
+  // Work that must see each frame's final transforms before it is drawn runs
+  // in this window; the selected group's bounds are kept current there.
+  const editorFrame = installEditorFrame(sceneEl);
+  trackLiveGroupBounds(editorFrame, sceneEl);
+  // Installed before the selection handlers below, so the open groups follow
+  // a selection before the controls are routed for it.
+  installGroupScope(inspector, editorFrame, {
+    lines: {
+      createLineMaterial: createFatLineMaterial,
+      setLinePositions: setFatLinePositions
+    }
+  });
+
+  // A drawn group's box moved or resized this frame (emitted from the frame
+  // window, after the scene's matrix update, so each redrawn helper updates
+  // its own world matrix too).
+  Events.on('groupboundschanged', (groupEl) => {
+    [selectionBox, hoverBox, groupHoverBox].forEach((helper) => {
+      if (!helper.visible || helper.object?.el !== groupEl) return;
+      helper.update();
+      helper.updateMatrixWorld(true);
+    });
+    // The gizmo was laid out earlier in this frame from the old box; lay it
+    // out again so its handles are drawn under the members this frame.
+    if (easyGizmoControls.el === groupEl) {
+      easyGizmoControls.updateMatrixWorld(true);
+    }
+    if (groupStockGesture.el === groupEl) {
+      groupTransformControls.getHelper().updateMatrixWorld(true);
+    }
+  });
+
+  // A group moved or turned as a whole keeps its bounds, so the handler above
+  // never hears of it, and no hover event comes either while the cursor stays
+  // on the same group. Each box drawn for a group follows the group's world
+  // matrix instead, in the frame it changes. After the bounds pass, so a
+  // resize and a move in one frame are drawn together.
+  const groupBoxHelpers = [selectionBox, hoverBox, groupHoverBox];
+  const failingGroupBoxHelpers = new Set();
+  editorFrame.register(
+    () => {
+      for (const helper of groupBoxHelpers) {
+        if (!helper.visible || !isUserGroup(helper.object?.el)) continue;
+        if (!helper.groupPoseChanged()) continue;
+        try {
+          helper.update();
+          helper.updateMatrixWorld(true);
+          failingGroupBoxHelpers.delete(helper);
+        } catch (error) {
+          // Keep its last pose this frame and try again next frame.
+          if (!failingGroupBoxHelpers.has(helper)) {
+            failingGroupBoxHelpers.add(helper);
+            console.error('[viewport] re-posing a group box failed', error);
+          }
+        }
+      }
+    },
+    {
+      order: FRAME_ORDER.groupHelpers,
+      maxConsecutiveThrows: PER_ITEM_PASS_MAX_THROWS
+    }
+  );
 
   Events.on('entityupdate', (detail) => {
     const object = detail.entity.object3D;
@@ -879,9 +1396,10 @@ export function Viewport(inspector) {
       if (perspective) {
         sceneEl.camera = perspective;
         inspector.camera = perspective;
-        transformControls.camera = perspective;
+        stockControls.forEach((stock) => (stock.camera = perspective));
         streetNodeControls.camera = perspective;
         segmentWidthControls.camera = perspective;
+        easyGizmoControls.camera = perspective;
         controls.setCamera(perspective);
         updateAspectRatio();
         controls.handlePlanViewRequest();
@@ -889,17 +1407,19 @@ export function Viewport(inspector) {
       }
     }
     controls.setCamera(data.camera);
-    transformControls.camera = data.camera;
+    stockControls.forEach((stock) => (stock.camera = data.camera));
     streetNodeControls.camera = data.camera;
     segmentWidthControls.camera = data.camera;
+    easyGizmoControls.camera = data.camera;
     updateAspectRatio();
   });
 
   function enableControls() {
     mouseCursor.enable();
-    transformControls.enabled = true;
+    stockControls.forEach((stock) => (stock.enabled = true));
     streetNodeControls.enabled = true;
     segmentWidthControls.enabled = true;
+    easyGizmoControls.enabled = true;
     controls.enabled = true;
   }
   enableControls();
@@ -912,20 +1432,57 @@ export function Viewport(inspector) {
     transformControls.detach();
     streetNodeControls.detach();
     segmentWidthControls.detach();
+    // Called on EVERY selection, including ones the easy gizmo never attached
+    // to, so its detach is idempotent; so are the group's.
+    easyGizmoControls.detach();
+    groupStockGesture.detach();
   }
 
-  function attachStockGizmo(el) {
+  // Which handles the stock gizmo offers for the current mode and selection.
+  // Advanced rotate shows all three rings: yaw-only rotation is the easy
+  // gizmo's job now, so the stock gizmo is where pitch and roll live. The one
+  // exception is an entity carrying `data-transform-yaw-only` (shapes, whose
+  // vertex editing assumes a horizontal plane): it keeps its Y ring alone, so
+  // the gizmo never offers a drag the transform guard would refuse on commit.
+  function applyStockGizmoAxes(el) {
+    const yawOnly =
+      transformControls.mode === 'rotate' &&
+      !!el?.hasAttribute?.('data-transform-yaw-only');
+    transformControls.showX = !yawOnly;
+    transformControls.showY = true;
+    transformControls.showZ = !yawOnly;
+  }
+
+  function attachStockGizmo(el, forceMode) {
     transformControls.attach(el.object3D);
+    if (forceMode) {
+      if (transformControls.mode !== forceMode) {
+        transformControls.setMode(forceMode);
+      }
+      applyStockGizmoAxes(el);
+      return;
+    }
     // Selecting a no-scale entity while in scale mode: fall back to
-    // translate so the gizmo never scales it.
+    // translate so the gizmo never scales it. A user group is left out on
+    // purpose: its handles are a separate control, so the shared item control
+    // stays in Scale for the next item selected.
     if (
       transformControls.mode === 'scale' &&
       el.hasAttribute('data-transform-no-scale')
     ) {
       transformControls.setMode('translate');
-      transformControls.showX = true;
-      transformControls.showY = true;
-      transformControls.showZ = true;
+    }
+    applyStockGizmoAxes(el);
+  }
+
+  function attachStreetHandles(el) {
+    if (el.components['managed-street']) {
+      streetNodeControls.attach(el);
+    } else if (
+      el.components['street-segment'] &&
+      el.parentElement?.components?.['managed-street']
+    ) {
+      segmentWidthControls.attach(el);
     }
   }
 
@@ -947,42 +1504,91 @@ export function Viewport(inspector) {
     ) {
       return;
     }
-    // Segments of a managed street are the one selection that gets NO stock
-    // gizmo (#1806): street-align owns segment transforms, so any move/rotate
-    // applied here would be silently reset by the next street re-layout.
-    // Their handles are the width bars (plus sidebar width/elevation and the
-    // reorder buttons); the selection highlight box still shows.
+    // Visitor build session: only a visitor object is ever selectable (see
+    // the session guard below), and it always gets the easy gizmo, held to
+    // its build area's shape: move along it and, when the area allows it,
+    // yaw. Never the stock gizmo, and never the editor's transform mode.
+    if (useStore.getState().buildSessionActive) {
+      if (!el.hasAttribute('data-viewer-added')) return;
+      easyGizmoControls.rotateEnabled =
+        el.parentEl?.components?.['build-area']?.data?.allowRotate !== false;
+      easyGizmoControls.attach(el);
+      return;
+    }
+    easyGizmoControls.rotateEnabled = true;
+    // street-align owns managed-segment transforms; only width bars apply.
     if (isManagedStreetSegment(el)) {
       segmentWidthControls.attach(el);
       return;
     }
-    attachStockGizmo(el);
-    if (el.components['managed-street']) {
-      streetNodeControls.attach(el);
+    // A user group gets no handles while it is hidden. Otherwise: the easy
+    // gizmo in easy mode; in Advanced, its own stock control at its center,
+    // rotating about Y only. A group is never scaled, so scale mode gives it
+    // the move control, as it does a managed street.
+    if (isUserGroup(el)) {
+      if (isHiddenInHierarchy(el)) return;
+      if (transformMode === 'easy') {
+        easyGizmoControls.attach(el, groupGizmoPolicy);
+      } else {
+        groupStockGesture.attach(
+          el,
+          transformMode === 'scale' ? 'translate' : transformMode
+        );
+      }
+      return;
     }
+    if (transformMode === 'easy') {
+      if (easyGizmoControls.accepts(el)) {
+        easyGizmoControls.attach(el);
+      } else {
+        // Other unsupported entities retain the stock translate control.
+        attachStockGizmo(el, 'translate');
+      }
+    } else {
+      attachStockGizmo(el);
+    }
+    attachStreetHandles(el);
   }
 
+  // Hiding or showing the selected group, or a group around it, takes its
+  // handles away or gives them back. The layer panel's eye is a command, so
+  // the history change after it (or its undo or redo) announces it.
+  function followSelectedGroupVisibility() {
+    const el = inspector.selectedEntity;
+    if (!isUserGroup(el)) return;
+    // The handles belong on a shown group and not on a hidden one.
+    const attached = easyGizmoControls.el === el || groupStockGesture.el === el;
+    const hidden = isHiddenInHierarchy(el);
+    if (attached ? hidden : !hidden) attachControlsForSelection();
+  }
+  Events.on('historychanged', followSelectedGroupVisibility);
+
   Events.on('transformmodechange', (mode) => {
+    transformMode = mode;
+    inspector.transformMode = mode;
+    // `'easy'` MUST NOT REACH setMode. TransformControls stores the mode
+    // verbatim and its gizmo then indexes a picker table by it on every matrix
+    // update, with no guard and regardless of visibility — so an unknown mode
+    // is a TypeError on every frame from then on, which detaching does not
+    // avoid.
+    if (mode === 'easy') {
+      if (inspector.selectedEntity) attachControlsForSelection();
+      return;
+    }
     // Some entities opt out of scale (`data-transform-no-scale`) — shapes and
     // managed streets, whose size is owned by their own editing affordances
     // (vertex handles; segment widths). Fall back to translate for those.
+    // A user group is left out on purpose: its handles are a separate
+    // control, so the shared item control stays in Scale for the next item
+    // selected.
     if (
       mode === 'scale' &&
       inspector.selectedEntity?.hasAttribute?.('data-transform-no-scale')
     ) {
       mode = 'translate';
     }
-    transformControls.setMode(mode);
-    // Restrict rotation to the Y axis only.
-    if (mode === 'rotate') {
-      transformControls.showX = false;
-      transformControls.showY = true;
-      transformControls.showZ = false;
-    } else {
-      transformControls.showX = true;
-      transformControls.showY = true;
-      transformControls.showZ = true;
-    }
+    stockControls.forEach((stock) => stock.setMode(mode));
+    applyStockGizmoAxes(inspector.selectedEntity);
 
     // If there's a selected entity, reattach the appropriate controls
     if (inspector.selectedEntity) {
@@ -991,15 +1597,15 @@ export function Viewport(inspector) {
   });
 
   Events.on('translationsnapchanged', (dist) => {
-    transformControls.setTranslationSnap(dist);
+    stockControls.forEach((stock) => stock.setTranslationSnap(dist));
   });
 
   Events.on('rotationsnapchanged', (dist) => {
-    transformControls.setRotationSnap(dist);
+    stockControls.forEach((stock) => stock.setRotationSnap(dist));
   });
 
   Events.on('transformspacechanged', (space) => {
-    transformControls.setSpace(space);
+    stockControls.forEach((stock) => stock.setSpace(space));
   });
 
   // Torn down and re-armed on every selection change, so the listener never
@@ -1008,6 +1614,7 @@ export function Viewport(inspector) {
 
   Events.on('objectselect', (object) => {
     hoverBox.visible = false;
+    groupHoverBox.visible = false;
     selectionBox.visible = false;
     detachAllTransformControls();
     // Not part of detachAllTransformControls(): the router calls that at the
@@ -1089,7 +1696,12 @@ export function Viewport(inspector) {
     // Feature-discovery: count the first focus-on-entity (double-click,
     // F-key, or sidebar focus button all route through this event).
     captureNavDiscovery('focus');
-    controls.focus(object);
+    // A group is framed by its members around its center, not by its origin.
+    if (isUserGroup(object?.el)) {
+      controls.focus(object, groupFocusFrame(object.el));
+    } else {
+      controls.focus(object);
+    }
   });
 
   // Cursor-aware double-click navigation (KD-23; street-level nav only —
@@ -1192,7 +1804,10 @@ export function Viewport(inspector) {
         // Features that need a scene-driven camera (drive mode, WebXR)
         // borrow the rig via mode-manager and give it back.
         mouseCursor.disable();
-        transformControls.enabled = false;
+        // A group drag in progress is put back: nothing is kept from a
+        // gesture the editor closed under.
+        groupStockGesture.cancel('editorclosed');
+        stockControls.forEach((stock) => (stock.enabled = false));
         streetNodeControls.enabled = false;
         segmentWidthControls.enabled = false;
         controls.enabled = true;
@@ -1206,6 +1821,72 @@ export function Viewport(inspector) {
             element.style.display = 'block';
           });
         modeManager?.setMode('viewer');
+      }
+    }
+  );
+
+  // Visitor build session (build-area, docs/visitor-build.md): while a
+  // play session in the viewer has a buildable area, the selection
+  // raycaster and the easy gizmo come back on for the visitor's own
+  // objects (raycaster.js resolves clicks to `data-viewer-added` only).
+  // Inspector.close() hid every helper and paused the cursor entity, so
+  // both are re-armed here and put back when the session ends; the grid
+  // stays hidden. The easy gizmo runs in its viewer-session mode (active
+  // with the editor closed, height held so objects stay on the shape, no
+  // vertical or landing handles); the editor's transform mode is never
+  // touched, so a Stop into the editor finds its tools as it left them.
+  let buildSessionRestore = null;
+  // During a session only visitor objects may be selected, whatever set
+  // the selection: the author's editor selection still standing at Start,
+  // the nearest sibling the remove command picks after a delete (a shape
+  // vertex, when the last visitor object goes), or an undo/redo. Any
+  // other entity selected mid-session could be moved, and Stop trims that
+  // move from the undo stack while the scene keeps it.
+  const isVisitorObject = (el) => !!el?.hasAttribute?.('data-viewer-added');
+  Events.on('entityselect', (entity) => {
+    if (!useStore.getState().buildSessionActive) return;
+    if (entity && !isVisitorObject(entity)) inspector.selectEntity(null);
+  });
+  useStore.subscribe(
+    (state) => state.buildSessionActive,
+    (active) => {
+      if (active) {
+        if (
+          inspector.selectedEntity &&
+          !isVisitorObject(inspector.selectedEntity)
+        ) {
+          inspector.selectEntity(null);
+        }
+        buildSessionRestore = {
+          gridVisible: grid.visible,
+          originVisible: originIndicator.visible
+        };
+        grid.visible = false;
+        originIndicator.visible = false;
+        inspector.sceneHelpers.visible = true;
+        inspector.cursor.play();
+        mouseCursor.enable();
+        easyGizmoControls.viewerSession = true;
+        easyGizmoControls.enabled = true;
+        if (inspector.selectedEntity) attachControlsForSelection();
+        return;
+      }
+      if (!buildSessionRestore) return;
+      const restore = buildSessionRestore;
+      buildSessionRestore = null;
+      detachAllTransformControls();
+      easyGizmoControls.viewerSession = false;
+      easyGizmoControls.rotateEnabled = true;
+      if (inspector.selectedEntity) inspector.selectEntity(null);
+      grid.visible = restore.gridVisible;
+      originIndicator.visible = restore.originVisible;
+      // An editor reopen re-arms its own tools (the subscription above);
+      // a session ending inside the viewer goes back to the static scene.
+      if (!useStore.getState().isInspectorEnabled) {
+        mouseCursor.disable();
+        inspector.cursor.pause();
+        transformControls.enabled = false;
+        inspector.sceneHelpers.visible = false;
       }
     }
   );

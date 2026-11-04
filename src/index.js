@@ -28,7 +28,9 @@ require('./aframe-components/bvh-geometry.js');
 require('./aframe-components/street-geo.js');
 require('./aframe-components/geo-flatten.js');
 require('./aframe-components/street-environment.js');
+require('./aframe-components/flat-shadow.js'); // unlit material that shows received shadows (#2123)
 require('./aframe-components/intersection.js');
+require('./aframe-components/group-center.js'); // a user-set group center; nothing in the editor writes it yet
 require('./aframe-components/managed-intersection.js');
 require('./aframe-components/obb-clipping.js');
 require('./aframe-components/street-path.js');
@@ -54,6 +56,7 @@ require('./aframe-components/osm-streets.js');
 require('./aframe-components/mode-manager.js');
 require('./aframe-components/play/play-mode.js');
 require('./aframe-components/play/viewer-start.js');
+require('./aframe-components/play/build-area.js');
 require('./aframe-components/play/play-mode-vehicle.js');
 require('./aframe-components/play/race-target.js');
 require('./aframe-components/play/collision-marker.js');

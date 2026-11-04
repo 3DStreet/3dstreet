@@ -172,6 +172,9 @@ async function main() {
           console.error(`  needs translation: ${toTranslate.slice(0, 20).join(', ')}` +
             (toTranslate.length > 20 ? ` … (+${toTranslate.length - 20})` : ''));
         }
+      } else if (Object.keys(existing).join() !== Object.keys(existing).sort().join()) {
+        drift = true;
+        console.error(`[${locale}] DRIFT: keys are not sorted.`);
       } else {
         console.log(`[${locale}] up to date (${Object.keys(existing).length} keys).`);
       }

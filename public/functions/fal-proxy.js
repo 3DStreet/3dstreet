@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
 const { REPLICATE_MODELS } = require('./replicate-models.js');
 const { assertAppCheck } = require('./app-check.js');
+const { buildFalImagePayload } = require('./image-model-inputs.js');
 // Shared fal plumbing: webhook-attached queue submit URL, submit-failure
 // refund, and gallery-metadata sanitizer. One-directional require (fal-3d.js
 // requires nothing from this module), so there's no cycle.
@@ -14,8 +15,8 @@ const {
   sanitizeNotifyBatch
 } = require('./fal-3d.js');
 
-// fal.ai image generation (flux-2 edit family). Asynchronous since #1835:
-// stage the input, write a pending `kind: 'image'` / `provider: 'fal'` job to
+// fal.ai image generation (FLUX.2 / FLUX.3 / Muse edit endpoints).
+// Asynchronous since #1835: stage the input, write a pending `kind: 'image'` / `provider: 'fal'` job to
 // the async queue, charge tokens at submit (refunded once on failure), submit
 // to fal's queue (with a completion webhook, #1832), and return the jobId
 // immediately. The old synchronous form polled fal inline for up to ~4 min
@@ -222,21 +223,15 @@ const generateFalImage = functions
         relatedModel: modelConfig.name
       });
 
-      // Build the fal.ai request payload
-      const falPayload = {
-        prompt: prompt,
-        image_urls: [imageUrl],
-        image_size: image_size, // Preset string or {width, height} object
-        guidance_scale: guidance_scale,
-        num_inference_steps: num_inference_steps,
-        enable_safety_checker: true,
-        output_format: 'jpeg'
-      };
-
-      // Add LoRA configuration if model has loras
-      if (modelConfig.loras && modelConfig.loras.length > 0) {
-        falPayload.loras = modelConfig.loras;
-      }
+      // Build the fal.ai request payload; the model config's `payloadStyle`
+      // picks the shape.
+      const falPayload = buildFalImagePayload(modelConfig, {
+        prompt,
+        imageUrl,
+        imageSize: image_size,
+        guidanceScale: guidance_scale,
+        numInferenceSteps: num_inference_steps
+      });
 
       console.log(`Submitting fal.ai image job for user ${userId} with model ${model_id} (cost: ${tokenCost} tokens)`);
 

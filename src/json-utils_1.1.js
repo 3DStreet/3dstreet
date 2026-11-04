@@ -10,14 +10,25 @@ import { beginBatching, BATCHING_ENABLED } from './batch-models';
 import { decodeCameraStateFromParam } from './editor/lib/cameraUtils';
 import JSONCrush from 'jsoncrush';
 import {
+  DEFLATE_HASH_PREFIX,
+  decodeSceneHash
+} from './tested/scene-hash-codec.js';
+import {
   migrateSegmentLevelToElevation,
   migrateSegmentBuildingType,
   migrateSegmentHatchedSurface,
   migratePedestriansDirection,
   migrateShowBuildingsFlag
 } from './tested/street-segment-utils';
+import { isStreetmixURL } from './tested/streetmix-utils.js';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
+import {
+  describeConformedItems,
+  conformToKindLimits
+} from './tested/group-pose';
+import { readMixinPose } from './editor/lib/groups/groupLevel.js';
+import { isProjectPassHash, isRedeemHash } from './tested/project-pass-link.js';
 import {
   getSceneIdFromPathname,
   getSceneIdFromHash,
@@ -116,7 +127,7 @@ function getElementData(entity, options = {}) {
   if (
     !entity.isEntity ||
     (entity.classList.contains('autocreated') && !options.includeAutocreated) ||
-    entity.hasAttribute('data-temporary-file')
+    (entity.hasAttribute('data-temporary-file') && !options.includeTemporary)
   ) {
     // autocreated entities are procedural output (regenerated on load from
     // their generator component's config) and are skipped on save. Callers
@@ -126,7 +137,9 @@ function getElementData(entity, options = {}) {
     // (a gltf-model/src pointing at a transient blob: URL). Skipping these
     // honors the design brief's "Local only — will not persist" guarantee.
     // The marker is removed by uploadAndPlaceAsset.js once the cloud URL
-    // is wired up.
+    // is wired up. Moving an entity in the layer panel recreates it from this
+    // data, so that caller passes includeTemporary to keep a pending upload
+    // (and its marker) through the move.
     return;
   }
   // node id's that should save without child nodes
@@ -178,6 +191,9 @@ function getAttributes(entity, options = {}) {
     elemObj['data-asset-owner-uid'] = entity.getAttribute(
       'data-asset-owner-uid'
     );
+  }
+  if (options.includeTemporary && entity.hasAttribute('data-temporary-file')) {
+    elemObj['data-temporary-file'] = entity.getAttribute('data-temporary-file');
   }
   const entityComponents = entity.components;
 
@@ -365,7 +381,9 @@ STREET.utils.filterJSONstreet = filterJSONstreet;
  */
 function getMixedValue(component, propertyName, source) {
   var value;
-  var reversedMixins = source.mixinEls.reverse();
+  // toReversed: `reverse()` would flip the entity's own mixin list in place
+  // on every serialized component (mixin precedence alternating per call).
+  var reversedMixins = source.mixinEls.toReversed();
   for (var i = 0; value === undefined && i < reversedMixins.length; i++) {
     var mixin = reversedMixins[i];
     /* eslint-disable-next-line no-prototype-builtins */
@@ -586,6 +604,13 @@ function createEntities(entitiesData, parentEl) {
   migrateLegacyFlatteningShape(entitiesData);
   migrateMeasureLinesToShapes(entitiesData);
   migrateImplicitStreetAlign(entitiesData);
+  // Unlike the migrations above, this one discards part of a saved transform
+  // (the tilt or scale an item's kind forbids), so it says so. It runs after
+  // the ruler migration, which turns an old ruler into a shape.
+  const conformed = conformToKindLimits(entitiesData, {
+    mixinPose: readMixinPose
+  });
+  if (conformed.length) console.warn(describeConformedItems(conformed));
   // Arm batching before any entity is minted below; batchModels runs on the "newScene"
   // event emitted after this createEntities pass. See beginBatching for the state model.
   if (BATCHING_ENABLED) {
@@ -812,6 +837,14 @@ function createEntityFromObj(entityData, parentEl, beforeEl) {
       entityData['data-asset-owner-uid']
     );
   }
+  // Only present in data serialized with includeTemporary (a pending upload
+  // being moved); a saved scene never carries it.
+  if (entityData['data-temporary-file'] !== undefined) {
+    entity.setAttribute(
+      'data-temporary-file',
+      entityData['data-temporary-file']
+    );
+  }
 
   // Migrate legacy saved scenes:
   // - street-segment used to store its vertical offset as an integer `level`
@@ -938,6 +971,36 @@ AFRAME.registerComponent('set-loader-from-hash', {
       // fetchJSON('asset:….json') below and errors with "Could not fetch scene"
       // / "Could not connect to server."
       if (streetURL.startsWith('asset:')) {
+        return;
+      }
+      // `#project-pass` opens the one-time Project Pass checkout and
+      // `#redeem?code=` the pass-code redemption (#1922, store.firstModal),
+      // not a scene.
+      if (
+        isProjectPassHash(window.location.hash) ||
+        isRedeemHash(window.location.hash)
+      ) {
+        return;
+      }
+      // Deflated scene JSON (Visitor Build's "Open in 3DStreet" handoff,
+      // src/editor/lib/sceneHandoff.js): same result as the crushed form
+      // below, loaded as an unsaved draft, but fast to produce. Async: the
+      // native decompression stream is.
+      if (streetURL.startsWith(DEFLATE_HASH_PREFIX)) {
+        const payload = window.location.hash.substring(
+          1 + DEFLATE_HASH_PREFIX.length
+        );
+        decodeSceneHash(payload)
+          .then((jsonStr) => {
+            const jsonScene = JSON.parse(jsonStr);
+            STREET.utils.newScene(true, false);
+            STREET.utils.createElementsFromJSON(jsonScene, false);
+          })
+          .catch((err) => {
+            console.error('[set-loader-from-hash] bad deflate payload:', err);
+            // Localized toast in React (Main.jsx); this module has no intl.
+            useStore.getState().setSceneLinkError(true);
+          });
         return;
       }
       if (streetURL.startsWith('crushed-3dstreet-json:')) {
@@ -1136,7 +1199,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
         }, 1000);
         return;
       }
-      if (streetURL.includes('//streetmix.net')) {
+      if (isStreetmixURL(streetURL)) {
         console.log(
           '[set-loader-from-hash]',
           'Create new street with Streetmix URL',

@@ -1,6 +1,7 @@
+@use 'sass:meta';
 @use './variables.scss';
+@use './error-boundary.scss';
 @import '../normalize.css';
-@import './error-boundary.scss';
 
 .notyf {
   top: 65px !important;
@@ -25,13 +26,13 @@ body.aframe-inspector-opened {
 }
 
 #aframeInspector {
-  @import './scenegraph';
-  @import './components';
-  @import './entity';
-  @import './select';
-  @import './textureModal';
-  @import './viewport';
-  @import './widgets';
+  @include meta.load-css('./scenegraph');
+  @include meta.load-css('./components');
+  @include meta.load-css('./entity');
+  @include meta.load-css('./select');
+  @include meta.load-css('./textureModal');
+  @include meta.load-css('./viewport');
+  @include meta.load-css('./widgets');
 
   body {
     font-family: variables.$mainFont !important;

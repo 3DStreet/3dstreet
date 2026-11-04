@@ -24,6 +24,24 @@ describe('StreetmixUtils', function () {
         'https://streetmix.net/api/v1/streets?namespacedId=3'
       );
     });
+
+    it('should keep the host of a coastmix URL', function () {
+      assert.strictEqual(
+        streetmixUtils.streetmixUserToAPI('https://coastmix.org/-/256'),
+        'https://coastmix.org/api/v1/streets?namespacedId=256'
+      );
+    });
+  });
+
+  describe('#isStreetmixURL()', function () {
+    it('should accept streetmix and coastmix URLs', function () {
+      assert.ok(streetmixUtils.isStreetmixURL('https://streetmix.net/-/3'));
+      assert.ok(streetmixUtils.isStreetmixURL('https://coastmix.org/-/256'));
+    });
+    it('should reject other URLs', function () {
+      assert.ok(!streetmixUtils.isStreetmixURL('https://example.com/-/3'));
+      assert.ok(!streetmixUtils.isStreetmixURL('not a url'));
+    });
   });
 
   describe('#pathStartsWithAPI()', function () {

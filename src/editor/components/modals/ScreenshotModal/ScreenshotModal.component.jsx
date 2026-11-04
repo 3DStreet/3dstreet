@@ -25,7 +25,13 @@ import {
   isTokenExhaustedError
 } from '@shared/utils/tokens';
 import { TokenDisplayInner } from '@shared/auth/components';
-import { REPLICATE_MODELS } from '@shared/constants/replicateModels.js';
+import {
+  REPLICATE_MODELS,
+  getOutputTiers,
+  getTierTokenCost
+} from '@shared/constants/replicateModels.js';
+import { fitScale } from '@shared/utils/imageScale.js';
+import { computeRenderGridCell, RENDER_GRID_GAP } from './renderGridLayout.js';
 import {
   DEFAULT_RENDER_STYLE_ID,
   getDefaultInstructions,
@@ -44,6 +50,11 @@ import { getLocalizedStyleLabels } from './renderStyleMessages';
 
 // Available AI models (use shared constants)
 const AI_MODELS = REPLICATE_MODELS;
+
+// Below this long edge (the 2K output size) the model has to invent detail
+// the source doesn't have, so the modal flags the capture as low-res (#1887).
+// The capture is window size × device pixel ratio, invisible to the user.
+const LOW_RES_SOURCE_LONG_EDGE = 2048;
 
 // AI renders are async generation jobs since #1835: the submit callable
 // returns a jobId immediately and the server saves the finished image to the
@@ -71,6 +82,8 @@ function ScreenshotModal() {
   const isPro = currentUser?.isPro || currentUser?.isProTeam;
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [originalImageUrl, setOriginalImageUrl] = useState(null);
+  // Pixel size of the capture the AI render will use (#1887).
+  const [sourceSize, setSourceSize] = useState(null);
   const [aiImageUrl, setAiImageUrl] = useState(null);
   const [showOriginal, setShowOriginal] = useState(true);
   const [comparisonMode, setComparisonMode] = useState(false);
@@ -80,6 +93,13 @@ function ScreenshotModal() {
   const [renderStartTime, setRenderStartTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [selectedModel, setSelectedModel] = useState('nano-banana-pro');
+  // 1x output resolution (#1887); null = the model's default tier. 4x always
+  // renders at each model's default.
+  const [outputTier, setOutputTier] = useState(null);
+  const selectedModelTiers = getOutputTiers(AI_MODELS[selectedModel]);
+  const activeOutputTier = selectedModelTiers.includes(outputTier)
+    ? outputTier
+    : null;
   const [renderMode, setRenderMode] = useState('1x'); // '1x' or '4x'
   const [aiImages, setAiImages] = useState({}); // Store multiple AI images with model keys
   const [renderTimers, setRenderTimers] = useState({}); // Individual timers for each model
@@ -115,6 +135,11 @@ function ScreenshotModal() {
   // and saves server-side regardless).
   const activePollsRef = useRef(new Set());
   const batch4xRef = useRef(null);
+  // 4x grid sizing: the image area's size and the screenshot's aspect ratio
+  // decide whether cells keep the screenshot's shape (see renderGridLayout).
+  const imageContainerRef = useRef(null);
+  const [imageAreaSize, setImageAreaSize] = useState({ width: 0, height: 0 });
+  const [sourceAspect, setSourceAspect] = useState(null);
 
   useEffect(() => {
     const polls = activePollsRef.current;
@@ -156,16 +181,18 @@ function ScreenshotModal() {
     return AI_MODELS[modelKey]?.tokenCost || 1;
   };
 
-  // Convert image to JPEG with specified quality
-  const convertToJpeg = (dataUrl, quality = 0.9) => {
+  // Convert image to JPEG with specified quality, downscaling to at most
+  // maxMegapixels when the model caps its input size.
+  const convertToJpeg = (dataUrl, quality = 0.9, maxMegapixels = null) => {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
+        const scale = fitScale(img.width, img.height, maxMegapixels);
         const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
+        canvas.width = Math.floor(img.width * scale);
+        canvas.height = Math.floor(img.height * scale);
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         // Convert to JPEG with specified quality (0.9 = 90%)
         const jpegDataUrl = canvas.toDataURL('image/jpeg', quality);
         resolve(jpegDataUrl);
@@ -184,6 +211,7 @@ function ScreenshotModal() {
 
   const resetModalState = () => {
     setOriginalImageUrl(null);
+    setSourceSize(null);
     setAiImageUrl(null);
     setShowOriginal(true);
     setComparisonMode(false);
@@ -414,7 +442,9 @@ function ScreenshotModal() {
     // users hit the paywall up front instead of round-tripping to the cloud
     // function and surfacing a toast on rejection. Pro/ProTeam users skip
     // this gate — canUseImageFeature below handles their monthly auto-refill.
-    const tokenCost = getTokenCost(targetModel);
+    // Only a 1x render (no slot key) takes the chosen output tier.
+    const requestedTier = modelKey ? null : activeOutputTier;
+    const tokenCost = getTierTokenCost(AI_MODELS[targetModel], requestedTier);
     if (!isPro && (tokenProfile?.genToken ?? 0) < tokenCost) {
       startCheckout('image');
       return;
@@ -494,7 +524,11 @@ function ScreenshotModal() {
       // Convert to JPEG with 90% quality to reduce upload time
       if (inputImageSrc && inputImageSrc.startsWith('data:image/')) {
         try {
-          inputImageSrc = await convertToJpeg(inputImageSrc, 0.9);
+          inputImageSrc = await convertToJpeg(
+            inputImageSrc,
+            0.9,
+            selectedModelConfig.maxInputMegapixels
+          );
         } catch (error) {
           console.warn('Failed to convert to JPEG, using original:', error);
         }
@@ -576,6 +610,7 @@ function ScreenshotModal() {
           model_id: baseModelKey,
           scene_id: sceneId || null,
           gallery_metadata: galleryMetadata,
+          ...(requestedTier && { resolution: requestedTier }),
           notify
         });
       }
@@ -694,6 +729,8 @@ function ScreenshotModal() {
           model: baseModelKey,
           render_style: promptStyle,
           render_mode: renderMode,
+          output_resolution:
+            requestedTier || selectedModelConfig.resolution || null,
           is_pro_user: currentUser?.isPro || false,
           tokens_available: tokenProfile?.genToken || 0
         });
@@ -704,6 +741,8 @@ function ScreenshotModal() {
           model: baseModelKey,
           render_style: promptStyle,
           render_mode: renderMode,
+          output_resolution:
+            requestedTier || selectedModelConfig.resolution || null,
           is_pro_user: currentUser?.isPro || false,
           scene_id: STREET.utils.getCurrentSceneId()
         });
@@ -912,6 +951,43 @@ function ScreenshotModal() {
     };
   }, [isGeneratingAI, renderStartTime, selectedModel]);
 
+  // Track the image area's size for the 4x grid layout.
+  useEffect(() => {
+    const el = imageContainerRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setImageAreaSize({ width, height });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [modal]);
+
+  // The screenshot's aspect ratio (width / height).
+  useEffect(() => {
+    if (!originalImageUrl) {
+      setSourceAspect(null);
+      return;
+    }
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (!cancelled && img.naturalHeight) {
+        setSourceAspect(img.naturalWidth / img.naturalHeight);
+      }
+    };
+    img.src = originalImageUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [originalImageUrl]);
+
+  const renderGridCell = computeRenderGridCell({
+    width: imageAreaSize.width,
+    height: imageAreaSize.height,
+    aspect: sourceAspect
+  });
+
   // Timer updates for individual renders in 4x mode
   useEffect(() => {
     const intervals = {};
@@ -964,6 +1040,7 @@ function ScreenshotModal() {
       captureScreenshotAsJpeg(isPro)
         .then(({ dataUrl, width, height, pngSrc }) => {
           setOriginalImageUrl(pngSrc);
+          setSourceSize({ width, height });
           if (!currentUser?.uid) {
             console.log('User not logged in, skipping gallery save');
             return;
@@ -1053,6 +1130,44 @@ function ScreenshotModal() {
                 </div>
               )}
 
+              {renderMode === '1x' && selectedModelTiers.length > 0 && (
+                <div className={styles.modelSelector}>
+                  <label className={styles.modelLabel}>
+                    <FormattedMessage
+                      id="screenshotModal.outputResolutionLabel"
+                      defaultMessage="Output resolution:"
+                    />
+                  </label>
+                  <div className={styles.renderModeTabs}>
+                    {selectedModelTiers.map((tier, index) => {
+                      const isActive =
+                        (activeOutputTier || selectedModelTiers[0]) === tier;
+                      return (
+                        <button
+                          key={tier}
+                          type="button"
+                          className={`${styles.tabButton} ${isActive ? styles.active : ''}`}
+                          onClick={() => setOutputTier(index ? tier : null)}
+                          disabled={isAnyRendering}
+                        >
+                          {tier} ·{' '}
+                          <FormattedMessage
+                            id="screenshotModal.tierTokens"
+                            defaultMessage="{count, plural, one {# token} other {# tokens}}"
+                            values={{
+                              count: getTierTokenCost(
+                                AI_MODELS[selectedModel],
+                                tier
+                              )
+                            }}
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {renderMode === '4x' && (
                 <div className={styles.modelMixToggle}>
                   <label className={styles.toggleLabel}>
@@ -1083,6 +1198,25 @@ function ScreenshotModal() {
                       onChange={setSelectedModel}
                       disabled={isAnyRendering}
                     />
+                  )}
+                </div>
+              )}
+
+              {sourceSize && (
+                <div className={styles.sourceSize}>
+                  <FormattedMessage
+                    id="screenshotModal.sourceSize"
+                    defaultMessage="Source image: {width} × {height}"
+                    values={sourceSize}
+                  />
+                  {Math.max(sourceSize.width, sourceSize.height) <
+                    LOW_RES_SOURCE_LONG_EDGE && (
+                    <p className={styles.lowResWarning}>
+                      <FormattedMessage
+                        id="screenshotModal.lowResSource"
+                        defaultMessage="Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
+                      />
+                    </p>
                   )}
                 </div>
               )}
@@ -1282,7 +1416,10 @@ function ScreenshotModal() {
                     </span>
                     {tokenProfile && (
                       <TokenDisplayInner
-                        count={getTokenCost(selectedModel)}
+                        count={getTierTokenCost(
+                          AI_MODELS[selectedModel],
+                          activeOutputTier
+                        )}
                         inline={true}
                       />
                     )}
@@ -1368,7 +1505,7 @@ function ScreenshotModal() {
           </div>
         </div>
 
-        <div className={styles.imageContainer}>
+        <div className={styles.imageContainer} ref={imageContainerRef}>
           {/* Always render the screentock-destination img for screenshot functionality */}
           <img
             id="screentock-destination"
@@ -1518,7 +1655,19 @@ function ScreenshotModal() {
                 </div>
               ) : (
                 // 4x Render Grid - show when renders are in progress or completed
-                <div className={styles.renderGrid}>
+                <div
+                  className={`${styles.renderGrid} ${renderGridCell ? styles.renderGridSourceAspect : ''}`}
+                  style={
+                    renderGridCell
+                      ? {
+                          width: `${renderGridCell.width * 2 + RENDER_GRID_GAP}px`,
+                          height: `${renderGridCell.height * 2 + RENDER_GRID_GAP}px`,
+                          gridTemplateColumns: `repeat(2, ${renderGridCell.width}px)`,
+                          gridTemplateRows: `repeat(2, ${renderGridCell.height}px)`
+                        }
+                      : undefined
+                  }
+                >
                   {Array.from({ length: 4 }, (_, index) => {
                     // Filter models to only include those with includeIn4x: true
                     const modelKeys = Object.keys(AI_MODELS).filter(

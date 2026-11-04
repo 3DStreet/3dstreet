@@ -123,9 +123,19 @@ const AuthProvider = ({ children }) => {
       // This unblocks the UI so components know the user is authenticated
       // without waiting for slow cloud function calls.
       const cachedProStatus = getCachedProStatus(user.uid);
+      // A cached pass-only Pro status (#1922) that has since lapsed reads as
+      // free immediately rather than waiting for Phase 2 to correct it.
+      const cachedPassActive =
+        !!cachedProStatus?.isProPass &&
+        Date.parse(cachedProStatus?.proUntil) > Date.now();
+      const cachedPassLapsed =
+        !!cachedProStatus?.isProPass &&
+        !cachedPassActive &&
+        !cachedProStatus?.plan &&
+        !cachedProStatus?.isProTeam;
       setCurrentUser({
         ...user,
-        isPro: cachedProStatus?.isPro ?? false,
+        isPro: (cachedProStatus?.isPro ?? false) && !cachedPassLapsed,
         // Backwards compat: caches written before the isProDomain → isProTeam
         // rename will still have isProDomain. Fall back to it once, expires
         // naturally when the cache refreshes.
@@ -134,7 +144,11 @@ const AuthProvider = ({ children }) => {
         teamDomain: cachedProStatus?.teamDomain ?? null,
         // Paid tier ('PRO' | 'MAX' | null). Caches written before this field
         // existed simply lack it; Phase 2 backfills on the next enrich.
-        plan: cachedProStatus?.plan ?? null
+        plan: cachedProStatus?.plan ?? null,
+        // One-time pass (#1922). The server re-evaluates expiry in Phase 2;
+        // a cached pass that has since lapsed is dropped here already.
+        isProPass: cachedPassActive,
+        proUntil: cachedProStatus?.proUntil ?? null
       });
       setIsLoading(false);
 
@@ -159,7 +173,14 @@ const AuthProvider = ({ children }) => {
       const proStatus =
         proStatusResult.status === 'fulfilled'
           ? proStatusResult.value
-          : { isPro: false, isProTeam: false, teamDomain: null, plan: null };
+          : {
+              isPro: false,
+              isProTeam: false,
+              teamDomain: null,
+              plan: null,
+              isProPass: false,
+              proUntil: null
+            };
 
       // Only cache when the cloud function actually succeeded —
       // avoid overwriting a valid cache with a failure fallback
@@ -172,7 +193,9 @@ const AuthProvider = ({ children }) => {
         isPro: proStatus.isPro,
         isProTeam: proStatus.isProTeam,
         teamDomain: proStatus.teamDomain,
-        plan: proStatus.plan ?? null
+        plan: proStatus.plan ?? null,
+        isProPass: !!proStatus.isProPass,
+        proUntil: proStatus.proUntil ?? null
       };
       setCurrentUser(enrichedUser);
 
@@ -208,7 +231,8 @@ const AuthProvider = ({ children }) => {
         name: user.displayName,
         isPro: proStatus.isPro,
         isProTeam: proStatus.isProTeam,
-        teamDomain: proStatus.teamDomain
+        teamDomain: proStatus.teamDomain,
+        isProPass: !!proStatus.isProPass
       });
     };
 

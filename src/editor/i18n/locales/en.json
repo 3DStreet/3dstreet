@@ -1,15 +1,30 @@
 {
+  "actionBar.easyTool.move": {
+    "defaultMessage": "Move"
+  },
+  "actionBar.easyTool.place": {
+    "defaultMessage": "Place"
+  },
+  "actionBar.easyTool.rotate": {
+    "defaultMessage": "Rotate"
+  },
   "actionBar.handTool": {
     "defaultMessage": "Hand Tool (h) - pan and rotate the view without selecting objects"
-  },
-  "actionBar.rotateTool": {
-    "defaultMessage": "Rotate Tool (e) - Select and rotate objects"
   },
   "actionBar.shapeTool": {
     "defaultMessage": "Shape Tool (r) - Measure and draw; click to place points, Enter or double-click to finish, Backspace to remove the last point"
   },
-  "actionBar.translateTool": {
-    "defaultMessage": "Translate Tool (w) - Select and move objects"
+  "actionBar.transformMenu.easy": {
+    "defaultMessage": "Move"
+  },
+  "actionBar.transformMenu.rotate": {
+    "defaultMessage": "Advanced rotate"
+  },
+  "actionBar.transformMenu.translate": {
+    "defaultMessage": "Advanced move"
+  },
+  "actionBar.transformTool": {
+    "defaultMessage": "Move tools (m) - Choose how to move and rotate the selected object"
   },
   "actionBar.zoomIn": {
     "defaultMessage": "Zoom In"
@@ -376,6 +391,87 @@
   },
   "assetInfo.upgradeStorage": {
     "defaultMessage": "Upgrade for {storage} storage"
+  },
+  "buildArea.allowRotate": {
+    "defaultMessage": "Allow rotate"
+  },
+  "buildArea.delete": {
+    "defaultMessage": "Delete"
+  },
+  "buildArea.deleteTitle": {
+    "defaultMessage": "Remove the selected object (Delete)"
+  },
+  "buildArea.dockTitle": {
+    "defaultMessage": "Drag an object onto the highlighted area, or tap to place it"
+  },
+  "buildArea.enabled": {
+    "defaultMessage": "Enabled"
+  },
+  "buildArea.experimentalWarning": {
+    "defaultMessage": "⚠️ Experimental: build areas are new and may change. Test your scene with Start before sharing it."
+  },
+  "buildArea.hintIdle": {
+    "defaultMessage": "Click an object you placed to move it."
+  },
+  "buildArea.hintSelected": {
+    "defaultMessage": "Drag the arrows to move it."
+  },
+  "buildArea.maxObjects": {
+    "defaultMessage": "Max objects"
+  },
+  "buildArea.notClosedTip": {
+    "defaultMessage": "⚠️ Close this shape (Closed above) so it has an interior visitors can build on."
+  },
+  "buildArea.notice.full": {
+    "defaultMessage": "This build area is full."
+  },
+  "buildArea.notice.keepInside": {
+    "defaultMessage": "Objects stay inside the build area."
+  },
+  "buildArea.notice.offscreen": {
+    "defaultMessage": "No build area in view can take that object. Turn toward a build area and try again."
+  },
+  "buildArea.notice.outside": {
+    "defaultMessage": "Drop it inside a build area."
+  },
+  "buildArea.notice.palette": {
+    "defaultMessage": "That object is not available in this build area."
+  },
+  "buildArea.palette": {
+    "defaultMessage": "Palette ({count} selected)"
+  },
+  "buildArea.paletteFilter": {
+    "defaultMessage": "Filter objects…"
+  },
+  "buildArea.placedCount": {
+    "defaultMessage": "{count,plural,one{# object} other{# objects}}"
+  },
+  "buildArea.placedCountOfCap": {
+    "defaultMessage": "{count} of {cap} placed"
+  },
+  "buildArea.redo": {
+    "defaultMessage": "Redo"
+  },
+  "buildArea.redoTitle": {
+    "defaultMessage": "Redo (Shift+Ctrl/Cmd+Z)"
+  },
+  "buildArea.removeConfirm": {
+    "defaultMessage": "Remove the build area from this shape? Visitors will no longer be able to place objects on it."
+  },
+  "buildArea.rotate": {
+    "defaultMessage": "Rotate"
+  },
+  "buildArea.rotateTitle": {
+    "defaultMessage": "Rotate the selected object 90°"
+  },
+  "buildArea.tip": {
+    "defaultMessage": "💡 Visitors drag these objects onto this shape while playing. Press Start to try it; Stop clears what was placed. Nothing a visitor builds is saved to your scene: they keep their work with Open in 3DStreet."
+  },
+  "buildArea.undo": {
+    "defaultMessage": "Undo"
+  },
+  "buildArea.undoTitle": {
+    "defaultMessage": "Undo (Ctrl/Cmd+Z)"
   },
   "catalog.Bicycle_1.name": {
     "defaultMessage": "Bicycle Model 1"
@@ -1037,6 +1133,9 @@
   "editorUpgradeModal.alreadyPro": {
     "defaultMessage": "You're already a Pro member — try that action again to continue."
   },
+  "entity.badge.buildArea": {
+    "defaultMessage": "Build area: visitors can place objects on this shape while playing. Click to open its settings."
+  },
   "entity.badge.focusHotspot": {
     "defaultMessage": "Focus hotspot: clickable in view mode. Click to fly the camera to it."
   },
@@ -1364,6 +1463,9 @@
   "geoSidebar.background": {
     "defaultMessage": "Background"
   },
+  "geoSidebar.backgroundColor": {
+    "defaultMessage": "Background Color"
+  },
   "geoSidebar.centerpointTooltip": {
     "defaultMessage": "This scene's centerpoint is {latitude}, {longitude}"
   },
@@ -1433,6 +1535,9 @@
   "geoSidebar.outOfTokens": {
     "defaultMessage": "You're out of free geo tokens."
   },
+  "geoSidebar.photoShadowStrength": {
+    "defaultMessage": "Photo Shadow Strength (%)"
+  },
   "geoSidebar.preset": {
     "defaultMessage": "Preset"
   },
@@ -1453,6 +1558,45 @@
   },
   "geoSidebar.usesFreeTokens": {
     "defaultMessage": "Uses 1 of {geoToken} free geo tokens to add real-world map data."
+  },
+  "groups.placement.backdropTopLevel": {
+    "defaultMessage": "A 360° panorama surrounds the whole scene, so it cannot go inside a group. It was added at the top level of the scene."
+  },
+  "groups.placement.drawnShapeTopLevel": {
+    "defaultMessage": "The group you were drawing in can no longer take this shape, so it was added at the top level of the scene."
+  },
+  "groups.placement.outsideGroup": {
+    "defaultMessage": "This kind of item cannot go inside a group, so it was added outside the open group."
+  },
+  "groups.placement.routeOutsideGroup": {
+    "defaultMessage": "This was added outside the open group. To put it in the group, drag it there in the Layers panel."
+  },
+  "groups.placement.routeTopLevel": {
+    "defaultMessage": "This was added at the top level of the scene, not inside the open group. To put it in the group, drag it there in the Layers panel."
+  },
+  "groups.placement.topLevel": {
+    "defaultMessage": "This kind of item cannot go inside a group, so it was added at the top level of the scene."
+  },
+  "groups.refusal.destinationGone": {
+    "defaultMessage": "The group this was being added to is no longer available, so nothing was added."
+  },
+  "groups.refusal.illegalParent": {
+    "defaultMessage": "This item cannot be moved into that layer."
+  },
+  "groups.refusal.placementDistorts": {
+    "defaultMessage": "This item cannot be added to the open group without distorting it, because the group's scale is not the same along every axis. Nothing was added."
+  },
+  "groups.refusal.ungroupWithMembers": {
+    "defaultMessage": "This group still has items in it, so it must stay a group. Move its items out of it first."
+  },
+  "groups.refusal.unrepresentablePose": {
+    "defaultMessage": "This item cannot be moved there without distorting it, because the destination group's scale is not the same along every axis."
+  },
+  "groups.reparent.failed": {
+    "defaultMessage": "This item could not be moved, so it was left where it was. If it no longer shows correctly, save and reload the scene to restore it."
+  },
+  "groups.upload.finishedItemGone": {
+    "defaultMessage": "Your upload finished, but its item is no longer in the scene. The asset is saved in your library."
   },
   "help.action.modeSwitch.description": {
     "defaultMessage": "To switch between the \"View\" and \"Edit\" modes, click the button in the upper right corner."
@@ -1490,6 +1634,9 @@
   "help.shortcut.cut": {
     "defaultMessage": "Cut selected entity"
   },
+  "help.shortcut.cycleMoveTools": {
+    "defaultMessage": "Cycle move tools"
+  },
   "help.shortcut.delete": {
     "defaultMessage": "Delete selected entity"
   },
@@ -1508,9 +1655,6 @@
   "help.shortcut.redo": {
     "defaultMessage": "Redo action"
   },
-  "help.shortcut.rotate": {
-    "defaultMessage": "Rotate"
-  },
   "help.shortcut.scale": {
     "defaultMessage": "Scale"
   },
@@ -1528,9 +1672,6 @@
   },
   "help.shortcut.toggleTransform": {
     "defaultMessage": "Toggle local between global transform"
-  },
-  "help.shortcut.translate": {
-    "defaultMessage": "Translate"
   },
   "help.shortcut.undo": {
     "defaultMessage": "Undo action"
@@ -1597,6 +1738,30 @@
   },
   "jobHealthModal.title": {
     "defaultMessage": "System Health"
+  },
+  "legacyStreet.body": {
+    "defaultMessage": "Convert it to a managed street to edit its lanes, widths and objects right here. Converting loads this street from Streetmix; objects you moved or changed inside it will not carry over."
+  },
+  "legacyStreet.bodyNoSource": {
+    "defaultMessage": "It has no Streetmix link, so it cannot be converted. Import the street again from Streetmix to get a managed street you can edit here."
+  },
+  "legacyStreet.changedMessage": {
+    "defaultMessage": "It was {saved} wide when you added it and is {fetched} wide on Streetmix now. Converting loads the latest version from Streetmix. You can undo this."
+  },
+  "legacyStreet.changedTitle": {
+    "defaultMessage": "This street has changed on Streetmix"
+  },
+  "legacyStreet.checking": {
+    "defaultMessage": "Checking Streetmix…"
+  },
+  "legacyStreet.convert": {
+    "defaultMessage": "Convert to managed street"
+  },
+  "legacyStreet.fetchFailed": {
+    "defaultMessage": "Could not load this street from Streetmix, so it cannot be converted. It may have been deleted."
+  },
+  "legacyStreet.title": {
+    "defaultMessage": "This is a classic street"
   },
   "loadingSceneModal.dismiss": {
     "defaultMessage": "Dismiss"
@@ -1874,6 +2039,9 @@
   "profileModal.planPro": {
     "defaultMessage": "Plan: Pro"
   },
+  "profileModal.planProPass": {
+    "defaultMessage": "Plan: Pro (Project Pass) until {date}"
+  },
   "profileModal.planProTeam": {
     "defaultMessage": "Plan: Pro Team ({domain})"
   },
@@ -1985,6 +2153,9 @@
   "rightPanel.planTooltipMax": {
     "defaultMessage": "3DStreet Max Plan"
   },
+  "rightPanel.planTooltipPass": {
+    "defaultMessage": "3DStreet Pro (Project Pass) until {date}"
+  },
   "rightPanel.planTooltipPro": {
     "defaultMessage": "3DStreet Pro Plan"
   },
@@ -2021,6 +2192,9 @@
   "sceneGraph.emptyStateMessage": {
     "defaultMessage": "Add a new layer to get started."
   },
+  "sceneGraph.newGroup": {
+    "defaultMessage": "New group"
+  },
   "sceneGraph.tabAssets": {
     "defaultMessage": "Assets"
   },
@@ -2029,6 +2203,9 @@
   },
   "sceneGraph.tabLayers": {
     "defaultMessage": "Layers"
+  },
+  "sceneLink.decodeFailed": {
+    "defaultMessage": "Could not open this scene link. It may be incomplete; try copying the whole link again."
   },
   "scenesModal.fetchError": {
     "defaultMessage": "Error fetching scenes: {error}"
@@ -2117,6 +2294,9 @@
   "screenshotModal.loginPrompt": {
     "defaultMessage": "Please log in to use AI rendering"
   },
+  "screenshotModal.lowResSource": {
+    "defaultMessage": "Low-resolution source: renders will have less detail. Maximize the window or use a high-resolution display, then reopen this dialog."
+  },
   "screenshotModal.mixedModels": {
     "defaultMessage": "Mixed Models"
   },
@@ -2128,6 +2308,9 @@
   },
   "screenshotModal.onlyAuthorCanSetThumbnail": {
     "defaultMessage": "Only the scene author can set the thumbnail"
+  },
+  "screenshotModal.outputResolutionLabel": {
+    "defaultMessage": "Output resolution:"
   },
   "screenshotModal.overtimeWarning": {
     "defaultMessage": "Generation taking longer than expected."
@@ -2189,11 +2372,17 @@
   "screenshotModal.showRender": {
     "defaultMessage": "Show Render"
   },
+  "screenshotModal.sourceSize": {
+    "defaultMessage": "Source image: {width} × {height}"
+  },
   "screenshotModal.thumbnailFailed": {
     "defaultMessage": "Failed to set scene thumbnail. Please try again."
   },
   "screenshotModal.thumbnailSaved": {
     "defaultMessage": "Scene thumbnail saved successfully!"
+  },
+  "screenshotModal.tierTokens": {
+    "defaultMessage": "{count,plural,one{# token} other{# tokens}}"
   },
   "screenshotModal.title": {
     "defaultMessage": "Screenshot & Render"
@@ -2309,6 +2498,9 @@
   "shapeSidebar.reverse": {
     "defaultMessage": "Reverse"
   },
+  "shapeSidebar.sectionTitle": {
+    "defaultMessage": "Shape"
+  },
   "shapeSidebar.segments": {
     "defaultMessage": "Segments"
   },
@@ -2317,6 +2509,9 @@
   },
   "shapeSidebar.showFewerSegments": {
     "defaultMessage": "Show fewer segments"
+  },
+  "shapeSidebar.styleTitle": {
+    "defaultMessage": "Style"
   },
   "shapeSidebar.tipInsert": {
     "defaultMessage": "Click a side's length to add a vertex to that side"
@@ -2396,6 +2591,12 @@
   "sidebar.cloneEditHint": {
     "defaultMessage": "Editing this object detaches it from the generator. Undo puts it back."
   },
+  "sidebar.detachAllClones": {
+    "defaultMessage": "Detach all"
+  },
+  "sidebar.detachAllClonesTitle": {
+    "defaultMessage": "Make every object this generator places editable on its own: each becomes a plain model you can move, rotate, duplicate or delete, and the generator is removed. Undo puts them back."
+  },
   "sidebar.detachClone": {
     "defaultMessage": "Detach"
   },
@@ -2417,6 +2618,9 @@
   "sidebar.geolocTitle": {
     "defaultMessage": "Latitude, longitude, true bearing (degrees clockwise from true north, “T”). Read-only: edit position and rotation to change it."
   },
+  "sidebar.groupOriginHint": {
+    "defaultMessage": "Position describes the group origin. On-canvas movement and rotation controls use the group center, which is distinct from the origin."
+  },
   "sidebar.managedBy": {
     "defaultMessage": "Managed by"
   },
@@ -2437,6 +2641,36 @@
   },
   "signInModal.signingIn": {
     "defaultMessage": "Signing in"
+  },
+  "sunDial.azimuth": {
+    "defaultMessage": "From {azimuth}°"
+  },
+  "sunDial.east": {
+    "defaultMessage": "E"
+  },
+  "sunDial.elevation": {
+    "defaultMessage": "{elevation}° up"
+  },
+  "sunDial.label": {
+    "defaultMessage": "Sun position: drag the dot; the centre is overhead, the rim is near the horizon"
+  },
+  "sunDial.north": {
+    "defaultMessage": "N"
+  },
+  "sunDial.reset": {
+    "defaultMessage": "Reset to preset"
+  },
+  "sunDial.south": {
+    "defaultMessage": "S"
+  },
+  "sunDial.sun": {
+    "defaultMessage": "Sun"
+  },
+  "sunDial.valueText": {
+    "defaultMessage": "From {azimuth}°, {elevation}° above the horizon"
+  },
+  "sunDial.west": {
+    "defaultMessage": "W"
   },
   "toolbar.edit": {
     "defaultMessage": "Edit"
@@ -2552,8 +2786,38 @@
   "viewer.editingCopyWarning": {
     "defaultMessage": "This is an unsaved copy. Click Save to make your own copy."
   },
+  "viewer.handoffPrompt.body": {
+    "defaultMessage": "Your browser blocked the new tab. Open it here, or copy the link to keep your design."
+  },
+  "viewer.handoffPrompt.close": {
+    "defaultMessage": "Close"
+  },
+  "viewer.handoffPrompt.copied": {
+    "defaultMessage": "Link copied. Paste it into a new tab to open your design."
+  },
+  "viewer.handoffPrompt.copy": {
+    "defaultMessage": "Copy link"
+  },
+  "viewer.handoffPrompt.copyFailed": {
+    "defaultMessage": "Could not copy the link. Please try Open instead."
+  },
+  "viewer.handoffPrompt.open": {
+    "defaultMessage": "Open in 3DStreet"
+  },
+  "viewer.handoffPrompt.title": {
+    "defaultMessage": "Your design is ready"
+  },
   "viewer.hotspotBack": {
     "defaultMessage": "Back"
+  },
+  "viewer.openInEditor": {
+    "defaultMessage": "Open in 3DStreet"
+  },
+  "viewer.openInEditorFailed": {
+    "defaultMessage": "Could not open the scene in a new tab. Please try again."
+  },
+  "viewer.openInEditorTitle": {
+    "defaultMessage": "Open this scene, with what you placed, in a new 3DStreet editor tab to keep working on it"
   },
   "viewer.pause": {
     "defaultMessage": "Pause"

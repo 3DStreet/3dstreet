@@ -11,8 +11,9 @@ mechanics but not the real-world win. This pass answers two questions:
    raising a signal would look frozen for up to half a second.
 
 Branch: `claude/busy-hopper-y0jlxs`. Run with `npm install && npm start`
-(http://localhost:3333). `npm install` matters: the branch moves Spark from
-2.2.0 to 2.3.1.
+(http://localhost:3333). Run `npm install` after switching branches. Spark is
+2.4.0 on both `main` and this branch, so the `main` comparison below measures
+only this branch's changes.
 
 ## What changed (so you know what to look at)
 
@@ -21,7 +22,6 @@ Branch: `claude/busy-hopper-y0jlxs`. Run with `npm install && npm start`
 | Fetching pauses while the tab is hidden              | `splat` system, `public/splat-viewer.html`                            |
 | `.rad` over 5M splats halves the LOD budget          | `src/tested/splat-streaming.js`                                       |
 | Converter drops spherical harmonics (`RAD_MAX_SH=0`) | `rad-converter/` (only affects newly converted assets)                |
-| Spark 2.2.0 → 2.3.1                                  | `package.json`, splat-viewer importmap                                |
 | Idle editor draws skipped once a splat exists        | `render-on-demand` system, policy in `src/tested/render-on-demand.js` |
 | Standalone splat viewer renders only on demand       | `public/splat-viewer.html`                                            |
 
@@ -106,7 +106,8 @@ somewhere other than drawing (see "If it doesn't help" below).
 - [ ] Check out `main`, `npm install`, reload the same scene, same idle
       measurement (CPU / GPU only; `measureRod` won't exist).
 
-This separates the Spark upgrade and pacing from on-demand rendering.
+Both run Spark 2.4.0, so this isolates the branch's pacing and on-demand
+rendering.
 
 ### 3. Hidden tab (2 min)
 

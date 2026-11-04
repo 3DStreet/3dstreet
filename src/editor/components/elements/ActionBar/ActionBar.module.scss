@@ -50,3 +50,23 @@
     }
   }
 }
+
+// The transform menu's rows are portalled out of the bar, so their label is
+// styled at the top level. Menu rows space their children apart; the label
+// sits against its icon, with the same gap as the app menu's glyph rows.
+.menuLabel {
+  margin-left: 8px;
+  margin-right: auto;
+}
+
+// A small triangle in the top-right corner marks the button that opens a menu.
+.menuTrigger::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  border-top: 5px solid currentColor;
+  border-left: 5px solid transparent;
+  opacity: 0.7;
+  pointer-events: none;
+}

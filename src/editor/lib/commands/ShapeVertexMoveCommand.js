@@ -1,5 +1,5 @@
 import { Command } from '../command.js';
-import { createUniqueId, updateEntity } from '../entity.js';
+import { createUniqueId, updateEntity } from '../entity.jsx';
 
 /**
  * Move one shape vertex to a new position.

@@ -23,6 +23,7 @@
   display: flex;
   flex: 1;
   min-height: 0; // Critical for preventing overflow
+  min-width: 0; // let the image area shrink with the window
   padding: 0;
   gap: 20px;
 }
@@ -376,6 +377,19 @@
   font-weight: 600;
 }
 
+.sourceSize {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.lowResWarning {
+  margin: 6px 0 0 0;
+  padding: 8px;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 4px;
+}
+
 .noTokensWarning {
   font-size: 12px;
   color: #ef4444;
@@ -460,6 +474,23 @@
   height: 100%;
   max-width: 600px;
   max-height: 600px;
+}
+
+// Cells sized in px (inline grid template, see renderGridLayout.js): the
+// screenshot's aspect ratio when there's room, else square. Positioned
+// absolutely so the px-sized grid never props .imageContainer open: the
+// container must be free to shrink with the window, or the ResizeObserver
+// that sizes the cells never sees it get smaller.
+.renderGridSourceAspect {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  max-width: none;
+  max-height: none;
+
+  .renderSlot {
+    min-height: 0;
+  }
 }
 
 .renderSlot {

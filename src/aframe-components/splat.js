@@ -3,6 +3,7 @@
 // Import direct from the constants module (not the @shared/assets barrel, which
 // would pull React/Firebase into this early-loaded A-Frame bundle).
 import { SPLAT_EXTENSIONS } from '@shared/assets/constants.js';
+import { SPLAT_RENDER_ORDER } from '../tested/transparent-layering.js';
 import {
   resolveStreamingSettings,
   shouldFetchForVisibility
@@ -13,14 +14,11 @@ import './render-on-demand.js';
 let SplatMesh = null;
 let SparkRenderer = null;
 // PagedSplats is needed for local .rad previews: we construct it ourselves from
-// in-memory bytes (see loadSplat) because SplatMesh's paged===true path can't be
-// told a fileType.
+// in-memory bytes (see loadSplat) so a blob: URL with no extension to sniff
+// still resolves its type from the magic bytes.
 let PagedSplats = null;
-// Spark's own extension→SplatFileType mapper. We use it for blob: previews
-// (which have no extension to sniff) so the hint we pass is a real SplatFileType
-// enum value rather than the bare extension, since the two can differ.
-let getSplatFileTypeFromPath = null;
 let sparkLoadPromise = null;
+const BOUNDS_SIGNS = [-1, 1];
 
 /**
  * Dynamically loads the Spark library for Gaussian Splat rendering.
@@ -28,7 +26,7 @@ let sparkLoadPromise = null;
  */
 async function loadSparkLibrary() {
   if (SplatMesh && SparkRenderer) {
-    return { SplatMesh, SparkRenderer, PagedSplats, getSplatFileTypeFromPath };
+    return { SplatMesh, SparkRenderer, PagedSplats };
   }
 
   if (!sparkLoadPromise) {
@@ -38,14 +36,8 @@ async function loadSparkLibrary() {
       SplatMesh = module.SplatMesh;
       SparkRenderer = module.SparkRenderer;
       PagedSplats = module.PagedSplats;
-      getSplatFileTypeFromPath = module.getSplatFileTypeFromPath;
       console.log('[splat] Spark library loaded');
-      return {
-        SplatMesh,
-        SparkRenderer,
-        PagedSplats,
-        getSplatFileTypeFromPath
-      };
+      return { SplatMesh, SparkRenderer, PagedSplats };
     });
   }
 
@@ -102,6 +94,10 @@ AFRAME.registerComponent('splat', {
 
   init: function () {
     this.splatMesh = null;
+    this._boundsCorner = new AFRAME.THREE.Vector3();
+    this._boundsTarget = null;
+    this._boundsBusy = false;
+    this._expandSplatBounds = this._expandSplatBounds.bind(this);
     // True only after a load has fully rendered (its `initialized` resolved).
     // The blob→cloud no-reload guard keys off this — not the mere existence of
     // a SplatMesh object — so a FAILED local preview still reloads the cloud
@@ -116,7 +112,8 @@ AFRAME.registerComponent('splat', {
     this.loadId = 0;
     // Idle editor draws are skipped only while a splat is in the scene
     // (#2047; the splat system activates render-on-demand).
-    this.renderOnDemand = this.el.sceneEl.systems['render-on-demand'] || null;
+    this.renderOnDemand =
+      this.el?.sceneEl?.systems?.['render-on-demand'] || null;
     if (this.renderOnDemand) this.renderOnDemand.retain();
   },
 
@@ -183,11 +180,8 @@ AFRAME.registerComponent('splat', {
 
     try {
       // Dynamically load the Spark library (only loads once, ~500KB)
-      const {
-        SplatMesh: LoadedSplatMesh,
-        PagedSplats: LoadedPagedSplats,
-        getSplatFileTypeFromPath: sparkGetFileType
-      } = await loadSparkLibrary();
+      const { SplatMesh: LoadedSplatMesh, PagedSplats: LoadedPagedSplats } =
+        await loadSparkLibrary();
       if (loadId !== this.loadId) return;
 
       // Initialize the SparkRenderer if not already done
@@ -209,9 +203,10 @@ AFRAME.registerComponent('splat', {
       // for cloud URLs.
       //
       // A blob: preview is the only case Spark can't sniff: the URL has no
-      // extension AND .splat is headerless. There we map the upload's `format`
-      // hint to a real SplatFileType via Spark's own getSplatFileTypeFromPath,
-      // falling back to the raw hint.
+      // extension AND .splat is headerless. There we pass the upload's `format`
+      // hint as the fileType: for every format we accept (SPLAT_EXTENSIONS) the
+      // SplatFileType enum value IS the extension. (Spark 2.2 no longer exports
+      // its path→type mapper, and the two only differ for formats we don't offer.)
       const noQuery = src.split(/[?#]/)[0];
       const lastSeg = noQuery.slice(noQuery.lastIndexOf('/') + 1);
       const urlExt = lastSeg.includes('.')
@@ -225,10 +220,7 @@ AFRAME.registerComponent('splat', {
         : (this.data.format || '').toLowerCase();
       const isRad = ext === 'rad';
       // Only hint fileType when Spark can't sniff it (blob: preview).
-      let fileType;
-      if (!hasSniffableExt && ext) {
-        fileType = sparkGetFileType ? sparkGetFileType(`x.${ext}`) || ext : ext;
-      }
+      const fileType = !hasSniffableExt && ext ? ext : undefined;
 
       // Local .rad preview (blob: URL): SplatMesh's `paged: true` path builds
       // PagedSplats with only `{ rootUrl }`, dropping our fileType, and a blob:
@@ -411,6 +403,11 @@ AFRAME.registerComponent('splat', {
       const sprite = new THREE.Sprite(material);
       sprite.scale.set(0.4, 0.1, 1);
       sprite.renderOrder = 999;
+      // A badge, not geometry: keep it out of every raycast. Sprite.raycast
+      // dereferences raycaster.camera, which editor probes (gizmo support,
+      // nav situation sensor) never set, so it threw mid-select and stalled
+      // the upload flow on "Preparing…".
+      sprite.raycast = () => {};
       this.indicator = { sprite, material, texture, ctx, text };
       this.el.object3D.add(sprite);
     }
@@ -457,18 +454,48 @@ AFRAME.registerComponent('splat', {
 
   /**
    * Get the bounding box of the splat mesh.
-   * Uses Spark's getBoundingBox method for accurate bounds.
    * @param {boolean} centersOnly - If true, only considers splat centers (faster, default: true)
+   * @param {THREE.Box3} [target] Caller-owned output, reused when supplied.
    * @returns {THREE.Box3|null} The bounding box or null if not loaded
    */
-  getBoundingBox: function (centersOnly = true) {
-    if (!this.splatMesh) {
+  getBoundingBox: function (centersOnly = true, target) {
+    if (!this.splatMesh?.initialized || this._boundsBusy) {
       return null;
     }
+    const box = target || new AFRAME.THREE.Box3();
+    this._boundsBusy = true;
+    this._boundsTarget = box.makeEmpty();
+    this._boundsCentersOnly = centersOnly;
     try {
-      return this.splatMesh.getBoundingBox(centersOnly);
+      // Revisit decoded splats so newly streamed pages are included in the bounds.
+      this.splatMesh.forEachSplat(this._expandSplatBounds);
+      return box;
     } catch (e) {
       return null;
+    } finally {
+      this._boundsTarget = null;
+      this._boundsBusy = false;
+    }
+  },
+
+  _expandSplatBounds: function (_index, center, scales, quaternion) {
+    const box = this._boundsTarget;
+    if (this._boundsCentersOnly) {
+      box.expandByPoint(center);
+      return;
+    }
+    // Spark reuses decoded values; copy each corner without changing those values.
+    const corner = this._boundsCorner;
+    for (const x of BOUNDS_SIGNS) {
+      for (const y of BOUNDS_SIGNS) {
+        for (const z of BOUNDS_SIGNS) {
+          corner
+            .set(x * scales.x, y * scales.y, z * scales.z)
+            .applyQuaternion(quaternion)
+            .add(center);
+          box.expandByPoint(corner);
+        }
+      }
     }
   }
 });
@@ -529,6 +556,11 @@ AFRAME.registerSystem('splat', {
         renderer: this.el.renderer,
         enableLod: true
       });
+      // One transparent, non-depth-writing mesh at the scene origin draws
+      // every splat. Pin where it lands in the transparent pass: after every
+      // ordinary surface (so depth-writing ones occlude it per pixel) and
+      // before the overlays (#1732, #1754). See transparent-layering.js.
+      this.sparkRenderer.renderOrder = SPLAT_RENDER_ORDER;
       this.el.object3D.add(this.sparkRenderer);
       this.applyStreamingSettings();
       this.applyFetchGate();

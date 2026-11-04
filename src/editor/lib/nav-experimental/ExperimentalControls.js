@@ -190,6 +190,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       get mapPivotFarAcceptGain() {
         return self._mapPivotFarAcceptGain;
       },
+      // The editor's selected entity (#1993 selection rotation pivot). Read
+      // live from the inspector global — null outside the editor or with
+      // nothing selected.
+      get selectedEntity() {
+        const inspector =
+          typeof AFRAME !== 'undefined' ? AFRAME.INSPECTOR : undefined;
+        return (inspector && inspector.selectedEntity) || null;
+      },
       get rotationSpeed() {
         return self.rotationSpeed;
       },
@@ -437,7 +445,14 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     this._aspectRatio = ratio;
   }
 
-  focus(target) {
+  /**
+   * Glide to a good view of `target` (an Object3D). `frame`, when given,
+   * says what to frame instead of the target's own geometry: a world
+   * `center` to aim at and view from, and the `radius` about it to fit (null
+   * for the empty-box standoff). A user group passes one, because its origin
+   * can be far from its members.
+   */
+  focus(target, frame = null) {
     if (this._disabledByOrtho || !this._focusAnimation) return;
     // A committed-motion tween (teleport / preset / recovery / scene-load
     // fly-in) may own the camera. Cancel it first — wheel/WASD/mousedown are
@@ -471,23 +486,31 @@ export class ExperimentalControls extends THREE.EventDispatcher {
     fa.transitionCamPosStart.copy(camera.position);
     fa.transitionCamQuaternionStart.copy(camera.quaternion);
 
-    const box = new THREE.Box3().setFromObject(target);
-    // Batched entities have their mesh tree stripped at batch time, so
-    // setFromObject finds no geometry under them. batch-models stashes an
-    // entity-local AABB on the object3D (same fallback OrientedBoxHelper
-    // uses) — union it in world space.
-    if (target._batchLocalBbox) {
-      box.union(
-        new THREE.Box3()
-          .copy(target._batchLocalBbox)
-          .applyMatrix4(target.matrixWorld)
-      );
+    const box = new THREE.Box3();
+    if (!frame) {
+      box.setFromObject(target);
+      // Batched entities have their mesh tree stripped at batch time, so
+      // setFromObject finds no geometry under them. batch-models stashes an
+      // entity-local AABB on the object3D (same fallback OrientedBoxHelper
+      // uses) — union it in world space.
+      if (target._batchLocalBbox) {
+        box.union(
+          new THREE.Box3()
+            .copy(target._batchLocalBbox)
+            .applyMatrix4(target.matrixWorld)
+        );
+      }
     }
     const targetCenter = new THREE.Vector3();
     let distance;
     let localCenterY;
 
-    if (!box.isEmpty() && !isNaN(box.min.x)) {
+    if (frame) {
+      // Viewed from the center rather than the origin, so no height offset.
+      targetCenter.copy(frame.center);
+      distance = frame.radius ?? FOCUS_EMPTY_BBOX_DISTANCE_METRES;
+      localCenterY = 0;
+    } else if (!box.isEmpty() && !isNaN(box.min.x)) {
       box.getCenter(targetCenter);
       distance = box.getBoundingSphere(new THREE.Sphere()).radius;
       localCenterY = (box.max.y - box.min.y) / 2;
@@ -512,6 +535,7 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       focusWorldQuat,
       focusWorldScale
     );
+    if (frame) focusWorldPos.copy(frame.center);
 
     const targetEl = target.el;
     let cameraPosition;
@@ -1201,6 +1225,8 @@ export class ExperimentalControls extends THREE.EventDispatcher {
       // Hide the ring on a window blur (e.g. Alt-Tab
       // mid-orbit) so it can't leak visible.
       this._drag.hideIndicator();
+      // Report the interrupted rotate drag, if any (#1993 telemetry).
+      this._drag.flushRotateGesture();
     }
   }
 

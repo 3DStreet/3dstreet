@@ -1,17 +1,25 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   DETACHED_LAYER_PREFIX,
+  buildDetachAllCommands,
   buildDetachCommands,
   buildDetachedDefinition,
   findCloneAtSlot,
   getCloneSlot,
+  getDetachAllBlocker,
+  hasGeneratorClones,
   isDetachableClone,
   listCloneSlots,
+  listGeneratorClones,
   poseFromObject3D,
   rememberDetached,
+  requestDetachAll,
+  resolveDetachAllToolArgs,
   resolveDetachToolArgs,
   routeCloneEdit
 } from '../../src/editor/lib/detachClone.js';
+import { routeKindLimits } from '../../src/editor/lib/groups/groupLevel.js';
+import { resolveCommand } from '../../src/editor/lib/resolveCommand.js';
 
 // A segment element with a live generator component (the shape
 // getCloneSlot/buildDetachCommands read: `components[name]` present and
@@ -370,6 +378,230 @@ describe('detachClone (#2011)', () => {
       expect(copy.payload.components.position).toBe('1.5 0 -12');
     });
 
+    // The easy gizmo commits a whole drag as ONE multi command (a position
+    // tuple and a rotation tuple), and MultiCommand builds its members
+    // directly rather than through Inspector.execute — so the batch has to
+    // be unwrapped here or the rule never sees the clone (the build that
+    // shipped moved the clone in place, which the generator then discarded).
+    it('folds a multi of pose edits on one clone into a single detach', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            {
+              entity: clone,
+              component: 'position',
+              value: '4 0.15 -9',
+              oldValue: '1.5 0 -12'
+            }
+          ],
+          [
+            'entityupdate',
+            {
+              entity: clone,
+              component: 'rotation',
+              value: '0 90 0',
+              oldValue: '0 180 0'
+            }
+          ]
+        ])
+      ).toEqual({
+        cmdName: 'detachclone',
+        payload: {
+          entity: clone,
+          pose: { position: '4 0.15 -9', rotation: '0 90 0' }
+        }
+      });
+    });
+
+    it('folds mixed component edits on one clone, later edits winning', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const routed = routeCloneEdit('multi', [
+        [
+          'entityupdate',
+          {
+            entity: clone,
+            component: 'material',
+            property: 'color',
+            value: '#f00'
+          }
+        ],
+        [
+          'entityupdate',
+          {
+            entity: clone,
+            component: 'material',
+            property: 'opacity',
+            value: 0.5
+          }
+        ],
+        ['entityupdate', { entity: clone, component: 'mixin', value: 'tree' }],
+        ['entityupdate', { entity: clone, component: 'mixin', value: 'bench' }]
+      ]);
+      expect(routed).toEqual({
+        cmdName: 'detachclone',
+        payload: {
+          entity: clone,
+          pose: {},
+          mixin: 'bench',
+          components: { material: { color: '#f00', opacity: 0.5 } }
+        }
+      });
+    });
+
+    it('merges per-axis pose members instead of replacing the vector', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', property: 'x', value: 5 }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', property: 'z', value: 7 }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'rotation', value: '0 90 0' }
+          ]
+        ])
+      ).toEqual({
+        cmdName: 'detachclone',
+        payload: {
+          entity: clone,
+          pose: { position: { x: 5, y: 0, z: 7 }, rotation: '0 90 0' }
+        }
+      });
+      // A whole-vector member followed by a per-axis one keeps the vector.
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', value: '3 4 5' }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', property: 'y', value: 9 }
+          ]
+        ]).payload.pose
+      ).toEqual({ position: { x: 3, y: 9, z: 5 } });
+    });
+
+    it("carries a folded member's callback", () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const cb = () => {};
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'mixin', value: 'tree' },
+            cb
+          ]
+        ])
+      ).toEqual({
+        cmdName: 'detachclone',
+        payload: { entity: clone, pose: {}, mixin: 'tree' },
+        callback: cb
+      });
+      expect(
+        routeCloneEdit('multi', [['entityclone', clone, cb]])
+      ).toMatchObject({ cmdName: 'entitycreate', callback: cb });
+    });
+
+    it('routes each member of a mixed batch and keeps the others in place', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const other = makeClone(segment, { autocreated: false, key: null });
+      const plainEdit = {
+        entity: other,
+        component: 'position',
+        value: '0 0 0'
+      };
+      const cb = () => {};
+      const routed = routeCloneEdit('multi', [
+        ['entityupdate', plainEdit, cb],
+        [
+          'entityupdate',
+          { entity: clone, component: 'position', value: '1 1 1' }
+        ],
+        [
+          'entityupdate',
+          { entity: clone, component: 'rotation', value: '0 5 0' }
+        ],
+        ['entityremove', clone]
+      ]);
+      expect(routed.cmdName).toBe('multi');
+      expect(routed.payload).toEqual([
+        ['entityupdate', plainEdit, cb],
+        [
+          'detachclone',
+          {
+            entity: clone,
+            pose: { position: '1 1 1', rotation: '0 5 0' },
+            remove: true
+          }
+        ]
+      ]);
+    });
+
+    it('leaves a batch with no clone in it untouched', () => {
+      const segment = makeSegment();
+      const plain = makeClone(segment, { autocreated: false });
+      const tuples = [
+        [
+          'entityupdate',
+          { entity: plain, component: 'position', value: '1 1 1' }
+        ],
+        [
+          'entityupdate',
+          { entity: plain, component: 'rotation', value: '0 5 0' }
+        ]
+      ];
+      expect(routeCloneEdit('multi', tuples)).toBeNull();
+      expect(routeCloneEdit('multi', null)).toBeNull();
+      expect(routeCloneEdit('multi', [])).toBeNull();
+    });
+
+    it('re-aims a batch at the plain entity a clone became', () => {
+      const segment = makeSegment();
+      document.body.appendChild(segment);
+      const clone = makeClone(segment);
+      const replacement = makeClone(segment, { autocreated: false, key: null });
+      rememberDetached(clone, replacement);
+      clone.remove();
+      expect(
+        routeCloneEdit('multi', [
+          [
+            'entityupdate',
+            { entity: clone, component: 'position', value: '1 1 1' }
+          ],
+          [
+            'entityupdate',
+            { entity: clone, component: 'rotation', value: '0 5 0' }
+          ]
+        ])
+      ).toEqual({
+        cmdName: 'multi',
+        payload: [
+          [
+            'entityupdate',
+            { entity: replacement, component: 'position', value: '1 1 1' }
+          ],
+          [
+            'entityupdate',
+            { entity: replacement, component: 'rotation', value: '0 5 0' }
+          ]
+        ]
+      });
+      segment.remove();
+    });
+
     it('re-aims an edit at a clone that was already detached', () => {
       const segment = makeSegment();
       document.body.appendChild(segment);
@@ -534,6 +766,239 @@ describe('detachClone (#2011)', () => {
     });
   });
 
+  describe('detach all (#2036)', () => {
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    function mountSegment(options) {
+      const root = document.createElement('a-entity');
+      root.id = 'street-container';
+      root.isEntity = true;
+      const segment = makeSegment(options);
+      segment.id = 'seg-1';
+      segment.isEntity = true;
+      root.appendChild(segment);
+      document.body.appendChild(root);
+      return segment;
+    }
+
+    describe('listGeneratorClones', () => {
+      it('lists the live detachable clones of one generator in slot order', () => {
+        const segment = makeSegment();
+        segment.components['street-generated-stencil__1'] = { data: {} };
+        const c3 = makeClone(segment, { index: 3, key: '0 9' });
+        const c0 = makeClone(segment, { index: 0, key: '0 0' });
+        // another generator's clone, a plain child and an unstamped clone
+        makeClone(segment, {
+          componentName: 'street-generated-stencil__1',
+          index: 0,
+          key: '0 1'
+        });
+        makeClone(segment, { autocreated: false, key: null, index: null });
+        makeClone(segment, { index: 5, key: null });
+        expect(
+          listGeneratorClones(segment, 'street-generated-clones__1')
+        ).toEqual([c0, c3]);
+        expect(listGeneratorClones(null, 'street-generated-clones__1')).toEqual(
+          []
+        );
+        expect(hasGeneratorClones(segment, 'street-generated-clones__1')).toBe(
+          true
+        );
+        expect(hasGeneratorClones(segment, 'street-generated-clones__9')).toBe(
+          false
+        );
+      });
+    });
+
+    describe('getDetachAllBlocker', () => {
+      it('is null for a detachable generator with live clones, else a reason', () => {
+        const segment = makeSegment();
+        segment.components['street-generated-striping__1'] = { data: {} };
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-clones__2')
+        ).toMatchObject({ code: 'missing' });
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-striping__1')
+        ).toMatchObject({ code: 'surface' });
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-clones__1')
+        ).toMatchObject({ code: 'empty' });
+        makeClone(segment);
+        expect(
+          getDetachAllBlocker(segment, 'street-generated-clones__1')
+        ).toBeNull();
+        expect(
+          getDetachAllBlocker(null, 'street-generated-clones__1')
+        ).toMatchObject({
+          code: 'missing'
+        });
+      });
+    });
+
+    describe('buildDetachAllCommands', () => {
+      it('creates one plain entity per clone, then removes the generator', () => {
+        const segment = makeSegment({ skip: ['4 4'] });
+        makeClone(segment, { index: 1, key: '0 -6', mixin: 'tree' });
+        makeClone(segment, { index: 0, key: '0 -12', mixin: 'sedan-rig' });
+        const { clones, commands } = buildDetachAllCommands(
+          segment,
+          'street-generated-clones__1'
+        );
+        expect(clones).toHaveLength(2);
+        expect(commands).toHaveLength(3);
+        expect(commands.map((c) => c[0])).toEqual([
+          'entitycreate',
+          'entitycreate',
+          'componentremove'
+        ]);
+        // slot order, plain Detached Model entities under the segment
+        expect(commands[0][1]).toMatchObject({
+          parentEl: segment,
+          mixin: 'sedan-rig',
+          'data-layer-name': `${DETACHED_LAYER_PREFIX}sedan-rig`,
+          noSelectEntity: true,
+          components: { position: '1.5 0 -12', rotation: '0 180 0' }
+        });
+        expect(commands[1][1].mixin).toBe('tree');
+        expect(commands[0][1].class).toBeUndefined();
+        // the generator goes (skip and all); undo of componentremove restores it
+        expect(commands[2][1]).toEqual({
+          entity: segment,
+          component: 'street-generated-clones__1'
+        });
+      });
+
+      it('throws for a missing, non-detachable or empty generator', () => {
+        const segment = makeSegment();
+        segment.components['street-generated-striping__1'] = { data: {} };
+        expect(() =>
+          buildDetachAllCommands(segment, 'street-generated-clones__2')
+        ).toThrow(/no 'street-generated-clones__2' generator/);
+        expect(() =>
+          buildDetachAllCommands(segment, 'street-generated-striping__1')
+        ).toThrow(/surface generator/);
+        expect(() =>
+          buildDetachAllCommands(segment, 'street-generated-clones__1')
+        ).toThrow(/no live clones/);
+      });
+    });
+
+    describe('requestDetachAll', () => {
+      afterEach(() => {
+        delete globalThis.AFRAME;
+        delete globalThis.STREET;
+      });
+
+      function stubGlobals() {
+        const calls = { execute: [], warnings: [] };
+        globalThis.AFRAME = {
+          INSPECTOR: { execute: (...args) => calls.execute.push(args) }
+        };
+        globalThis.STREET = {
+          notify: { warningMessage: (m) => calls.warnings.push(m) }
+        };
+        return calls;
+      }
+
+      it('runs the command, carrying the clone the user was on', () => {
+        const calls = stubGlobals();
+        const segment = makeSegment();
+        const clone = makeClone(segment);
+        expect(
+          requestDetachAll(segment, 'street-generated-clones__1', {
+            focus: clone
+          })
+        ).toBe(true);
+        expect(requestDetachAll(segment, 'street-generated-clones__1')).toBe(
+          true
+        );
+        expect(calls.execute).toEqual([
+          [
+            'detachallclones',
+            {
+              entity: segment,
+              component: 'street-generated-clones__1',
+              focus: clone
+            }
+          ],
+          [
+            'detachallclones',
+            { entity: segment, component: 'street-generated-clones__1' }
+          ]
+        ]);
+      });
+
+      it('warns instead of running when the clones are gone at click time', () => {
+        const calls = stubGlobals();
+        const segment = makeSegment();
+        expect(requestDetachAll(segment, 'street-generated-clones__1')).toBe(
+          false
+        );
+        expect(calls.execute).toEqual([]);
+        expect(calls.warnings).toHaveLength(1);
+      });
+    });
+
+    describe('resolveDetachAllToolArgs', () => {
+      it('resolves segment + generator to the command payload', () => {
+        const segment = mountSegment();
+        makeClone(segment);
+        expect(
+          resolveDetachAllToolArgs({
+            segmentId: 'seg-1',
+            component: 'street-generated-clones__1'
+          })
+        ).toEqual({ entity: segment, component: 'street-generated-clones__1' });
+      });
+
+      it('names the detachable generators when the component is wrong', () => {
+        const segment = mountSegment();
+        segment.components['street-generated-striping__1'] = { data: {} };
+        expect(() =>
+          resolveDetachAllToolArgs({
+            segmentId: 'seg-1',
+            component: 'street-generated-clones__3'
+          })
+        ).toThrow(
+          /no 'street-generated-clones__3' generator.*street-generated-clones__1/
+        );
+        // omitted or null (function-calling models emit null): a plain
+        // "required" message, never "no 'undefined' component"
+        for (const component of [undefined, null, '']) {
+          expect(() =>
+            resolveDetachAllToolArgs({ segmentId: 'seg-1', component })
+          ).toThrow(
+            /^component is required\. Detachable generators on seg-1: street-generated-clones__1$/
+          );
+        }
+        expect(() =>
+          resolveDetachAllToolArgs({
+            segmentId: 'seg-1',
+            component: 'street-generated-striping__1'
+          })
+        ).toThrow(/surface generator/);
+      });
+
+      it('rejects a generator with nothing left to detach and an unknown segment', () => {
+        mountSegment();
+        expect(() =>
+          resolveDetachAllToolArgs({
+            segmentId: 'seg-1',
+            component: 'street-generated-clones__1'
+          })
+        ).toThrow(/no live clones to detach.*componentRemove/);
+        expect(() =>
+          resolveDetachAllToolArgs({
+            segmentId: 'nope',
+            component: 'street-generated-clones__1'
+          })
+        ).toThrow(/not found/);
+      });
+    });
+  });
+
   describe('poseFromObject3D', () => {
     it('stringifies position, rotation (degrees) and scale to 3 decimals', () => {
       const object3D = {
@@ -546,6 +1011,175 @@ describe('detachClone (#2011)', () => {
         rotation: '0 180 0',
         scale: '1 1 1'
       });
+    });
+  });
+
+  describe('a class write that makes a clone a group', () => {
+    it('detaches it level, with an explicit unit scale outranking its mixin (fails if the group rewrite ignores a detach)', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      clone.setAttribute('rotation', '5 30 0');
+      const nativeGetAttribute = clone.getAttribute.bind(clone);
+      // The scale its mixin gives it.
+      clone.getAttribute = (name) =>
+        name === 'scale' ? { x: 1, y: 1.5, z: 1 } : nativeGetAttribute(name);
+
+      const routed = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'class',
+        value: 'user-group'
+      });
+      expect(routed.cmdName).toBe('detachclone');
+      const levelled = routeKindLimits(routed.cmdName, routed.payload);
+      expect(levelled.cmdName).toBe('detachclone');
+      expect(levelled.payload.pose).toEqual({
+        rotation: '0 30 0',
+        scale: '1 1 1'
+      });
+      expect(levelled.levelled).toEqual({
+        rotation: { x: 5, y: 30, z: 0 },
+        scale: { x: 1, y: 1.5, z: 1 },
+        becameKind: true,
+        kind: 'group'
+      });
+
+      const definition = buildDetachedDefinition(
+        clone,
+        levelled.payload.pose,
+        levelled.payload
+      );
+      expect(definition.components.rotation).toBe('0 30 0');
+      expect(definition.components.scale).toBe('1 1 1');
+      expect(definition.components.class).toBe('user-group');
+
+      const notAGroup = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'class',
+        value: 'foo'
+      });
+      expect(routeKindLimits(notAGroup.cmdName, notAGroup.payload)).toBe(null);
+    });
+  });
+
+  describe('a component write that makes a clone a managed street or a shape', () => {
+    function tiltedTallClone() {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      clone.setAttribute('rotation', '5 30 0');
+      const nativeGetAttribute = clone.getAttribute.bind(clone);
+      // The scale its mixin gives it.
+      clone.getAttribute = (name) =>
+        name === 'scale' ? { x: 1, y: 1.5, z: 1 } : nativeGetAttribute(name);
+      return clone;
+    }
+
+    it('detaches a managed street at unit scale with its tilt, and a shape level and unit (fails if the detach is levelled only for a class, or writes every component into the pose)', () => {
+      const clone = tiltedTallClone();
+      const street = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'managed-street',
+        value: ''
+      });
+      const levelledStreet = routeKindLimits(street.cmdName, street.payload);
+      expect(levelledStreet).not.toBeNull();
+      expect(levelledStreet.cmdName).toBe('detachclone');
+      expect(levelledStreet.payload.pose.scale).toBe('1 1 1');
+      expect(levelledStreet.payload.pose.rotation).toBeUndefined();
+      const definition = buildDetachedDefinition(
+        clone,
+        levelledStreet.payload.pose,
+        levelledStreet.payload
+      );
+      expect(definition.components.rotation).toBe('5 30 0');
+      expect(definition.components.scale).toBe('1 1 1');
+      expect(levelledStreet.levelled).toEqual({
+        scale: { x: 1, y: 1.5, z: 1 },
+        becameKind: true,
+        kind: 'managed-street'
+      });
+
+      const shape = routeCloneEdit('entityupdate', {
+        entity: clone,
+        component: 'shape',
+        value: ''
+      });
+      const levelledShape = routeKindLimits(shape.cmdName, shape.payload);
+      expect(levelledShape.payload.pose).toEqual({
+        rotation: '0 30 0',
+        scale: '1 1 1'
+      });
+      expect(levelledShape.levelled).toEqual({
+        rotation: { x: 5, y: 30, z: 0 },
+        scale: { x: 1, y: 1.5, z: 1 },
+        becameKind: true,
+        kind: 'shape'
+      });
+    });
+  });
+
+  describe('resolveCommand', () => {
+    it('routes a pose write on a clone to a detach and drops the caller label, as the editor does (fails if the clone route is not part of the resolver)', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      const resolved = resolveCommand(
+        'entityupdate',
+        { entity: clone, component: 'position', value: '2 0 -12' },
+        'Move'
+      );
+      expect(resolved.cmdName).toBe('detachclone');
+      expect(resolved.optionalName).toBeUndefined();
+      expect(resolved.refusal).toBe(null);
+    });
+
+    it('levels the detach a class write on a clone becomes, so the clone route runs before the group route (fails if the two routes run in the other order)', () => {
+      const segment = makeSegment();
+      const clone = makeClone(segment);
+      clone.setAttribute('rotation', '170 30 0');
+      const resolved = resolveCommand('entityupdate', {
+        entity: clone,
+        component: 'class',
+        value: 'user-group'
+      });
+      expect(resolved.cmdName).toBe('detachclone');
+      expect(resolved.payload.pose).toEqual({
+        rotation: '0 -150 0',
+        scale: '1 1 1'
+      });
+      expect(resolved.levelled.becameKind).toBe(true);
+    });
+  });
+
+  describe('a batch holding a write that makes a group', () => {
+    it('is rewritten member by member, keeping each member callback on its own member (fails if batches are not rewritten, or a callback is lost)', () => {
+      const item = document.createElement('a-entity');
+      item.setAttribute('rotation', '10 30 0');
+      const other = document.createElement('a-entity');
+      const first = () => {};
+      const second = () => {};
+      const classWrite = {
+        entity: item,
+        component: 'class',
+        value: 'user-group'
+      };
+      const move = { entity: other, component: 'position', value: '1 0 0' };
+      const routed = routeKindLimits('multi', [
+        ['entityupdate', classWrite, first],
+        ['entityupdate', move, second]
+      ]);
+      expect(routed.cmdName).toBe('multi');
+      expect(
+        routed.payload.map(([type, payload, callback]) => [
+          type,
+          payload.component,
+          payload.value,
+          callback
+        ])
+      ).toEqual([
+        ['entityupdate', 'class', 'user-group', first],
+        ['entityupdate', 'rotation', '0 30 0', undefined],
+        ['entityupdate', 'position', '1 0 0', second]
+      ]);
+      expect(routed.levelled.rotation).toEqual({ x: 10, y: 30, z: 0 });
     });
   });
 });

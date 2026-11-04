@@ -26,6 +26,42 @@
     }
   }
 
+  // Drop target after the last row: drops there go to the end of the top
+  // level (or, when the last row is inside groups, of the level the pointer
+  // is at), so an item can leave a group that is itself the last row.
+  .layers-drop-end {
+    min-height: 16px;
+    border-top: 2px solid transparent;
+  }
+
+  // The rows and the strip after them. Positioned so that the rows' and the
+  // strip's offsetTop, which place the drop line, are measured from it.
+  .layers-list {
+    position: relative;
+  }
+
+  // The one drop line between rows (inline `top`, and `left` from the
+  // level's indent for a drop into a group), straddling the boundary.
+  .layers-list > span.drop-line {
+    position: absolute;
+    z-index: 1;
+    display: block;
+    // Ends inside the open group's white box (DROP_LINE_INSET_PX).
+    right: 4px;
+    height: 2px;
+    background: variables.$blue-100;
+    pointer-events: none;
+
+    // "Inside": a small chevron just left of the line, centred on it.
+    > svg {
+      position: absolute;
+      left: -9px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: variables.$blue-100;
+    }
+  }
+
   // Empty state for the layers panel
   .layers-empty-state {
     display: flex;
@@ -161,6 +197,8 @@
       flex-grow: 0;
       height: 40px;
       justify-content: center;
+      // The left padding and the row border below: ROW_CONTENT_INSET_PX in
+      // dropLevels.js.
       padding: 0 6px 0 4px;
       box-sizing: border-box;
 
@@ -228,24 +266,57 @@
       opacity: 0.5;
     }
 
+    // See ROW_CONTENT_INSET_PX in dropLevels.js.
     border: 2px solid transparent;
 
-    &.drop-before {
-      border-bottom-color: transparent;
-      border-left-color: transparent;
-      border-right-color: transparent;
-      border-top-color: variables.$blue-100;
+    // A drop into this row: a blue box exactly where the open group's white
+    // box runs, and over it, so the two never sit side by side.
+    &.drop-child::before {
+      content: '';
+      position: absolute;
+      inset: 1px;
+      border: 2px solid variables.$blue-100;
+      pointer-events: none;
+      z-index: 2;
     }
 
-    &.drop-after {
-      border-bottom-color: variables.$blue-100;
-      border-left-color: transparent;
-      border-right-color: transparent;
-      border-top-color: transparent;
+    // The open group's block (its row and the rows listed inside it): one
+    // white box just inside the rows' borders, as the canvas outlines the
+    // open group. Each row draws its own part; rows sit flush, so the parts
+    // join: each part reaches over its row's transparent border, so the side
+    // lines run unbroken. Not the border itself, whose width the drop
+    // levels count. It stays on during a drop into the group, under the
+    // drop's blue box.
+    &.open-block-first,
+    &.open-block-middle,
+    &.open-block-last,
+    &.open-block-only {
+      &::after {
+        content: '';
+        position: absolute;
+        inset: -2px 1px;
+        border: 0 solid variables.$white;
+        border-left-width: 1px;
+        border-right-width: 1px;
+        pointer-events: none;
+        z-index: 1;
+      }
+    }
+    &.open-block-first::after,
+    &.open-block-only::after {
+      top: 1px;
+      border-top-width: 1px;
+    }
+    &.open-block-last::after,
+    &.open-block-only::after {
+      bottom: 1px;
+      border-bottom-width: 1px;
     }
 
-    &.drop-child {
-      border-color: variables.$blue-100;
+    // Rows outside the open group, faded as the canvas fades the outside.
+    // Faded only: they act as they do with no group open.
+    &.outside-open-group {
+      opacity: 0.5;
     }
   }
 
@@ -481,9 +552,10 @@
     color: variables.$lightgray-600;
   }
 
-  // Expand/collapse children arrow: left-justified before the entity name
-  // (#1980). Rows without children reserve no space, so names there sit
-  // further left — an accepted inconsistency.
+  // Expand/collapse children arrow, left of the entity name (#1980). Every
+  // row reserves the slot, so names at one depth line up whether or not the
+  // row has children. The slot is tucked 4px into the empty right edge of the
+  // drag handle, whose grip is narrower than the handle, to keep the row tight.
   .collapsespace {
     color: variables.$white !important;
     display: inline-flex;
@@ -491,6 +563,7 @@
     justify-content: center;
     flex: none;
     width: 16px;
+    margin-left: -4px;
     margin-right: 0;
   }
 

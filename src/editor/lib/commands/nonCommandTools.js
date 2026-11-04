@@ -26,6 +26,7 @@ import {
 import { applySegmentPreset } from './segmentPresets.js';
 import { GEO_SOURCES } from '@shared/constants/geoSources.js';
 import { TRANSFORM_REFUSED } from '../transformGuard.js';
+import { executePlacedCreate } from '../groups/groupPlacement.js';
 
 /**
  * Wait for a freshly created managed street to settle — segments mounted
@@ -155,7 +156,8 @@ async function managedStreetCreateHandler(args) {
     }
   };
 
-  const created = AFRAME.INSPECTOR.execute('entitycreate', definition);
+  // With a group open, the street goes into it at the same world position.
+  const created = executePlacedCreate(definition);
   if (created === TRANSFORM_REFUSED) {
     throw new Error('entitycreate refused: the target does not permit it');
   }

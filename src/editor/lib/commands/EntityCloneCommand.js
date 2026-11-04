@@ -1,6 +1,6 @@
 import Events from '../Events.js';
 import { Command } from '../command.js';
-import { cloneEntityImpl, createUniqueId, insertAfter } from '../entity.js';
+import { cloneEntityImpl, createUniqueId, insertAfter } from '../entity.jsx';
 
 export class EntityCloneCommand extends Command {
   static llmTool = {

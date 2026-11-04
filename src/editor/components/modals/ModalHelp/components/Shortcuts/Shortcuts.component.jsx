@@ -4,26 +4,21 @@ import styles from './Shortcuts.module.scss';
 import { DocumentationButton } from '../DocumentationButton';
 import { isWasdNav } from '../../../../../lib/nav-experimental/flag.js';
 
-// With the WASD kit gated off, the legacy w/s/d shortcuts remain live
+// With the WASD kit gated off, the legacy s/d shortcuts remain live
 // (shortcuts.js keeps both keymaps) — advertise the familiar legacy keys.
-// With it on, w/s/d drive the camera and t/l/c are the only bindings.
+// With it on, w/a/s/d drive the camera and l/c are the only scale and
+// duplicate bindings.
 const wasdNav = isWasdNav();
 
 const shortcuts = [
   [
     {
-      key: [wasdNav ? 't' : 'w'],
+      key: ['m'],
       description: (
         <FormattedMessage
-          id="help.shortcut.translate"
-          defaultMessage="Translate"
+          id="help.shortcut.cycleMoveTools"
+          defaultMessage="Cycle move tools"
         />
-      )
-    },
-    {
-      key: ['e'],
-      description: (
-        <FormattedMessage id="help.shortcut.rotate" defaultMessage="Rotate" />
       )
     },
     {

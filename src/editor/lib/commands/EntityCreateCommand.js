@@ -1,6 +1,14 @@
 import Events from '../Events';
 import { Command } from '../command.js';
-import { createEntity, createUniqueId } from '../entity.js';
+import { createEntity, createUniqueId } from '../entity.jsx';
+import { isGroupableItem, isSystemItem } from '../groups/groupModel.js';
+import { conformToKindLimits } from '@/tested/group-pose.js';
+import { readMixinPose } from '../groups/groupLevel.js';
+import {
+  beginPlacement,
+  notePlacedOutsideOpenGroup,
+  placeDefinition
+} from '../groups/groupPlacement.js';
 
 /**
  * @param editor Editor
@@ -54,7 +62,14 @@ export class EntityCreateCommand extends Command {
       }
     };
     if (args.mixin) payload.mixin = args.mixin;
-    return payload;
+    // The model gives world values; with a group open the entity goes into
+    // it, keeping them, as an entity added from the panel would.
+    const placed = placeDefinition(
+      payload,
+      beginPlacement({ groupable: isGroupableItem(payload) })
+    );
+    if (placed.refusal) throw new Error(placed.refusal);
+    return placed.definition;
   }
 
   constructor(editor, definition, callback = undefined) {
@@ -62,7 +77,12 @@ export class EntityCreateCommand extends Command {
 
     this.type = 'entitycreate';
     this.name = 'Create Entity';
-    this.definition = definition;
+    // A batch that creates many entities (detachallclones) keeps the
+    // selection where it is and lands it once at the end, like the same
+    // option on entityupdate; the flag is not part of the entity definition.
+    const { noSelectEntity, ...entityDefinition } = definition;
+    this.noSelectEntity = !!noSelectEntity;
+    this.definition = entityDefinition;
     this.callback = callback;
     this.entityId = null;
     // If we have parentEl in the definition, be sure it has an id and store the definition with the id
@@ -78,13 +98,31 @@ export class EntityCreateCommand extends Command {
         parentEl: this.definition.parentEl.id
       };
     }
+    // `beforeEl`, the sibling to insert before, is kept by id too, so a redo
+    // puts the entity back in the same place.
+    if (
+      this.definition.beforeEl &&
+      typeof this.definition.beforeEl !== 'string'
+    ) {
+      if (!this.definition.beforeEl.id) {
+        this.definition.beforeEl.id = createUniqueId();
+      }
+      this.definition = {
+        ...this.definition,
+        beforeEl: this.definition.beforeEl.id
+      };
+    }
+    // A constrained item is created within its kind's limits. Done once here,
+    // so redo replays the same definition.
+    this.definition = withOwnComponents(this.definition);
+    conformToKindLimits(this.definition, { mixinPose: readMixinPose });
   }
 
   execute(nextCommandCallback) {
     let definition = this.definition;
     const callback = (entity) => {
       entity.pause();
-      this.editor.selectEntity(entity);
+      if (!this.noSelectEntity) this.editor.selectEntity(entity);
       this.callback?.(entity);
       nextCommandCallback?.(entity);
     };
@@ -100,8 +138,16 @@ export class EntityCreateCommand extends Command {
       definition = { ...this.definition, id: this.entityId };
     }
 
+    const firstRun = !this.entityId;
     const entity = createEntity(definition, callback, parentEl);
     this.entityId = entity.id;
+    if (firstRun) {
+      notePlacedOutsideOpenGroup(entity, {
+        requireParent: this.definition.requireParent,
+        groupable: isGroupableItem(this.definition),
+        system: isSystemItem(this.definition)
+      });
+    }
     return entity;
   }
 
@@ -110,8 +156,23 @@ export class EntityCreateCommand extends Command {
     if (entity) {
       entity.parentNode.removeChild(entity);
       Events.emit('entityremoved', entity);
-      this.editor.selectEntity(null);
+      // Never leave a removed element selected, even in a batch.
+      if (!this.noSelectEntity || this.editor.selectedEntity === entity) {
+        this.editor.selectEntity(null);
+      }
       nextCommandCallback?.(entity);
     }
   }
+}
+
+// A copy of an entity definition whose `components` (and its children's) can
+// be changed without changing the caller's.
+function withOwnComponents(definition) {
+  return {
+    ...definition,
+    ...(definition.components && { components: { ...definition.components } }),
+    ...(Array.isArray(definition.children) && {
+      children: definition.children.map(withOwnComponents)
+    })
+  };
 }

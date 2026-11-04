@@ -8,21 +8,15 @@ import {
 import { getOS } from './utils';
 import useStore from '@/store';
 import { isWasdNav } from './nav-experimental/flag.js';
+import { shouldCaptureKeyEvent } from './keyCapture.js';
 
 const os = getOS();
 
 // While the first-person kit (?wasd=on) is off, the nav controls do not
-// claim w/a/s/d, so the legacy w/s/d shortcuts (translate/scale/clone)
-// stay live ALONGSIDE their t/l/c replacements — launch keeps the exact
-// legacy keymap, and the eventual flag flip removes only the legacy keys.
+// claim w/a/s/d, so the legacy s/d shortcuts (scale/clone) stay live
+// ALONGSIDE their l/c replacements — launch keeps the legacy keymap, and the
+// eventual flag flip removes only the legacy keys.
 const wasdNav = isWasdNav();
-
-function shouldCaptureKeyEvent(event) {
-  return (
-    event.target.closest('#cameraToolbar') ||
-    (event.target.tagName !== 'INPUT' && event.target.tagName !== 'TEXTAREA')
-  );
-}
 
 export const Shortcuts = {
   enabled: false,
@@ -30,30 +24,27 @@ export const Shortcuts = {
     default: {},
     modules: {}
   },
+  // Escape acts on key-up, but only for a press whose key-down the editor
+  // accepted. The viewer returns to the editor on Escape's key-down, and the
+  // key-up of that same press must not then also leave a group level or
+  // clear the selection.
+  escapeDown: false,
   onKeyUp: function (event) {
+    // Cleared before the gate below, so a gated key-up does not leave it set.
+    const escapeDown = this.escapeDown;
+    if (event.keyCode === 27) this.escapeDown = false;
+
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
     }
 
     var keyCode = event.keyCode;
 
-    // esc: unselect entity
-    if (keyCode === 27) {
+    // esc: leave one open group level if a group is open, else unselect entity
+    if (keyCode === 27 && escapeDown && !this.inspector.groupScope.escape()) {
       if (this.inspector.selectedEntity) {
         this.inspector.selectEntity(null);
       }
-    }
-
-    // t: translate (was 'w' until 2026-05-09; remapped because the
-    // experimental nav controls bind w/a/s/d for camera movement).
-    // 'w' still translates while the WASD kit is gated off.
-    if (keyCode === 84 || (!wasdNav && keyCode === 87)) {
-      Events.emit('transformmodechange', 'translate');
-    }
-
-    // e: rotate
-    if (keyCode === 69) {
-      Events.emit('transformmodechange', 'rotate');
     }
 
     // r: shape draw tool (was the ruler until 2026-08; shapes measure now)
@@ -70,6 +61,12 @@ export const Shortcuts = {
     // 's' still scales while the WASD kit is gated off.
     if (keyCode === 76 || (!wasdNav && keyCode === 83)) {
       Events.emit('transformmodechange', 'scale');
+    }
+
+    // m: step through the move gizmos in menu order. The toolbar resolves
+    // the next one, because only it knows when the hand or shape tool is on.
+    if (keyCode === 77) {
+      Events.emit('transformmodecycle');
     }
 
     // o: transform space
@@ -140,6 +137,10 @@ export const Shortcuts = {
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
     }
+
+    // Not on auto-repeat: holding the Escape that left the viewer repeats
+    // key-downs once the editor is back, and those must not arm it.
+    if (event.keyCode === 27 && !event.repeat) this.escapeDown = true;
 
     if (
       (event.ctrlKey && os !== 'macos') ||
@@ -235,14 +236,21 @@ export const Shortcuts = {
       this.disable();
     }
 
+    this.escapeDown = false;
     window.addEventListener('keydown', this.onKeyDown, false);
     window.addEventListener('keyup', this.onKeyUp, false);
+    window.addEventListener('blur', this.onBlur, false);
     this.enabled = true;
   },
   disable: function () {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('blur', this.onBlur);
+    this.escapeDown = false;
     this.enabled = false;
+  },
+  onBlur: function () {
+    this.escapeDown = false;
   },
   checkModuleShortcutCollision: function (keyCode, moduleName, mustBeActive) {
     if (
@@ -282,5 +290,6 @@ export const Shortcuts = {
     this.inspector = inspector;
     this.onKeyDown = this.onKeyDown.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
+    this.onBlur = this.onBlur.bind(this);
   }
 };

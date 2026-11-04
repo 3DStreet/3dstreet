@@ -88,7 +88,10 @@ export const BATCH_SKINNED_MESHES = window.BATCH_SKINNED_MESHES ?? true;
 //   transforms and visible on any descendant (A-Frame emits non-bubbling componentchanged,
 //   so capture phase is required). It re-bakes matrices and applies effective visibility
 //   onto the slots, since three.js's transform/visibility cascade doesn't reach slots
-//   parented under batchRootEl.
+//   parented under batchRootEl. Every slot matrix write after build also drops the
+//   BatchedMesh's cached whole-mesh bounds (invalidateBatchBounds): three.js frustum-culls the
+//   batch as one object against a sphere it otherwise computes once, so a member moved or
+//   folded in outside it would vanish with the batch (#2101).
 // - When a non-safe component initializes on a batched entity, popMember calls removeMember
 //   (drops the slot and, if it was the last one, tears down the group) then calls the
 //   provider's reload() to rebuild the original mesh, so the new component runs unbatched.
@@ -863,6 +866,18 @@ function ensureInstanceCapacity(batchedMesh, additional) {
   }
 }
 
+// Drop a BatchedMesh's cached whole-mesh bounds after an instance matrix (or geometry) changes.
+// three.js frustum-culls the BatchedMesh as ONE object against `boundingSphere`, computed once
+// on first render (Frustum.intersectsObject computes it only while null) and never refreshed by
+// setMatrixAt / addInstance / setGeometryIdAt. A member moved, or folded in, outside the sphere
+// the group had at its first render is culled with the whole batch as soon as the rest of the
+// group leaves the view: a detached car dragged away from its lane disappears (#2101). Nulling
+// both lets three.js recompute them lazily (a pass over the instances) at most once per frame.
+function invalidateBatchBounds(batchedMesh) {
+  batchedMesh.boundingSphere = null;
+  batchedMesh.boundingBox = null;
+}
+
 // Slot one member into every BatchedMesh of the group from the persisted templates:
 // addInstance (reusing a freed hole id or a fresh slot), bake the member's world matrix,
 // seed effective visibility, wire the raycast back-reference, and record the slot on the
@@ -896,6 +911,7 @@ function addMemberToBatchedMeshes(group, el) {
       batchedMesh._batchIdToEl[instanceId] = el;
       slots.push({ batchedMesh, instanceId, localMatrix, geometry });
     }
+    invalidateBatchBounds(batchedMesh);
   }
 }
 
@@ -1310,6 +1326,7 @@ function syncBatchedSlots(el) {
   for (const { batchedMesh, instanceId, localMatrix } of slots) {
     tmpWorldMatrix.multiplyMatrices(el.object3D.matrixWorld, localMatrix);
     batchedMesh.setMatrixAt(instanceId, tmpWorldMatrix);
+    invalidateBatchBounds(batchedMesh);
   }
 }
 

@@ -134,15 +134,24 @@
 }
 
 .tokenCostBadge {
-  padding: 0.25rem 0.375rem !important;
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  padding: 0.2rem 0.4rem 0.2rem 0.25rem !important;
+  background-color: rgba(255, 255, 255, 0.16) !important;
   border-radius: 0.25rem !important;
   flex-shrink: 0;
-  color: #9ca3af;
+  gap: 0.25rem !important;
+  color: #f3f4f6;
+
+  // The token coin is a dark purple disc: at the compact size it all but
+  // vanished against the badge, so render it larger with a light halo.
+  img {
+    width: 1rem !important;
+    height: 1rem !important;
+    filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.6));
+  }
 
   .selected & {
-    background-color: rgba(119, 77, 238, 0.3) !important;
-    color: #e0d4ff;
+    background-color: rgba(119, 77, 238, 0.35) !important;
+    color: #ffffff;
   }
 }
 

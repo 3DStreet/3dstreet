@@ -1,5 +1,6 @@
 /* global AFRAME, THREE */
 import { removeMember } from '../batch-models';
+import { applyBlendedSurfaceDepthToObject } from '../tested/transparent-layering.js';
 
 var LOADING_MODELS = {};
 var MODELS = {};
@@ -100,6 +101,9 @@ AFRAME.registerComponent('gltf-part', {
         self.data.src,
         function (gltfModel) {
           var model = gltfModel.scene || gltfModel.scenes[0];
+          // Parts share the cached model's materials, so the blended-cutout
+          // depth rule (#1732, see transparent-layering.js) runs once here.
+          applyBlendedSurfaceDepthToObject(model);
           MODELS[self.data.src] = model;
           delete LOADING_MODELS[self.data.src];
           cb(self.selectFromModel(model));

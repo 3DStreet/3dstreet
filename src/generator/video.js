@@ -576,9 +576,7 @@ const VideoTab = {
     const label5s = document.querySelector('label[for="video-duration-5s"]');
     const label10s = document.querySelector('label[for="video-duration-10s"]');
     // Veo models only support 4s/8s durations
-    const isVeo =
-      this.selectedModel === 'google/veo-3.1' ||
-      this.selectedModel === 'google/veo-3.1-fast';
+    const isVeo = modelConfig?.shortDuration === 4;
     const shortLabel = isVeo
       ? t('video.duration4Seconds')
       : t('video.duration5Seconds');

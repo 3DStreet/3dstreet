@@ -1,0 +1,197 @@
+const { rspack } = require('@rspack/core');
+const path = require('path');
+const { execSync } = require('child_process');
+const Dotenv = require('dotenv-webpack');
+
+const DEPLOY_ENV = process.env.DEPLOY_ENV ?? 'production';
+
+// Full build identity: CalVer base from package.json + short git SHA.
+// e.g. "2026.6.0+a1b2c3d". The base is bumped by hand at release time;
+// the SHA advances automatically on every build so each deploy is unique.
+function buildVersion() {
+  const base = process.env.npm_package_version;
+  try {
+    const sha = execSync('git rev-parse --short HEAD').toString().trim();
+    return `${base}+${sha}`;
+  } catch {
+    return base;
+  }
+}
+
+module.exports = {
+  performance: {
+    // 4.75 MiB — raised from 4.5 MiB for user groups (the branch built to
+    // 4.52 MiB; the groups code threads through viewport, raycaster and the
+    // gizmos, so it cannot be split out cheaply).
+    // Earlier bumps: 4.25 → 4.5 for the OSM streets layer + managed
+    // intersections (#1974), 4.0 → 4.25 for the custom street/segment side panels
+    // (#1960), 3.8 → 4.0 for the experimental nav-controls system.
+    // When the budget trips, look for illustration-grade SVGs inlined in JS
+    // first (the ~100 KiB icon move to ui_assets, and the lazy SVGLoader in
+    // svg-extruder, bought the earlier headroom); the durable fix is
+    // code-splitting the editor app + Firebase — tracked in #1624/#1628.
+    maxAssetSize: 4980736, // 4.75 MiB
+    maxEntrypointSize: 4980736, // 4.75 MiB
+    hints: 'error',
+    assetFilter: function (assetFilename) {
+      // Only check named entry point bundles, not async-loaded chunks.
+      // The Spark splat library (~4.4 MiB) is dynamically imported and
+      // lazy-loaded only when a splat component is used.
+      return /^(aframe-street-component|generator|bollardbuddy)\.js$/.test(
+        assetFilename
+      );
+    }
+  },
+  mode: 'production',
+  // Source maps stay on: Sentry fetches the deployed .map files to resolve
+  // minified stack frames in alert emails.
+  devtool: 'source-map',
+  optimization: {
+    minimizer: [
+      // JS only (no CSS minimizer, so copied stylesheets ship as-is), and
+      // license comments extracted to *.LICENSE.txt as Terser did.
+      new rspack.SwcJsMinimizerRspackPlugin({ extractComments: true })
+    ]
+  },
+  entry: {
+    core: { import: './src/index.js', filename: 'aframe-street-component.js' },
+    generator: {
+      import: './src/generator/index.js',
+      filename: 'generator.js'
+    },
+    bollardbuddy: {
+      import: './src/bollardbuddy/index.js',
+      filename: 'bollardbuddy.js'
+    }
+  },
+  output: {
+    clean: true,
+    path: path.join(__dirname, 'dist'),
+    library: { type: 'umd' }
+  },
+  externals: {
+    // Stubs out `import ... from 'three'` so it returns `import ... from window.THREE` effectively using THREE global variable that is defined by AFRAME.
+    three: 'THREE'
+  },
+  plugins: [
+    // @gltf-transform/core 4.4+ dynamically imports `node:fs` / `node:path`
+    // in its PlatformIO detection. Those branches never run in the browser,
+    // but webpack still resolves them statically and throws UnhandledSchemeError
+    // on the `node:` URI scheme. Strip the prefix so the fs/path fallbacks
+    // below substitute empty modules instead.
+    new rspack.NormalModuleReplacementPlugin(/^node:/, (resource) => {
+      resource.request = resource.request.replace(/^node:/, '');
+    }),
+    new Dotenv({
+      path: `./config/.env.${DEPLOY_ENV}`
+    }),
+    new rspack.DefinePlugin({
+      VERSION: JSON.stringify(buildVersion())
+    }),
+    new rspack.CopyRspackPlugin({
+      patterns: [
+        { from: 'src/notyf.min.css' },
+        { from: 'src/viewer-styles.css' },
+        // Draco's Emscripten loader fetches its WASM relative to publicPath.
+        // Copy both decoder + encoder blobs alongside the bundle.
+        { from: 'node_modules/draco3dgltf/draco_decoder_gltf.wasm' },
+        { from: 'node_modules/draco3dgltf/draco_encoder.wasm' }
+      ]
+    })
+  ],
+  module: {
+    rules: [
+      {
+        test: /\.jsx?$/,
+        exclude: /node_modules/,
+        // Rspack's built-in SWC loader replaces Babel (whose only job was JSX).
+        // target esnext: transform JSX only, never downlevel syntax.
+        loader: 'builtin:swc-loader',
+        options: {
+          jsc: {
+            parser: { syntax: 'ecmascript', jsx: true },
+            transform: { react: { runtime: 'automatic' } },
+            target: 'esnext'
+          }
+        },
+        type: 'javascript/auto'
+      },
+      {
+        test: /\.svg$/,
+        type: 'asset/inline'
+      },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader', 'postcss-loader']
+      },
+      {
+        test: /\.module\.scss$/,
+        use: [
+          'style-loader',
+          {
+            loader: 'css-loader',
+            options: {
+              // css-loader v7 flipped modules.namedExport to true, which drops
+              // the default export — breaking `import styles from './x.module.scss'`
+              // app-wide (undefined styles). Restore v6 behavior: default export
+              // with class names kept as-is (our SCSS classes are already camelCase).
+              modules: {
+                namedExport: false,
+                exportLocalsConvention: 'as-is'
+              },
+              sourceMap: false
+            }
+          },
+          {
+            loader: 'sass-loader',
+            options: {
+              sourceMap: false
+            }
+          }
+        ]
+      },
+      {
+        test: /\.scss$/,
+        exclude: /\.module\.scss$/,
+        use: [
+          'style-loader',
+          'css-loader',
+          {
+            loader: 'sass-loader',
+            options: {
+              sourceMap: false
+            }
+          }
+        ]
+      },
+      {
+        test: /\.(png|jpe?g|gif)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'images/[name].[ext]'
+        }
+      }
+    ]
+  },
+  resolve: {
+    extensions: ['.js', '.jsx', '.json'],
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      '@shared': path.resolve(__dirname, 'src/shared')
+    },
+    // draco3dgltf's Node entry points (draco_*_nodejs.js) require('fs') /
+    // require('path') only on the Node branch; the browser branch never hits
+    // them at runtime. Telling webpack to substitute empty modules silences
+    // the static-analysis errors without affecting the WASM browser path.
+    fallback: {
+      fs: false,
+      path: false
+    }
+  },
+  // The same Node-only draco branches reference __filename / __dirname.
+  // Mock them silently, as webpack did by default for web builds.
+  node: {
+    __filename: 'mock',
+    __dirname: 'mock'
+  }
+};

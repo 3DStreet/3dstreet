@@ -106,12 +106,40 @@ would not persist); the plain entity renames like any other.
 
 The doors below are the ones that do not go through a plain command:
 
-- **Drag-to-detach (primary).** The viewport gizmo (`src/editor/lib/viewport.js`)
-  attaches to a clone like any object. The clone moves live during the drag,
-  but no per-frame `entityupdate` is recorded against it (re-attaching the
-  gizmo to a new object mid-drag would break the drag); on the gizmo's
-  `mouseUp` the drag is committed as a single `detachclone` with the dragged
-  pose, so one Cmd-Z restores the clone to its slot.
+- **Drag-to-detach (primary).** Both viewport gizmos attach to a clone like
+  any object and move it live during the drag; neither records a per-frame
+  command against it, so one Cmd-Z restores the clone to its slot.
+  - The **easy gizmo** (`src/editor/lib/gizmos/EasyGizmoControls.js`) writes
+    the drag with `setAttribute` and commits once on release as a `multi`
+    command (a position and a rotation `entityupdate`). It goes through the
+    router like every other door: `routeCloneEdit` unwraps a `multi`, folds
+    every member aimed at the same clone into one `detachclone` at the
+    merged pose, and returns that command on its own when the batch folds to
+    one, so the entry is named "Detach Model" and the toast fires. This
+    matters because `MultiCommand` builds its members directly rather than
+    through `Inspector.execute`: a batch the router did not unwrap would
+    bypass the rule entirely and move the clone in place, which the
+    generator then discards. `Inspector.execute` drops a caller's label
+    ("Move") when the router changes the command type.
+  - The **stock TransformControls gizmo** (`src/editor/lib/viewport.js`) is
+    the one door that calls `detachclone` itself: it would otherwise record
+    an `entityupdate` per drag frame, and re-attaching the gizmo to a new
+    object mid-drag would break the drag, so it skips the per-frame command
+    on a clone and commits the dragged pose once on `mouseUp`.
+  - **The viewport's helpers across the detach** (`viewport.js`, #2054).
+    The commit removes the clone the selection and hover boxes were tracking
+    and selects the entity created in its place, so both helpers have to
+    cope with an object that has left the scene graph: `OrientedBoxHelper`
+    draws nothing for a parentless object (its previous geometry would
+    otherwise land at the object's local position read as world), the
+    hover path ignores an entity that has left the DOM, and the selection
+    box measurement restores the entity's pose under `try/finally`, since a
+    throw mid-measurement used to strand the entity at its parent's origin.
+    The hover box is also held from an easy-gizmo commit until the pointer
+    next moves: the re-attached gizmo only learns on that move that the
+    cursor is still on the control the user released, and a raycaster poll
+    or the gizmo's own detach in the gap would otherwise draw the segment
+    under the handle.
 - **Toast.** `DetachCloneCommand.execute` posts a `STREET.notify` success
   toast saying the object left its generator and that Undo puts it back, so an
   accidental nudge is explained. Fires on redo and on the AI tool too.
@@ -135,6 +163,50 @@ placement key whose parent still carries the named generator. Clones from surfac
 grass) and clones created before slots existed (no stamp) are not detachable;
 Convert to Shapes remains the bulk path.
 
+## Detach all: every clone of one generator (#2036)
+
+Detach has three rungs: one object (above), one generator (this section) and
+the whole street (Convert to Shapes, #1215). "Make every car in this lane
+mine" / "turn this row of stencils into plain markings I can copy and edit"
+is the middle one, the beta-era per-segment detach that Convert to Shapes
+replaced (census in #2011: used roughly 20x as often as the whole-street
+bake). Same instinct as rasterize in Photoshop or detach instance in Figma.
+
+- **Command** `detachallclones` (`DetachAllClonesCommand`, payload
+  `{ entity: segmentEl, component }`): a MultiCommand of one `entitycreate`
+  per live clone of the generator, each the same plain
+  `Detached Model • <mixin>` definition a per-object detach makes
+  (`buildDetachedDefinition`, so a stencil's `geometry`/`polygon-offset`/
+  `batch-member` come along), followed by a `componentremove` of the
+  generator itself, so nothing regenerates and its `skip` bookkeeping goes
+  with it. Builder: `buildDetachAllCommands` in `detachClone.js`;
+  `listGeneratorClones` is the clone census (detachable clones only, slot
+  order) and `getDetachAllBlocker` the one rule set the builder, the AI
+  resolver and the UI gate share (missing generator, surface generator, no
+  live clones). UI doors call `requestDetachAll`, which re-checks at click
+  time and toasts a warning instead of letting the command throw.
+- **Undo** is one entry: the generator comes back with its previous data
+  (earlier per-object holes included) and regenerates the clones exactly
+  where they were, and the plain entities are removed. The creates run with
+  `noSelectEntity` (an `entitycreate` option added for this) and the batch
+  lands the selection once. From a clone's panel the payload carries that
+  clone as `focus`: execute selects its plain replacement and undo selects
+  the regenerated clone at the same slot, so the object the user was
+  editing stays selected. Without a focus (the generator section's pill,
+  the AI tool) both land on the segment.
+- **Doors:** a **Detach all** pill in the generator's header on the segment
+  panel (`StreetSegmentComponent.jsx`, shown only while the generator has
+  live clones; a generator placing nothing is just removed with the trash
+  icon), the same pill beside Detach in the clone header
+  (`CloneSidebarHeader.jsx`), and the AI tool **`detachAllClones`**
+  (`segmentId` + `component`, resolved by `resolveDetachAllToolArgs`; errors
+  list the segment's detachable generators, or say the generator has no
+  live clones left and point at `componentRemove`).
+- **Toast** on completion, in the per-object voice: "N objects detached from
+  the street generator … Undo puts them back."
+- **Not detach-all:** surface generators (striping, rail) stay whole-street;
+  Convert to Shapes remains the bake for the whole street.
+
 ## Accepted trade-offs
 
 - A layout change (spacing, count, mode, seed, length) forgets the hole, so
@@ -145,7 +217,8 @@ Convert to Shapes remains the bulk path.
   to a regenerated duplicate). Same behavior as any hand-placed object today.
 - A detached vehicle or pedestrian is no longer part of the play-mode moving
   cast (`street-traffic` finds its cast via `data-parent-component`): it stays
-  put as scenery while traffic animates around it. The managed street's
+  put as scenery while traffic animates around it. Detach all empties a
+  lane's cast the same way; whichever solution lands for one applies to both. The managed street's
   show-vehicles toggle still covers it (`getVehicleEntities` selects by mixin
   category under the street, not by generator).
 - Managed Street JSON export describes generators, not children, so detached
@@ -161,7 +234,8 @@ Convert to Shapes remains the bulk path.
   exports like any hand-placed model.
 - **PDF / DXF plan view:** the plan model (`src/editor/lib/plan/planModel.js`)
   treats a `Detached Model • …` entity as a clone, so a detached stencil stays
-  on the markings layer behind the export modal's Clones toggle. Without that
+  on the markings layer behind the export modal's Clones toggle (a whole row
+  from Detach all included). Without that
   rule it would vanish: its layer name no longer starts with `Cloned `, and the
   loose-shapes pass skips anything owned by a street.
 
