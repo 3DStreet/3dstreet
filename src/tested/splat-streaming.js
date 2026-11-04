@@ -70,3 +70,80 @@ export function resolveStreamingSettings({ largestRadSplats = 0 } = {}) {
 export function shouldFetchForVisibility(visibilityState) {
   return visibilityState !== 'hidden';
 }
+
+/*
+ * Motion profile (#2047). On the M2 Air test machine one draw of the default
+ * budget at a retina canvas costs ~160 ms, so camera motion ran at ~9 fps no
+ * matter what streaming did. While the camera moves the splat system trades
+ * sharpness and refinement for frame rate, and restores everything once the
+ * camera has been still for MOTION_SETTLE_MS; with on-demand rendering the
+ * settled frame is the sharp one.
+ *  - render at MOTION_PIXEL_RATIO (4x fewer pixels on a 2x screen),
+ *  - draw splat quads to MOTION_MAX_STD_DEV standard deviations (Spark's
+ *    default is sqrt(8); sqrt(5) is ~37% fewer pixels per splat and Spark
+ *    calls it perceptually very similar),
+ *  - re-sort at most every MOTION_MIN_SORT_INTERVAL_MS (each sort reads the
+ *    splat depths back from the GPU and sorts them in a worker).
+ * Chunk fetching is deliberately left running while moving (holding it was
+ * considered and deferred: new areas would stay coarse until the camera
+ * stops).
+ */
+
+/** The camera counts as moving until it has been still this long, in ms. */
+export const MOTION_SETTLE_MS = 250;
+/** Upper bound on the renderer pixel ratio while moving. */
+export const MOTION_PIXEL_RATIO = 1;
+/** Splat quad extent in standard deviations while moving. */
+export const MOTION_MAX_STD_DEV = Math.sqrt(5);
+/** Minimum time between splat sorts while moving, in ms. */
+export const MOTION_MIN_SORT_INTERVAL_MS = 80;
+
+/**
+ * Whether the camera is still "moving" for the motion profile.
+ * @param {number} now - performance.now()
+ * @param {number} lastCameraMove - time the camera pose last changed
+ *   (-Infinity if never)
+ * @returns {boolean}
+ */
+export function isCameraMoving(now, lastCameraMove) {
+  return now - lastCameraMove < MOTION_SETTLE_MS;
+}
+
+/**
+ * The SparkRenderer / renderer settings for the motion profile.
+ * @param {object} rest - the values in force when the camera is still
+ * @param {number} rest.pixelRatio - renderer pixel ratio at rest
+ * @param {number} rest.maxStdDev - SparkRenderer.maxStdDev at rest
+ * @param {number} rest.minSortIntervalMs - SparkRenderer.minSortIntervalMs
+ *   at rest
+ * @returns {{ pixelRatio: number, maxStdDev: number,
+ *   minSortIntervalMs: number }}
+ */
+export function resolveMotionSettings({
+  pixelRatio,
+  maxStdDev,
+  minSortIntervalMs
+}) {
+  return {
+    // Never raise any of them: a 1x screen stays at 1x, and a scene already
+    // tuned below the motion values keeps its own.
+    pixelRatio: Math.min(pixelRatio, MOTION_PIXEL_RATIO),
+    maxStdDev: Math.min(maxStdDev, MOTION_MAX_STD_DEV),
+    minSortIntervalMs: Math.max(minSortIntervalMs, MOTION_MIN_SORT_INTERVAL_MS)
+  };
+}
+
+/**
+ * Whether the motion profile may apply at all. It needs a splat in the scene
+ * (the profile exists for the splat draw cost) and stays out of Play, where
+ * the camera moves continuously and the scene animates, and out of WebXR,
+ * whose session owns the pixel ratio.
+ * @param {object} state
+ * @param {boolean} state.hasSplats
+ * @param {boolean} state.playing - play-mode system isPlaying
+ * @param {boolean} state.xrPresenting - renderer.xr.isPresenting
+ * @returns {boolean}
+ */
+export function isMotionProfileEligible({ hasSplats, playing, xrPresenting }) {
+  return !!hasSplats && !playing && !xrPresenting;
+}

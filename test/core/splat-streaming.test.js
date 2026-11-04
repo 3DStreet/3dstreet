@@ -6,7 +6,13 @@ import {
   HUGE_SCAN_BUDGET_SCALE,
   budgetScaleForSplatCount,
   resolveStreamingSettings,
-  shouldFetchForVisibility
+  shouldFetchForVisibility,
+  MOTION_SETTLE_MS,
+  MOTION_MAX_STD_DEV,
+  MOTION_MIN_SORT_INTERVAL_MS,
+  isCameraMoving,
+  isMotionProfileEligible,
+  resolveMotionSettings
 } from '../../src/tested/splat-streaming.js';
 
 describe('splat-streaming', function () {
@@ -49,6 +55,66 @@ describe('splat-streaming', function () {
       assert.strictEqual(shouldFetchForVisibility('hidden'), false);
       assert.strictEqual(shouldFetchForVisibility('visible'), true);
       assert.strictEqual(shouldFetchForVisibility(undefined), true);
+    });
+  });
+
+  describe('#isCameraMoving()', function () {
+    it('stays moving until the camera has been still MOTION_SETTLE_MS', function () {
+      assert.strictEqual(isCameraMoving(1000, 1000), true);
+      assert.strictEqual(
+        isCameraMoving(1000 + MOTION_SETTLE_MS - 1, 1000),
+        true
+      );
+      assert.strictEqual(isCameraMoving(1000 + MOTION_SETTLE_MS, 1000), false);
+    });
+    it('is not moving before the camera ever moved', function () {
+      assert.strictEqual(isCameraMoving(5, -Infinity), false);
+    });
+  });
+
+  describe('#isMotionProfileEligible()', function () {
+    const base = { hasSplats: true, playing: false, xrPresenting: false };
+    it('applies with a splat, outside Play and WebXR', function () {
+      assert.strictEqual(isMotionProfileEligible(base), true);
+    });
+    it('needs a splat and stays out of Play and WebXR', function () {
+      assert.strictEqual(
+        isMotionProfileEligible({ ...base, hasSplats: false }),
+        false
+      );
+      assert.strictEqual(
+        isMotionProfileEligible({ ...base, playing: true }),
+        false
+      );
+      assert.strictEqual(
+        isMotionProfileEligible({ ...base, xrPresenting: true }),
+        false
+      );
+    });
+  });
+
+  describe('#resolveMotionSettings()', function () {
+    const sparkDefaults = {
+      pixelRatio: 2,
+      maxStdDev: Math.sqrt(8),
+      minSortIntervalMs: 0
+    };
+    it('drops a retina ratio to 1, narrows quads and throttles sorts', function () {
+      assert.deepStrictEqual(resolveMotionSettings(sparkDefaults), {
+        pixelRatio: 1,
+        maxStdDev: MOTION_MAX_STD_DEV,
+        minSortIntervalMs: MOTION_MIN_SORT_INTERVAL_MS
+      });
+    });
+    it('never raises a value that is already cheaper', function () {
+      assert.deepStrictEqual(
+        resolveMotionSettings({
+          pixelRatio: 1,
+          maxStdDev: 2,
+          minSortIntervalMs: 200
+        }),
+        { pixelRatio: 1, maxStdDev: 2, minSortIntervalMs: 200 }
+      );
     });
   });
 });

@@ -16,8 +16,12 @@
  *  - any invalidation draws continuously for SETTLE_MS, which covers control
  *    damping, async texture uploads and follow-up work an event implies;
  *  - an idle viewport still redraws every HEARTBEAT_MS, so anything that
- *    changed without a signal shows up within half a second rather than
- *    never.
+ *    changed without a signal shows up within two seconds rather than
+ *    never. Spark's own on-demand guidance is not to redraw on a timer at
+ *    all, and each idle draw of a big scan is expensive (~160 ms of GPU on
+ *    an M2 Air at a retina canvas: a 500 ms heartbeat kept that GPU 44%
+ *    busy), so the interval is long and only a safety net. A change that
+ *    shows up late should get its own signal (SCENE_EVENTS, requestFrame).
  *
  * The A-Frame side lives in src/aframe-components/render-on-demand.js; this
  * module is the pure decision so it stays unit-testable
@@ -28,7 +32,7 @@
 export const SETTLE_MS = 500;
 
 /** Longest an idle, eligible viewport goes without a draw, in ms. */
-export const HEARTBEAT_MS = 500;
+export const HEARTBEAT_MS = 2000;
 
 /**
  * Whether frames may be skipped at all. Only the editor qualifies: it pauses

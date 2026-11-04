@@ -213,8 +213,19 @@ properties, no reload:
    draws skipped, and an idle editor settles to heartbeat draws only (no
    `onDirty` loop). On a real GPU (M2 MacBook Air, Chrome, #2047 scene,
    2800×1560 canvas): idle GPU 99% → 44% and the editor loop 6 → 60 fps;
-   the remaining 44% is the 500 ms heartbeat (a draw costs ~160 ms of GPU
-   there). Details on PR #2048.
+   the remaining 44% was the 500 ms heartbeat (a draw costs ~160 ms of GPU
+   there). Details on PR #2048. `HEARTBEAT_MS` is now 2 s: Spark's guidance
+   is not to redraw on a timer at all, so the heartbeat is only a safety net.
+5. **Motion profile.** While the camera moves (and for `MOTION_SETTLE_MS`
+   after), the `splat` system renders at pixel ratio 1, draws splat quads to
+   √5 standard deviations instead of √8 (~37% fewer pixels per splat, which
+   Spark calls perceptually very similar) and re-sorts at most every 80 ms
+   (each sort reads splat depths back from the GPU). When the camera
+   settles it restores all three, and on-demand rendering draws the sharp
+   still frame. Not in Play (the camera moves continuously) or WebXR (the
+   session owns the pixel ratio); only with a splat in the scene. Chunk
+   fetching keeps running while moving: holding it was considered and
+   deferred. Policy in `src/tested/splat-streaming.js` (`MOTION_*`).
 
 A user-facing data-saver profile (`lodSplatScale` 0.5, `numLodFetchers` 1,
 `pager.fetchPause` between chunks) is the natural "I'm on a call" switch and
@@ -239,23 +250,29 @@ because it refines to a screen-space error and budgets work per frame and
 memory per device. Spark instead fills a fixed splat budget. What is missing,
 in priority order:
 
-1. **Frame-time governor (planned).** Measure GPU time per frame and adjust
-   `lodSplatScale` and render resolution to hold a target frame rate. The
-   cheapest part: render at DPR 1 while the camera moves (4× fewer pixels
-   on a retina screen) and redraw at full resolution when it stops, which
-   pairs with on-demand rendering (the idle frame is the sharp one). Also
-   consider a longer `HEARTBEAT_MS` (~2 s would take the idle GPU above from
-   ~44% to ~15–20%).
-2. **Foveation (planned).** Spark exposes LoD foveation we don't use
-   (`coneFov`, `coneFoveate`, `behindFoveate`): less detail toward the edges
-   and behind the camera. Measure the draw-cost and chunk-count effect on the
-   #2047 scene.
-3. **Device memory budget.** The page pool (`maxPagedSplats`, 16.7M) holds
+1. **Frame-time governor (partly done).** The motion profile (lever 5) and
+   the 2 s heartbeat are its fixed first step. Still to do: measure GPU time
+   per frame and adjust `lodSplatScale` and render resolution to hold a
+   target frame rate instead of using fixed motion values.
+2. **Foveation (planned).** Spark's LoD foveation is already on by default
+   (full detail within `coneFov0` 90°, `coneFoveate` 0.4 at `coneFov` 120°,
+   `behindFoveate` 0.2 behind the camera). It redistributes a fixed budget
+   rather than shrinking it, so the lever is tightening it (e.g.
+   `behindFoveate` 0.05, `coneFoveate` 0.2) and then lowering
+   `lodSplatScale` until the view looks the same. Measure the chunk-count
+   and draw-cost effect on the #2047 scene.
+3. **Renderer context (to discuss).** `index.html` creates the renderer with
+   `antialias: true` and `logarithmicDepthBuffer: true`. Spark's performance
+   guide says multisampling adds significant overhead for splats without
+   helping them, and Spark's shader honors the log depth buffer by writing
+   depth per fragment, which disables early depth rejection. Both are fixed
+   at context creation, so changing them needs a reload.
+4. **Device memory budget.** The page pool (`maxPagedSplats`, 16.7M) holds
    the whole 9M-splat file once the camera has looked around; nothing sizes
    it to the device or evicts least-recently-used pages. Matters on phones
    and 8 GB laptops. (Below the working set it evicts and re-fetches, so the
    budget has to follow the LoD budget, not replace it.)
-4. **Smaller files at generation (untested).** Beyond `--max-sh=0`:
+5. **Smaller files at generation (untested).** Beyond `--max-sh=0`:
    `--csplat` (compact encoding), and a splat-count cap or quality tier for
    huge scans before conversion. Measure size and visual quality first.
 

@@ -8,7 +8,7 @@ mechanics but not the real-world win. This pass answers two questions:
    editor should drop sharply compared with the same scene on `main`.
 2. **Does it break anything?** The editor viewport now skips idle draws
    while a splat is in the scene. Anything that changes on screen without
-   raising a signal would look frozen for up to half a second.
+   raising a signal would look frozen until the next 2 s heartbeat.
 
 Branch: `claude/busy-hopper-y0jlxs`. Run with `npm install && npm start`
 (http://localhost:3333). Run `npm install` after switching branches. Spark is
@@ -17,17 +17,18 @@ only this branch's changes.
 
 ## What changed (so you know what to look at)
 
-| Change                                               | Where                                                                 |
-| ---------------------------------------------------- | --------------------------------------------------------------------- |
-| Fetching pauses while the tab is hidden              | `splat` system, `public/splat-viewer.html`                            |
-| `.rad` over 5M splats halves the LOD budget          | `src/tested/splat-streaming.js`                                       |
-| Converter drops spherical harmonics (`RAD_MAX_SH=0`) | `rad-converter/` (only affects newly converted assets)                |
-| Idle editor draws skipped once a splat exists        | `render-on-demand` system, policy in `src/tested/render-on-demand.js` |
-| Standalone splat viewer renders only on demand       | `public/splat-viewer.html`                                            |
+| Change                                                                    | Where                                                                    |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Fetching pauses while the tab is hidden                                   | `splat` system, `public/splat-viewer.html`                               |
+| `.rad` over 5M splats halves the LOD budget                               | `src/tested/splat-streaming.js`                                          |
+| Converter drops spherical harmonics (`RAD_MAX_SH=0`)                      | `rad-converter/` (only affects newly converted assets)                   |
+| Idle editor draws skipped once a splat exists                             | `render-on-demand` system, policy in `src/tested/render-on-demand.js`    |
+| Standalone splat viewer renders only on demand                            | `public/splat-viewer.html`                                               |
+| While the camera moves: pixel ratio 1, narrower splats, sorts every 80 ms | `splat` system motion profile, policy in `src/tested/splat-streaming.js` |
 
 **When an editor frame still draws:** camera pose, projection or canvas size
 changed; for 500 ms after any pointer / wheel / key input or scene event;
-when Spark's `onDirty` asks for a frame; and at least every 500 ms as a
+when Spark's `onDirty` asks for a frame; and at least every 2 s as a
 safety net. Viewer mode, Play and WebXR draw every frame. Deleting the last
 splat restores normal drawing.
 
@@ -118,14 +119,20 @@ rendering.
 
 ### 4. Moving the camera (2 min)
 
-- [ ] Orbit, pan, wheel-zoom and WASD-fly for ~20 s.
-      **Pass:** motion is exactly as smooth as on `main`; no hitch when
-      motion starts or when damping coasts to a stop.
+- [ ] Orbit, pan, wheel-zoom and WASD-fly for ~20 s, running
+      `measureRod(10)` during it. Repeat on `main`.
+      **Pass:** `loopFps` while moving is clearly higher than on `main`.
+      The image is softer while moving (pixel ratio 1, narrower splats) and
+      turns sharp within about a quarter second of stopping. At most a
+      one-frame hitch when motion starts or stops (the canvas is resized).
+- [ ] While still orbiting, `STREET.splatDebug.snapshot().streaming.motion`
+      shows `active: true`; a second after stopping it shows `false` and
+      `pixelRatio` is back to the device ratio.
 
 ## Part 2 — Does it break anything? (~15 min)
 
 All with a splat in the scene (on-demand active). For each, the failure
-mode to watch for is **a visual change that lags up to half a second or
+mode to watch for is **a visual change that lags up to two seconds or
 appears only after you move the mouse**.
 
 ### 5. Editor interaction (6 min)
@@ -150,7 +157,7 @@ These raise no input event; they are the most likely to lag.
 - [ ] Load a scene with models: ghost boxes swap to the real GLBs promptly.
 - [ ] Lazy textures and the sky arrive without needing a mouse move.
 - [ ] Google 3D Tiles / OSM buildings / 2D basemap: with the camera still,
-      tiles finish loading on their own (they may pop in at the 2 fps
+      tiles finish loading on their own (they may pop in at the 2 s
       heartbeat; that is acceptable, never appearing is not).
 - [ ] Plan View / compass / focus tweens glide smoothly.
 - [ ] An AI-assistant or MCP edit (if you use them) shows up immediately.
@@ -189,8 +196,9 @@ These raise no input event; they are the most likely to lag.
 
 ## Tuning knobs
 
-`SETTLE_MS` and `HEARTBEAT_MS` in `src/tested/render-on-demand.js` (both
-500 ms). A longer heartbeat saves more on weak GPUs but makes any missed
+`SETTLE_MS` (500 ms) and `HEARTBEAT_MS` (2 s) in
+`src/tested/render-on-demand.js`; the motion profile's `MOTION_*` values in
+`src/tested/splat-streaming.js`. A longer heartbeat saves more on weak GPUs but makes any missed
 signal lag longer. If Part 2 finds a lagging case, prefer adding its event
 to `SCENE_EVENTS` in `src/aframe-components/render-on-demand.js` or calling
 `requestFrame()` from the code that changes the scene.

@@ -5,9 +5,14 @@
 import { SPLAT_EXTENSIONS } from '@shared/assets/constants.js';
 import { SPLAT_RENDER_ORDER } from '../tested/transparent-layering.js';
 import {
+  isCameraMoving,
+  isMotionProfileEligible,
+  MOTION_PIXEL_RATIO,
+  resolveMotionSettings,
   resolveStreamingSettings,
   shouldFetchForVisibility
 } from '../tested/splat-streaming.js';
+import { matrixChanged } from '../tested/render-on-demand.js';
 import './render-on-demand.js';
 
 // Spark library is loaded dynamically to reduce initial bundle size (~500KB)
@@ -508,8 +513,11 @@ AFRAME.registerComponent('splat', {
  * src/tested/splat-streaming.js):
  *  - fetching pauses while the document is hidden (in-flight chunks finish,
  *    then the pager's queue waits; nothing renders anyway),
- *  - a huge scan (RAD header count above HUGE_SCAN_SPLATS) caps the budget.
- * Both are live SparkRenderer / SplatPager properties — no reload.
+ *  - a huge scan (RAD header count above HUGE_SCAN_SPLATS) caps the budget,
+ *  - while the camera moves, the motion profile lowers the pixel ratio and
+ *    the splat quad extent and throttles sorting; the camera settling
+ *    restores them for a sharp still frame.
+ * All are live SparkRenderer / SplatPager / renderer properties — no reload.
  * The first splat also turns on on-demand rendering for the editor viewport
  * (render-on-demand system), driven by SparkRenderer's onDirty.
  */
@@ -520,6 +528,17 @@ AFRAME.registerSystem('splat', {
     // SplatMesh -> total splat count from its RAD header (RadMeta.count).
     // The largest one drives the huge-scan budget cap.
     this.pagedSplatCounts = new Map();
+    // Motion profile state (see tock). `rest` holds the values to restore,
+    // `applied` the values the profile set.
+    this.motion = {
+      active: false,
+      lastCameraMove: -Infinity,
+      camera: null,
+      matrixWorld: null,
+      projection: null,
+      rest: null,
+      applied: null
+    };
 
     this.onVisibilityChange = () => this.applyFetchGate();
     document.addEventListener('visibilitychange', this.onVisibilityChange);
@@ -581,6 +600,132 @@ AFRAME.registerSystem('splat', {
     if (!renderOnDemand || !this.sparkRenderer) return;
     this.sparkRenderer.onDirty = renderOnDemand.requestFrame;
     renderOnDemand.activate();
+  },
+
+  /**
+   * After each frame's draw: track camera motion and switch the motion
+   * profile on or off. Runs in the editor (which marks the scene playing so
+   * system ticks run) and in the viewer, including frames the
+   * render-on-demand system skipped.
+   */
+  tock: function () {
+    if (!this.sparkRenderer) return;
+    const now = performance.now();
+    this.trackCameraMotion(now);
+    const renderer = this.el.renderer;
+    const playMode = this.el.systems['play-mode'];
+    const renderOnDemand = this.el.systems['render-on-demand'];
+    const eligible = isMotionProfileEligible({
+      hasSplats: !!(renderOnDemand && renderOnDemand.holders > 0),
+      playing: !!(playMode && playMode.isPlaying),
+      xrPresenting: !!(renderer.xr && renderer.xr.isPresenting)
+    });
+    const moving = eligible && isCameraMoving(now, this.motion.lastCameraMove);
+    if (moving && !this.motion.active) this.enterMotionProfile();
+    else if (!moving && this.motion.active) this.exitMotionProfile();
+    else if (moving) this.holdMotionPixelRatio();
+  },
+
+  /** Record when the active camera's pose or projection last changed. */
+  trackCameraMotion: function (now) {
+    const motion = this.motion;
+    const camera = this.el.camera;
+    if (!camera) return;
+    camera.updateWorldMatrix(true, false);
+    const world = camera.matrixWorld.elements;
+    const projection = camera.projectionMatrix.elements;
+    if (camera !== motion.camera || !motion.matrixWorld) {
+      // A camera switch is not motion; start tracking from here.
+      motion.camera = camera;
+      motion.matrixWorld = world.slice();
+      motion.projection = projection.slice();
+      return;
+    }
+    if (
+      matrixChanged(world, motion.matrixWorld) ||
+      matrixChanged(projection, motion.projection)
+    ) {
+      motion.matrixWorld = world.slice();
+      motion.projection = projection.slice();
+      motion.lastCameraMove = now;
+    }
+  },
+
+  enterMotionProfile: function () {
+    const sr = this.sparkRenderer;
+    const renderer = this.el.renderer;
+    const rest = {
+      pixelRatio: renderer.getPixelRatio(),
+      maxStdDev: sr.maxStdDev,
+      minSortIntervalMs: sr.minSortIntervalMs
+    };
+    const applied = resolveMotionSettings(rest);
+    this.motion.active = true;
+    this.motion.rest = rest;
+    this.motion.applied = applied;
+    if (applied.pixelRatio !== rest.pixelRatio) {
+      renderer.setPixelRatio(applied.pixelRatio);
+    }
+    sr.maxStdDev = applied.maxStdDev;
+    sr.minSortIntervalMs = applied.minSortIntervalMs;
+  },
+
+  /**
+   * A-Frame resets the pixel ratio to the device ratio on some resizes
+   * (exiting VR, for one); keep the motion ratio while moving and remember
+   * the new value to restore.
+   */
+  holdMotionPixelRatio: function () {
+    const renderer = this.el.renderer;
+    const { rest, applied } = this.motion;
+    const current = renderer.getPixelRatio();
+    if (current === applied.pixelRatio) return;
+    rest.pixelRatio = current;
+    applied.pixelRatio = Math.min(current, MOTION_PIXEL_RATIO);
+    if (current !== applied.pixelRatio) {
+      renderer.setPixelRatio(applied.pixelRatio);
+    }
+  },
+
+  /**
+   * Restore the still-camera settings. A value someone else changed while
+   * the profile was active is left alone; the pixel ratio is not touched
+   * while a WebXR session owns it. Asks render-on-demand for the sharp
+   * settled frames.
+   */
+  exitMotionProfile: function () {
+    const sr = this.sparkRenderer;
+    const renderer = this.el.renderer;
+    const { rest, applied } = this.motion;
+    this.motion.active = false;
+    this.motion.rest = null;
+    this.motion.applied = null;
+    if (!rest) return;
+    if (sr.maxStdDev === applied.maxStdDev) sr.maxStdDev = rest.maxStdDev;
+    if (sr.minSortIntervalMs === applied.minSortIntervalMs) {
+      sr.minSortIntervalMs = rest.minSortIntervalMs;
+    }
+    const xrPresenting = !!(renderer.xr && renderer.xr.isPresenting);
+    if (
+      !xrPresenting &&
+      rest.pixelRatio !== applied.pixelRatio &&
+      renderer.getPixelRatio() === applied.pixelRatio
+    ) {
+      renderer.setPixelRatio(rest.pixelRatio);
+    }
+    const renderOnDemand = this.el.systems['render-on-demand'];
+    if (renderOnDemand) renderOnDemand.invalidate();
+  },
+
+  /** For STREET.splatDebug.snapshot(). */
+  getMotionState: function () {
+    const { active, lastCameraMove, rest, applied } = this.motion;
+    return {
+      active,
+      msSinceCameraMove: Math.round(performance.now() - lastCameraMove),
+      rest: rest ? { ...rest } : null,
+      applied: applied ? { ...applied } : null
+    };
   },
 
   /**

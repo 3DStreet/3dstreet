@@ -83,6 +83,16 @@ function readStreaming(sr) {
       system && typeof system.getStreamingSettings === 'function'
         ? system.getStreamingSettings()
         : undefined,
+    // Motion profile (#2047): whether the cheaper while-moving settings are
+    // applied, and the values to restore / the values applied.
+    motion:
+      system && typeof system.getMotionState === 'function'
+        ? system.getMotionState()
+        : undefined,
+    pixelRatio:
+      scene && scene.renderer ? scene.renderer.getPixelRatio() : undefined,
+    maxStdDev: sr.maxStdDev,
+    minSortIntervalMs: sr.minSortIntervalMs,
     documentVisibility:
       typeof document !== 'undefined' ? document.visibilityState : undefined,
     enableLodFetching: sr.enableLodFetching,
