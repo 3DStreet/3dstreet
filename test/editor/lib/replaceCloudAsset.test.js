@@ -10,14 +10,6 @@ const { getEntityAssetType, replaceCloudAssetInScene, swapCloudAssetInScene } =
 function makeEntity(attrs, tag = 'a-entity') {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
-  // a-image planes report their geometry as an object, like A-Frame does.
-  const geometry = attrs.geometryWidth;
-  if (geometry) {
-    el.removeAttribute('geometryWidth');
-    const orig = el.getAttribute.bind(el);
-    el.getAttribute = (name) =>
-      name === 'geometry' ? { width: geometry } : orig(name);
-  }
   return el;
 }
 
@@ -89,12 +81,11 @@ describe('replaceCloudAssetInScene (#2142)', () => {
     expect(updates.some(([, p]) => p.entity === other)).toBe(false);
   });
 
-  it('swaps an image texture and keeps the plane width at the new aspect', () => {
+  it('swaps only an image texture, leaving the plane size alone', () => {
     const img = makeEntity({
       material: 'src: old.png',
       'data-asset-id': 'old',
-      'data-asset-owner-uid': 'someone',
-      geometryWidth: 4
+      'data-asset-owner-uid': 'someone'
     });
     scene.append(img);
 
@@ -111,10 +102,7 @@ describe('replaceCloudAssetInScene (#2142)', () => {
       property: 'src',
       value: 'new.png'
     });
-    expect(payloads.find((p) => p.component === 'geometry')).toMatchObject({
-      property: 'height',
-      value: 2
-    });
+    expect(payloads.some((p) => p.component === 'geometry')).toBe(false);
   });
 
   it('never puts a different asset type on an entity', () => {

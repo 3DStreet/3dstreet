@@ -38,8 +38,12 @@ export function getEntityAssetType(entity) {
   return null;
 }
 
-// The component updates that point one entity at a served URL.
-function sourceUpdates(entity, type, servedUrl, target) {
+// The component updates that point one entity at a served URL. Only the
+// source changes: the entity's placement, scale, rotation and (for images)
+// plane size stay exactly as they were. Picking a fitting asset is the
+// user's call, and an automatic refit would move or resize things they
+// didn't ask to change.
+function sourceUpdates(entity, type, servedUrl) {
   if (type === 'mesh') {
     return [
       {
@@ -61,9 +65,8 @@ function sourceUpdates(entity, type, servedUrl, target) {
       }
     ];
   }
-  // Image plane: swap the texture, and keep the plane's width while matching
-  // the new image's aspect ratio so it isn't stretched.
-  const updates = [
+  // Image plane: swap the texture only.
+  return [
     {
       entity,
       component: 'material',
@@ -72,19 +75,6 @@ function sourceUpdates(entity, type, servedUrl, target) {
       noSelectEntity: true
     }
   ];
-  const w = target.width;
-  const h = target.height;
-  const planeWidth = Number(entity.getAttribute('geometry')?.width);
-  if (w > 0 && h > 0 && planeWidth > 0) {
-    updates.push({
-      entity,
-      component: 'geometry',
-      property: 'height',
-      value: planeWidth * (h / w),
-      noSelectEntity: true
-    });
-  }
-  return updates;
 }
 
 /**
@@ -119,11 +109,6 @@ export function replaceCloudAssetInScene(source, target, { label } = {}) {
   });
   if (!entities.length) return 0;
 
-  const dims = {
-    width: target.width ?? target.metadata?.width,
-    height: target.height ?? target.metadata?.height
-  };
-
   const updates = entities.flatMap((entity) =>
     [
       // Identity first, so a load error on the new URL is retried by
@@ -140,7 +125,7 @@ export function replaceCloudAssetInScene(source, target, { label } = {}) {
         value: targetOwner,
         noSelectEntity: true
       },
-      ...sourceUpdates(entity, getEntityAssetType(entity), servedUrl, dims)
+      ...sourceUpdates(entity, getEntityAssetType(entity), servedUrl)
     ].map((payload) => ['entityupdate', payload])
   );
   AFRAME.INSPECTOR.execute('multi', updates, label || 'Replace asset');
