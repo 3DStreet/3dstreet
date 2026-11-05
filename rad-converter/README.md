@@ -34,12 +34,12 @@ On success the handler patches `users/{uid}/assets/{assetId}` with
 ### Spherical harmonics (`RAD_MAX_SH`)
 
 `build-lod` runs with `--max-sh=$RAD_MAX_SH` (default **0**, set in
-`deploy.sh`). Degree-3 SH — build-lod's own default — is 45 of the ~68 raw
-bytes per splat and compresses poorly, so it dominated every streamed chunk,
-and video-derived street scans get little from view-dependent shading.
-Dropping it roughly halves the file, the bandwidth and the decode work for
-every future asset ([#2047](https://github.com/3DStreet/3dstreet/issues/2047));
-**Reoptimize** rebuilds an existing large one. Set `RAD_MAX_SH=1` before
+`deploy.sh`). Degree-3 SH, build-lod's own default, is 45 of the ~68 raw bytes
+per splat, but how much that saves after compression depends on the scan: a
+7M-splat scan went from 118.5 MB to 109.4 MB (8%) with no visible change
+([#2047](https://github.com/3DStreet/3dstreet/issues/2047)). Scans with real
+view-dependent data may save more; that has not been measured, nor has the
+runtime GPU saving. **Reoptimize** rebuilds an existing asset. Set `RAD_MAX_SH=1` before
 running `deploy.sh` to keep first-order view dependence if it proves worth the
 bytes. The degree baked into a file is recorded as `optimizationMetadata.maxSh`
 (docs without the field predate this and carry degree 3).

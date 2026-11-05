@@ -7,6 +7,23 @@ cut. Write PR numbers as full markdown links; GitHub does not autolink bare
 PR numbers in rendered .md files. Versions are CalVer (YYYY.M.patch); the
 build SHA shown in-app (+a1b2c3d) identifies the exact deployed commit. -->
 
+## Unreleased
+
+- **Smoother large splat scans.** Big scans no longer keep your computer
+  working flat out once they have loaded. The editor stops redrawing while
+  nothing is changing, downloads pause while the tab is in the background,
+  very large scans stream less data, and the view stays more responsive while
+  you move the camera, sharpening as soon as you stop ([#2048](https://github.com/3DStreet/3dstreet/pull/2048)).
+- **Replace missing assets.** When a scene points to a model, splat, or image
+  you can't use, such as in a remixed scene or after a deletion, Replace lets
+  you choose one of your own assets instead, as a single undo step ([#2144](https://github.com/3DStreet/3dstreet/pull/2144)).
+- **Choose from my assets in the generator.** The Image and Video tabs can now
+  use an image from your assets as the source image or first frame ([#2144](https://github.com/3DStreet/3dstreet/pull/2144)).
+- **Layer groups stay open after Play.** Groups you expanded in the scene graph
+  are still expanded when you stop playing ([#2141](https://github.com/3DStreet/3dstreet/pull/2141)).
+- **Slope in the street cross-section.** Sloped segments now show a slanted top
+  in the cross-section strip, and bar heights better reflect elevation ([#2141](https://github.com/3DStreet/3dstreet/pull/2141)).
+
 ## 2026.9.0
 
 Thanks to **Diarmid Mackenzie** (navigation overhaul, shapes) and **Vincent

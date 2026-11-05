@@ -39,8 +39,8 @@ CPU="4"
 # rad-dispatch.js). 900s was too short for a 22M-splat build.
 TIMEOUT="3600"
 CONCURRENCY="1"    # CPU-bound: one conversion per instance
-# Spherical-harmonics degree kept in the .rad (build-lod --max-sh). 0 drops SH:
-# roughly half the bytes streamed per chunk for every future asset (#2047).
+# Spherical-harmonics degree kept in the .rad (build-lod --max-sh). 0 drops SH.
+# The saving depends on the scan: 8% on a 7M-splat test (#2047).
 # Raise to 1 only if view-dependent shading proves worth the bandwidth.
 MAX_SH="${RAD_MAX_SH:-0}"
 

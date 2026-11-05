@@ -76,7 +76,7 @@ So this work is **almost entirely backend**: produce the `.rad`, store it, write
 | Tokens | **Non-charged** (`tokenCost: 0`) | RAD is a silent backend optimization (GLB-optimization analog), not a user-initiated generation. `refundSplatToken` becomes a no-op. |
 | `.rad` storage | **Firebase Storage / GCS** (NOT Hetzner) as `assetRole: 'optimized'` | Durable, token-gated for private splats, consistent asset model. Hetzner is decommissioned for serving. |
 | LOD setting | **`build-lod --quality`**, single `.rad` | Matches the Hetzner-validated files (bhatt-lod, single file, not `--rad-chunked`). |
-| SH degree | **`--max-sh=0`** (env `RAD_MAX_SH`, `rad-converter/deploy.sh`) | Degree-3 SH was over half of every streamed chunk; street scans get little from it. Halves bytes + decode for every future asset (#2047). Recorded as `optimizationMetadata.maxSh`. |
+| SH degree | **`--max-sh=0`** (env `RAD_MAX_SH`, `rad-converter/deploy.sh`) | Degree-3 SH is 45 of the ~68 raw bytes per splat, but the saving after compression depends on the scan: 118.5 → 109.4 MB (8%) on a 7M-splat test, no visible change (#2047). Scans with real view-dependent data may save more; unmeasured, as is the runtime GPU saving. Recorded as `optimizationMetadata.maxSh`. |
 | Serving | GCS with **byte-range CORS** | `cors.json` must expose `Accept-Ranges` + `Content-Range`. |
 
 ### Cost reference (approx, verify against current pricing)
