@@ -238,8 +238,8 @@ switches it (`ComponentAddCommand`). Unlit receivers must not cast (self-shadow 
 
 **Transparent pass & splats (#1732, #1754):** Spark draws every splat as one
 transparent, non-depth-writing mesh at the scene origin, so its place among
-other transparent surfaces is pinned by `renderOrder`, not left to three.js's
-origin-distance sort. Ordinary content at 0 draws first (depth-writing
+other transparent surfaces is pinned by `renderOrder` (A-Frame sorts the
+transparent queue by `renderOrder` alone, then scene-graph order). Ordinary content at 0 draws first (depth-writing
 surfaces occlude splats per pixel), splats next, then translucent reference
 map layers and the overlay band from 1 up (placeholders, shape fills, gizmos).
 Blended glTF materials that are cutouts or mostly opaque get a depth write at

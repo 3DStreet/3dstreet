@@ -1,15 +1,14 @@
 /**
  * Transparent-pass layering around Gaussian splats (#1732, #1754).
  *
- * three.js draws every opaque object first, then the transparent queue sorted
- * by `renderOrder` and, within one renderOrder, by the camera distance of each
- * object's ORIGIN (farthest first). Spark draws every splat in the scene as ONE
- * transparent mesh (the SparkRenderer, added at the scene root, so its origin
- * is the scene origin) that tests depth but never writes it. Left at the
- * default renderOrder 0, where the splats land among the scene's other
- * transparent surfaces depends on how far the camera happens to be from the
- * scene origin versus from each surface's own origin, and each outcome fails
- * differently:
+ * three.js draws every opaque object first, then the transparent queue, which
+ * A-Frame sorts by `renderOrder` alone (its renderer's `sortTransparentObjects`
+ * is off by default), so within one renderOrder surfaces draw in scene-graph
+ * order. Spark draws every splat in the scene as ONE transparent mesh (the
+ * SparkRenderer, added at the scene root) that tests depth but never writes
+ * it. Left at the default renderOrder 0, where the splats land among the
+ * scene's other transparent surfaces depends on where each sits in the scene
+ * graph, and each outcome fails differently:
  *
  * - A surface drawn AFTER the splats composites over them, whatever its depth.
  * - A surface drawn BEFORE the splats occludes them only where it wrote depth.

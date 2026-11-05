@@ -107,10 +107,9 @@ function areaTerm(area) {
 // The floor of the band is FILL_ORDER_BASE, and its one non-negotiable job is
 // to be POSITIVE. Three's renderOrder defaults to 0, so all ordinary scene
 // content - including the satellite map layer's ground plane - is implicitly at
-// 0, and within one renderOrder the transparent queue falls back to a distance
-// comparison taken at each object's ORIGIN. That plane is hundreds of metres
-// across but sorted by its centre, so at renderOrder 0 it can sort last and
-// paint over a fill drawn away from that centre. Any positive value settles it.
+// 0, and A-Frame sorts the transparent queue by renderOrder alone, so at 0 a
+// fill's place among them would be left to scene-graph order. Any positive
+// value settles it.
 // The whole band tops out just above 3, which stays clear of every editor
 // overlay in the WebGL queue (the lowest is 100).
 //

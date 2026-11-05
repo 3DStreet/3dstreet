@@ -219,13 +219,17 @@ PatternSwatch.propTypes = { pattern: PropTypes.string.isRequired };
 // resting ~0.4 s) opens the sentence beside the panel. The trigger is a plain
 // span, so it adds no tab stop; keyboard and screen-reader users get the same
 // sentence from the row's control (see FillRow).
-const HelpTooltip = ({ help, children }) => (
+//
+// `title` repeats the row's label at the head of the tooltip, for rows whose
+// label is long enough to be cut off in the panel.
+const HelpTooltip = ({ help, title, children }) => (
   <Tooltip.Root>
     <Tooltip.Trigger asChild>
       <span className="fill-help-trigger">{children}</span>
     </Tooltip.Trigger>
     <Tooltip.Portal>
       <Tooltip.Content side="left" sideOffset={6} className={styles.tooltip}>
+        {title ? <strong>{title}: </strong> : null}
         {help}
         <Tooltip.Arrow className={styles.tooltipArrow} />
       </Tooltip.Content>
@@ -235,6 +239,7 @@ const HelpTooltip = ({ help, children }) => (
 
 HelpTooltip.propTypes = {
   help: PropTypes.string.isRequired,
+  title: PropTypes.string,
   children: PropTypes.node.isRequired
 };
 
@@ -391,7 +396,9 @@ export const ShapeStyleSectionControls = ({ entity }) => {
         id={id}
         label={
           <>
-            <HelpTooltip help={help}>{label}</HelpTooltip>
+            <HelpTooltip help={help} title={label}>
+              {label}
+            </HelpTooltip>
             <span id={helpIdFor(id)} className="sr-only">
               {help}
             </span>
@@ -517,6 +524,9 @@ export const ShapeStyleSectionControls = ({ entity }) => {
           name="fillAngle"
           value={typeof data.fillAngle === 'number' ? data.fillAngle : 0}
           precision={2}
+          // A drag moves the value by step/100 per pixel: 0.5° here (5° with
+          // Shift), where the metre fields move 0.01 m.
+          step={50}
           unit="°"
           onChange={(_name, value) => update('fillAngle', value)}
         />
