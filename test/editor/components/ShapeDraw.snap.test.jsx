@@ -138,6 +138,24 @@ const moveToWorld = (x, z) => {
   moveTo(s.x, s.y);
 };
 
+// A touch tap: no hover before it, no move between press and release.
+function tap(x, y) {
+  const at = {
+    clientX: x,
+    clientY: y,
+    button: 0,
+    detail: 1,
+    pointerType: 'touch'
+  };
+  fireEvent.pointerDown(canvasOf(), at);
+  fireEvent.pointerUp(canvasOf(), at);
+}
+
+const tapAt = (x, z) => {
+  const s = screenOf(v3(x, z));
+  tap(s.x, s.y);
+};
+
 // A key event as a browser builds one: the editor's shortcuts read keyCode,
 // the draw tool reads key.
 const KEY_CODES = { Escape: 27, z: 90, Z: 90, y: 89, Backspace: 8, Enter: 13 };
@@ -306,13 +324,13 @@ describe('Shape Tool settings while drawing', () => {
   });
 
   it('applies the display preferences to the shape being drawn, as they change (fails if the preview ignores them)', () => {
-    setPref('showMeasurements', false);
+    setPref('showLengths', false);
     drawingTool();
     clickAt(0, 0);
     clickAt(10, 0);
     moveToWorld(10, 6);
     expect(lengthLabels()).toHaveLength(0);
-    setPref('showMeasurements', true);
+    setPref('showLengths', true);
     moveToWorld(10, 7);
     expect(lengthLabels()).toHaveLength(1);
     setPref('showAngles', true);
@@ -427,8 +445,9 @@ describe('Shape Tool settings while drawing', () => {
     created.vertices.forEach((v, i) => expectNear(v, ring[i]));
   });
 
-  it('draws the snapped direction, with angles off or on, and only while it applies (fails if the guide follows the raw pointer)', () => {
+  it('previews the snapped placement, with angles off or on, and the raw pointer with snap off (fails if the preview follows the raw pointer under snap)', () => {
     setPref('snapStep', 90);
+    setPref('alignToAxes', true);
     drawingTool();
     clickAt(0, 0);
     const first = drawnPoints()[0];
@@ -437,37 +456,15 @@ describe('Shape Tool settings while drawing', () => {
     // At least 5° off every snapped direction.
     expect(Math.abs(raw - 90 * Math.round(raw / 90))).toBeGreaterThanOrEqual(5);
 
-    const guide = () =>
-      editor.inspector.sceneHelpers.getObjectByName('shapeDrawSnapGuide');
-    const hidden = () => !guide() || guide().visible === false;
-    const guideHeading = () => {
-      const geometry = guide().geometry;
-      const start = geometry.attributes.instanceStart;
-      const end = geometry.attributes.instanceEnd;
-      return headingDeg(
-        { x: start.getX(0), z: start.getZ(0) },
-        { x: end.getX(0), z: end.getZ(0) }
-      );
-    };
-
     for (const angles of [false, true]) {
       setPref('showAngles', angles);
       moveToWorld(target.x, target.z);
-      expect(hidden()).toBe(false);
-      expect(isMultipleOf(guideHeading(), 90)).toBe(true);
+      expect(isMultipleOf(headingDeg(first, trailing()), 90)).toBe(true);
     }
 
     setPref('snapStep', 0);
     moveToWorld(target.x, target.z);
-    expect(hidden()).toBe(true);
-
-    setPref('snapStep', 90);
-    clickAt(10, 0);
-    clickAt(10, 10);
-    moveToWorld(5, 12);
-    expect(hidden()).toBe(false);
-    armOverFirst();
-    expect(hidden()).toBe(true);
+    expectNear(trailing(), target, 3);
   });
 
   it('applies a step changed mid-shape to the next point only (fails if settings are read at activation)', () => {
@@ -783,6 +780,82 @@ describe('Shape Tool settings while drawing', () => {
         window.removeEventListener('keyup', upSpy);
       }
     });
+
+    it('leaves the drawing alone when an Escape’s key-down went to a field that is gone by its key-up, as an inline rename is (fails if the key-up alone finishes)', () => {
+      entryState();
+      redrawThree();
+      const input = document.createElement('input');
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') input.remove();
+      });
+      document.body.append(input);
+      act(() => input.focus());
+      pressKeyOn(input, 'Escape');
+      expect(document.activeElement).not.toBe(input);
+      releaseKeyOn(document.body, 'Escape');
+      expect(drawnPoints()).toHaveLength(3);
+      expect(createdShapes()).toHaveLength(1);
+      expect(editor.openIds()).toEqual(['g']);
+    });
+
+    it('leaves an Escape to an open modal, which closes on its key-up, and finishes once the modal is hidden (fails if the drawing takes the key-up)', () => {
+      entryState();
+      redrawThree();
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      document.body.append(modal);
+      // As the shared Modal does: close on the key-up, and stop it there.
+      const modalKeyUp = vi.fn((e) => e.stopPropagation());
+      document.addEventListener('keyup', modalKeyUp);
+      try {
+        escapeOn();
+        expect(modalKeyUp).toHaveBeenCalledWith(
+          expect.objectContaining({ key: 'Escape' })
+        );
+        expect(drawnPoints()).toHaveLength(3);
+        expect(createdShapes()).toHaveLength(1);
+        expect(editor.openIds()).toEqual(['g']);
+
+        modal.classList.add('hide');
+        modalKeyUp.mockClear();
+        escapeOn();
+        expect(modalKeyUp).not.toHaveBeenCalled();
+        expect(createdShapes()).toHaveLength(2);
+      } finally {
+        document.removeEventListener('keyup', modalKeyUp);
+      }
+    });
+  });
+
+  it('closes on a tap on the first vertex with no hover before it, within a finger’s reach (fails if a tap close needs a hover)', () => {
+    setPref('snapStep', 90);
+    drawingTool();
+    tapAt(0, 0);
+    tapAt(10, 0);
+    tapAt(10, 8);
+    tapAt(-3, 8);
+    expect(drawnPoints()).toHaveLength(4);
+    const s = screenOf(v3(0, 0));
+    // Outside the mouse's close radius, inside a finger's.
+    tap(s.x + ARM_PX + 6, s.y);
+    const created = lastCreate();
+    expect(created.shape.closed).toBe(true);
+    expect(created.vertices).toHaveLength(4);
+    expectNear(created.vertices[3], { x: 0, z: 8 });
+  });
+
+  it('leaves no close armed after a refused tap: the next tap places a point (fails if a refused tap stays armed)', () => {
+    setPref('snapStep', 90);
+    drawingTool();
+    tapAt(0, 0);
+    tapAt(10, 0);
+    tapAt(10, 10);
+    tapAt(0, 0);
+    expect(lastCreate()).toBe(null);
+    expect(drawnPoints()).toHaveLength(3);
+    tapAt(0, 10);
+    expect(drawnPoints()).toHaveLength(4);
+    expect(lastCreate()).toBe(null);
   });
 
   it('commits the snapped point the preview showed, not the pointer (fails if the click places the raw point)', () => {
@@ -800,6 +873,7 @@ describe('Shape Tool settings while drawing', () => {
 
   it('keeps a shown direction near a boundary, and drops it for the next side (fails if the held direction carries over)', () => {
     setPref('snapStep', 90);
+    setPref('alignToAxes', true);
     drawingTool();
     clickAt(0, 0);
     const first = drawnPoints()[0];
@@ -820,30 +894,6 @@ describe('Shape Tool settings while drawing', () => {
     moveToWorld(p.x, p.z);
     const heading = headingDeg(second, trailing());
     expect(Math.min(heading, 360 - heading)).toBeCloseTo(0, 6);
-  });
-
-  it('keeps the guide out of camera-less scene probes (fails if the guide raycasts)', () => {
-    setPref('snapStep', 90);
-    drawingTool();
-    clickAt(0, 0);
-    moveToWorld(10, 3);
-    const guide =
-      editor.inspector.sceneHelpers.getObjectByName('shapeDrawSnapGuide');
-    expect(guide).toBeTruthy();
-    expect(guide.visible).toBe(true);
-    let ancestor = guide.parent;
-    while (ancestor && ancestor !== editor.inspector.sceneHelpers) {
-      ancestor = ancestor.parent;
-    }
-    expect(ancestor).toBe(editor.inspector.sceneHelpers);
-    editor.sceneEl.object3D.updateMatrixWorld(true);
-    const probe = new THREE.Raycaster(v3(5, 0).setY(50), v3(0, 0).setY(-1));
-    expect(() =>
-      probe.intersectObject(editor.sceneEl.object3D, true)
-    ).not.toThrow();
-    expect(() =>
-      probe.intersectObject(editor.inspector.sceneHelpers, true)
-    ).not.toThrow();
   });
 
   it('follows a step changed while armed, in the preview at once and in the commit (fails without the repaint, or with a plan that ignores the step)', () => {

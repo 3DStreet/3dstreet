@@ -9,8 +9,8 @@
 //
 // Angle snap, when on, quantises the direction from the last vertex to the
 // pointer (the first side to the scene's axes, or the open group's, unless
-// alignment is off) and places the pointer's perpendicular foot on that ray; a
-// guide line shows the snapped direction. The close is still judged by the
+// alignment is off) and places the pointer's perpendicular foot on that ray.
+// The close is still judged by the
 // pointer being over the first vertex — never by the snapped point — and while
 // it is armed the last vertex is shown slid along its own side to where both
 // closing corners are snapped. Every way of finishing commits exactly that
@@ -49,8 +49,6 @@
 // isActive so it doesn't tear down/re-add mid-draw.
 
 import { useEffect, useRef } from 'react';
-import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
-import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import useStore from '@/store';
 import ShapeReadouts from '../../../lib/ShapeReadouts';
 import {
@@ -69,10 +67,6 @@ import {
   SHAPE_TOOL_SETTINGS_ATTR,
   SNAP_OFF
 } from '../../../lib/shapeToolPrefs.js';
-import {
-  createFatLineMaterial,
-  setFatLinePositions
-} from '../../../lib/fatLines.js';
 import { intersectPlaneOrNull } from '../../../lib/intersectPlaneOrNull.js';
 // px — a larger press→release move is a drag. Shared with the vertex-editing
 // tool: it is one rule in both places, so the two must not drift apart.
@@ -105,7 +99,10 @@ const MIN_DRAW_VERTEX_SPACING = 0.05;
 // Screen-space, not world metres, so it is scale-invariant — matches the
 // ruler/draw click-vs-drag pixel basis.
 const CLOSE_PX_TOLERANCE = 12;
-// The tool's own marks — the close-target ring and the snap guide.
+// px — the same for a touch tap, which has no hover to aim with and a finger
+// to aim it.
+const CLOSE_PX_TOLERANCE_TOUCH = 24;
+// The tool's own mark — the close-target ring.
 const TOOL_ACCENT_COLOR = 0x00ffcc;
 let shapeLayerCounter = 1; // distinguishes drawn shapes in the SceneGraph
 
@@ -216,57 +213,6 @@ function openShapeToolPanelIfWanted() {
   state.setRightPanelTab('properties');
 }
 
-// The snapped direction, drawn from the last vertex while snap is on. It runs
-// GUIDE_OVERSHOOT times the side being placed, so it reaches past the pointer,
-// and never shorter than GUIDE_MIN_LENGTH_M.
-//
-// Created once and kept, toggled by `visible`, like the group outline. Safe to
-// create lazily: besides the viewport's resize path (fatLines.js),
-// LineSegments2 sets its material's resolution from the renderer's viewport on
-// every draw, so a line created late draws at the right width. Never raycastable — a fat line's raycast
-// needs a camera, and the scene (which holds the editor's helpers) is probed
-// by camera-less raycasters.
-const GUIDE_OVERSHOOT = 2;
-const GUIDE_MIN_LENGTH_M = 1;
-let snapGuideLine = null;
-
-const snapGuide = {
-  // Into the current inspector's helpers, once per activation (a fresh
-  // inspector re-parents it).
-  attach() {
-    if (!snapGuideLine) {
-      snapGuideLine = new LineSegments2(
-        new LineSegmentsGeometry(),
-        createFatLineMaterial(TOOL_ACCENT_COLOR)
-      );
-      snapGuideLine.name = 'shapeDrawSnapGuide';
-      snapGuideLine.raycast = function () {};
-    }
-    snapGuideLine.visible = false;
-    const helpers = AFRAME.INSPECTOR?.sceneHelpers;
-    if (helpers && snapGuideLine.parent !== helpers) {
-      helpers.add(snapGuideLine);
-    }
-  },
-  show(from, heading, placedLength) {
-    if (!snapGuideLine) return;
-    const length = Math.max(GUIDE_OVERSHOOT * placedLength, GUIDE_MIN_LENGTH_M);
-    const rad = (heading * Math.PI) / 180;
-    setFatLinePositions(snapGuideLine, [
-      from.x,
-      from.y,
-      from.z,
-      from.x + length * Math.cos(rad),
-      from.y,
-      from.z + length * Math.sin(rad)
-    ]);
-    snapGuideLine.visible = true;
-  },
-  hide() {
-    if (snapGuideLine) snapGuideLine.visible = false;
-  }
-};
-
 // The heading of the axes a first side snaps to: the +x axis of the group the
 // shape will land in, else the world's (0). The two conditions are the ones
 // under which placeDefinition keeps the shape in the group — the group still
@@ -294,6 +240,12 @@ function isTextFieldFocused() {
     tag === 'SELECT' ||
     el.isContentEditable
   );
+}
+
+// An open editor modal (the shared Modal renders `.modal`, hidden with
+// `.hide`) takes Escape for itself: it closes on Escape's key-up.
+function isModalOpen() {
+  return !!document.querySelector('.modal:not(.hide)');
 }
 
 // Ctrl/Cmd+Z, and Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y.
@@ -353,8 +305,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     if (AFRAME.INSPECTOR?.selectedEntity) {
       AFRAME.INSPECTOR.selectEntity(null);
     }
-
-    snapGuide.attach();
 
     // Curated + cached raycast target list (excludes map layers; keeps tiles).
     // Reused from the nav floor probes; recomputes only on scene-graph change.
@@ -538,8 +488,8 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     };
 
     // Arm or disarm the close, and bring everything that shows it into line:
-    // the close marker, the red refusal, the slid last vertex, the guide and
-    // the armed readouts. Runs on EVERY call, unchanged value or not — a step
+    // the close marker, the red refusal, the slid last vertex and the armed
+    // readouts. Runs on EVERY call, unchanged value or not — a step
     // changed while armed calls it again to repaint.
     const syncArmed = (armed) => {
       armedRef.current = armed;
@@ -548,10 +498,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       updateHighlight(armed);
       setInvalid(!!plan?.refused);
       syncLastVertexDisplay();
-      if (plan) {
-        snapGuide.hide();
-        renderArmedReadouts(plan);
-      }
+      if (plan) renderArmedReadouts(plan);
     };
 
     // Where a pointer at `raw` places the next vertex: `raw` itself unless
@@ -625,16 +572,17 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     };
 
     // True when at least three vertices are placed (so a close is meaningful)
-    // and the pointer is within CLOSE_PX_TOLERANCE screen px of the first.
-    const isPointerOverFirstVertex = (clientX, clientY) => {
+    // and the pointer is within `tolerance` screen px of the first.
+    const isPointerOverFirstVertex = (
+      clientX,
+      clientY,
+      tolerance = CLOSE_PX_TOLERANCE
+    ) => {
       const verts = verticesRef.current;
       if (verts.length < 3) return false;
       const scr = worldToScreen(verts[0]);
       if (!scr) return false;
-      if (Math.hypot(clientX - scr.x, clientY - scr.y) > CLOSE_PX_TOLERANCE) {
-        return false;
-      }
-      return true;
+      return Math.hypot(clientX - scr.x, clientY - scr.y) <= tolerance;
     };
 
     // The armed preview's readouts: the closing side, the side the close slid
@@ -689,14 +637,13 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     };
 
     // The preview for a pointer at (clientX, clientY): armed over the first
-    // vertex, or the next placement with its refusal, readouts and guide.
+    // vertex, or the next placement with its refusal and readouts.
     const previewAt = (clientX, clientY) => {
       const raw = pickForNextVertex(clientX, clientY);
       if (!raw) {
         collapseTrailing();
         readoutsRef.current && readoutsRef.current.clear();
         syncArmed(false); // also never leaves the preview stuck red on a miss
-        snapGuide.hide();
         return;
       }
       // Close-gesture arming, on the POINTER — the snapped point is generally
@@ -721,16 +668,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         corners: n >= 2 ? [[n - 2, n - 1, n]] : []
       });
       setInvalid(previewRefused(snapIsOn(), verdict));
-      if (heading !== null) {
-        const last = verts[n - 1];
-        snapGuide.show(
-          last,
-          heading,
-          Math.hypot(point.x - last.x, point.z - last.z)
-        );
-      } else {
-        snapGuide.hide();
-      }
     };
 
     // Cursor off the canvas: collapse the preview to the committed ring — the
@@ -741,7 +678,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       collapseTrailing();
       readoutsRef.current && readoutsRef.current.clear();
       syncArmed(false);
-      snapGuide.hide();
     };
 
     const onPointerUp = (e) => {
@@ -758,6 +694,19 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // legal one — closure was asked for explicitly here, so quietly handing
       // back an open shape would answer a different question than the one the
       // click asked.
+      //
+      // A mouse arms and disarms on the hover before the click. A touch tap has
+      // no hover, so its release sets the armed state both ways: a tap that
+      // was refused must not leave the next tap elsewhere armed.
+      if (e.pointerType === 'touch') {
+        const over = isPointerOverFirstVertex(
+          e.clientX,
+          e.clientY,
+          CLOSE_PX_TOLERANCE_TOUCH
+        );
+        if (over) setTrailing(verticesRef.current[0]);
+        if (over !== armedRef.current) syncArmed(over);
+      }
       if (armedRef.current) {
         if (closePlanNow().refused) return;
         // This release also bubbles to the viewport raycaster's empty-space
@@ -784,13 +733,11 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       placedLastRef.current = true;
       setInvalid(false);
       setTrailing(point);
-      // The corner just made, at the previous vertex, keeps its angle; the
-      // guide was for the side now placed, so it goes until the pointer moves.
+      // The corner just made, at the previous vertex, keeps its angle.
       const n = verticesRef.current.length;
       refreshReadouts([...verticesRef.current, point], {
         corners: n >= 3 ? [[n - 3, n - 2, n - 1]] : []
       });
-      snapGuide.hide();
     };
 
     const onDblClick = () => {
@@ -804,19 +751,26 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       finish();
     };
 
-    // Step back one vertex. The armed state and the guide are cleared first:
-    // the removed vertex changes both, and a pointer resting still sends no
-    // move to clear them. The next pointermove recomputes the preview.
+    // Step back one vertex. The armed state is cleared first: the removed
+    // vertex changes it, and a pointer resting still sends no move to clear
+    // it. The next pointermove recomputes the preview.
     const stepBack = () => {
       syncArmed(false);
-      snapGuide.hide();
       removeLastVertex();
       collapseTrailing();
       setInvalid(false);
       refreshReadouts(verticesRef.current);
     };
 
+    // Whether the Escape now held went down with the drawing in charge of it:
+    // no field focused and no modal open. Its key-up acts only then, because
+    // a field or modal can be gone by the key-up — an inline rename cancels
+    // and unmounts on the key-down — and that key-up is not the drawing's.
+    let escapeDownForDrawing = false;
+    const escapeIsForDrawing = () => !isTextFieldFocused() && !isModalOpen();
+
     const onKeyDown = (e) => {
+      if (e.key === 'Escape') escapeDownForDrawing = escapeIsForDrawing();
       // A focused field keeps its keys — except undo/redo on a dropdown,
       // which has no text to undo: there the chord would otherwise reach the
       // editor's global undo and could undo the previous shape.
@@ -859,7 +813,9 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // bad trade.
     const onKeyUp = (e) => {
       if (e.key !== 'Escape') return;
-      if (isTextFieldFocused()) return;
+      const downForDrawing = escapeDownForDrawing;
+      escapeDownForDrawing = false;
+      if (!downForDrawing || !escapeIsForDrawing()) return;
       e.stopPropagation();
       finish();
     };
@@ -984,7 +940,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       });
       if (vertices.length >= 2) commitShape(closed, vertices);
       syncArmed(false);
-      snapGuide.hide();
     };
 
     // Every exit (Enter, Esc, double-click, switching tools) drops the
@@ -1036,7 +991,6 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         commitPending();
         teardown();
       }
-      snapGuide.hide();
       // Dispose the close-target marker.
       const h = highlightRef.current;
       if (h) {
