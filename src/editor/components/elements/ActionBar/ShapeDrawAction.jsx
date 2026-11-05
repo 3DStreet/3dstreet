@@ -58,6 +58,7 @@ import {
 import { ProbeTargets } from '../../../lib/nav-experimental/probeTargets.js';
 import { BLOCK_SLOPE_MIN_DEGREES } from '../../../lib/nav-experimental/constants.js';
 import { getShapeStyle } from '../../../lib/shapeStyle.js';
+import { fillAngleFromRing } from '../../../../tested/shape-fill.js';
 import { nextMoveGizmo } from '../../../lib/transformModes.js';
 import { STREET_CONTAINER_ID } from '../../../lib/groups/groupModel.js';
 import { groupMessage } from '../../../lib/groups/groupMessages.js';
@@ -232,16 +233,15 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     previewEl.id = 'shapeDrawPreview';
     previewEl.classList.add('hideFromSceneGraph');
     previewEl.setAttribute('shape', {
-      lineColor: style.lineColor,
-      lineWidth: style.lineWidth,
-      // The preview carries the sticky fill too, so what is previewed is what
+      // The whole sticky style, line and fill, so what is previewed is what
       // commits — a sticky opacity of 0 previews unfilled. A fill only shows
       // once the preview is closed with 3+ vertices, and the cursor counts as
       // one of them (see below), so it appears from the 2nd committed corner.
       // setInvalidSignal deliberately leaves the fill alone, so the invalid-red
-      // signal never overwrites these and nothing needs restoring.
-      fillColor: style.fillColor,
-      fillOpacity: style.fillOpacity,
+      // signal never overwrites these and nothing needs restoring. (An open
+      // preview loads no fill texture and draws no pattern tile; see
+      // docs/shapes.md "Fill appearance".)
+      ...style,
       // The preview is always open: closure happens only at commit, via the
       // first-vertex gesture, which snaps the trailing vertex onto the first so
       // the closing edge is visible without the shape being closed.
@@ -688,7 +688,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
             position: `${p.x - centroid.x} ${p.y - centroid.y} ${p.z - centroid.z}`
           }
         }));
-        // All four appearance props are written whether or not the shape
+        // Every sticky appearance prop is written whether or not the shape
         // closes: an open polyline has no interior today, but `closed` is
         // togglable in the panel, and omitting the fill props would make
         // closing it later reveal a schema-default fill instead of the one it
@@ -696,13 +696,16 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         // saved file — the serializer diffs the live component data against the
         // schema defaults.
         //
+        // The fill's Angle is not sticky: it is the direction of this shape's
+        // own first side, so stripes and paving line up with the edge the user
+        // started from. Taken from the WORLD points, which is right because the
+        // committed entity's world rotation is the identity (see below).
+        //
         // `closed` is written only when true, so an open shape's saved JSON
         // keeps no `closed` key (the serializer strips schema defaults).
         const shapeComponent = {
-          lineColor: style.lineColor,
-          lineWidth: style.lineWidth,
-          fillColor: style.fillColor,
-          fillOpacity: style.fillOpacity,
+          ...style,
+          fillAngle: fillAngleFromRing(points),
           ...(closed ? { closed: true } : {})
         };
         return {

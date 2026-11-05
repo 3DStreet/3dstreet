@@ -1377,6 +1377,26 @@ a.help-linkhover {
   width: auto;
 }
 
+/* A shape's Fill group is a sub-heading inside its Style section, not a peer
+   section: no top rule, a compact header in the panel's label voice, and rows
+   flush with the line rows above. After the section-header rule above, which
+   these selectors tie on specificity, so they win by order. */
+.properties-panel .shape-style-controls .fill-subsection {
+  border-top: none;
+  > .static {
+    padding: 6px 0 2px;
+  }
+  .componentTitle span {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: normal;
+    text-transform: none;
+  }
+  > .content {
+    margin-bottom: 0;
+  }
+}
+
 /* Role component bodies (hotspot description, Starting View tip) use the
    same label voice as the compact rows. */
 .properties-panel .roleSectionBody > .text {
@@ -2019,22 +2039,6 @@ a.help-linkhover {
     background: variables.$darkgray-200;
   }
 
-  /* Material dropdown: texture swatch next to each option */
-  .surface-option {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-  .surface-swatch {
-    flex: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    object-fit: cover;
-    display: inline-block;
-  }
-
   /* EntityLabel inside the header (the panel-level title is hidden for
      segments): 16px/500 name with the hover rename pencil. */
   .segment-title {
@@ -2549,5 +2553,25 @@ a.help-linkhover {
         background: rgba(119, 77, 238, 0.4);
       }
     }
+  }
+}
+
+/* Dropdown option with a texture swatch next to its name: the segment
+   Material dropdown and a shape's Fill material and pattern dropdowns. */
+.segment-panel,
+.shape-style-controls {
+  .surface-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .surface-swatch {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    object-fit: cover;
+    display: inline-block;
   }
 }

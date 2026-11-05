@@ -2471,6 +2471,9 @@
   "shapeSidebar.area": {
     "defaultMessage": "Area"
   },
+  "shapeSidebar.closed": {
+    "defaultMessage": "Closed"
+  },
   "shapeSidebar.cornerAngle": {
     "defaultMessage": "∠ {value}"
   },
@@ -2492,8 +2495,125 @@
   "shapeSidebar.direction": {
     "defaultMessage": "Direction"
   },
+  "shapeSidebar.dotDiameter": {
+    "defaultMessage": "Dot diameter"
+  },
+  "shapeSidebar.dotDiameterHelp": {
+    "defaultMessage": "Width of each dot."
+  },
+  "shapeSidebar.fill": {
+    "defaultMessage": "Fill"
+  },
+  "shapeSidebar.fillAngle": {
+    "defaultMessage": "Angle"
+  },
+  "shapeSidebar.fillAngleHelp": {
+    "defaultMessage": "Direction of the pattern and texture. Set from the shape's first side when it was drawn; turns with the shape. Stripes and crosshatch run diagonally to it."
+  },
+  "shapeSidebar.fillColor": {
+    "defaultMessage": "Color"
+  },
+  "shapeSidebar.fillMaterial": {
+    "defaultMessage": "Fill material"
+  },
+  "shapeSidebar.fillMaterialHelp": {
+    "defaultMessage": "The surface of the shape."
+  },
+  "shapeSidebar.fillOffsetAcross": {
+    "defaultMessage": "Offset across"
+  },
+  "shapeSidebar.fillOffsetAlong": {
+    "defaultMessage": "Offset along"
+  },
+  "shapeSidebar.fillOffsetHelp": {
+    "defaultMessage": "Slides the pattern and texture along and across their direction."
+  },
+  "shapeSidebar.fillPattern": {
+    "defaultMessage": "Fill pattern"
+  },
+  "shapeSidebar.fillPatternHelp": {
+    "defaultMessage": "Paint on top of the material."
+  },
+  "shapeSidebar.fillTint": {
+    "defaultMessage": "Tint"
+  },
+  "shapeSidebar.fillTintHelp": {
+    "defaultMessage": "Colors the texture. White shows it as it is."
+  },
+  "shapeSidebar.fillWhenOpen": {
+    "defaultMessage": "Fill (applies when closed)"
+  },
   "shapeSidebar.length": {
     "defaultMessage": "Length {label}"
+  },
+  "shapeSidebar.lineColor": {
+    "defaultMessage": "Line color"
+  },
+  "shapeSidebar.lineWidth": {
+    "defaultMessage": "Line width"
+  },
+  "shapeSidebar.material.concrete": {
+    "defaultMessage": "Concrete"
+  },
+  "shapeSidebar.material.crackedAsphalt": {
+    "defaultMessage": "Cracked asphalt"
+  },
+  "shapeSidebar.material.grass": {
+    "defaultMessage": "Grass"
+  },
+  "shapeSidebar.material.gravel": {
+    "defaultMessage": "Gravel"
+  },
+  "shapeSidebar.material.parkingLot": {
+    "defaultMessage": "Parking lot"
+  },
+  "shapeSidebar.material.sand": {
+    "defaultMessage": "Sand"
+  },
+  "shapeSidebar.material.sidewalk": {
+    "defaultMessage": "Sidewalk"
+  },
+  "shapeSidebar.material.solid": {
+    "defaultMessage": "Solid color"
+  },
+  "shapeSidebar.materialOpacity": {
+    "defaultMessage": "Material opacity (%)"
+  },
+  "shapeSidebar.materialOpacityHelp": {
+    "defaultMessage": "How solid the surface is. 0% hides it; any pattern still shows."
+  },
+  "shapeSidebar.pattern.checkerboard": {
+    "defaultMessage": "Checkerboard"
+  },
+  "shapeSidebar.pattern.crosshatch": {
+    "defaultMessage": "Crosshatch"
+  },
+  "shapeSidebar.pattern.dots": {
+    "defaultMessage": "Dots"
+  },
+  "shapeSidebar.pattern.none": {
+    "defaultMessage": "None"
+  },
+  "shapeSidebar.pattern.stripes": {
+    "defaultMessage": "Stripes"
+  },
+  "shapeSidebar.patternColor": {
+    "defaultMessage": "Pattern color"
+  },
+  "shapeSidebar.patternColorHelp": {
+    "defaultMessage": "Color of the stripes, squares or dots."
+  },
+  "shapeSidebar.patternOpacity": {
+    "defaultMessage": "Pattern opacity (%)"
+  },
+  "shapeSidebar.patternOpacityHelp": {
+    "defaultMessage": "How solid the pattern is."
+  },
+  "shapeSidebar.patternSpacing": {
+    "defaultMessage": "Spacing"
+  },
+  "shapeSidebar.patternSpacingHelp": {
+    "defaultMessage": "Distance between the centers of neighboring stripes or dots."
   },
   "shapeSidebar.reverse": {
     "defaultMessage": "Reverse"
@@ -2509,6 +2629,18 @@
   },
   "shapeSidebar.showFewerSegments": {
     "defaultMessage": "Show fewer segments"
+  },
+  "shapeSidebar.squareSize": {
+    "defaultMessage": "Square size"
+  },
+  "shapeSidebar.squareSizeHelp": {
+    "defaultMessage": "Width of one square."
+  },
+  "shapeSidebar.stripeWidth": {
+    "defaultMessage": "Stripe width"
+  },
+  "shapeSidebar.stripeWidthHelp": {
+    "defaultMessage": "Width of each stripe."
   },
   "shapeSidebar.styleTitle": {
     "defaultMessage": "Style"

@@ -1,8 +1,15 @@
 import { MARKING_SURFACE_OFFSET } from '../tested/street-segment-utils';
+import {
+  FILL_MATERIALS,
+  effectivePatternSize,
+  patternKey,
+  resolveFillMaterial,
+  resolveFillPattern
+} from '../tested/shape-fill.js';
 
 // Where a closed shape's fill is painted in the draw order, and how far it sits
-// above the shape's own plane. Pure and dependency-free so the rules can be
-// tested directly.
+// above the shape's own plane, and which of its layers are painted. THREE-free
+// so the rules can be tested directly.
 //
 // TWO OVERLAPPING FILLS ARE ORDERED BY PAINT ORDER, NOT BY DEPTH. The material
 // is transparent and non-depth-writing at every opacity (see shape.js), so the
@@ -100,10 +107,9 @@ function areaTerm(area) {
 // The floor of the band is FILL_ORDER_BASE, and its one non-negotiable job is
 // to be POSITIVE. Three's renderOrder defaults to 0, so all ordinary scene
 // content - including the satellite map layer's ground plane - is implicitly at
-// 0, and within one renderOrder the transparent queue falls back to a distance
-// comparison taken at each object's ORIGIN. That plane is hundreds of metres
-// across but sorted by its centre, so at renderOrder 0 it can sort last and
-// paint over a fill drawn away from that centre. Any positive value settles it.
+// 0, and A-Frame sorts the transparent queue by renderOrder alone, so at 0 a
+// fill's place among them would be left to scene-graph order. Any positive
+// value settles it.
 // The whole band tops out just above 3, which stays clear of every editor
 // overlay in the WebGL queue (the lowest is 100).
 //
@@ -146,16 +152,73 @@ export function fillPaintOrder(planeY, area) {
 // fill follows it down rather than floating at a figure nobody can justify.
 export const FILL_LIFT_M = MARKING_SURFACE_OFFSET + 0.01;
 
-// Fill opacity as a 0..1 fraction, plus whether the fill is painted at all. The
-// schema's 0-100 min/max binds the properties panel only; a value out of range
-// can still arrive by setAttribute or from a hand-edited scene, exactly as for
-// lineWidth.
+// One fill layer's opacity percent as a 0..1 fraction, plus whether that alone
+// paints it. The schema's 0-100 min/max binds the properties panel only; a
+// value out of range can still arrive by setAttribute or from a hand-edited
+// scene, exactly as for lineWidth.
 //
 // There is deliberately no `opaque` flag: 100% is not a distinct render state.
 // See the material's construction in shape.js for why that matters.
-export function fillRenderState(fillOpacityPercent) {
-  const pct = Number(fillOpacityPercent);
-  const clamped = Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : 0;
-  const opacity = clamped / 100;
+export function layerOpacityState(opacityPercent) {
+  const opacity = opacityFraction(opacityPercent);
   return { opacity, painted: opacity > 0 };
+}
+
+function opacityFraction(percent) {
+  const pct = Number(percent);
+  const clamped = Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : 0;
+  return clamped / 100;
+}
+
+// The one definition of whether each fill layer is painted (docs/shapes.md
+// "Fill appearance"). The three booleans allocate nothing: the build gate and
+// the cap's groups read them on every re-derive, which under a vertex drag is
+// every frame.
+export function fillMaterialPainted(data) {
+  return opacityFraction(data.fillOpacity) > 0;
+}
+
+export function fillPatternPainted(data) {
+  return (
+    resolveFillPattern(data.fillPattern) !== 'none' &&
+    opacityFraction(data.fillPatternOpacity) > 0
+  );
+}
+
+export function fillAnyPainted(data) {
+  return fillMaterialPainted(data) || fillPatternPainted(data);
+}
+
+// Both layers' opacity and paintedness, for the per-edit appearance sync.
+export function fillLayerState(data) {
+  const material = layerOpacityState(data.fillOpacity);
+  const pattern = {
+    opacity: opacityFraction(data.fillPatternOpacity),
+    painted: fillPatternPainted(data)
+  };
+  return { material, pattern, anyPainted: material.painted || pattern.painted };
+}
+
+// What each layer needs loaded or drawn right now: a layer's texture is wanted
+// only while the shape is closed and that layer is painted (docs/shapes.md).
+
+// The surface texture's asset id, or null.
+export function wantedSurfaceId(data) {
+  if (!data.closed || !fillMaterialPainted(data)) return null;
+  return FILL_MATERIALS[resolveFillMaterial(data.fillMaterial)].textureId;
+}
+
+// The pattern tile's key (one per exact pattern, spacing and width as drawn),
+// or null. Builds a string, so it is for the per-edit sync, never per frame.
+export function wantedPatternKey(data) {
+  if (!data.closed || !fillPatternPainted(data)) return null;
+  const size = effectivePatternSize(
+    data.fillPatternSpacing,
+    data.fillPatternWidth
+  );
+  return patternKey(
+    resolveFillPattern(data.fillPattern),
+    size.spacing,
+    size.width
+  );
 }

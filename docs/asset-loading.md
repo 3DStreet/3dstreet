@@ -65,7 +65,9 @@ via `waitForMaterialTexture`). The tint is written straight to the THREE
 material, never through `setAttribute`, so nothing about it is serialized. A
 texture that fails keeps its placeholder. Materials built by hand with
 `THREE.TextureLoader` (intersections) do the same with
-`getAssetPlaceholderColor()`.
+`getAssetPlaceholderColor()`; a hand-built material may instead load through
+`sceneEl.systems.material.loadTexture` (shape fills), which goes through the
+hook but applies the placeholder itself.
 
 Rules:
 

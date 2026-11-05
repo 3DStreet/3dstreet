@@ -269,7 +269,24 @@ function migrateShowBuildingsFlag(componentValue) {
   return componentValue;
 }
 
+// A street surface's short name → the id of the A-Frame texture <img> asset that
+// paints it. One table for every consumer that draws a surface from these
+// images (a segment's material, the segment Material dropdown's swatches, a
+// closed shape's fill), so a renamed or added asset changes them together.
+const SURFACE_ASSET_IDS = {
+  asphalt: 'seamless-road',
+  concrete: 'seamless-bright-road',
+  grass: 'grass-texture',
+  sidewalk: 'seamless-sidewalk',
+  gravel: 'compacted-gravel-texture',
+  sand: 'sandy-asphalt-texture',
+  'cracked-asphalt': 'asphalt-texture',
+  'parking-lot': 'parking-lot-texture',
+  water: 'water-texture'
+};
+
 export {
+  SURFACE_ASSET_IDS,
   calculateHeight,
   calculateSlopedHeights,
   levelToElevation,

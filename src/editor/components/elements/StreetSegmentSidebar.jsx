@@ -32,7 +32,7 @@ import {
 } from '@shared/icons';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { isGeneratorComponent } from '../../lib/featuredComponents';
-import { getAssetImageSrc } from '@/lazy-textures';
+import SurfaceSwatchOption from './SurfaceSwatchOption';
 import { captureSegmentEdit, SEGMENT_OPS } from '../../lib/segmentAnalytics';
 import {
   executeSegmentUpdate,
@@ -276,25 +276,13 @@ SlopeGlyph.propTypes = { startHigher: PropTypes.bool };
 // A-Frame <img> texture asset the segment mesh uses (SURFACE_TEXTURE_IDS),
 // so it always matches what renders; textureless surfaces (none, solid,
 // water) get a flat chip.
-const formatSurfaceOption = (option) => {
-  const surface = option.value;
-  const textureSrc = getAssetImageSrc(
-    document.getElementById(SURFACE_TEXTURE_IDS[surface])
-  );
-  return (
-    <span className="surface-option">
-      {textureSrc ? (
-        <img className="surface-swatch" src={textureSrc} alt="" />
-      ) : (
-        <span
-          className="surface-swatch"
-          style={{ background: getFlatSwatchColor(surface) }}
-        />
-      )}
-      {option.label}
-    </span>
-  );
-};
+export const formatSurfaceOption = (option) => (
+  <SurfaceSwatchOption
+    label={option.label}
+    textureId={SURFACE_TEXTURE_IDS[option.value]}
+    flatColor={getFlatSwatchColor(option.value)}
+  />
+);
 
 // Surface section: Material | Color, Elevation | Slope toggle, and when slope
 // is on an L / glyph / R row that maps to slopeStart / slopeEnd. Toggling
