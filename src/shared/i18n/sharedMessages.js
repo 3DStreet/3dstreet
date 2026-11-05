@@ -1027,6 +1027,42 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Selecione um recurso',
     fr: 'Sélectionnez un actif'
   },
+  assetPickerLoadFailed: {
+    en: "Couldn't load your assets. Please try again.",
+    es: 'No se pudieron cargar tus recursos. Inténtalo de nuevo.',
+    'pt-BR': 'Não foi possível carregar seus recursos. Tente novamente.',
+    fr: 'Impossible de charger vos actifs. Veuillez réessayer.'
+  },
+  assetSortLabel: {
+    en: 'Sort by',
+    es: 'Ordenar por',
+    'pt-BR': 'Ordenar por',
+    fr: 'Trier par'
+  },
+  assetSortNewest: {
+    en: 'Newest first',
+    es: 'Más recientes primero',
+    'pt-BR': 'Mais recentes primeiro',
+    fr: "Les plus récents d'abord"
+  },
+  assetSortOldest: {
+    en: 'Oldest first',
+    es: 'Más antiguos primero',
+    'pt-BR': 'Mais antigos primeiro',
+    fr: "Les plus anciens d'abord"
+  },
+  assetSortNameAsc: {
+    en: 'Name A-Z',
+    es: 'Nombre A-Z',
+    'pt-BR': 'Nome A-Z',
+    fr: 'Nom A-Z'
+  },
+  assetSortNameDesc: {
+    en: 'Name Z-A',
+    es: 'Nombre Z-A',
+    'pt-BR': 'Nome Z-A',
+    fr: 'Nom Z-A'
+  },
   assetReplaced: {
     en: 'Asset replaced',
     es: 'Recurso reemplazado',

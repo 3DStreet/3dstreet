@@ -1,7 +1,7 @@
 /**
  * AssetPickerModal stories (#2142).
  *
- * Renders AssetPickerModalView with a mock `gallery` (useAssets()-shaped), so
+ * Renders AssetPickerModalView with a mock `gallery` (useAssetsOfType() state), so
  * no Firebase session is needed. Each story shows a request the app makes:
  * the editor's "Choose a replacement …" and the generator's source-image
  * slots. Confirm/cancel log to the console.
@@ -37,9 +37,6 @@ const gallery = (overrides = {}) => ({
   items: library,
   isLoading: false,
   isLoggedIn: true,
-  hasMore: false,
-  isLoadingMore: false,
-  loadMore: () => {},
   ...overrides
 });
 
@@ -124,6 +121,14 @@ export const Empty = {
 export const Loading = {
   args: {
     gallery: gallery({ items: [], isLoading: true }),
+    type: 'image',
+    title: 'Choose an image to edit'
+  }
+};
+
+export const LoadFailed = {
+  args: {
+    gallery: gallery({ items: [], loadFailed: true }),
     type: 'image',
     title: 'Choose an image to edit'
   }

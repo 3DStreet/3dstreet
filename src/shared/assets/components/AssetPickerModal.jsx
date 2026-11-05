@@ -17,17 +17,17 @@
  * entity info panel; the generator opens it with openAssetPicker()
  * (src/generator/mount-asset-picker.jsx).
  *
- * Two exports: the default AssetPickerModal reads the signed-in user's
- * library through useAssets(); AssetPickerModalView takes that state as a
- * `gallery` prop, so Storybook and tests can render it with mock items.
+ * Two exports: the default AssetPickerModal reads the signed-in user's assets
+ * of that type through useAssetsOfType(); AssetPickerModalView takes that state
+ * as a `gallery` prop, so Storybook and tests can render it with mock items.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
-import useAssets from '../hooks/useAssets.js';
+import useAssetsOfType from '../hooks/useAssetsOfType.js';
 import { ASSET_TYPES } from '../constants.js';
-import { getServedUrl } from '../utils.js';
+import { ASSET_SORTS, getServedUrl, sortAssetItems } from '../utils.js';
 import { MeshPlaceholder, SplatPlaceholder } from './AssetsItem.jsx';
 import { useSharedMessages } from '../../i18n/sharedMessages';
 import styles from './AssetPickerModal.module.scss';
@@ -38,6 +38,13 @@ const EMPTY_MESSAGE_BY_TYPE = {
   [ASSET_TYPES.SPLAT]: 'noSplatAssetsYet',
   [ASSET_TYPES.IMAGE]: 'noImageAssetsYet',
   [ASSET_TYPES.VIDEO]: 'noVideoAssetsYet'
+};
+
+const SORT_LABELS = {
+  [ASSET_SORTS.NEWEST]: 'assetSortNewest',
+  [ASSET_SORTS.OLDEST]: 'assetSortOldest',
+  [ASSET_SORTS.NAME_ASC]: 'assetSortNameAsc',
+  [ASSET_SORTS.NAME_DESC]: 'assetSortNameDesc'
 };
 
 const PickerThumb = ({ item }) => {
@@ -65,23 +72,25 @@ export const AssetPickerModalView = ({
   onSignIn
 }) => {
   const t = useSharedMessages();
-  const { items, isLoading, isLoggedIn, hasMore, isLoadingMore, loadMore } =
-    gallery;
+  const { items, isLoading, isLoggedIn, loadFailed } = gallery;
   const [selectedId, setSelectedId] = useState(null);
   const [isConfirming, setIsConfirming] = useState(false);
-  const sentinelRef = useRef(null);
+  const [sort, setSort] = useState(ASSET_SORTS.NEWEST);
 
   // Only assets that can actually fill the slot: same type, servable, and not
   // the asset being replaced.
   const candidates = useMemo(
     () =>
-      items.filter(
-        (item) =>
-          item.type === type &&
-          item.id !== excludeAssetId &&
-          !!getServedUrl(item)
+      sortAssetItems(
+        items.filter(
+          (item) =>
+            item.type === type &&
+            item.id !== excludeAssetId &&
+            !!getServedUrl(item)
+        ),
+        sort
       ),
-    [items, type, excludeAssetId]
+    [items, type, excludeAssetId, sort]
   );
   const selectedItem = candidates.find((i) => i.id === selectedId) || null;
 
@@ -96,24 +105,6 @@ export const AssetPickerModalView = ({
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [onCancel]);
-
-  // The library is paged across all types and filtered here, so keep loading
-  // pages while the sentinel is visible — a type that is rare in the library
-  // would otherwise look empty after the first page.
-  useEffect(() => {
-    const node = sentinelRef.current;
-    if (!node || !hasMore) return undefined;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting) && !isLoadingMore) {
-          loadMore();
-        }
-      },
-      { rootMargin: '200px' }
-    );
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [hasMore, isLoadingMore, loadMore, candidates.length]);
 
   const handleConfirm = async (item = selectedItem) => {
     if (!item || isConfirming) return;
@@ -139,7 +130,9 @@ export const AssetPickerModalView = ({
     );
   } else if (isLoading) {
     body = <div className={styles.message}>{t('loadingGallery')}</div>;
-  } else if (candidates.length === 0 && !hasMore) {
+  } else if (loadFailed) {
+    body = <div className={styles.message}>{t('assetPickerLoadFailed')}</div>;
+  } else if (candidates.length === 0) {
     body = (
       <div className={styles.message}>
         {t(EMPTY_MESSAGE_BY_TYPE[type] || 'noAssetsYet')}
@@ -147,37 +140,30 @@ export const AssetPickerModalView = ({
     );
   } else {
     body = (
-      <>
-        <div className={styles.grid} role="listbox" aria-label={title}>
-          {candidates.map((item) => {
-            const selected = item.id === selectedId;
-            return (
-              <button
-                type="button"
-                key={item.id}
-                role="option"
-                aria-selected={selected}
-                className={`${styles.card} ${selected ? styles.selected : ''}`}
-                onClick={() => setSelectedId(item.id)}
-                onDoubleClick={() => handleConfirm(item)}
-                title={item.name || item.originalFilename || ''}
-              >
-                <span className={styles.thumb}>
-                  <PickerThumb item={item} />
-                </span>
-                <span className={styles.name}>
-                  {item.name || item.originalFilename || item.id}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        {hasMore && (
-          <div ref={sentinelRef} className={styles.message}>
-            {isLoadingMore ? t('loadingGallery') : null}
-          </div>
-        )}
-      </>
+      <div className={styles.grid} role="listbox" aria-label={title}>
+        {candidates.map((item) => {
+          const selected = item.id === selectedId;
+          return (
+            <button
+              type="button"
+              key={item.id}
+              role="option"
+              aria-selected={selected}
+              className={`${styles.card} ${selected ? styles.selected : ''}`}
+              onClick={() => setSelectedId(item.id)}
+              onDoubleClick={() => handleConfirm(item)}
+              title={item.name || item.originalFilename || ''}
+            >
+              <span className={styles.thumb}>
+                <PickerThumb item={item} />
+              </span>
+              <span className={styles.name}>
+                {item.name || item.originalFilename || item.id}
+              </span>
+            </button>
+          );
+        })}
+      </div>
     );
   }
 
@@ -196,6 +182,20 @@ export const AssetPickerModalView = ({
       >
         <div className={styles.header}>
           <h2 className={styles.title}>{title}</h2>
+          {candidates.length > 1 && (
+            <select
+              className={styles.sort}
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+              aria-label={t('assetSortLabel')}
+            >
+              {Object.values(ASSET_SORTS).map((value) => (
+                <option key={value} value={value}>
+                  {t(SORT_LABELS[value])}
+                </option>
+              ))}
+            </select>
+          )}
           <button
             type="button"
             className={styles.close}
@@ -248,20 +248,17 @@ const pickerPropTypes = {
 
 AssetPickerModalView.propTypes = {
   ...pickerPropTypes,
-  // useAssets()-shaped state: { items, isLoading, isLoggedIn, hasMore,
-  // isLoadingMore, loadMore }.
+  // useAssetsOfType() state, items newest first.
   gallery: PropTypes.shape({
     items: PropTypes.array.isRequired,
     isLoading: PropTypes.bool,
     isLoggedIn: PropTypes.bool,
-    hasMore: PropTypes.bool,
-    isLoadingMore: PropTypes.bool,
-    loadMore: PropTypes.func
+    loadFailed: PropTypes.bool
   }).isRequired
 };
 
 const AssetPickerModal = (props) => {
-  const gallery = useAssets();
+  const gallery = useAssetsOfType(props.type);
   return <AssetPickerModalView {...props} gallery={gallery} />;
 };
 

@@ -1,7 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  ASSET_SORTS,
   formatBytes,
-  getOptimizationDisplay
+  getOptimizationDisplay,
+  sortAssetItems
 } from '../../../src/shared/assets/utils.js';
 
 describe('formatBytes', () => {
@@ -102,5 +104,28 @@ describe('getOptimizationDisplay', () => {
       optimizationMetadata: { optimizationSkipped: false }
     });
     expect(result).toEqual({ origSize: 5_000_000 });
+  });
+});
+
+describe('sortAssetItems', () => {
+  // Newest first, as Firestore returns them.
+  const items = [
+    { id: '3', name: 'plaza 10' },
+    { id: '2', name: 'Bench' },
+    { id: '1', name: 'plaza 9' }
+  ];
+  const ids = (sort) => sortAssetItems(items, sort).map((i) => i.id);
+
+  it('keeps the query order for newest', () =>
+    expect(ids(ASSET_SORTS.NEWEST)).toEqual(['3', '2', '1']));
+  it('reverses it for oldest', () =>
+    expect(ids(ASSET_SORTS.OLDEST)).toEqual(['1', '2', '3']));
+  it('sorts names ignoring case, numbers in numeric order', () =>
+    expect(ids(ASSET_SORTS.NAME_ASC)).toEqual(['2', '1', '3']));
+  it('reverses the name order for Z-A', () =>
+    expect(ids(ASSET_SORTS.NAME_DESC)).toEqual(['3', '1', '2']));
+  it('does not mutate its input', () => {
+    sortAssetItems(items, ASSET_SORTS.OLDEST);
+    expect(items[0].id).toBe('3');
   });
 });
