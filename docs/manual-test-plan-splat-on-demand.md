@@ -90,7 +90,7 @@ columns; macOS Activity Monitor's GPU History is a good second view.
 - [ ] Load the scene in the editor, wait until streaming visibly settles
       (network panel quiet for ~10 s), don't touch the mouse.
 - [ ] Run `measureRod(10)` → record it.
-      **Pass:** `drawsPerSec` about 2, `skippedPerSec` about 58,
+      **Pass:** `drawsPerSec` about 0.5, `skippedPerSec` about 59.5,
       `requestedPerSec` 0 once settled (a non-zero value that never decays
       means Spark's `onDirty` is looping, a bug).
 - [ ] Note the tab's CPU % and GPU usage for 10 s.
