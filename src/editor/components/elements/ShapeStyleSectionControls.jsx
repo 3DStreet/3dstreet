@@ -525,7 +525,7 @@ export const ShapeStyleSectionControls = ({ entity }) => {
           value={typeof data.fillAngle === 'number' ? data.fillAngle : 0}
           precision={2}
           // A drag moves the value by step/100 per pixel: 0.5° here (5° with
-          // Shift), where the metre fields move 0.01 m.
+          // Shift), where the length fields move 0.01 per pixel.
           step={50}
           unit="°"
           onChange={(_name, value) => update('fillAngle', value)}
