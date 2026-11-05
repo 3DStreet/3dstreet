@@ -94,7 +94,7 @@
         }
       }
     </style>
-    <!-- Pinned to the versions bundled in the app (three 0.180.0, spark 2.1.0)
+    <!-- Pinned to the versions bundled in the app (three 0.180.0, spark 2.4.0)
          so the standalone viewer behaves like the in-editor splat component.
          Hosted as its own document (like model-viewer.html) so its THREE copy
          doesn't collide with the editor's window.THREE set by A-Frame. -->
@@ -196,9 +196,60 @@
         controls.enableDamping = true;
         controls.dampingFactor = 0.08;
 
+        // On-demand rendering (#2047): draw a frame only when something asks
+        // for one — the camera moved (OrbitControls 'change', including
+        // damping), the window resized, or Spark signalled via onDirty that a
+        // sort / LoD update / streamed chunk is ready. Once the view settles
+        // the GPU and Spark's per-frame work go idle instead of redrawing the
+        // same image at 60 fps. onDirty can fire several times per frame, so
+        // requests coalesce into one rAF.
+        let renderLoopStarted = false;
+        let frameRequested = false;
+        function requestRender() {
+          if (!renderLoopStarted || frameRequested) return;
+          frameRequested = true;
+          requestAnimationFrame(renderFrame);
+        }
+        function renderFrame() {
+          frameRequested = false;
+          // update() applies damping and emits 'change' while the camera is
+          // still gliding, which requests the next frame.
+          controls.update();
+          renderer.render(scene, camera);
+        }
+        controls.addEventListener('change', requestRender);
+
         // Spark needs a SparkRenderer in the scene to draw splats.
-        const spark = new SparkRenderer({ renderer, enableLod: true });
+        const spark = new SparkRenderer({
+          renderer,
+          enableLod: true,
+          onDirty: requestRender
+        });
         scene.add(spark);
+
+        // Pause .rad chunk fetching while this document is hidden (#2047):
+        // a streamed scan otherwise keeps pulling chunks at full rate after
+        // the user switches to the call app. Both flags are needed — the
+        // renderer copies enableLodFetching onto the pager only on a
+        // traversal (no frames while hidden), and the pager re-drives its
+        // own queue after every landed chunk via autoDrive. Mirrors the
+        // in-editor splat system.
+        document.addEventListener('visibilitychange', () => {
+          const fetch = document.visibilityState !== 'hidden';
+          spark.enableLodFetching = fetch;
+          const pager = spark.pager;
+          if (pager) {
+            pager.autoDrive = fetch;
+            // Resume the queued chunks without waiting for the camera to
+            // move; only with a queue (an empty drive frees resident pages).
+            if (fetch && pager.fetchPriority && pager.fetchPriority.length) {
+              pager.driveFetchers();
+            }
+          }
+          // Hidden tabs get no rAF anyway; on return, draw once so any work
+          // that landed meanwhile is picked up (and re-arms onDirty).
+          if (fetch) requestRender();
+        });
 
         // Mirror the in-editor splat component: RAD files have pre-built LOD
         // and stream via byte-range requests (paged), so they draw progressively
@@ -235,12 +286,11 @@
           camera.aspect = window.innerWidth / window.innerHeight;
           camera.updateProjectionMatrix();
           renderer.setSize(window.innerWidth, window.innerHeight);
+          requestRender();
         });
 
-        renderer.setAnimationLoop(() => {
-          controls.update();
-          renderer.render(scene, camera);
-        });
+        renderLoopStarted = true;
+        requestRender();
 
         // Best-effort thumbnail handed up to the parent (asset modal), which
         // backfills it if the asset has none. We capture the LIVE canvas (what's

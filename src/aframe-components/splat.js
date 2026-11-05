@@ -4,6 +4,16 @@
 // would pull React/Firebase into this early-loaded A-Frame bundle).
 import { SPLAT_EXTENSIONS } from '@shared/assets/constants.js';
 import { SPLAT_RENDER_ORDER } from '../tested/transparent-layering.js';
+import {
+  isCameraMoving,
+  isMotionProfileEligible,
+  MOTION_PIXEL_RATIO,
+  resolveMotionSettings,
+  resolveStreamingSettings,
+  shouldFetchForVisibility
+} from '../tested/splat-streaming.js';
+import { matrixChanged } from '../tested/render-on-demand.js';
+import './render-on-demand.js';
 
 // Spark library is loaded dynamically to reduce initial bundle size (~500KB)
 let SplatMesh = null;
@@ -105,6 +115,11 @@ AFRAME.registerComponent('splat', {
     // Monotonic id so a stale load (src changed mid-load) can't hide or
     // error the indicator belonging to a newer load.
     this.loadId = 0;
+    // Idle editor draws are skipped only while a splat is in the scene
+    // (#2047; the splat system activates render-on-demand).
+    this.renderOnDemand =
+      this.el?.sceneEl?.systems?.['render-on-demand'] || null;
+    if (this.renderOnDemand) this.renderOnDemand.retain();
   },
 
   update: function (oldData) {
@@ -133,6 +148,7 @@ AFRAME.registerComponent('splat', {
 
     // Remove existing splat mesh and any leftover indicator if any
     if (this.splatMesh) {
+      this.system.unregisterPagedSplats(this.splatMesh);
       this.el.removeObject3D('mesh');
       this.splatMesh = null;
     }
@@ -262,6 +278,23 @@ AFRAME.registerComponent('splat', {
       // Set the splat mesh directly on the entity (like gltf-model does)
       this.el.setObject3D('mesh', this.splatMesh);
 
+      // Streaming budget for huge scans (#2047): the RAD header carries the
+      // file's total splat count (input splats + LOD nodes). Report it to the
+      // system as soon as the header lands — before any chunk is queued — so
+      // a 9M-splat scan streams under a capped LOD budget from its first
+      // traversal rather than pulling 84% of the file at the desktop default.
+      if (splatMesh.paged && typeof splatMesh.paged.getRadMeta === 'function') {
+        splatMesh.paged
+          .getRadMeta()
+          .then(({ meta }) => {
+            if (loadId !== this.loadId || !meta) return;
+            this.system.registerPagedSplats(splatMesh, meta.count);
+          })
+          .catch(() => {
+            // A header failure surfaces through splatMesh.initialized below.
+          });
+      }
+
       // mesh only renders once Spark finishes decoding/building LOD. Wait for
       // that promise so the indicator covers the processing gap, not just fetch.
       await splatMesh.initialized;
@@ -296,10 +329,21 @@ AFRAME.registerComponent('splat', {
 
   remove: function () {
     if (this.splatMesh) {
+      this.system.unregisterPagedSplats(this.splatMesh);
       this.el.removeObject3D('mesh');
       this.splatMesh = null;
     }
     this.hideIndicator();
+    if (this.renderOnDemand) this.renderOnDemand.release();
+  },
+
+  /**
+   * Ask for one viewport frame after a change no scene event announces
+   * (the indicator's canvas texture, its removal). Harmless when on-demand
+   * rendering is inactive.
+   */
+  requestViewportFrame: function () {
+    if (this.renderOnDemand) this.renderOnDemand.requestFrame();
   },
 
   /**
@@ -330,6 +374,7 @@ AFRAME.registerComponent('splat', {
     ctx.textBaseline = 'middle';
     ctx.fillText(label, w / 2, h / 2 + 2);
     this.indicator.texture.needsUpdate = true;
+    this.requestViewportFrame();
   },
 
   /**
@@ -409,6 +454,7 @@ AFRAME.registerComponent('splat', {
     this.indicator.material.dispose();
     this.indicator.texture.dispose();
     this.indicator = null;
+    this.requestViewportFrame();
   },
 
   /**
@@ -462,11 +508,40 @@ AFRAME.registerComponent('splat', {
 /**
  * Splat system that initializes the SparkRenderer for Gaussian Splat visualization.
  * The SparkRenderer is lazily initialized only when the first splat is loaded.
+ *
+ * It also owns the streaming policy for paged (.rad) splats (#2047; policy in
+ * src/tested/splat-streaming.js):
+ *  - fetching pauses while the document is hidden (in-flight chunks finish,
+ *    then the pager's queue waits; nothing renders anyway),
+ *  - a huge scan (RAD header count above HUGE_SCAN_SPLATS) caps the budget,
+ *  - while the camera moves, the motion profile lowers the pixel ratio and
+ *    the splat quad extent and throttles sorting; the camera settling
+ *    restores them for a sharp still frame.
+ * All are live SparkRenderer / SplatPager / renderer properties — no reload.
+ * The first splat also turns on on-demand rendering for the editor viewport
+ * (render-on-demand system), driven by SparkRenderer's onDirty.
  */
 AFRAME.registerSystem('splat', {
   init: function () {
     this.sparkRenderer = null;
     this.rendererReady = false;
+    // SplatMesh -> total splat count from its RAD header (RadMeta.count).
+    // The largest one drives the huge-scan budget cap.
+    this.pagedSplatCounts = new Map();
+    // Motion profile state (see tock). `rest` holds the values to restore,
+    // `applied` the values the profile set.
+    this.motion = {
+      active: false,
+      lastCameraMove: -Infinity,
+      camera: null,
+      matrixWorld: null,
+      projection: null,
+      rest: null,
+      applied: null
+    };
+
+    this.onVisibilityChange = () => this.applyFetchGate();
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
 
     // Track when renderer is available
     if (this.el.renderer) {
@@ -506,8 +581,212 @@ AFRAME.registerSystem('splat', {
       // before the overlays (#1732, #1754). See transparent-layering.js.
       this.sparkRenderer.renderOrder = SPLAT_RENDER_ORDER;
       this.el.object3D.add(this.sparkRenderer);
+      this.applyStreamingSettings();
+      this.applyFetchGate();
+      this.enableRenderOnDemand();
     } catch (error) {
       console.error('[splat] Failed to initialize SparkRenderer:', error);
+    }
+  },
+
+  /**
+   * On-demand rendering (#2047, Spark's recommendation): with a splat in the
+   * scene an idle editor viewport stops redrawing, and Spark's onDirty (a
+   * sort, LoD update or streamed chunk is ready) asks for exactly the frames
+   * it needs. See src/aframe-components/render-on-demand.js.
+   */
+  enableRenderOnDemand: function () {
+    const renderOnDemand = this.el.systems['render-on-demand'];
+    if (!renderOnDemand || !this.sparkRenderer) return;
+    this.sparkRenderer.onDirty = renderOnDemand.requestFrame;
+    renderOnDemand.activate();
+  },
+
+  /**
+   * After each frame's draw: track camera motion and switch the motion
+   * profile on or off. Runs in the editor (which marks the scene playing so
+   * system ticks run) and in the viewer, including frames the
+   * render-on-demand system skipped.
+   */
+  tock: function () {
+    if (!this.sparkRenderer) return;
+    const now = performance.now();
+    this.trackCameraMotion(now);
+    const renderer = this.el.renderer;
+    const playMode = this.el.systems['play-mode'];
+    const renderOnDemand = this.el.systems['render-on-demand'];
+    const eligible = isMotionProfileEligible({
+      hasSplats: !!(renderOnDemand && renderOnDemand.holders > 0),
+      playing: !!(playMode && playMode.isPlaying),
+      xrPresenting: !!(renderer.xr && renderer.xr.isPresenting)
+    });
+    const moving = eligible && isCameraMoving(now, this.motion.lastCameraMove);
+    if (moving && !this.motion.active) this.enterMotionProfile();
+    else if (!moving && this.motion.active) this.exitMotionProfile();
+    else if (moving) this.holdMotionPixelRatio();
+  },
+
+  /** Record when the active camera's pose or projection last changed. */
+  trackCameraMotion: function (now) {
+    const motion = this.motion;
+    const camera = this.el.camera;
+    if (!camera) return;
+    camera.updateWorldMatrix(true, false);
+    const world = camera.matrixWorld.elements;
+    const projection = camera.projectionMatrix.elements;
+    if (camera !== motion.camera || !motion.matrixWorld) {
+      // A camera switch is not motion; start tracking from here.
+      motion.camera = camera;
+      motion.matrixWorld = world.slice();
+      motion.projection = projection.slice();
+      return;
+    }
+    if (
+      matrixChanged(world, motion.matrixWorld) ||
+      matrixChanged(projection, motion.projection)
+    ) {
+      motion.matrixWorld = world.slice();
+      motion.projection = projection.slice();
+      motion.lastCameraMove = now;
+    }
+  },
+
+  enterMotionProfile: function () {
+    const sr = this.sparkRenderer;
+    const renderer = this.el.renderer;
+    const rest = {
+      pixelRatio: renderer.getPixelRatio(),
+      maxStdDev: sr.maxStdDev,
+      minSortIntervalMs: sr.minSortIntervalMs
+    };
+    const applied = resolveMotionSettings(rest);
+    this.motion.active = true;
+    this.motion.rest = rest;
+    this.motion.applied = applied;
+    if (applied.pixelRatio !== rest.pixelRatio) {
+      renderer.setPixelRatio(applied.pixelRatio);
+    }
+    sr.maxStdDev = applied.maxStdDev;
+    sr.minSortIntervalMs = applied.minSortIntervalMs;
+  },
+
+  /**
+   * A-Frame resets the pixel ratio to the device ratio on some resizes
+   * (exiting VR, for one); keep the motion ratio while moving and remember
+   * the new value to restore.
+   */
+  holdMotionPixelRatio: function () {
+    const renderer = this.el.renderer;
+    const { rest, applied } = this.motion;
+    const current = renderer.getPixelRatio();
+    if (current === applied.pixelRatio) return;
+    rest.pixelRatio = current;
+    applied.pixelRatio = Math.min(current, MOTION_PIXEL_RATIO);
+    if (current !== applied.pixelRatio) {
+      renderer.setPixelRatio(applied.pixelRatio);
+    }
+  },
+
+  /**
+   * Restore the still-camera settings. A value someone else changed while
+   * the profile was active is left alone; the pixel ratio is not touched
+   * while a WebXR session owns it. Asks render-on-demand for the sharp
+   * settled frames.
+   */
+  exitMotionProfile: function () {
+    const sr = this.sparkRenderer;
+    const renderer = this.el.renderer;
+    const { rest, applied } = this.motion;
+    this.motion.active = false;
+    this.motion.rest = null;
+    this.motion.applied = null;
+    if (!rest) return;
+    if (sr.maxStdDev === applied.maxStdDev) sr.maxStdDev = rest.maxStdDev;
+    if (sr.minSortIntervalMs === applied.minSortIntervalMs) {
+      sr.minSortIntervalMs = rest.minSortIntervalMs;
+    }
+    const xrPresenting = !!(renderer.xr && renderer.xr.isPresenting);
+    if (
+      !xrPresenting &&
+      rest.pixelRatio !== applied.pixelRatio &&
+      renderer.getPixelRatio() === applied.pixelRatio
+    ) {
+      renderer.setPixelRatio(rest.pixelRatio);
+    }
+    const renderOnDemand = this.el.systems['render-on-demand'];
+    if (renderOnDemand) renderOnDemand.invalidate();
+  },
+
+  /** For STREET.splatDebug.snapshot(). */
+  getMotionState: function () {
+    const { active, lastCameraMove, rest, applied } = this.motion;
+    return {
+      active,
+      msSinceCameraMove: Math.round(performance.now() - lastCameraMove),
+      rest: rest ? { ...rest } : null,
+      applied: applied ? { ...applied } : null
+    };
+  },
+
+  /**
+   * Record a paged splat's total splat count (from its RAD header) so the
+   * huge-scan budget cap can consider it. Re-applies the settings.
+   */
+  registerPagedSplats: function (splatMesh, splatCount) {
+    if (!splatMesh || !Number.isFinite(splatCount)) return;
+    this.pagedSplatCounts.set(splatMesh, splatCount);
+    this.applyStreamingSettings();
+  },
+
+  unregisterPagedSplats: function (splatMesh) {
+    if (!this.pagedSplatCounts.delete(splatMesh)) return;
+    this.applyStreamingSettings();
+  },
+
+  /**
+   * The settings the policy resolves for the current scene contents.
+   * Exposed for STREET.splatDebug.snapshot().
+   */
+  getStreamingSettings: function () {
+    let largestRadSplats = 0;
+    this.pagedSplatCounts.forEach((count) => {
+      if (count > largestRadSplats) largestRadSplats = count;
+    });
+    return resolveStreamingSettings({ largestRadSplats });
+  },
+
+  /**
+   * Push the resolved LOD budget onto the live SparkRenderer. driveLod
+   * re-traverses on its own when the budget (maxSplats) changes, so no dirty
+   * flag is needed.
+   */
+  applyStreamingSettings: function () {
+    const sr = this.sparkRenderer;
+    if (!sr) return;
+    sr.lodSplatScale = this.getStreamingSettings().lodSplatScale;
+  },
+
+  /**
+   * Pause chunk fetching while the document is hidden, resume when visible.
+   * Both flags are needed: driveLod copies enableLodFetching onto the pager
+   * only on a traversal, and there are no traversals (no frames) while
+   * hidden, whereas the pager re-drives its own queue after every landed
+   * chunk via autoDrive. On resume, kick the pager so the queued chunks
+   * continue without waiting for the camera to move — only when it holds a
+   * queue: driveFetchers() on an empty priority list would mark every
+   * resident page freeable.
+   */
+  applyFetchGate: function () {
+    const sr = this.sparkRenderer;
+    if (!sr) return;
+    const fetch = shouldFetchForVisibility(document.visibilityState);
+    sr.enableLodFetching = fetch;
+    const pager = sr.pager;
+    if (pager) {
+      pager.autoDrive = fetch;
+      if (fetch && pager.fetchPriority && pager.fetchPriority.length) {
+        pager.driveFetchers();
+      }
     }
   }
 });

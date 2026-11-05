@@ -76,6 +76,7 @@ So this work is **almost entirely backend**: produce the `.rad`, store it, write
 | Tokens | **Non-charged** (`tokenCost: 0`) | RAD is a silent backend optimization (GLB-optimization analog), not a user-initiated generation. `refundSplatToken` becomes a no-op. |
 | `.rad` storage | **Firebase Storage / GCS** (NOT Hetzner) as `assetRole: 'optimized'` | Durable, token-gated for private splats, consistent asset model. Hetzner is decommissioned for serving. |
 | LOD setting | **`build-lod --quality`**, single `.rad` | Matches the Hetzner-validated files (bhatt-lod, single file, not `--rad-chunked`). |
+| SH degree | **`--max-sh=0`** (env `RAD_MAX_SH`, `rad-converter/deploy.sh`) | Degree-3 SH was over half of every streamed chunk; street scans get little from it. Halves bytes + decode for every future asset (#2047). Recorded as `optimizationMetadata.maxSh`. |
 | Serving | GCS with **byte-range CORS** | `cors.json` must expose `Accept-Ranges` + `Content-Range`. |
 
 ### Cost reference (approx, verify against current pricing)
@@ -99,7 +100,7 @@ Both are cents/conversion; Cloud Run wins on large files purely via egress:
   `{ uid, assetId, plyPath, jobId }`:
   1. Download `.ply` from GCS (`plyPath`) to `/tmp` (or mount a **GCS FUSE volume**
      for multi-GB files so `/tmp`/memory isn't the ceiling).
-  2. Run `build-lod --quality <ply>` → `*-lod.rad`.
+  2. Run `build-lod --quality --max-sh=<RAD_MAX_SH> <ply>` → `*-lod.rad`.
   3. Upload to `users/{uid}/assets/splats/{assetId}-lod.rad`, contentType
      `application/octet-stream`, with `firebaseStorageDownloadTokens` +
      `assetRole: 'optimized'` metadata (mirror `saveSplatToGallery` URL scheme
@@ -164,6 +165,125 @@ Both are cents/conversion; Cloud Run wins on large files purely via egress:
 5. ⬜ **Prod rollout** — see Status (lift hardcoded config, provision prod infra).
 
 ---
+
+## Steady-state streaming cost (#2047)
+
+Time to first frame was never the problem; what a streamed `.rad` does *after*
+that is. Spark's `SparkRenderer` LOD is a **fixed splat budget per platform**
+(2.5M desktop, 1–1.5M mobile), not a bandwidth or frame-rate governor. Each
+traversal picks the budget's worth of splats for the view and queues every
+~3 MB chunk holding any of them; 3 parallel fetchers pull them with no pacing
+and the pager re-drives its own queue after every landed chunk — even with no
+frames rendering (tab hidden during a call). Measured on the 417 MB / 9.06M
+splat scene from #1754 (static camera, desktop budget): 117 of 139 chunks,
+352 MB. Capping the budget helps sub-linearly (0.5× budget → 256 MB, 0.25× →
+176 MB) because the chunk is the unit of fetch.
+
+Levers, in order of impact — policy in `src/tested/splat-streaming.js`
+(unit-tested), applied by the `splat` **system** in
+`src/aframe-components/splat.js`; all are live SparkRenderer / SplatPager
+properties, no reload:
+
+1. **Generation:** `--max-sh=0` (table above). The only lever that shrinks
+   every chunk for every future asset.
+2. **Hidden document:** `enableLodFetching = false` **and**
+   `pager.autoDrive = false` on `visibilitychange` (both are needed: the
+   renderer copies the flag onto the pager only on a traversal, and there are
+   no traversals while hidden). In-flight chunks finish, the queue waits, and
+   the pager is kicked on resume. Also in `public/splat-viewer.html`.
+3. **Huge scans:** a `.rad` whose header `count` exceeds 5M splats halves the
+   LOD budget on its own (`HUGE_SCAN_*`). Reported by the component from
+   `PagedSplats.getRadMeta()` before any chunk is queued.
+4. **On-demand rendering** (Spark maintainers' recommendation; needs Spark
+   ≥ 2.3.1 for `onDirty` on streamed chunks; the app is on 2.4.0). Spark's sort, LoD
+   traversal and chunk uploads all run from `SparkRenderer.onBeforeRender`,
+   so an A-Frame scene that redraws every frame re-sorts and re-draws
+   millions of splats 60 times a second while nothing changes. The
+   `render-on-demand` system (`src/aframe-components/render-on-demand.js`,
+   policy in `src/tested/render-on-demand.js`) is activated by the first
+   splat and skips the **editor** viewport's draw when idle; A-Frame's loop
+   and every tick keep running. A frame draws when the camera, projection or
+   canvas size changed; for `SETTLE_MS` after input or a scene event; when
+   Spark's `onDirty` asks for one; and on a `HEARTBEAT_MS` safety net for
+   changes that raised no signal. Viewer mode, Play and WebXR draw every
+   frame (the live scene animates). `public/splat-viewer.html` renders fully
+   on demand (OrbitControls `change` + `onDirty`, no heartbeat).
+   Measured in headless Chromium on a software GPU (177k-splat `.spz`): the
+   loop went from under 1 fps with every frame drawn to about 37 fps with
+   draws skipped, and an idle editor settles to heartbeat draws only (no
+   `onDirty` loop). On a real GPU (M2 MacBook Air, Chrome, #2047 scene,
+   2800×1560 canvas): idle GPU 99% → 44% and the editor loop 6 → 60 fps;
+   the remaining 44% was the 500 ms heartbeat (a draw costs ~160 ms of GPU
+   there). Details on PR #2048. `HEARTBEAT_MS` is now 2 s: Spark's guidance
+   is not to redraw on a timer at all, so the heartbeat is only a safety net.
+5. **Motion profile.** While the camera moves (and for `MOTION_SETTLE_MS`
+   after), the `splat` system renders at pixel ratio 1, draws splat quads to
+   √5 standard deviations instead of √8 (~37% fewer pixels per splat, which
+   Spark calls perceptually very similar) and re-sorts at most every 80 ms
+   (each sort reads splat depths back from the GPU). When the camera
+   settles it restores all three, and on-demand rendering draws the sharp
+   still frame. Not in Play (the camera moves continuously) or WebXR (the
+   session owns the pixel ratio); only with a splat in the scene. Chunk
+   fetching keeps running while moving: holding it was considered and
+   deferred. Policy in `src/tested/splat-streaming.js` (`MOTION_*`).
+
+A user-facing data-saver profile (`lodSplatScale` 0.5, `numLodFetchers` 1,
+`pager.fetchPause` between chunks) is the natural "I'm on a call" switch and
+belongs with Low Power Mode (#1723) when that lands; it is not wired today.
+
+Not levers: `lodRenderScale` (no bandwidth effect while the budget binds;
+above ~1.5 distant splats vanish) and `maxPagedSplats` (a pool size, not a cap;
+below the working set it evicts and re-fetches). `STREET.splatDebug.snapshot()`
+shows the resolved settings and the live pager queue under `streaming`, and
+frames drawn (by reason) vs skipped under `renderOnDemand`;
+`STREET.splatDebug.setRenderOnDemand(false)` turns skipping off for an A/B.
+Real-hardware test pass: [manual-test-plan-splat-on-demand.md](manual-test-plan-splat-on-demand.md).
+
+### Future work: a smooth experience on big scans
+
+The levers above stop idle and background waste. They do not bound the cost
+while the user is looking around. That cost is mostly rendering, not
+bandwidth: on the M2 Air above, one draw of the default 2.5M-splat budget at
+a retina canvas takes ~160 ms, so camera motion runs at ~9 fps whatever the
+streaming does. 3D Tiles stays smooth with the whole planet in the frustum
+because it refines to a screen-space error and budgets work per frame and
+memory per device. Spark instead fills a fixed splat budget. What is missing,
+in priority order:
+
+1. **Frame-time governor (partly done).** The motion profile (lever 5) and
+   the 2 s heartbeat are its fixed first step. Still to do: measure GPU time
+   per frame and adjust `lodSplatScale` and render resolution to hold a
+   target frame rate instead of using fixed motion values.
+2. **Foveation (planned).** Spark's LoD foveation is already on by default
+   (full detail within `coneFov0` 90°, `coneFoveate` 0.4 at `coneFov` 120°,
+   `behindFoveate` 0.2 behind the camera). It redistributes a fixed budget
+   rather than shrinking it, so the lever is tightening it (e.g.
+   `behindFoveate` 0.05, `coneFoveate` 0.2) and then lowering
+   `lodSplatScale` until the view looks the same. Measure the chunk-count
+   and draw-cost effect on the #2047 scene.
+3. **Renderer context (to discuss).** `index.html` creates the renderer with
+   `antialias: true` and `logarithmicDepthBuffer: true`. Spark's performance
+   guide says multisampling adds significant overhead for splats without
+   helping them, and Spark's shader honors the log depth buffer by writing
+   depth per fragment, which disables early depth rejection. Both are fixed
+   at context creation, so changing them needs a reload.
+4. **Device memory budget.** The page pool (`maxPagedSplats`, 16.7M) holds
+   the whole 9M-splat file once the camera has looked around; nothing sizes
+   it to the device or evicts least-recently-used pages. Matters on phones
+   and 8 GB laptops. (Below the working set it evicts and re-fetches, so the
+   budget has to follow the LoD budget, not replace it.)
+5. **Smaller files at generation (untested).** Beyond `--max-sh=0`:
+   `--csplat` (compact encoding), and a splat-count cap or quality tier for
+   huge scans before conversion. Measure size and visual quality first.
+
+Known limitation, not planned now: **chunk layout.** A chunk is 65,536
+splats, and a view's splats are spread across chunks at every LoD level, so a
+street-level view touches ~84% of this file even under a capped budget. The
+3D Tiles fix (each chunk a spatial region at one LoD level) is a change to
+Spark's `build-lod`, upstream. Client-side fetch pacing (a bytes-per-second
+cap, center-of-screen priority, cancelling chunks the view no longer wants,
+holding refinement while the camera moves) would soften it without that
+change.
 
 ## Open decisions / inputs needed
 
