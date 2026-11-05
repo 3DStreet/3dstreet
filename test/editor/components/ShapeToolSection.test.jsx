@@ -33,7 +33,8 @@ vi.mock('@/editor/lib/panelPrefs', async (importActual) => ({
 const IDS = [
   'shapeTool.title',
   'shapeTool.displayHeading',
-  'shapeTool.showMeasurements',
+  'shapeTool.showLengths',
+  'shapeTool.showArea',
   'shapeTool.showAngles',
   'shapeTool.snap',
   'shapeTool.snapOff',
@@ -113,11 +114,11 @@ describe('the Shape Tool section', () => {
       .querySelectorAll('.checkboxAnim');
     // Both start ticked, so the untick below is seen to change something.
     expect(panelRows[0].classList.contains('checked')).toBe(true);
-    const sectionMeasurements = screen.getAllByText('Measurements')[0];
+    const sectionLengths = screen.getAllByText('Side lengths')[0];
     fireEvent.click(
-      sectionMeasurements.closest('.propertyRow').querySelector('.checkboxAnim')
+      sectionLengths.closest('.propertyRow').querySelector('.checkboxAnim')
     );
-    expect(useStore.getState().shapeToolSettings.showMeasurements).toBe(false);
+    expect(useStore.getState().shapeToolSettings.showLengths).toBe(false);
     expect(panelRows[0].classList.contains('checked')).toBe(false);
     expect(globalThis.AFRAME.INSPECTOR.execute).not.toHaveBeenCalled();
     expect(globalThis.AFRAME.INSPECTOR.history.undos).toHaveLength(0);
@@ -161,13 +162,13 @@ describe('the Shape Tool section', () => {
       true
     );
     toggle(label);
-    expect(useStore.getState().shapeToolSettings.alignToAxes).toBe(true);
+    expect(useStore.getState().shapeToolSettings.alignToAxes).toBe(false);
 
     act(() => useStore.getState().setShapeToolSetting('snapStep', 90));
     expect(rowOf(label).classList.contains('shape-tool-row--disabled')).toBe(
       false
     );
     toggle(label);
-    expect(useStore.getState().shapeToolSettings.alignToAxes).toBe(false);
+    expect(useStore.getState().shapeToolSettings.alignToAxes).toBe(true);
   });
 });

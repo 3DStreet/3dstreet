@@ -6,17 +6,20 @@
 //
 // What shows follows the editor's display preferences, which the owner pushes
 // in through setDisplay — this layer never reads the store:
-// - Measurements on (the default): a length on each segment the label rule
+// - Side lengths on (the default): a length on each segment the label rule
 //   picks (_segmentsToLabel). On a selected shape that length is also the
 //   side's insert control.
-// - Measurements off: no length anywhere. A selected shape's insertable sides
+// - Side lengths off: no length anywhere. A selected shape's insertable sides
 //   keep their control as a "+"-only chip; the other sides show nothing.
 // - Angles on (off by default): the included angle at the corners beside the
 //   segments labelled. An angle caption is never a control — it takes no pointer
 //   event, so a vertex handle under it stays grabbable — and it sits offset
 //   below its corner so it clears a handle drawn at its target size. It does
 //   not try to clear anything larger: angles are opt-in, and at dense or
-//   street-level views a caption may cover a neighbouring handle.
+//   street-level views a caption may cover a neighbouring handle. A curved
+//   shape shows none (see renderAll).
+//
+// The area label is not drawn here: it is the shape component's own.
 //
 // Everything is attached under the shape entity's object3D and torn down in
 // dispose() — CSS2DObjects detached, the group removed. (measure-line famously
@@ -75,7 +78,7 @@ export default class ShapeReadouts {
     this.insertHint = insertHint || INSERT_HINT;
     this.instanceId = String(nextInstanceId++);
     this.units = 'metric';
-    this.showMeasurements = true;
+    this.showLengths = true;
     this.showAngles = false;
     this.group = new THREE.Group();
     this.group.name = 'shapeReadouts';
@@ -93,8 +96,8 @@ export default class ShapeReadouts {
 
   // The editor's display preferences, applied from the next render. Takes
   // the store's settings record as it is; other keys are ignored.
-  setDisplay({ showMeasurements = true, showAngles = false } = {}) {
-    this.showMeasurements = !!showMeasurements;
+  setDisplay({ showLengths = true, showAngles = false } = {}) {
+    this.showLengths = !!showLengths;
     this.showAngles = !!showAngles;
   }
 
@@ -115,7 +118,7 @@ export default class ShapeReadouts {
     const n = vertices.length;
     if (notice && n) this._addNotice(notice, vertices[0]);
     if (n < 2) return;
-    if (this.showMeasurements) {
+    if (this.showLengths) {
       this._addLengthLabel(vertices[n - 2], vertices[n - 1]);
       for (const i of extraSegments) {
         if (i >= 0 && i + 1 < n) {
@@ -148,13 +151,19 @@ export default class ShapeReadouts {
   //
   // The callback form is what keeps this file free of any knowledge of the edit
   // rules: the caller supplies the answer, this layer never asks the question.
+  //
+  // `cornerAngles: false` leaves out the corner angles whatever the display
+  // preference says. A curved shape passes it: its line does not turn at the
+  // control vertices, so the angle between their legs is not an angle of the
+  // shape as drawn.
   renderAll(
     vertices,
     maxVertices,
     hoverPoint,
     closed = false,
     pinnedSegments = null,
-    interaction = null
+    interaction = null,
+    { cornerAngles = true } = {}
   ) {
     this.clear();
     const n = vertices.length;
@@ -170,13 +179,15 @@ export default class ShapeReadouts {
     for (const i of segments) {
       const a = vertices[i];
       const b = vertices[(i + 1) % n];
-      if (this.showMeasurements) {
+      if (this.showLengths) {
         this._addLengthLabel(a, b, i, interaction);
       } else if (interaction?.isInsertable(i)) {
         this._addPlusChip(a, b, i, interaction);
       }
     }
-    if (this.showAngles) this._addCornerAngles(vertices, segments, ring);
+    if (this.showAngles && cornerAngles) {
+      this._addCornerAngles(vertices, segments, ring);
+    }
   }
 
   // The segments a selected shape labels, in label order: every segment up to
@@ -290,7 +301,7 @@ export default class ShapeReadouts {
     );
   }
 
-  // With measurements off, an insertable side keeps its insert control as a
+  // With side lengths off, an insertable side keeps its insert control as a
   // chip that shows only "+": the side's function made explicit instead of
   // hidden behind a number it no longer shows.
   _addPlusChip(a, b, segment, interaction) {

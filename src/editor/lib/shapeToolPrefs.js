@@ -1,6 +1,6 @@
 /**
  * Per-device shape tool preferences, backed by localStorage: what the canvas
- * shows on shapes (measurements, angles) and how the draw tool places points
+ * shows on shapes (side lengths, area, angles) and how the draw tool places points
  * (angle snap, axis alignment, whether picking the tool opens the panel).
  * These are editor preferences only — never part of the scene JSON, never on
  * the undo stack. The store holds the live value (shapeToolSettings); this
@@ -23,16 +23,18 @@ export const SNAP_OFF = 0;
 export const SHAPE_TOOL_SETTINGS_ATTR = 'data-shape-tool-settings';
 
 export const SHAPE_TOOL_DEFAULTS = Object.freeze({
-  showMeasurements: true,
+  showLengths: true,
+  showArea: true,
   showAngles: false,
   snapStep: SNAP_OFF,
-  alignToAxes: true,
+  alignToAxes: false,
   openPanelOnSelect: true
 });
 
 const STORAGE_KEY = '3dstreet-shape-tool-settings';
 const BOOLEAN_KEYS = [
-  'showMeasurements',
+  'showLengths',
+  'showArea',
   'showAngles',
   'alignToAxes',
   'openPanelOnSelect'

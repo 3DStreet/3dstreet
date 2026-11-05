@@ -170,6 +170,9 @@ function renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef) {
   const closed = isClosedShape(entity, verts.length);
   const revealed = revealedSegment(closed, els);
   if (lastRenderElsRef) lastRenderElsRef.current = els;
+  // Read on every render: a curve-type change re-derives the shape, which
+  // renders again.
+  const curveType = entity.components?.shape?.data?.curveType ?? 'linear';
   readouts.renderAll(
     verts,
     MAX_LABELLED_VERTICES,
@@ -179,7 +182,8 @@ function renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef) {
     {
       isInsertable: (i) => canOfferInsert(verts, i),
       revealedSegment: revealed
-    }
+    },
+    { cornerAngles: curveType === 'linear' }
   );
 }
 
@@ -190,8 +194,10 @@ const ShapeSidebar = ({ entity }) => {
   const { unitsPreference } = useStore();
   // The editor-wide display preferences: what the canvas shows on a selected
   // shape. The panel rows below are never gated on them — they are how the
-  // numbers are read with measurements off.
-  const { showMeasurements, showAngles } = useStore((s) => s.shapeToolSettings);
+  // numbers are read with the canvas readouts off.
+  const { showLengths, showArea, showAngles } = useStore(
+    (s) => s.shapeToolSettings
+  );
 
   // A freshly selected shape starts with the segment list collapsed.
   useEffect(() => {
@@ -252,8 +258,8 @@ const ShapeSidebar = ({ entity }) => {
     // The area label is the component's own (it tracks every re-derive) but
     // it shows only for as long as this panel is mounted, i.e. while the shape
     // is selected — the same lifetime as the chips — and only with the
-    // measurements preference on. Off again in the cleanup.
-    entity.components.shape?.setAreaLabelVisible(settings.showMeasurements);
+    // area preference on. Off again in the cleanup.
+    entity.components.shape?.setAreaLabelVisible(settings.showArea);
 
     const render = (hoverPoint) =>
       renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef);
@@ -448,11 +454,11 @@ const ShapeSidebar = ({ entity }) => {
   useEffect(() => {
     const r = readoutsRef.current;
     if (!r) return;
-    r.setDisplay({ showMeasurements, showAngles });
+    r.setDisplay({ showLengths, showAngles });
     renderReadouts(r, entity, lastHoverRef.current, lastRenderElsRef);
-    entity.components.shape?.setAreaLabelVisible(showMeasurements);
+    entity.components.shape?.setAreaLabelVisible(showArea);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showMeasurements, showAngles]);
+  }, [showLengths, showArea, showAngles]);
 
   const vertices = getShapeVertices(entity);
   // Measure in the WORLD frame: a shape nested inside a scaled (or rotated)
@@ -634,7 +640,7 @@ const ShapeSidebar = ({ entity }) => {
                 </li>
                 <li>
                   •{' '}
-                  {showMeasurements
+                  {showLengths
                     ? intl.formatMessage({
                         id: 'shapeSidebar.tipInsert',
                         defaultMessage:

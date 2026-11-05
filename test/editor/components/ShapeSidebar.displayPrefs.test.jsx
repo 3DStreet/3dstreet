@@ -20,8 +20,8 @@ vi.mock('@/editor/lib/ShapeReadouts', () => ({
     setDisplay(display) {
       calls.push(['setDisplay', { ...display }]);
     }
-    renderAll(vertices) {
-      calls.push(['renderAll', vertices.map((v) => v.clone())]);
+    renderAll(vertices, cap, hover, closed, pinned, interaction, options) {
+      calls.push(['renderAll', vertices.map((v) => v.clone()), options]);
     }
     dispose() {}
   }
@@ -58,7 +58,8 @@ function shapeStub({ curveType = 'linear' } = {}) {
 
 const DISPLAY_IDS = [
   'shapeTool.displayHeading',
-  'shapeTool.showMeasurements',
+  'shapeTool.showLengths',
+  'shapeTool.showArea',
   'shapeTool.showAngles',
   'shapeSidebar.tipInsertPlus'
 ];
@@ -94,15 +95,15 @@ const setPref = (key, value) =>
   act(() => useStore.getState().setShapeToolSetting(key, value));
 
 describe('a selected shape and the display preferences', () => {
-  it('shows the area label only with measurements on, and hides it on deselect (fails if the label is shown unconditionally)', () => {
-    setPref('showMeasurements', false);
+  it('shows the area label only with the area preference on, and hides it on deselect (fails if the label is shown unconditionally)', () => {
+    setPref('showArea', false);
     const off = shapeStub();
     const view = mount(off.entity);
     expect(areaLabel(off.entity)).not.toContain(true);
     expect(areaLabel(off.entity).at(-1)).toBe(false);
     view.unmount();
 
-    setPref('showMeasurements', true);
+    setPref('showArea', true);
     const on = shapeStub();
     const view2 = mount(on.entity);
     expect(areaLabel(on.entity).at(-1)).toBe(true);
@@ -110,14 +111,26 @@ describe('a selected shape and the display preferences', () => {
     expect(areaLabel(on.entity).at(-1)).toBe(false);
   });
 
+  it('keeps the side lengths and the area label independent (fails if one preference drives both)', () => {
+    const { entity } = shapeStub();
+    mount(entity);
+    calls.length = 0;
+    setPref('showLengths', false);
+    expect(areaLabel(entity).at(-1)).toBe(true);
+    setPref('showLengths', true);
+    setPref('showArea', false);
+    expect(areaLabel(entity).at(-1)).toBe(false);
+    const lastDisplay = calls.filter(([name]) => name === 'setDisplay').at(-1);
+    expect(lastDisplay[1].showLengths).toBe(true);
+  });
+
   it('repaints the readouts and the label when a preference changes while selected (fails if nothing re-renders)', () => {
     const { entity } = shapeStub();
     mount(entity);
     calls.length = 0;
-    setPref('showMeasurements', false);
-    expect(areaLabel(entity).at(-1)).toBe(false);
+    setPref('showLengths', false);
     const display = calls.findIndex(
-      ([name, arg]) => name === 'setDisplay' && arg.showMeasurements === false
+      ([name, arg]) => name === 'setDisplay' && arg.showLengths === false
     );
     expect(display).toBeGreaterThanOrEqual(0);
     expect(
@@ -125,8 +138,9 @@ describe('a selected shape and the display preferences', () => {
     ).toBe(true);
   });
 
-  it('keeps the panel rows with measurements off, and labels its controls and tip from the catalog', () => {
-    setPref('showMeasurements', false);
+  it('keeps the panel rows with the canvas readouts off, and labels its controls and tip from the catalog', () => {
+    setPref('showLengths', false);
+    setPref('showArea', false);
     const messages = Object.fromEntries(
       DISPLAY_IDS.map((id) => [id, `[[${id}]]`])
     );
@@ -150,4 +164,19 @@ describe('a selected shape and the display preferences', () => {
       expect(v.equals(vertexEls[i].object3D.position)).toBe(true)
     );
   });
+
+  it.each([
+    ['linear', true],
+    ['smooth', false],
+    ['arc', false]
+  ])(
+    'asks for corner angles on a %s shape: %s (fails if a curved shape gets angles)',
+    (curveType, expected) => {
+      setPref('showAngles', true);
+      const { entity } = shapeStub({ curveType });
+      mount(entity);
+      const rendered = calls.filter(([name]) => name === 'renderAll');
+      expect(rendered.at(-1)[2]).toEqual({ cornerAngles: expected });
+    }
+  );
 });

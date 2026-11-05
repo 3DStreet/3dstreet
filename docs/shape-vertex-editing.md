@@ -1,7 +1,7 @@
 # Shape vertex editing — the on-canvas layer
 
 A selected `shape` gets an editing overlay: a draggable handle per vertex, a
-delete button on the sub-selected vertex, and — with the Measurements
+delete button on the sub-selected vertex, and — with the Side lengths
 preference on, the default — a length measurement on every side (on a large
 shape, the side nearest the pointer), with angles at the corners beside them
 when the Angles preference is on. How a side takes a new vertex depends on
@@ -231,9 +231,9 @@ Interactivity is scoped **structurally** rather than by a condition:
 `interaction` is a parameter of `renderAll` and of no other method, so the draw
 preview's entry point (`renderActive`) has no parameter to pass.
 
-### With measurements off: the "+"-only chip
+### With side lengths off: the "+"-only chip
 
-With the Measurements preference off there is no number on a side, so an
+With the Side lengths preference off there is no number on a side, so an
 insertable side's chip shows only "+", and a side that cannot take a vertex
 shows nothing (there is no number to mute). The chip is the same control —
 same stamping, same hit box, same bands — with a different inner:

@@ -18,26 +18,30 @@ The code is spread across five directories, so this file is the entry point:
 ## Measurements
 
 The side lengths are editor chips (`ShapeReadouts`) that exist only while the
-shape is selected, and only while the **Measurements** preference is on (the
+shape is selected, and only while the **Side lengths** preference is on (the
 default). With it off, a side that can take a new vertex keeps that control as
 a "+"-only chip, and the other sides show nothing. Angles show at the corners
-beside the sides shown when the **Angles** preference is on (off by default).
+beside the sides shown when the **Angles** preference is on (off by default),
+and only on a straight-sided shape: a smooth or arc shape does not turn at its
+control vertices, so it shows no angles.
 The enclosed area is a label the `shape` component itself builds and
 positions, so it tracks every re-derive, but it is shown only while the shape
-is selected and the Measurements preference is on: `ShapeSidebar` calls
-`setAreaLabelVisible` with the preference on mount, and `false` on unmount. The
-properties panel's Area and side rows do not depend on either preference.
+is selected and the **Area** preference is on (the default): `ShapeSidebar`
+calls `setAreaLabelVisible` with the preference on mount, and `false` on
+unmount. The properties panel's Area and side rows do not depend on any of
+these preferences.
 Nothing measures an unselected shape, in the viewer or during play.
 
 ## Shape Tool settings
 
 While the shape tool is active, the right panel shows a **Shape Tool** section
-(`ShapeToolSection.jsx`): the two display preferences, an angle snap step, whether
-the first side aligns to the axes (the scene's, or the open group's when
-drawing into one), and whether picking the tool opens the panel. All five are
-per-device editor preferences (`shapeToolPrefs.js`): never in the scene and
-never on the undo stack. The two display preferences also appear in a selected
-shape's Shape section, and both places change the same value.
+(`ShapeToolSection.jsx`): the three display preferences, an angle snap step
+(off by default), whether the first side aligns to the axes (the scene's, or
+the open group's when drawing into one; off by default), and whether picking
+the tool opens the panel. All six are per-device editor preferences
+(`shapeToolPrefs.js`): never in the scene and never on the undo stack. The
+three display preferences also appear in a selected shape's Shape section, and
+both places change the same value.
 
 With snap on, the draw tool quantises the direction from the last vertex and
 places the pointer's foot on that ray. A close is still armed by the pointer

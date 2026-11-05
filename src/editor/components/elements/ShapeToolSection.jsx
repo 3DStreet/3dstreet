@@ -65,17 +65,25 @@ export const ShapeDisplayPrefControls = () => {
         <span className="shape-tool-panel-label">
           {intl.formatMessage({
             id: 'shapeTool.displayHeading',
-            defaultMessage: 'Show on canvas (all shapes)'
+            defaultMessage: 'Show on canvas (all shapes, when selected)'
           })}
         </span>
       </div>
       <PrefRow
         label={intl.formatMessage({
-          id: 'shapeTool.showMeasurements',
-          defaultMessage: 'Measurements'
+          id: 'shapeTool.showLengths',
+          defaultMessage: 'Side lengths'
         })}
-        value={settings.showMeasurements}
-        onChange={(v) => setSetting('showMeasurements', v)}
+        value={settings.showLengths}
+        onChange={(v) => setSetting('showLengths', v)}
+      />
+      <PrefRow
+        label={intl.formatMessage({
+          id: 'shapeTool.showArea',
+          defaultMessage: 'Area'
+        })}
+        value={settings.showArea}
+        onChange={(v) => setSetting('showArea', v)}
       />
       <PrefRow
         label={intl.formatMessage({

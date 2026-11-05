@@ -2544,7 +2544,7 @@
     "defaultMessage": "The scene's axes, or the open group's when you draw into a group"
   },
   "shapeTool.displayHeading": {
-    "defaultMessage": "Show on canvas (all shapes)"
+    "defaultMessage": "Show on canvas (all shapes, when selected)"
   },
   "shapeTool.openPanelOnSelect": {
     "defaultMessage": "Open this panel when the Shape Tool is selected"
@@ -2552,8 +2552,11 @@
   "shapeTool.showAngles": {
     "defaultMessage": "Angles"
   },
-  "shapeTool.showMeasurements": {
-    "defaultMessage": "Measurements"
+  "shapeTool.showArea": {
+    "defaultMessage": "Area"
+  },
+  "shapeTool.showLengths": {
+    "defaultMessage": "Side lengths"
   },
   "shapeTool.snap": {
     "defaultMessage": "Angle snap"

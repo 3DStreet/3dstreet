@@ -3,10 +3,11 @@ import useStore from '@/store';
 
 const KEY = '3dstreet-shape-tool-settings';
 const DEFAULTS = {
-  showMeasurements: true,
+  showLengths: true,
+  showArea: true,
   showAngles: false,
   snapStep: 0,
-  alignToAxes: true,
+  alignToAxes: false,
   openPanelOnSelect: true
 };
 
@@ -42,10 +43,11 @@ describe('shape tool preferences', () => {
   it('survives a reload', async () => {
     const first = await freshPrefs();
     const changed = {
-      showMeasurements: false,
+      showLengths: false,
+      showArea: false,
       showAngles: true,
       snapStep: 30,
-      alignToAxes: false,
+      alignToAxes: true,
       openPanelOnSelect: false
     };
     first.persistShapeToolSettings(changed);
@@ -61,8 +63,8 @@ describe('shape tool preferences', () => {
     expect(normaliseShapeToolSettings({ snapStep: null }).snapStep).toBe(0);
     expect(normaliseShapeToolSettings({ snapStep: 45 }).snapStep).toBe(45);
     expect(
-      normaliseShapeToolSettings({ showAngles: 'yes', alignToAxes: false })
-    ).toEqual({ ...DEFAULTS, alignToAxes: false });
+      normaliseShapeToolSettings({ showAngles: 'yes', alignToAxes: true })
+    ).toEqual({ ...DEFAULTS, alignToAxes: true });
     for (const stored of ['{', 'null', '[]', '"x"']) {
       localStorage.setItem(KEY, stored);
       const { loadShapeToolSettings } = await freshPrefs();
