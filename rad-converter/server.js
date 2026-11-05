@@ -52,12 +52,10 @@ const SPARK_VERSION = process.env.SPARK_VERSION || 'unknown';
 // output. --rad (single file) is build-lod's default.
 const LOD_QUALITY = 'quality';
 // Spherical-harmonics degree kept in the .rad (`--max-sh`, build-lod default
-// 3). Degree-3 SH is 45 of the ~68 raw bytes per splat and compresses poorly,
-// so it is likely more than half of every streamed chunk — and video-derived
-// street scans get little from view-dependent shading. Dropping SH roughly
-// halves the file, the bandwidth and the decode work for every future asset
-// (#2047); Reoptimize rebuilds existing ones. RAD_MAX_SH=1 keeps first-order
-// view dependence at a fraction of the cost if it proves worth it.
+// 3). Degree-3 SH is 45 of the ~68 raw bytes per splat, but the saving after
+// compression depends on the scan: 8% on a 7M-splat test (#2047). Reoptimize
+// rebuilds existing assets. RAD_MAX_SH=1 keeps first-order view dependence if
+// it proves worth it.
 const MAX_SH = (() => {
   const raw = process.env.RAD_MAX_SH;
   if (raw === undefined || raw === '') return 0;
