@@ -26,6 +26,7 @@ import {
   forceJobNotifyEmail
 } from '@shared/utils/generationJobs.js';
 import { t } from './i18n/messages.js';
+import { pickImageFromAssets } from './mount-asset-picker.jsx';
 import { isTokenExhaustedError } from '@shared/utils/tokens.js';
 
 // Video tab module
@@ -156,6 +157,7 @@ const VideoTab = {
     );
     this.elements.imagePreview = document.getElementById('video-image-preview');
     this.elements.imageClear = document.getElementById('video-image-clear');
+    this.elements.imagePick = document.getElementById('video-image-pick');
 
     // Aspect Ratio
     this.elements.aspectRatioSelector = document.getElementById(
@@ -292,6 +294,9 @@ const VideoTab = {
                                 </div>
                                 <input id="video-image-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
                             </label>
+                            <button id="video-image-pick" type="button" class="flex items-center justify-center gap-1 w-full px-3 py-1.5 text-sm text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                ${t('video.chooseFromAssets')}
+                            </button>
                             <div id="video-image-preview-container" class="hidden relative">
                                 <img id="video-image-preview" class="w-full rounded-lg border border-gray-300" alt="${t('video.selectedImageAlt')}">
                                 <button id="video-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="${t('video.clearImage')}">
@@ -474,6 +479,13 @@ const VideoTab = {
       this.elements.imageClear.addEventListener(
         'click',
         this.clearImage.bind(this)
+      );
+    }
+
+    // Pick the first frame from the user's library instead of a file (#2142).
+    if (this.elements.imagePick) {
+      this.elements.imagePick.addEventListener('click', () =>
+        this.pickInputImageFromAssets()
       );
     }
 
@@ -1059,6 +1071,21 @@ const VideoTab = {
 
     // Show preview
     this.showImagePreview(imageDataUrl);
+  },
+
+  // Fill the source image (the video's first frame) from the user's asset
+  // library (#2142).
+  pickInputImageFromAssets: async function () {
+    try {
+      const picked = await pickImageFromAssets({
+        title: t('video.chooseFirstFrame')
+      });
+      if (!picked) return;
+      this.setInputImage(picked.dataUrl, picked.name);
+    } catch (error) {
+      console.error('Failed to load image from assets:', error);
+      FluxUI.showNotification(t('video.chooseFromAssetsFailed'), 'error');
+    }
   },
 
   // Clear image

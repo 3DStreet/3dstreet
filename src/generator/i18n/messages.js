@@ -119,6 +119,24 @@ const MESSAGES = {
     'pt-BR': 'Recomendada para melhores resultados',
     fr: 'Recommandée pour de meilleurs résultats'
   },
+  'image.chooseFromAssets': {
+    en: 'Choose from my assets',
+    es: 'Elegir de mis recursos',
+    'pt-BR': 'Escolher dos meus recursos',
+    fr: 'Choisir dans mes actifs'
+  },
+  'image.chooseImageToEdit': {
+    en: 'Choose an image to edit',
+    es: 'Elige una imagen para editar',
+    'pt-BR': 'Escolha uma imagem para editar',
+    fr: 'Choisissez une image à modifier'
+  },
+  'image.chooseFromAssetsFailed': {
+    en: "Couldn't load that image. Please try again.",
+    es: 'No se pudo cargar esa imagen. Inténtalo de nuevo.',
+    'pt-BR': 'Não foi possível carregar essa imagem. Tente novamente.',
+    fr: 'Impossible de charger cette image. Veuillez réessayer.'
+  },
   'image.clickToUpload': {
     en: 'Click to upload an image',
     es: 'Haz clic para subir una imagen',
@@ -531,6 +549,24 @@ const MESSAGES = {
     es: 'Imagen de origen',
     'pt-BR': 'Imagem de origem',
     fr: 'Image source'
+  },
+  'video.chooseFromAssets': {
+    en: 'Choose from my assets',
+    es: 'Elegir de mis recursos',
+    'pt-BR': 'Escolher dos meus recursos',
+    fr: 'Choisir dans mes actifs'
+  },
+  'video.chooseFirstFrame': {
+    en: 'Choose an image for the first frame',
+    es: 'Elige una imagen para el primer fotograma',
+    'pt-BR': 'Escolha uma imagem para o primeiro quadro',
+    fr: 'Choisissez une image pour la première image de la vidéo'
+  },
+  'video.chooseFromAssetsFailed': {
+    en: "Couldn't load that image. Please try again.",
+    es: 'No se pudo cargar esa imagen. Inténtalo de nuevo.',
+    'pt-BR': 'Não foi possível carregar essa imagem. Tente novamente.',
+    fr: 'Impossible de charger cette image. Veuillez réessayer.'
   },
   'video.clickToUploadImage': {
     en: 'Click to upload an image',

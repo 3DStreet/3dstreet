@@ -67,6 +67,39 @@ export function getServedUrl(item) {
   return item?.optimizedSourceUrl ?? item?.storageUrl;
 }
 
+export const ASSET_SORTS = {
+  NEWEST: 'newest',
+  OLDEST: 'oldest',
+  NAME_ASC: 'name-asc',
+  NAME_DESC: 'name-desc'
+};
+
+const assetSortName = (item) =>
+  item.name || item.originalFilename || item.id || '';
+
+/**
+ * Order display items for a sort option. Expects them newest first, the order
+ * Firestore returns them in, so date sorts need no timestamp.
+ * @param {Array<object>} items
+ * @param {string} sort - One of ASSET_SORTS.
+ * @returns {Array<object>} A new array.
+ */
+export function sortAssetItems(items, sort) {
+  if (sort === ASSET_SORTS.OLDEST) return [...items].reverse();
+  if (sort !== ASSET_SORTS.NAME_ASC && sort !== ASSET_SORTS.NAME_DESC) {
+    return [...items];
+  }
+  const direction = sort === ASSET_SORTS.NAME_ASC ? 1 : -1;
+  return [...items].sort(
+    (a, b) =>
+      direction *
+      assetSortName(a).localeCompare(assetSortName(b), undefined, {
+        numeric: true,
+        sensitivity: 'base'
+      })
+  );
+}
+
 /**
  * Derives optimization display info from a GLB asset doc.
  *

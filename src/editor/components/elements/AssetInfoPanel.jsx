@@ -12,8 +12,17 @@ import { useSharedMessages } from '@shared/i18n/sharedMessages.js';
 import useAssetUploadStore from '@/editor/state/assetUploadStore.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import { uploadAndPlaceAsset } from '@/editor/lib/asset-upload/uploadAndPlaceAsset.js';
-import { AssetDetailModal, formatBytes } from '@shared/assets';
-import { swapCloudAssetInScene } from '../../lib/asset-upload/swapCloudAsset';
+import {
+  AssetDetailModal,
+  AssetPickerModal,
+  formatBytes
+} from '@shared/assets';
+import {
+  getEntityAssetType,
+  replaceCloudAssetInScene,
+  swapCloudAssetInScene
+} from '../../lib/asset-upload/swapCloudAsset';
+import { signIn } from '../../api';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 import useStore from '@/store.js';
 import { Button } from './Button';
@@ -36,6 +45,7 @@ const AssetInfoPanel = ({ entity }) => {
   const t = useSharedMessages();
   const state = useAssetUploadStatus(entity);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   if (!state) return null;
 
   const meta = STATUS_LABELS[state.status] || STATUS_LABELS.uploaded;
@@ -79,6 +89,42 @@ const AssetInfoPanel = ({ entity }) => {
   }
 
   const reasonText = state.reason ? REASON_TEXT[state.reason] : null;
+
+  // Replace (#2142): swap this cloud asset for one of the same type from the
+  // user's own library — the way out for a missing asset (deleted, purged, or
+  // from another project after a JSON import) or one owned by someone else.
+  // The type comes from the entity, since a missing asset has no doc.
+  const isCloudMissing = state.status === 'cloud_missing';
+  const replaceType = getEntityAssetType(entity);
+  const canReplace =
+    !!state.assetId &&
+    !!state.ownerUid &&
+    !!replaceType &&
+    (state.status === 'uploaded' || isCloudMissing);
+  const replaceTitle = t(
+    replaceType === 'splat'
+      ? 'replaceAssetTitleSplat'
+      : replaceType === 'image'
+        ? 'replaceAssetTitleImage'
+        : 'replaceAssetTitleMesh'
+  );
+  const confirmReplace = (item) => {
+    const count = replaceCloudAssetInScene(
+      { assetId: state.assetId, ownerUid: state.ownerUid },
+      item
+    );
+    setPickerOpen(false);
+    if (count > 0) {
+      posthog.capture('asset_replaced', {
+        asset_type: replaceType,
+        source_status: state.status,
+        source_reason: state.reason,
+        source_owned: isOwned,
+        entity_count: count
+      });
+      STREET.notify.successMessage(t('assetReplaced'));
+    }
+  };
 
   return (
     <div
@@ -203,29 +249,65 @@ const AssetInfoPanel = ({ entity }) => {
               }}
             />
           </span>
-          <button
-            type="button"
-            onClick={() => setDetailsOpen(true)}
-            style={{
-              marginLeft: 'auto',
-              background: 'transparent',
-              border: '1px solid currentColor',
-              color: 'currentColor',
-              borderRadius: 3,
-              padding: '2px 6px',
-              fontSize: 11,
-              cursor: 'pointer',
-              opacity: 1
-            }}
-          >
-            <FormattedMessage id="assetInfo.details" defaultMessage="Details" />
-          </button>
+          {canReplace && (
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              style={{
+                marginLeft: 'auto',
+                background: 'transparent',
+                border: '1px solid currentColor',
+                color: 'currentColor',
+                borderRadius: 3,
+                padding: '2px 6px',
+                fontSize: 11,
+                cursor: 'pointer',
+                opacity: 1
+              }}
+            >
+              {t('replace')}
+            </button>
+          )}
+          {/* A missing asset has nothing to show in Details but "Asset not
+              available", so Replace stands alone there. */}
+          {!isCloudMissing && (
+            <button
+              type="button"
+              onClick={() => setDetailsOpen(true)}
+              style={{
+                marginLeft: canReplace ? 0 : 'auto',
+                background: 'transparent',
+                border: '1px solid currentColor',
+                color: 'currentColor',
+                borderRadius: 3,
+                padding: '2px 6px',
+                fontSize: 11,
+                cursor: 'pointer',
+                opacity: 1
+              }}
+            >
+              <FormattedMessage
+                id="assetInfo.details"
+                defaultMessage="Details"
+              />
+            </button>
+          )}
         </div>
       )}
       {state.originalFilename && (
         <div style={{ marginTop: 2, opacity: 0.5, fontSize: 11 }}>
           {state.originalFilename}
         </div>
+      )}
+      {pickerOpen && (
+        <AssetPickerModal
+          type={replaceType}
+          title={replaceTitle}
+          excludeAssetId={state.assetId}
+          onConfirm={confirmReplace}
+          onCancel={() => setPickerOpen(false)}
+          onSignIn={() => signIn()}
+        />
       )}
       {detailsOpen && state.assetId && state.ownerUid && (
         // AssetDetailModal owns the type→modal routing (mesh/splat → 3D viewer,

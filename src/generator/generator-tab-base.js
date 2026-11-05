@@ -28,6 +28,7 @@ import {
 import { mountStyleSelector } from './mount-style-selector.js';
 import promptFieldStyles from '@shared/styles/promptFields.module.scss';
 import { t } from './i18n/messages.js';
+import { pickImageFromAssets } from './mount-asset-picker.jsx';
 import posthog from 'posthog-js';
 import { isTokenExhaustedError } from '@shared/utils/tokens.js';
 
@@ -232,6 +233,8 @@ class GeneratorTabBase {
       );
       this.elements.imagePromptClear =
         document.getElementById('source-image-clear');
+      this.elements.imagePromptPick =
+        document.getElementById('source-image-pick');
       this.elements.imagePromptStrength = document.getElementById(
         'source-image-strength'
       );
@@ -372,6 +375,9 @@ class GeneratorTabBase {
                                 </div>
                                 <input id="source-image-input" type="file" class="hidden" accept="image/png, image/jpeg, image/jpg" />
                             </label>
+                            <button id="source-image-pick" type="button" class="flex items-center justify-center gap-1 w-full px-3 py-1.5 text-sm text-gray-500 border border-gray-300 rounded-lg hover:bg-gray-50">
+                                ${t('image.chooseFromAssets')}
+                            </button>
                             <div id="source-image-preview-container" class="hidden relative">
                                 <img id="source-image-preview" class="w-full rounded-lg border border-gray-300" alt="Selected image">
                                 <button id="source-image-clear" class="absolute top-2 right-2 p-1 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 hover:bg-red-50 shadow hover:shadow-lg transition-all duration-200" title="${t('image.clearImage')}">
@@ -727,6 +733,14 @@ class GeneratorTabBase {
         this.elements.imagePromptClear.addEventListener(
           'click',
           this.clearImagePrompt.bind(this)
+        );
+      }
+
+      // Pick the source image from the user's library instead of a file
+      // (#2142).
+      if (this.elements.imagePromptPick) {
+        this.elements.imagePromptPick.addEventListener('click', () =>
+          this.pickImagePromptFromAssets()
         );
       }
     }
@@ -1089,6 +1103,25 @@ class GeneratorTabBase {
 
     if (this.config.showImagePromptUI) {
       this.elements.imagePromptStrengthContainer.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Fill the source image slot from the user's asset library (#2142).
+   */
+  async pickImagePromptFromAssets() {
+    try {
+      const picked = await pickImageFromAssets({
+        title: t('image.chooseImageToEdit')
+      });
+      if (!picked) return;
+      this.setImagePrompt(picked.dataUrl, picked.name);
+      posthog.capture('generator_source_image_picked', {
+        tab: this.config.tabType
+      });
+    } catch (error) {
+      console.error('Failed to load image from assets:', error);
+      FluxUI.showNotification(t('image.chooseFromAssetsFailed'), 'error');
     }
   }
 
