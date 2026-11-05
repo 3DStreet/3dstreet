@@ -45,12 +45,18 @@ both places change the same value.
 
 With snap on, the draw tool quantises the direction from the last vertex and
 places the pointer's foot on that ray. A close is still armed by the pointer
-over the first vertex; the last vertex then slides along its own side so that
-both closing corners are snapped, or the close is refused with a reason. The
-mechanics are in the `shapeSnap.js` header, and the rules every way of
-finishing shares are in `shapeDrawRules.js`. An Escape key-up outside a text
-field finishes the shape; the editor's own Escape handling is described in
-`docs/groups.md`.
+over the first vertex: a mouse arms it by hovering, and a touch or pen tap
+within 24 px of the first vertex arms it on release, so once three vertices are
+placed a tap that close closes rather than placing a point. The last vertex
+then slides along its own side so that both closing corners are snapped, or
+the close is refused with a reason. The mechanics are in the `shapeSnap.js`
+header, and the rules every way of finishing shares are in
+`shapeDrawRules.js`.
+
+Escape finishes the shape on its key-up, but only when its key-down reached
+the tool with no text field focused and no modal or menu open: Escape that
+cancels a rename or closes a modal or menu leaves the drawing alone. The
+editor's own Escape handling is described in `docs/groups.md`.
 
 ## Vertex editing commands
 

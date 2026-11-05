@@ -10,10 +10,9 @@
 // Angle snap, when on, quantises the direction from the last vertex to the
 // pointer (the first side to the scene's axes, or the open group's, unless
 // alignment is off) and places the pointer's perpendicular foot on that ray.
-// The close is still judged by the
-// pointer being over the first vertex — never by the snapped point — and while
-// it is armed the last vertex is shown slid along its own side to where both
-// closing corners are snapped. Every way of finishing commits exactly that
+// The close is still judged by the pointer being over the first vertex —
+// never by the snapped point — and while it is armed the last vertex is shown
+// slid along its own side to where both closing corners are snapped. Every way of finishing commits exactly that
 // previewed ring, or the shape open when no such ring exists. The geometry is
 // in shapeSnap.js, the rules in shapeDrawRules.js.
 //
@@ -99,9 +98,11 @@ const MIN_DRAW_VERTEX_SPACING = 0.05;
 // Screen-space, not world metres, so it is scale-invariant — matches the
 // ruler/draw click-vs-drag pixel basis.
 const CLOSE_PX_TOLERANCE = 12;
-// px — the same for a touch tap, which has no hover to aim with and a finger
-// to aim it.
-const CLOSE_PX_TOLERANCE_TOUCH = 24;
+// px — the same for a touch or pen tap, which has no hover to aim with; a
+// finger also covers more of the screen.
+const CLOSE_PX_TOLERANCE_TAP = 24;
+const isTapPointer = (e) =>
+  e.pointerType === 'touch' || e.pointerType === 'pen';
 // The tool's own mark — the close-target ring.
 const TOOL_ACCENT_COLOR = 0x00ffcc;
 let shapeLayerCounter = 1; // distinguishes drawn shapes in the SceneGraph
@@ -242,10 +243,12 @@ function isTextFieldFocused() {
   );
 }
 
-// An open editor modal (the shared Modal renders `.modal`, hidden with
-// `.hide`) takes Escape for itself: it closes on Escape's key-up.
-function isModalOpen() {
-  return !!document.querySelector('.modal:not(.hide)');
+// An open modal or menu takes Escape for itself. The shared Modal marks itself
+// `.modal` (hidden with `.hide`); an open menu is a `role="menu"` element. The
+// store's `modal` is not used: it can name a modal nothing renders, which
+// would leave Escape dead for the whole drawing.
+function isOverlayOpen() {
+  return !!document.querySelector('.modal:not(.hide), [role="menu"]');
 }
 
 // Ctrl/Cmd+Z, and Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y.
@@ -672,8 +675,11 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
 
     // Cursor off the canvas: collapse the preview to the committed ring — the
     // same state a pick-miss leaves.
-    const onPointerLeave = () => {
+    const onPointerLeave = (e) => {
       if (committingRef.current) return;
+      // A tap's pointer leaves as it lifts. A refused tap close stays shown,
+      // red with its reason, until the next tap decides again.
+      if (isTapPointer(e) && armedRef.current) return;
       lastPointer = null;
       collapseTrailing();
       readoutsRef.current && readoutsRef.current.clear();
@@ -695,14 +701,14 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // back an open shape would answer a different question than the one the
       // click asked.
       //
-      // A mouse arms and disarms on the hover before the click. A touch tap has
-      // no hover, so its release sets the armed state both ways: a tap that
-      // was refused must not leave the next tap elsewhere armed.
-      if (e.pointerType === 'touch') {
+      // A mouse arms and disarms on the hover before the click. A touch or pen
+      // tap may have no hover, so its release sets the armed state both ways:
+      // a tap that was refused must not leave the next tap elsewhere armed.
+      if (isTapPointer(e)) {
         const over = isPointerOverFirstVertex(
           e.clientX,
           e.clientY,
-          CLOSE_PX_TOLERANCE_TOUCH
+          CLOSE_PX_TOLERANCE_TAP
         );
         if (over) setTrailing(verticesRef.current[0]);
         if (over !== armedRef.current) syncArmed(over);
@@ -763,14 +769,21 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     };
 
     // Whether the Escape now held went down with the drawing in charge of it:
-    // no field focused and no modal open. Its key-up acts only then, because
-    // a field or modal can be gone by the key-up — an inline rename cancels
-    // and unmounts on the key-down — and that key-up is not the drawing's.
+    // no field focused and no modal or menu open. Its key-up acts only then,
+    // because a field or overlay can be gone by the key-up — an inline rename
+    // cancels and unmounts on the key-down — and that key-up is not the
+    // drawing's. Decided on the first key-down of a press, not on its
+    // auto-repeats, which arrive after the field or overlay has gone.
     let escapeDownForDrawing = false;
-    const escapeIsForDrawing = () => !isTextFieldFocused() && !isModalOpen();
+    const escapeIsForDrawing = () => !isTextFieldFocused() && !isOverlayOpen();
+    const onWindowBlur = () => {
+      escapeDownForDrawing = false;
+    };
 
     const onKeyDown = (e) => {
-      if (e.key === 'Escape') escapeDownForDrawing = escapeIsForDrawing();
+      if (e.key === 'Escape' && !e.repeat) {
+        escapeDownForDrawing = escapeIsForDrawing();
+      }
       // A focused field keeps its keys — except undo/redo on a dropdown,
       // which has no text to undo: there the chord would otherwise reach the
       // editor's global undo and could undo the previous shape.
@@ -965,6 +978,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     canvas.addEventListener('dblclick', onDblClick);
     window.addEventListener('keydown', onKeyDown, true);
     window.addEventListener('keyup', onKeyUp, true);
+    window.addEventListener('blur', onWindowBlur);
     const unsubscribeStep = useStore.subscribe(
       (state) => state.shapeToolSettings.snapStep,
       onSnapStepChanged
@@ -979,6 +993,7 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       canvas.removeEventListener('dblclick', onDblClick);
       window.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('keyup', onKeyUp, true);
+      window.removeEventListener('blur', onWindowBlur);
       unsubscribeStep();
       previewEl.removeEventListener('loaded', onPreviewLoaded);
       canvas.style.cursor = null;

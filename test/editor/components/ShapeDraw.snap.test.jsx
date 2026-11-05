@@ -138,17 +138,19 @@ const moveToWorld = (x, z) => {
   moveTo(s.x, s.y);
 };
 
-// A touch tap: no hover before it, no move between press and release.
-function tap(x, y) {
+// A tap: no hover before it, no move between press and release. A touch or
+// pen pointer leaves the canvas as it lifts.
+function tap(x, y, pointerType = 'touch') {
   const at = {
     clientX: x,
     clientY: y,
     button: 0,
     detail: 1,
-    pointerType: 'touch'
+    pointerType
   };
   fireEvent.pointerDown(canvasOf(), at);
   fireEvent.pointerUp(canvasOf(), at);
+  if (pointerType !== 'mouse') fireEvent.pointerLeave(canvasOf(), at);
 }
 
 const tapAt = (x, z) => {
@@ -527,7 +529,8 @@ describe('Shape Tool settings while drawing', () => {
     expect(editor.inspector.history.undos).toHaveLength(1);
     setPref('snapStep', 45);
     setPref('showAngles', true);
-    setPref('alignToAxes', false);
+    setPref('alignToAxes', true);
+    setPref('showArea', false);
     expect(editor.inspector.history.undos).toHaveLength(1);
   });
 
@@ -823,7 +826,56 @@ describe('Shape Tool settings while drawing', () => {
         expect(createdShapes()).toHaveLength(2);
       } finally {
         document.removeEventListener('keyup', modalKeyUp);
+        modal.remove();
       }
+    });
+
+    it('leaves an Escape to an open menu, and ignores a modal the store names but nothing shows (fails if a menu’s Escape finishes, or a stale store modal blocks it)', () => {
+      entryState();
+      redrawThree();
+      const menu = document.createElement('div');
+      menu.setAttribute('role', 'menu');
+      document.body.append(menu);
+      try {
+        pressKey('Escape');
+        menu.remove();
+        releaseKeyOn(document.body, 'Escape');
+        expect(drawnPoints()).toHaveLength(3);
+      } finally {
+        menu.remove();
+      }
+      // A first visit from a Streetmix link leaves `modal: 'intro'` set, and
+      // nothing renders it.
+      act(() => useStore.setState({ modal: 'intro' }));
+      try {
+        escapeOn();
+        expect(createdShapes()).toHaveLength(2);
+      } finally {
+        act(() => useStore.setState({ modal: null }));
+      }
+    });
+
+    it('decides on the first key-down of a held Escape, and forgets it on a window blur (fails if an auto-repeat or a lost key-up re-arms it)', () => {
+      entryState();
+      redrawThree();
+      const input = document.createElement('input');
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') input.remove();
+      });
+      document.body.append(input);
+      act(() => input.focus());
+      pressKeyOn(input, 'Escape');
+      pressKey('Escape', { repeat: true });
+      releaseKeyOn(document.body, 'Escape');
+      expect(drawnPoints()).toHaveLength(3);
+
+      pressKey('Escape');
+      act(() => {
+        window.dispatchEvent(new Event('blur'));
+      });
+      releaseKeyOn(document.body, 'Escape');
+      expect(drawnPoints()).toHaveLength(3);
+      expect(createdShapes()).toHaveLength(1);
     });
   });
 
@@ -844,6 +896,26 @@ describe('Shape Tool settings while drawing', () => {
     expectNear(created.vertices[3], { x: 0, z: 8 });
   });
 
+  it('closes on a pen tap as on a touch, but a mouse click outside the hover radius places a point (fails if the release arms for every pointer, or not for a pen)', () => {
+    setPref('snapStep', 90);
+    drawingTool();
+    for (const [x, z] of [
+      [0, 0],
+      [10, 0],
+      [10, 8],
+      [-3, 8]
+    ]) {
+      tapAt(x, z);
+    }
+    const s = screenOf(v3(0, 0));
+    tap(s.x + ARM_PX + 6, s.y, 'mouse');
+    expect(lastCreate()).toBe(null);
+    expect(drawnPoints()).toHaveLength(5);
+    pressKey('Backspace');
+    tap(s.x + ARM_PX + 6, s.y, 'pen');
+    expect(lastCreate().shape.closed).toBe(true);
+  });
+
   it('leaves no close armed after a refused tap: the next tap places a point (fails if a refused tap stays armed)', () => {
     setPref('snapStep', 90);
     drawingTool();
@@ -853,6 +925,9 @@ describe('Shape Tool settings while drawing', () => {
     tapAt(0, 0);
     expect(lastCreate()).toBe(null);
     expect(drawnPoints()).toHaveLength(3);
+    // The refusal stays shown after the finger lifts.
+    expect(lastInvalid()).toBe(true);
+    expect(noticeLabels()).toHaveLength(1);
     tapAt(0, 10);
     expect(drawnPoints()).toHaveLength(4);
     expect(lastCreate()).toBe(null);

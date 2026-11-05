@@ -530,7 +530,7 @@ describe('ShapeReadouts — display preferences', () => {
     expect(actual.z).toBeCloseTo(expected.z, 6);
   };
 
-  it('turns an insertable side into a "+"-only control with measurements off (fails if chips are hidden, keep the number, or miss the width floor)', () => {
+  it('turns an insertable side into a "+"-only control with side lengths off (fails if chips are hidden, keep the number, or miss the width floor)', () => {
     readouts.setDisplay({ showLengths: false });
     readouts.renderAll(polygon(5), 12, null, true, null, allInsertable());
     const chips = outers();
