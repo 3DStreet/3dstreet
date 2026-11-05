@@ -535,6 +535,11 @@ export function trashButtonOffset(
 // the only symptom is the button sitting a little closer to or further from the
 // label it belongs to.
 const CAPTION_HALF_PX = 10;
+// How far below its corner an angle caption's centre sits: it clears a handle
+// drawn at its target size; it does not try to clear a larger, clamped handle
+// or a neighbouring corner.
+export const ANGLE_CAPTION_OFFSET_PX =
+  HANDLE_TARGET_PX + HIT_SLOP_PX + OFFSET_MARGIN_PX + CAPTION_HALF_PX;
 // Anchor centre to button centre. The anchor IS the caption's own point, so the
 // gap is measured from the caption's edge outward.
 const INSERT_OFFSET_PX = CAPTION_HALF_PX + OFFSET_MARGIN_PX + BUTTON_PX / 2;
