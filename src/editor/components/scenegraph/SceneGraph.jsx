@@ -89,6 +89,12 @@ DropLine.propTypes = {
   indentPx: PropTypes.number
 };
 
+// Expand state outlives the panel: the scene graph unmounts whenever the
+// editor closes (Play, View), and a remount that started from a fresh map
+// came back with every group collapsed around a still-selected item (#2140).
+// Keyed by element, so a newly loaded scene starts collapsed on its own.
+const expandedElementsAcrossMounts = new WeakMap();
+
 class SceneGraph extends React.Component {
   static contextType = AuthContext;
   static propTypes = {
@@ -105,7 +111,7 @@ class SceneGraph extends React.Component {
     super(props);
     this.state = {
       entities: [],
-      expandedElements: new WeakMap([[props.scene, true]]),
+      expandedElements: expandedElementsAcrossMounts.set(props.scene, true),
       panelsVisible: useStore.getState().panelsVisible,
       activeTab: 'layers',
       selectedIndex: -1,
@@ -164,6 +170,12 @@ class SceneGraph extends React.Component {
     // The panel is unmounted while the editor is closed and misses scope
     // changes made then, so it shows whatever is open when it mounts.
     this.showOpenGroup();
+    // The selection survives the editor closing, but componentDidUpdate
+    // only sees later changes: open the rows down to it now.
+    if (this.props.selectedEntity?.isEntity) {
+      this.expandToRoot(this.props.selectedEntity);
+      this.scrollToRowSoon(this.props.selectedEntity);
+    }
   }
 
   componentWillUnmount() {

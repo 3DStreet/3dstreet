@@ -8,13 +8,15 @@ import {
   getStripSegments,
   getSegmentBarColor,
   getBarInkColor,
-  getSegmentTurns
+  getSegmentTurns,
+  getBarProfile
 } from '../../lib/segmentPanel';
 import { toDisplay } from './LengthPropertyRow';
 
 // Live cross-section strip at the top of the segment sidebar (#1753): one bar
 // per segment of the parent managed street, drawn from live data (flex width
-// = segment width, fill = surface/color, taller = raised, glyph = direction).
+// = segment width, fill = surface/color, taller = raised, slanted top =
+// sloped, glyph = direction).
 // Clicking a bar selects that segment through the same code path as the scene
 // graph, keeping the panel mounted; double-click frames it (same objectfocus
 // event as the scene graph / canvas); hovering a bar drives the viewport's
@@ -169,10 +171,20 @@ const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
         {segments.map((el, i) => {
           const data = el.getAttribute('street-segment') || {};
           const width = data.width || 0;
-          const raised = data.slope
-            ? Math.max(data.slopeStart || 0, data.slopeEnd || 0) > 0
-            : (data.elevation || 0) > 0;
+          const profile = getBarProfile(data);
+          const height = Math.max(profile.start, profile.end);
           const bg = getSegmentBarColor(data);
+          // A sloped bar keeps its rectangular box (so the selection outline
+          // and hit area stay whole) and paints a slanted top: a band as
+          // tall as the drop, split along its diagonal, over a solid fill.
+          const drop = Math.abs(profile.start - profile.end);
+          const background =
+            drop > 0
+              ? `linear-gradient(to bottom ${
+                  profile.start < profile.end ? 'right' : 'left'
+                }, transparent calc(50% - 0.5px), ${bg} calc(50% + 0.5px)) top / 100% ${drop}px no-repeat, ` +
+                `linear-gradient(${bg}, ${bg}) bottom / 100% calc(100% - ${drop}px) no-repeat`
+              : bg;
           const selected = el === entity;
           // Boundaries carry a direction in data (their clones' yaw is
           // derived from it) but it isn't a travel direction, and the
@@ -187,8 +199,9 @@ const StreetCrossSectionStrip = ({ entity, variant = 'segment' }) => {
               className={'cross-section-bar' + (selected ? ' is-selected' : '')}
               style={{
                 flexGrow: width || 0.1,
-                height: raised ? 40 : 32,
-                background: bg
+                height,
+                background,
+                paddingTop: drop > 0 ? drop + 3 : undefined
               }}
               title={`${getEntityDisplayName(el)} · ${formatLength(width)}`}
               onClick={() => selectSegment(el)}

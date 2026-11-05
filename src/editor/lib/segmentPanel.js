@@ -274,3 +274,39 @@ export function isMoreOpen(componentName) {
 export function setMoreOpen(componentName, open) {
   moreOpenByType[componentName.split('__')[0]] = open;
 }
+
+// Cross-section strip bar heights in px (#2140). Not to scale: road level is
+// FLAT_BAR_PX, any raise jumps to at least RAISED_MIN_BAR_PX so a small curb
+// still reads as raised, then grows RAISED_PX_PER_CURB per curb height
+// (0.15 m) up to MAX_BAR_PX, which leaves room in the 52px strip for the
+// selection pointer. A standard curb lands on 40px, the old fixed height.
+const FLAT_BAR_PX = 32;
+const RAISED_MIN_BAR_PX = 36;
+const RAISED_PX_PER_CURB = 4;
+const MAX_BAR_PX = 48;
+const CURB_M = 0.15;
+
+export function barHeightForElevation(elevation) {
+  const e = Number(elevation) || 0;
+  if (e <= 0) return FLAT_BAR_PX;
+  return Math.min(
+    MAX_BAR_PX,
+    RAISED_MIN_BAR_PX + (e / CURB_M) * RAISED_PX_PER_CURB
+  );
+}
+
+/**
+ * Bar profile for a segment: heights at its start (left, −x) and end (right,
+ * +x) edges. Equal unless the segment is sloped, in which case the bar's top
+ * is drawn as a slant between the two.
+ */
+export function getBarProfile(data = {}) {
+  if (data.slope) {
+    return {
+      start: barHeightForElevation(data.slopeStart),
+      end: barHeightForElevation(data.slopeEnd)
+    };
+  }
+  const h = barHeightForElevation(data.elevation);
+  return { start: h, end: h };
+}
