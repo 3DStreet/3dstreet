@@ -464,7 +464,10 @@ describe('fill textures - the real pattern cache', () => {
     expect(dispose).toHaveBeenCalledTimes(1);
     // The entry is gone: the next acquire draws a new texture.
     const c = acquirePatternTexture(scene, key);
-    expect(c).not.toBe(a);
+    // Identity only. not.toBe deep-compares any two distinct objects for its
+    // failure hint, and two tiles of one tuple hold equal pixel arrays, which
+    // takes seconds.
+    expect(Object.is(c, a)).toBe(false);
     releasePatternTexture(scene, key);
   });
 
@@ -481,7 +484,7 @@ describe('fill textures - the real pattern cache', () => {
     const key = 'dots|1|0.15';
     const a = acquirePatternTexture({}, key);
     const b = acquirePatternTexture({}, key);
-    expect(b).not.toBe(a);
+    expect(Object.is(b, a)).toBe(false);
   });
 
   it('shares a tile between two shapes through the default acquire', () => {
