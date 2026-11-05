@@ -916,6 +916,46 @@ describe('Shape Tool settings while drawing', () => {
     expect(lastCreate().shape.closed).toBe(true);
   });
 
+  it('judges a hovering pen’s tap by its preview, as a mouse click (fails if a pen that hovered is re-judged at the tap radius)', () => {
+    setPref('snapStep', 90);
+    drawingTool();
+    for (const [x, z] of [
+      [0, 0],
+      [10, 0],
+      [10, 8],
+      [-3, 8]
+    ]) {
+      tapAt(x, z);
+    }
+    const s = screenOf(v3(0, 0));
+    const at = { clientX: s.x + ARM_PX + 6, clientY: s.y };
+    fireEvent.pointerMove(canvasOf(), {
+      ...at,
+      pointerType: 'pen',
+      buttons: 0
+    });
+    fireEvent.pointerDown(canvasOf(), { ...at, pointerType: 'pen', button: 0 });
+    fireEvent.pointerUp(canvasOf(), { ...at, pointerType: 'pen', button: 0 });
+    expect(lastCreate()).toBe(null);
+    expect(drawnPoints()).toHaveLength(5);
+  });
+
+  it('repaints a refused tap close when the step changes (fails if the refusal blaming snap outlives snap)', () => {
+    setPref('snapStep', 90);
+    drawingTool();
+    tapAt(0, 0);
+    tapAt(10, 0);
+    tapAt(10, 10);
+    tapAt(0, 0);
+    expect(lastInvalid()).toBe(true);
+    expect(noticeLabels()).toHaveLength(1);
+    setPref('snapStep', 0);
+    expect(lastInvalid()).toBe(false);
+    expect(noticeLabels()).toHaveLength(0);
+    tapAt(0, 0);
+    expect(lastCreate().shape.closed).toBe(true);
+  });
+
   it('leaves no close armed after a refused tap: the next tap places a point (fails if a refused tap stays armed)', () => {
     setPref('snapStep', 90);
     drawingTool();

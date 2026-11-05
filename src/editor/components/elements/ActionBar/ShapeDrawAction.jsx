@@ -12,9 +12,10 @@
 // alignment is off) and places the pointer's perpendicular foot on that ray.
 // The close is still judged by the pointer being over the first vertex —
 // never by the snapped point — and while it is armed the last vertex is shown
-// slid along its own side to where both closing corners are snapped. Every way of finishing commits exactly that
-// previewed ring, or the shape open when no such ring exists. The geometry is
-// in shapeSnap.js, the rules in shapeDrawRules.js.
+// slid along its own side to where both closing corners are snapped. Every way
+// of finishing commits exactly that previewed ring, or the shape open when no
+// such ring exists. The geometry is in shapeSnap.js, the rules in
+// shapeDrawRules.js.
 //
 // No exit discards placed work: Enter, Esc, double-click and switching tools
 // all commit through finish(). Recovery is Backspace before finishing and
@@ -623,19 +624,26 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // Where the pointer last was over the canvas, so the preview can be
     // redrawn for it when something other than a move changes it.
     let lastPointer = null;
+    // Whether the last pointer move was a hover (no button down). A pen that
+    // hovers is previewed, and its tap is judged by that preview like a mouse
+    // click; only a tap with no hover before it is judged on release.
+    let hovered = false;
 
     // A snap step changed from the keyboard (a dropdown left focused) sends no
     // pointer event, so the preview is redrawn here for the pointer where it
     // rests: the direction shown is then the one a click there would place.
     // Only a repaint: every placement and commit reads the step itself.
     const onSnapStepChanged = () => {
-      if (committingRef.current || !lastPointer) return;
-      previewAt(lastPointer.x, lastPointer.y);
+      if (committingRef.current) return;
+      if (lastPointer) previewAt(lastPointer.x, lastPointer.y);
+      // A close armed by a tap has no resting pointer: repaint it as armed.
+      else if (armedRef.current) syncArmed(true);
     };
 
     const onPointerMove = (e) => {
       if (committingRef.current) return;
       lastPointer = { x: e.clientX, y: e.clientY };
+      hovered = e.buttons === 0;
       previewAt(e.clientX, e.clientY);
     };
 
@@ -677,10 +685,11 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
     // same state a pick-miss leaves.
     const onPointerLeave = (e) => {
       if (committingRef.current) return;
+      lastPointer = null;
+      hovered = false;
       // A tap's pointer leaves as it lifts. A refused tap close stays shown,
       // red with its reason, until the next tap decides again.
       if (isTapPointer(e) && armedRef.current) return;
-      lastPointer = null;
       collapseTrailing();
       readoutsRef.current && readoutsRef.current.clear();
       syncArmed(false);
@@ -701,10 +710,11 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
       // back an open shape would answer a different question than the one the
       // click asked.
       //
-      // A mouse arms and disarms on the hover before the click. A touch or pen
-      // tap may have no hover, so its release sets the armed state both ways:
-      // a tap that was refused must not leave the next tap elsewhere armed.
-      if (isTapPointer(e)) {
+      // A mouse, or a hovering pen, arms and disarms on the hover before the
+      // click. A touch tap, or a pen tap with no hover, has none, so its
+      // release sets the armed state both ways: a tap that was refused must
+      // not leave the next tap elsewhere armed.
+      if (isTapPointer(e) && !hovered) {
         const over = isPointerOverFirstVertex(
           e.clientX,
           e.clientY,
