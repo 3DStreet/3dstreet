@@ -437,22 +437,24 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
           tempBox3.expandByPoint(this.object.position);
         }
 
-        if (this.boxFill) {
-          tempBox3.getSize(tempVector3Size);
-          tempBox3.getCenter(tempVector3Center);
-          this.boxFill.position.copy(tempVector3Center);
-          this.boxFill.scale.copy(tempVector3Size);
-        }
+        this.fitBoxFill();
       } else if (this.object !== undefined && isSplatEntity) {
         const splatComponent = this.object.el.components['splat'];
         const splatBox = splatComponent?.getBoundingBox?.(true, tempBox3);
         if (splatBox) {
-          tempBox3.copy(splatBox);
-          // Transform the box to world space
-          tempBox3.applyMatrix4(this.object.matrixWorld);
+          // Entity-local, and this helper already carries the entity's world
+          // position and rotation (below), so only its scale is applied here.
+          this.object.getWorldScale(auxScale);
+          tempBox3.applyMatrix4(
+            auxMatrix.makeScale(auxScale.x, auxScale.y, auxScale.z)
+          );
         } else {
+          // Still loading: a world box, brought into this helper's frame.
           tempBox3.setFromObject(this.object);
+          this.object.getWorldPosition(auxPosition);
+          tempBox3.translate(auxPosition.negate());
         }
+        this.fitBoxFill();
       }
 
       if (!tempBox3.isEmpty()) {
@@ -492,6 +494,14 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
     // After the box (and this helper's own world pose) are settled, swap in
     // the conforming overlay for curved street surfaces.
     this.updateConformingHighlight();
+  }
+
+  fitBoxFill() {
+    if (!this.boxFill) return;
+    tempBox3.getSize(tempVector3Size);
+    tempBox3.getCenter(tempVector3Center);
+    this.boxFill.position.copy(tempVector3Center);
+    this.boxFill.scale.copy(tempVector3Size);
   }
 
   // The drawn box, in this helper's local frame (the tracked object's world
@@ -555,12 +565,7 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
     tempBox3.expandByPoint(auxCorner.copy(box.min).multiply(auxScale));
     tempBox3.expandByPoint(auxCorner.copy(box.max).multiply(auxScale));
     this.setBoxCorners(tempBox3);
-    if (this.boxFill) {
-      tempBox3.getSize(tempVector3Size);
-      tempBox3.getCenter(tempVector3Center);
-      this.boxFill.position.copy(tempVector3Center);
-      this.boxFill.scale.copy(tempVector3Size);
-    }
+    this.fitBoxFill();
     this.object.getWorldQuaternion(this.quaternion);
     this.object.getWorldPosition(this.position);
     this.updateMatrix();

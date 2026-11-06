@@ -24,6 +24,7 @@ import {
   Geometry24Icon,
   ShapeIcon,
   GroupIcon,
+  SplatIcon,
   ViewerStartIcon
 } from '@shared/icons';
 
@@ -809,6 +810,9 @@ export function getEntityIcon(entity) {
   }
   if (entity.getAttribute('viewer-start')) {
     return <ViewerStartIcon />;
+  }
+  if (entity.getAttribute('splat')) {
+    return <SplatIcon />;
   }
   if (isUserGroup(entity)) {
     return <GroupIcon />;

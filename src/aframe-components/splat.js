@@ -457,7 +457,9 @@ AFRAME.registerComponent('splat', {
   },
 
   /**
-   * Get the bounding box of the splat mesh.
+   * Get the bounding box of the splat, in the entity's local frame: Spark's
+   * splat data sits under the mesh's own flip (see loadSplat), so the walked
+   * box is brought out through it.
    * @param {boolean} centersOnly - If true, only considers splat centers (faster, default: true)
    * @param {THREE.Box3} [target] Caller-owned output, reused when supplied.
    * @returns {THREE.Box3|null} The bounding box or null if not loaded
@@ -473,7 +475,8 @@ AFRAME.registerComponent('splat', {
     try {
       // Revisit decoded splats so newly streamed pages are included in the bounds.
       this.splatMesh.forEachSplat(this._expandSplatBounds);
-      return box;
+      this.splatMesh.updateMatrix();
+      return box.applyMatrix4(this.splatMesh.matrix);
     } catch (e) {
       return null;
     } finally {

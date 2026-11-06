@@ -61,11 +61,45 @@ describe('selection bounds transform preservation', () => {
       scene.updateMatrixWorld(true);
       helper.setFromObject(object);
       const positions = helper.geometry.attributes.position;
-      expect(positions.getX(0)).toBe(x + max.x);
+      expect(positions.getX(0)).toBe(max.x);
       expect(positions.getY(7)).toBe(min.y);
+      expect(helper.position.x).toBe(x);
     }
 
     expect(getBoundingBox).toHaveBeenCalledTimes(3);
+    helper.dispose();
+  });
+
+  it('draws a moved, turned, scaled splat box around the splat, not beside it', () => {
+    const scene = new THREE.Scene();
+    const object = new THREE.Group();
+    scene.add(object);
+    const el = document.createElement('a-entity');
+    el.setAttribute('splat', '');
+    object.el = el;
+    el.components = {
+      splat: {
+        getBoundingBox: (_centersOnly, target) =>
+          target.set(new THREE.Vector3(1, 0, 0), new THREE.Vector3(3, 2, 2))
+      }
+    };
+    object.position.set(10, 0, -4);
+    object.rotation.y = Math.PI / 2;
+    object.scale.setScalar(2);
+    scene.updateMatrixWorld(true);
+    const helper = new OrientedBoxHelper();
+
+    helper.setFromObject(object);
+    helper.updateMatrixWorld(true);
+
+    // The box's far corner lands where the entity puts the splat's far corner.
+    const drawn = new THREE.Vector3()
+      .fromBufferAttribute(helper.geometry.attributes.position, 0)
+      .applyMatrix4(helper.matrixWorld);
+    const expected = new THREE.Vector3(3, 2, 2).applyMatrix4(
+      object.matrixWorld
+    );
+    expect(drawn.distanceTo(expected)).toBeLessThan(1e-9);
     helper.dispose();
   });
 

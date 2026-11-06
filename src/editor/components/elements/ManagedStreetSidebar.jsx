@@ -918,11 +918,13 @@ const ManagedStreetSidebar = ({ entity }) => {
           </div>
         </div>
       </div>
+      {!entity.hasAttribute('data-no-transform') && (
+        <div className="components">
+          <CommonComponents entity={entity} />
+        </div>
+      )}
       {showAdvanced && (
         <div className="advancedComponentsContainer">
-          {/* Transform rows lived in ComponentsContainer before this panel
-              replaced it — keep them reachable under Advanced. */}
-          <CommonComponents entity={entity} />
           <AdvancedComponents entity={entity} />
         </div>
       )}
