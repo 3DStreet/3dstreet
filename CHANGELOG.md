@@ -9,6 +9,14 @@ build SHA shown in-app (+a1b2c3d) identifies the exact deployed commit. -->
 
 ## Unreleased
 
+- **Splat selection boxes fit the splat.** The box around a selected splat now
+  wraps it, including after you move, turn, or scale it.
+- **Splat icon in the scene graph.** Splats now have their own layer icon,
+  matching their asset card.
+- **Transform for managed streets.** Position and rotation now show in the
+  street's properties panel, so you no longer need to open Advanced.
+- **Veo 3.1 Lite removed.** The model is no longer available from the provider,
+  so it's gone from the video model list.
 - **Smoother large splat scans.** Big scans no longer keep your computer
   working flat out once they have loaded. The editor stops redrawing while
   nothing is changing, downloads pause while the tab is in the background,
