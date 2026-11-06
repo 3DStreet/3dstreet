@@ -534,16 +534,18 @@ const SUPPORTED_VIDEO_MODELS = {
   'lightricks/ltx-2-fast': 'LTX-2 Fast',
   'lightricks/ltx-2.5-fast': 'LTX-2.5 Fast',
   'google/veo-3.1': 'Veo 3.1',
-  'google/veo-3.1-fast': 'Veo 3.1 Fast',
-  'google/veo-3.1-lite': 'Veo 3.1 Lite'
+  'google/veo-3.1-fast': 'Veo 3.1 Fast'
 };
 
 // Retired model ids that the provider no longer serves, mapped to their
 // replacement so a stale open tab still gets a video. Lightricks' upstream API
 // rejects `ltx-2-fast` ("Invalid model ltx-2-fast") even though Replicate still
-// lists the model.
+// lists the model. Veo 3.1 Lite fails the same way ("no longer available");
+// LTX-2.5 Fast is the nearest price, so a tab showing Lite's cost isn't charged
+// double.
 const VIDEO_MODEL_ALIASES = {
-  'lightricks/ltx-2-fast': 'lightricks/ltx-2.5-fast'
+  'lightricks/ltx-2-fast': 'lightricks/ltx-2.5-fast',
+  'google/veo-3.1-lite': 'lightricks/ltx-2.5-fast'
 };
 
 // Models that only accept 16:9 or 9:16. Any other ratio (the picker also
@@ -604,7 +606,6 @@ const generateReplicateVideo = functions
       'kwaivgi/kling-v3-video': { tokenCost5s: 20, tokenCost10s: 40 },
       'google/veo-3.1': { tokenCost5s: 20, tokenCost10s: 40 },
       'google/veo-3.1-fast': { tokenCost5s: 10, tokenCost10s: 20 },
-      'google/veo-3.1-lite': { tokenCost5s: 5, tokenCost10s: 10 },
       'bytedance/seedance-2.0-fast': { tokenCost5s: 15, tokenCost10s: 30 },
       'wan-video/wan-2.7-i2v': { tokenCost5s: 15, tokenCost10s: 30 },
       // Legacy (no longer in the picker; kept so a stale open tab still works)
@@ -759,13 +760,6 @@ const generateReplicateVideo = functions
         if (LANDSCAPE_OR_PORTRAIT.includes(aspect_ratio)) modelInput.aspect_ratio = aspect_ratio;
         modelInput.duration = duration_seconds <= 5 ? 4 : 8;
         modelInput.generate_audio = false;
-      } else if (model_name === 'google/veo-3.1-lite') {
-        // Veo 3.1 Lite: same 4/6/8s durations as Veo 3.1. 720p only (1080p
-        // requires 8s and costs more). Audio is always generated and has no
-        // off switch, so there is no generate_audio flag.
-        if (LANDSCAPE_OR_PORTRAIT.includes(aspect_ratio)) modelInput.aspect_ratio = aspect_ratio;
-        modelInput.duration = duration_seconds <= 5 ? 4 : 8;
-        modelInput.resolution = '720p';
       }
 
       console.log(`Submitting ${duration_seconds}s video job for user ${userId} with model ${model_name} (tokenCost: ${tokenCost})`);

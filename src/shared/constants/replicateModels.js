@@ -255,17 +255,6 @@ export const VIDEO_MODELS = {
     tokenCost5s: 10,
     tokenCost10s: 20
   },
-  'google/veo-3.1-lite': {
-    name: 'Veo 3.1 Lite',
-    type: 'replicate',
-    group: 'video-high-quality-fast',
-    logo: '/ui_assets/model-google.png',
-    estimatedTime: 60,
-    // Veo only supports 4s/8s, so the 5s/10s cost tiers bill 4s/8s
-    shortDuration: 4,
-    tokenCost5s: 5,
-    tokenCost10s: 10
-  },
   'bytedance/seedance-2.0-fast': {
     name: 'Seedance 2.0 Fast',
     type: 'replicate',
