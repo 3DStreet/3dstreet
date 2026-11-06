@@ -217,13 +217,16 @@ properties, no reload:
    there). Details on PR #2048. `HEARTBEAT_MS` is now 2 s: Spark's guidance
    is not to redraw on a timer at all, so the heartbeat is only a safety net.
 5. **Motion profile.** While the camera moves (and for `MOTION_SETTLE_MS`
-   after), the `splat` system renders at pixel ratio 1, draws splat quads to
+   after), the `splat` system draws splat quads to
    √5 standard deviations instead of √8 (~37% fewer pixels per splat, which
    Spark calls perceptually very similar) and re-sorts at most every 80 ms
    (each sort reads splat depths back from the GPU). When the camera
-   settles it restores all three, and on-demand rendering draws the sharp
-   still frame. Not in Play (the camera moves continuously) or WebXR (the
-   session owns the pixel ratio); only with a splat in the scene. Chunk
+   settles it restores both, and on-demand rendering draws the still frame.
+   The pixel ratio stays put: dropping it to 1 while moving was tried and
+   shipped briefly, but each change resizes the canvas, which on 2× screens
+   blinked black and froze for a few frames when motion started and stopped.
+   Not in Play (the camera moves continuously) or WebXR; only with a splat
+   in the scene. Chunk
    fetching keeps running while moving: holding it was considered and
    deferred. Policy in `src/tested/splat-streaming.js` (`MOTION_*`).
 

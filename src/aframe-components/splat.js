@@ -7,7 +7,6 @@ import { SPLAT_RENDER_ORDER } from '../tested/transparent-layering.js';
 import {
   isCameraMoving,
   isMotionProfileEligible,
-  MOTION_PIXEL_RATIO,
   resolveMotionSettings,
   resolveStreamingSettings,
   shouldFetchForVisibility
@@ -514,9 +513,8 @@ AFRAME.registerComponent('splat', {
  *  - fetching pauses while the document is hidden (in-flight chunks finish,
  *    then the pager's queue waits; nothing renders anyway),
  *  - a huge scan (RAD header count above HUGE_SCAN_SPLATS) caps the budget,
- *  - while the camera moves, the motion profile lowers the pixel ratio and
- *    the splat quad extent and throttles sorting; the camera settling
- *    restores them for a sharp still frame.
+ *  - while the camera moves, the motion profile lowers the splat quad extent
+ *    and throttles sorting; the camera settling restores them.
  * All are live SparkRenderer / SplatPager / renderer properties — no reload.
  * The first splat also turns on on-demand rendering for the editor viewport
  * (render-on-demand system), driven by SparkRenderer's onDirty.
@@ -623,7 +621,6 @@ AFRAME.registerSystem('splat', {
     const moving = eligible && isCameraMoving(now, this.motion.lastCameraMove);
     if (moving && !this.motion.active) this.enterMotionProfile();
     else if (!moving && this.motion.active) this.exitMotionProfile();
-    else if (moving) this.holdMotionPixelRatio();
   },
 
   /** Record when the active camera's pose or projection last changed. */
@@ -653,9 +650,7 @@ AFRAME.registerSystem('splat', {
 
   enterMotionProfile: function () {
     const sr = this.sparkRenderer;
-    const renderer = this.el.renderer;
     const rest = {
-      pixelRatio: renderer.getPixelRatio(),
       maxStdDev: sr.maxStdDev,
       minSortIntervalMs: sr.minSortIntervalMs
     };
@@ -663,39 +658,17 @@ AFRAME.registerSystem('splat', {
     this.motion.active = true;
     this.motion.rest = rest;
     this.motion.applied = applied;
-    if (applied.pixelRatio !== rest.pixelRatio) {
-      renderer.setPixelRatio(applied.pixelRatio);
-    }
     sr.maxStdDev = applied.maxStdDev;
     sr.minSortIntervalMs = applied.minSortIntervalMs;
   },
 
   /**
-   * A-Frame resets the pixel ratio to the device ratio on some resizes
-   * (exiting VR, for one); keep the motion ratio while moving and remember
-   * the new value to restore.
-   */
-  holdMotionPixelRatio: function () {
-    const renderer = this.el.renderer;
-    const { rest, applied } = this.motion;
-    const current = renderer.getPixelRatio();
-    if (current === applied.pixelRatio) return;
-    rest.pixelRatio = current;
-    applied.pixelRatio = Math.min(current, MOTION_PIXEL_RATIO);
-    if (current !== applied.pixelRatio) {
-      renderer.setPixelRatio(applied.pixelRatio);
-    }
-  },
-
-  /**
    * Restore the still-camera settings. A value someone else changed while
-   * the profile was active is left alone; the pixel ratio is not touched
-   * while a WebXR session owns it. Asks render-on-demand for the sharp
+   * the profile was active is left alone. Asks render-on-demand for the
    * settled frames.
    */
   exitMotionProfile: function () {
     const sr = this.sparkRenderer;
-    const renderer = this.el.renderer;
     const { rest, applied } = this.motion;
     this.motion.active = false;
     this.motion.rest = null;
@@ -704,14 +677,6 @@ AFRAME.registerSystem('splat', {
     if (sr.maxStdDev === applied.maxStdDev) sr.maxStdDev = rest.maxStdDev;
     if (sr.minSortIntervalMs === applied.minSortIntervalMs) {
       sr.minSortIntervalMs = rest.minSortIntervalMs;
-    }
-    const xrPresenting = !!(renderer.xr && renderer.xr.isPresenting);
-    if (
-      !xrPresenting &&
-      rest.pixelRatio !== applied.pixelRatio &&
-      renderer.getPixelRatio() === applied.pixelRatio
-    ) {
-      renderer.setPixelRatio(rest.pixelRatio);
     }
     const renderOnDemand = this.el.systems['render-on-demand'];
     if (renderOnDemand) renderOnDemand.invalidate();

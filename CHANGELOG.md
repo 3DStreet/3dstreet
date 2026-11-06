@@ -13,7 +13,7 @@ build SHA shown in-app (+a1b2c3d) identifies the exact deployed commit. -->
   working flat out once they have loaded. The editor stops redrawing while
   nothing is changing, downloads pause while the tab is in the background,
   very large scans stream less data, and the view stays more responsive while
-  you move the camera, sharpening as soon as you stop ([#2048](https://github.com/3DStreet/3dstreet/pull/2048)).
+  you move the camera ([#2048](https://github.com/3DStreet/3dstreet/pull/2048)).
 - **Replace missing assets.** When a scene points to a model, splat, or image
   you can't use, such as in a remixed scene or after a deletion, Replace lets
   you choose one of your own assets instead, as a single undo step ([#2144](https://github.com/3DStreet/3dstreet/pull/2144)).

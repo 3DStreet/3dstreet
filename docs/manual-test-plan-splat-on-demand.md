@@ -24,7 +24,7 @@ only this branch's changes.
 | Converter drops spherical harmonics (`RAD_MAX_SH=0`)                      | `rad-converter/` (only affects newly converted assets)                   |
 | Idle editor draws skipped once a splat exists                             | `render-on-demand` system, policy in `src/tested/render-on-demand.js`    |
 | Standalone splat viewer renders only on demand                            | `public/splat-viewer.html`                                               |
-| While the camera moves: pixel ratio 1, narrower splats, sorts every 80 ms | `splat` system motion profile, policy in `src/tested/splat-streaming.js` |
+| While the camera moves: narrower splats, sorts every 80 ms                | `splat` system motion profile, policy in `src/tested/splat-streaming.js` |
 
 **When an editor frame still draws:** camera pose, projection or canvas size
 changed; for 500 ms after any pointer / wheel / key input or scene event;
@@ -122,12 +122,12 @@ rendering.
 - [ ] Orbit, pan, wheel-zoom and WASD-fly for ~20 s, running
       `measureRod(10)` during it. Repeat on `main`.
       **Pass:** `loopFps` while moving is clearly higher than on `main`.
-      The image is softer while moving (pixel ratio 1, narrower splats) and
-      turns sharp within about a quarter second of stopping. At most a
-      one-frame hitch when motion starts or stops (the canvas is resized).
+      Splats look slightly narrower while moving and return to normal
+      within about a quarter second of stopping. No black frames or freezes
+      when motion starts or stops; test this on a 2x display.
 - [ ] While still orbiting, `STREET.splatDebug.snapshot().streaming.motion`
-      shows `active: true`; a second after stopping it shows `false` and
-      `pixelRatio` is back to the device ratio.
+      shows `active: true`; a second after stopping it shows `false`, and
+      `pixelRatio` never changes.
 
 ## Part 2 — Does it break anything? (~15 min)
 

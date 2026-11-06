@@ -158,8 +158,9 @@ hidden, huge scans cap the budget, and the converter drops spherical
 harmonics (`RAD_MAX_SH`). Once a splat is present the `render-on-demand`
 system skips idle editor draws (Spark's sort/LoD run from `onBeforeRender`;
 `onDirty` requests frames); only the draw is skipped, never ticks. While the
-camera moves, the `splat` system's motion profile lowers the pixel ratio and
-splat extent and throttles sorts, restoring them when it settles. Read the
+camera moves, the `splat` system's motion profile lowers the splat extent and
+throttles sorts, restoring them when it settles; it must not change the pixel
+ratio (a canvas resize blanks the frame and stalls). Read the
 "Steady-state streaming cost" section of
 [docs/rad-cloud-run-pipeline.md](docs/rad-cloud-run-pipeline.md) before
 changing SparkRenderer / SplatPager settings, `build-lod` flags or the
