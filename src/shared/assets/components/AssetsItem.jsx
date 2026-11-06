@@ -3,7 +3,7 @@
  * Uses Firebase Storage URLs with browser HTTP caching
  */
 
-import { DownloadIcon, TrashIcon } from '@shared/icons';
+import { DownloadIcon, SplatIcon, TrashIcon } from '@shared/icons';
 import styles from './Assets.module.scss';
 import {
   getAssetSourceLabel,
@@ -35,21 +35,7 @@ export const MeshPlaceholder = () => (
 // is ever attached.
 export const SplatPlaceholder = () => (
   <div className={styles.meshPlaceholder} aria-label="Gaussian splat">
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      stroke="none"
-    >
-      <circle cx="7" cy="8" r="1.6" />
-      <circle cx="13" cy="6" r="1.2" />
-      <circle cx="17" cy="10" r="1.8" />
-      <circle cx="9" cy="13" r="1.3" />
-      <circle cx="15" cy="15" r="1.5" />
-      <circle cx="6" cy="17" r="1.2" />
-      <circle cx="12" cy="18" r="1.7" />
-      <circle cx="18" cy="17" r="1.1" />
-    </svg>
+    <SplatIcon color="currentColor" />
   </div>
 );
 
