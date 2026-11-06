@@ -44,7 +44,7 @@ function component(points = []) {
     new THREE.Vector3(0, 0, 1),
     Math.PI / 2
   );
-  instance.splatMesh = {
+  instance.splatMesh = Object.assign(new THREE.Object3D(), {
     initialized: Promise.resolve(),
     isInitialized: false,
     forEachSplat: (callback) => {
@@ -53,7 +53,7 @@ function component(points = []) {
         callback(index, center, scales, quaternion);
       });
     }
-  };
+  });
   return { instance, center, scales, quaternion };
 }
 
@@ -70,6 +70,17 @@ describe('splat decoded bounds', () => {
     expect(center.toArray()).toEqual([3, -5, 8]);
     expect(scales.toArray()).toEqual([3, 1, 2]);
     expect(quaternion.z).toBeCloseTo(Math.SQRT1_2);
+  });
+
+  it('reports the box in the entity frame, through the mesh flip', () => {
+    const { instance } = component([
+      [1, 2, 3],
+      [4, 5, 6]
+    ]);
+    instance.splatMesh.quaternion.set(1, 0, 0, 0);
+    const target = instance.getBoundingBox(true, new THREE.Box3());
+    expect(target.min.toArray()).toEqual([1, -5, -6]);
+    expect(target.max.toArray()).toEqual([4, -2, -3]);
   });
 
   it('includes rotated anisotropic extents when centersOnly is false', () => {
