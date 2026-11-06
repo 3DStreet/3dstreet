@@ -540,12 +540,9 @@ const SUPPORTED_VIDEO_MODELS = {
 // Retired model ids that the provider no longer serves, mapped to their
 // replacement so a stale open tab still gets a video. Lightricks' upstream API
 // rejects `ltx-2-fast` ("Invalid model ltx-2-fast") even though Replicate still
-// lists the model. Veo 3.1 Lite fails the same way ("no longer available");
-// LTX-2.5 Fast is the nearest price, so a tab showing Lite's cost isn't charged
-// double.
+// lists the model.
 const VIDEO_MODEL_ALIASES = {
-  'lightricks/ltx-2-fast': 'lightricks/ltx-2.5-fast',
-  'google/veo-3.1-lite': 'lightricks/ltx-2.5-fast'
+  'lightricks/ltx-2-fast': 'lightricks/ltx-2.5-fast'
 };
 
 // Models that only accept 16:9 or 9:16. Any other ratio (the picker also
