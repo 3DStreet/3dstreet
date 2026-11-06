@@ -95,25 +95,19 @@ describe('splat-streaming', function () {
 
   describe('#resolveMotionSettings()', function () {
     const sparkDefaults = {
-      pixelRatio: 2,
       maxStdDev: Math.sqrt(8),
       minSortIntervalMs: 0
     };
-    it('drops a retina ratio to 1, narrows quads and throttles sorts', function () {
+    it('narrows quads and throttles sorts', function () {
       assert.deepStrictEqual(resolveMotionSettings(sparkDefaults), {
-        pixelRatio: 1,
         maxStdDev: MOTION_MAX_STD_DEV,
         minSortIntervalMs: MOTION_MIN_SORT_INTERVAL_MS
       });
     });
     it('never raises a value that is already cheaper', function () {
       assert.deepStrictEqual(
-        resolveMotionSettings({
-          pixelRatio: 1,
-          maxStdDev: 2,
-          minSortIntervalMs: 200
-        }),
-        { pixelRatio: 1, maxStdDev: 2, minSortIntervalMs: 200 }
+        resolveMotionSettings({ maxStdDev: 2, minSortIntervalMs: 200 }),
+        { maxStdDev: 2, minSortIntervalMs: 200 }
       );
     });
   });
