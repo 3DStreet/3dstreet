@@ -147,8 +147,10 @@ export const DODGE_HYSTERESIS_FRAC = 0.15;
  * upper always offers correction. Appearing at the higher and vanishing at the
  * lower is the way round that has a stable state between them.
  */
-export const LANDING_SHOW_GAP_METRES = 0.1;
-export const LANDING_HIDE_GAP_METRES = 0.05;
+// Tight because placement aims at centimetre accuracy (#2128); the 1cm band
+// between the two still keeps a target from flickering on float noise.
+export const LANDING_SHOW_GAP_METRES = 0.02;
+export const LANDING_HIDE_GAP_METRES = 0.01;
 
 /** Outline stroke of a landing target, as a fraction of its side. */
 export const LANDING_OUTLINE_FRAC = 0.08;

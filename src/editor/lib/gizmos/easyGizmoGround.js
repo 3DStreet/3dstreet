@@ -90,6 +90,8 @@ export function placementKindOf(el) {
  * plane, which lying over a road would swallow the road's footprint. Stated as
  * a rule rather than a list of the upload path's current kinds: it admits
  * imported geometry and excludes imported decals, whatever gets added next.
+ * The one decal admitted is a level, visible image, which is ground for every
+ * kind — see `isLevelImportedImageHit` below.
  */
 export function isUserImportedMeshHit(hit) {
   if (!hit || !hit.object) return false;
@@ -101,8 +103,90 @@ export function isUserImportedMeshHit(hit) {
   );
 }
 
+/** cos(30°): an image face tilted further than this from level is no floor. */
+const LEVEL_IMAGE_MIN_NORMAL_Y = Math.cos((30 * Math.PI) / 180);
+
+function _chainVisible(object) {
+  for (let node = object; node; node = node.parent) {
+    if (node.visible === false) return false;
+  }
+  return true;
+}
+
+// Fully opaque: three ignores opacity on a non-transparent material, and an
+// uploaded image is `transparent: true` (for PNG alpha) at opacity 1.
+function _materialOpaque(material) {
+  const list = Array.isArray(material) ? material : [material];
+  return list.some(
+    (m) =>
+      !m || (m.visible !== false && (!m.transparent || (m.opacity ?? 1) >= 1))
+  );
+}
+
+/**
+ * An uploaded image laid (nearly) flat and visible: a surface (#2128).
+ *
+ * The decal exclusion above was about images in general; an aerial plan or
+ * a traced site image lifted over the 3D Tiles is the surface the user is
+ * building on, and an object dragged across it should rest on it rather than
+ * on the drape beneath. Like the tiles it is ground, not an item, so it sits
+ * outside the item ranking and supports every kind — street, building,
+ * imported mesh and furniture alike. Within a column it competes as a solid
+ * surface: it beats the tiles beneath it, and against a street or building
+ * the higher surface wins, so a logo a centimetre above a road lifts what
+ * rests there by that centimetre and no more.
+ *
+ * Unlike a mesh, a flat image is easy to leave in the scene hidden, at
+ * opacity 0 (a terrain-flattening helper) or part-transparent (a reference
+ * plan laid over another to trace against), and the probe raycasts all of
+ * them, so the whole ancestor chain must be visible and the material fully
+ * opaque. Anything under full opacity is an overlay, never ground. Level is
+ * judged from the hit face's normal (the plane's +Z when the hit carries no
+ * face) taken to world space by the cofactor of matrixWorld — the inverse
+ * transpose up to scale — so it holds under any non-uniform scale and
+ * whether the plane was laid flat by its entity or in its geometry.
+ */
+export function isLevelImportedImageHit(hit) {
+  const object = hit?.object;
+  if (!object) return false;
+  const el = owningPlacementEntity(hit);
+  if (!el || typeof el.hasAttribute !== 'function') return false;
+  if (el.hasAttribute('gltf-model') || el.hasAttribute('splat')) return false;
+  if (!el.hasAttribute('geometry')) return false;
+  if (
+    !el.hasAttribute('data-asset-id') &&
+    !el.hasAttribute('data-temporary-file')
+  ) {
+    return false;
+  }
+  if (!_chainVisible(object) || !_materialOpaque(object.material)) return false;
+  const e = object.matrixWorld?.elements;
+  if (!e) return false;
+  const f = hit.face?.normal;
+  const fx = f ? f.x : 0;
+  const fy = f ? f.y : 0;
+  const fz = f ? f.z : 1;
+  // Columns a, b, c of the 3x3; the cofactor's columns are b×c, c×a, a×b.
+  const [a0, a1, a2, , b0, b1, b2, , c0, c1, c2] = e;
+  const nx =
+    fx * (b1 * c2 - b2 * c1) +
+    fy * (c1 * a2 - c2 * a1) +
+    fz * (a1 * b2 - a2 * b1);
+  const ny =
+    fx * (b2 * c0 - b0 * c2) +
+    fy * (c2 * a0 - c0 * a2) +
+    fz * (a2 * b0 - a0 * b2);
+  const nz =
+    fx * (b0 * c1 - b1 * c0) +
+    fy * (c0 * a1 - c1 * a0) +
+    fz * (a0 * b1 - a1 * b0);
+  const len = Math.hypot(nx, ny, nz);
+  return len > 0 && Math.abs(ny) / len >= LEVEL_IMAGE_MIN_NORMAL_Y;
+}
+
 /** Eligible support for this selection; furniture preserves the widest policy. */
 export function isGizmoGroundHit(hit, selectedKind = 'furniture') {
+  if (isLevelImportedImageHit(hit)) return true;
   const imported = isUserImportedMeshHit(hit);
   const identityHit = placementHitOf(hit);
   if (!isSolidFloorHit(identityHit) && !imported) return false;
@@ -181,6 +265,39 @@ export function pickSurfaceAbove(hits, refY) {
     }
   }
   return best;
+}
+
+/**
+ * The landing targets a column offers an object whose base is at `refY`.
+ *
+ * Normally the nearest support below and the nearest surface above. One rule
+ * on top (#2128): when the nearest surface above cuts through the object —
+ * above its base, below its top (`topY`) — the object is stuck in that
+ * surface, and the only sensible correction is up onto it, so nothing
+ * beneath is offered. Without this, a car half-buried in a plan image lifted
+ * over the 3D Tiles was offered the tiles too, and one 1cm under it was
+ * offered ONLY the tiles (the image's own target hidden as already placed).
+ * `restingGap` is a floor for thin objects whose top is barely above their
+ * base: a surface that close above counts as cutting through.
+ *
+ * A surface above the object's top (an overpass deck over a car) cuts
+ * nothing, so both targets stay. Neither does the 3D Tiles drape: it lies
+ * over streets and kerbs, routinely a few centimetres above a road an
+ * object stands on, and is terrain rather than something placed to build
+ * on. Reads only values in hand: no ray.
+ */
+export function landingTargets(
+  column,
+  refY,
+  { topY = refY, restingGap = 0 } = {}
+) {
+  const below = column?.below ?? null;
+  const above = column?.above ?? null;
+  const cuts =
+    above !== null &&
+    above.cls !== 'tiles' &&
+    (above.y < topY || above.y - refY < restingGap);
+  return { down: cuts ? null : below, up: above };
 }
 
 /**
