@@ -9,6 +9,12 @@ build SHA shown in-app (+a1b2c3d) identifies the exact deployed commit. -->
 
 ## Unreleased
 
+- **Managed streets are now the default.** After two years in beta, every
+  street you import from Streetmix, whether from a Streetmix link, New Scene,
+  or the Add Layer panel, is a managed street: edit lanes in the cross-section,
+  reorder and resize segments, toggle vehicles and striping, reload from
+  Streetmix, and more. Your existing scenes load as before, and a classic
+  street can still be converted from its properties panel ([#2156](https://github.com/3DStreet/3dstreet/pull/2156)).
 - **Splat selection boxes fit the splat.** The box around a selected splat now
   wraps it, including after you move, turn, or scale it ([#2152](https://github.com/3DStreet/3dstreet/pull/2152)).
 - **Splat icon in the scene graph.** Splats now have their own layer icon,
