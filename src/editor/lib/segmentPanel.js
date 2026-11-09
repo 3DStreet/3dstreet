@@ -6,6 +6,7 @@ import {
   getTravelledWaySegments,
   getBoundarySegments
 } from '@/aframe-components/street-layout-utils';
+import { SURFACE_ASSET_IDS } from '@/tested/street-segment-utils.js';
 
 /**
  * Commit a property change through the inspector's undoable command path.
@@ -185,23 +186,15 @@ export const WIDTH_PRESETS = {
   }
 };
 
-// UI copy of the surface → A-Frame texture <img> asset id table in
-// street-segment.js generateMesh() (keep in sync). Used to draw texture
-// swatches in the Material dropdown; entries with no texture fall back to a
-// flat chip.
-export const SURFACE_TEXTURE_IDS = {
-  asphalt: 'seamless-road',
-  concrete: 'seamless-bright-road',
-  grass: 'grass-texture',
-  sidewalk: 'seamless-sidewalk',
-  gravel: 'compacted-gravel-texture',
-  sand: 'sandy-asphalt-texture',
-  'cracked-asphalt': 'asphalt-texture',
-  'parking-lot': 'parking-lot-texture'
-  // water deliberately omitted: the scene builds its material from a normal
-  // map + animation, so the raw texture reads as a black tile; the dropdown
-  // shows a flat blue chip instead (getFlatSwatchColor).
-};
+// Surface → texture <img> asset id, for drawing texture swatches in the
+// segment Material dropdown; entries with no texture fall back to a flat chip.
+// Derived from the table the segment itself renders from, so the two cannot
+// drift. Water is deliberately omitted: the scene builds its material from a
+// normal map + animation, so the raw texture reads as a black tile; the
+// dropdown shows a flat blue chip instead (getFlatSwatchColor).
+export const SURFACE_TEXTURE_IDS = Object.fromEntries(
+  Object.entries(SURFACE_ASSET_IDS).filter(([surface]) => surface !== 'water')
+);
 
 /** Flat chip color for surfaces the Material dropdown can't show a texture for. */
 export function getFlatSwatchColor(surface) {
