@@ -7,7 +7,7 @@ cut. Write PR numbers as full markdown links; GitHub does not autolink bare
 PR numbers in rendered .md files. Versions are CalVer (YYYY.M.patch); the
 build SHA shown in-app (+a1b2c3d) identifies the exact deployed commit. -->
 
-## Unreleased
+## 2026.11.0
 
 - **Managed streets are now the default.** After two years in beta, every
   street you import from Streetmix, whether from a Streetmix link, New Scene,
