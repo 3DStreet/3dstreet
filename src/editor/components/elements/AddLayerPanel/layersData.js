@@ -28,11 +28,6 @@ export const streetLayersData = [
   card(m.streetmixStreetName, m.streetmixStreetDesc, {
     img: '/ui_assets/cards/streetmix.jpg',
     icon: '/ui_assets/cards/icons/streetmix24.png',
-    handlerFunction: createFunctions.createStreetmixStreet
-  }),
-  card(m.managedStreetmixName, m.managedStreetmixDesc, {
-    img: '',
-    icon: '/ui_assets/cards/icons/streetmix24.png',
     handlerFunction: createFunctions.createManagedStreetFromStreetmixURLPrompt
   }),
   card(m.managedStreet4024Name, m.managedStreet4024Desc, {

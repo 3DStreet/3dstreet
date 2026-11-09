@@ -203,48 +203,6 @@ export function createManagedStreetFromStreetObject(position, streetObject) {
   }
 }
 
-export function createStreetmixStreet(position, streetmixURL, hideBuildings) {
-  // legacy
-  // This code snippet allows the creation of an additional Streetmix street
-  // in your 3DStreet scene without replacing any existing streets.
-  if (streetmixURL === undefined) {
-    streetmixURL = prompt(
-      'Please enter a Streetmix URL',
-      'https://streetmix.net/kfarr/3/3dstreet-demo-street'
-    );
-  }
-  // position the street further from the current one so as not to overlap each other
-  if (streetmixURL && streetmixURL !== '') {
-    const definition = {
-      id: createUniqueId(),
-      components: {
-        position: position ?? '0 0 -20',
-        'streetmix-loader': {
-          streetmixStreetURL: streetmixURL,
-          showBuildings: !hideBuildings
-        }
-      }
-    };
-
-    executePlacedCreate(definition);
-  }
-}
-
-export function create40ftRightOfWay(position) {
-  createStreetmixStreet(
-    position,
-    'https://streetmix.net/3dstreetapp/1/40ft-right-of-way-24ft-road-width',
-    true
-  );
-}
-export function create60ftRightOfWay(position) {
-  createStreetmixStreet(
-    position,
-    'https://streetmix.net/3dstreetapp/2/60ft-right-of-way-36ft-road-width',
-    true
-  );
-}
-
 export function create60ftRightOfWayManagedStreet(position) {
   console.log(
     'create60ftRightOfWayManagedStreet',
@@ -308,28 +266,6 @@ export function createBuildingDemoManagedStreet(position) {
   createManagedStreetFromStreetObject(
     position,
     defaultStreetObjects.buildingDemo
-  );
-}
-
-export function create80ftRightOfWay(position) {
-  createStreetmixStreet(
-    position,
-    'https://streetmix.net/3dstreetapp/3/80ft-right-of-way-56ft-road-width',
-    true
-  );
-}
-export function create94ftRightOfWay(position) {
-  createStreetmixStreet(
-    position,
-    'https://streetmix.net/3dstreetapp/4/94ft-right-of-way-70ft-road-width',
-    true
-  );
-}
-export function create150ftRightOfWay(position) {
-  createStreetmixStreet(
-    position,
-    'https://streetmix.net/3dstreetapp/5/150ft-right-of-way-124ft-road-width',
-    true
   );
 }
 

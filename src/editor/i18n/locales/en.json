@@ -114,43 +114,37 @@
     "defaultMessage": "Premade Street 150ft Right of Way / 124ft Roadway Width"
   },
   "addLayer.card.managedStreet150124.name": {
-    "defaultMessage": "(Beta) Managed Street 150ft RoW / 124ft Roadway Width"
+    "defaultMessage": "Street 150ft RoW / 124ft Roadway Width"
   },
   "addLayer.card.managedStreet4024.desc": {
     "defaultMessage": "Premade Street 40ft Right of Way / 24ft Roadway Width"
   },
   "addLayer.card.managedStreet4024.name": {
-    "defaultMessage": "(Beta) Managed Street 40ft RoW / 24ft Roadway Width"
+    "defaultMessage": "Street 40ft RoW / 24ft Roadway Width"
   },
   "addLayer.card.managedStreet6036.desc": {
     "defaultMessage": "Premade Street 60ft Right of Way / 36ft Roadway Width"
   },
   "addLayer.card.managedStreet6036.name": {
-    "defaultMessage": "(Beta) Managed Street 60ft RoW / 36ft Roadway Width"
+    "defaultMessage": "Street 60ft RoW / 36ft Roadway Width"
   },
   "addLayer.card.managedStreet8056.desc": {
     "defaultMessage": "Premade Street 80ft Right of Way / 56ft Roadway Width"
   },
   "addLayer.card.managedStreet8056.name": {
-    "defaultMessage": "(Beta) Managed Street 80ft RoW / 56ft Roadway Width"
+    "defaultMessage": "Street 80ft RoW / 56ft Roadway Width"
   },
   "addLayer.card.managedStreet9470.desc": {
     "defaultMessage": "Premade Street 94ft Right of Way / 70ft Roadway Width"
   },
   "addLayer.card.managedStreet9470.name": {
-    "defaultMessage": "(Beta) Managed Street 94ft RoW / 70ft Roadway Width"
-  },
-  "addLayer.card.managedStreetmix.desc": {
-    "defaultMessage": "Create a new street from Streetmix URL using the Managed Street component."
-  },
-  "addLayer.card.managedStreetmix.name": {
-    "defaultMessage": "(Beta) Managed Street from Streetmix URL"
+    "defaultMessage": "Street 94ft RoW / 70ft Roadway Width"
   },
   "addLayer.card.managedStreetplan.desc": {
     "defaultMessage": "Create a new street from Streetplan URL using the Managed Street component."
   },
   "addLayer.card.managedStreetplan.name": {
-    "defaultMessage": "(Beta) Managed Street from Streetplan URL"
+    "defaultMessage": "Street from StreetPlan URL"
   },
   "addLayer.card.panoramaSphere.desc": {
     "defaultMessage": "Create an immersive 360° environment from a panoramic image for AR/VR experiences."
