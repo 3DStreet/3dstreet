@@ -1,5 +1,6 @@
 /**
- * Generates the .streetmix.json fixture files used by compare-imports.mjs.
+ * Generates the .streetmix.json fixture files loaded by the `#fixture:<slug>` dev hash
+ * (src/json-utils_1.1.js), which imports them as managed streets.
  *
  * Each fixture mimics a Streetmix API response (the shape both importers
  * consume: `{ name, data: { street: { schemaVersion, segments, ... } } }`),

@@ -63,7 +63,7 @@ public/
 **Core Street:**
 
 - `managed-street` - **Preferred**: Manages `street-segment` children, loads from `streetmix-url`, `streetplan-url`, or `json-blob`
-- `street` + `streetmix-loader` - **Legacy**: Being phased out
+- `street` + `streetmix-loader` - **Legacy**, parser retired (#1720): kept registered only so saved classic streets (stored as expanded children) load and their toggles work; a loader that would still rebuild on load becomes a managed street at load (`src/tested/migrate-legacy-streetmix-loader.js`). Never create new ones
 - `street-segment` - Individual lane/segment (drive-lane, bike-lane, sidewalk, etc.)
 - `intersection` - 4-way intersections (no managed equivalent yet)
 

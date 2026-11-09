@@ -21,7 +21,6 @@
     "test:modern:ui": "vitest --ui",
     "test:modern:coverage": "vitest run --coverage",
     "test:generator": "vitest run test/generator",
-    "test:parity": "node test/parity/compare-imports.mjs",
     "test:parity:fixtures": "node test/parity/generate-fixtures.mjs",
     "test:components": "vitest run --config vitest.components.config.js",
     "test:components:watch": "vitest --config vitest.components.config.js",

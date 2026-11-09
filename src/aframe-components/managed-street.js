@@ -15,24 +15,17 @@ import { isBoundarySegment } from './street-layout-utils';
 import * as streetmixUtils from '../tested/streetmix-utils';
 import { captureStreetmixImport } from '../streetmixAnalytics.js';
 
-// segments-variants.js and aframe-streetmix-parsers-tested.js are CommonJS
-// (shared with the mocha suite, which require()s them), and Vite — which runs
-// the browser-mode component tests — can't import CJS source statically. They
-// are only needed by the Streetmix URL loader, so load them on demand there;
-// the json-blob import/export path never touches them.
+// segments-variants.js is CommonJS (shared with the mocha suite, which
+// require()s it), and Vite — which runs the browser-mode component tests —
+// can't import CJS source statically. It is only needed by the Streetmix URL
+// loader, so load it on demand there; the json-blob import/export path never
+// touches it.
 let segmentVariants = null;
-let streetmixParsersTested = null;
 async function loadStreetmixParserDeps() {
-  if (segmentVariants && streetmixParsersTested) return;
-  const [variantsModule, parsersModule] = await Promise.all([
-    import('../segments-variants.js'),
-    import('../tested/aframe-streetmix-parsers-tested')
-  ]);
+  if (segmentVariants) return;
+  const variantsModule = await import('../segments-variants.js');
   segmentVariants =
     variantsModule.segmentVariants ?? variantsModule.default?.segmentVariants;
-  streetmixParsersTested = parsersModule.isSidewalk
-    ? parsersModule
-    : parsersModule.default;
 }
 
 const GENERATED_KINDS = [
@@ -2104,7 +2097,7 @@ function parseStreetmixSegments(segments, length) {
     }
 
     // if this thing is a sidewalk, make segmentPreset sidewalk
-    if (streetmixParsersTested.isSidewalk(segments[i].type)) {
+    if (streetmixUtils.isSidewalk(segments[i].type)) {
       segmentPreset = 'sidewalk';
     }
 
