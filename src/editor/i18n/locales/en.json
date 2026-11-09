@@ -2447,11 +2447,17 @@
   "shapeDraw.closeFirstPoint": {
     "defaultMessage": "Click the first point to close the shape"
   },
+  "shapeDraw.closeRefused": {
+    "defaultMessage": "This shape can't close here. Add another point, or press Enter to finish it open."
+  },
   "shapeDraw.finishDoubleClick": {
     "defaultMessage": "Double-click places a last point and finishes"
   },
   "shapeDraw.finishEnterEsc": {
     "defaultMessage": "Enter or Esc finishes the shape"
+  },
+  "shapeDraw.snapCloseRefused": {
+    "defaultMessage": "This shape can't close on the current angle snap. Add another point, press Enter to finish it open, or turn snap off."
   },
   "shapeDraw.title": {
     "defaultMessage": "Draw a shape"
@@ -2510,6 +2516,9 @@
   "shapeSidebar.tipInsert": {
     "defaultMessage": "Click a side's length to add a vertex to that side"
   },
+  "shapeSidebar.tipInsertPlus": {
+    "defaultMessage": "Click a side's + to add a vertex to that side"
+  },
   "shapeSidebar.tipShift": {
     "defaultMessage": "Hold Shift while dragging a vertex to raise or lower it"
   },
@@ -2521,6 +2530,39 @@
   },
   "shapeSidebar.tipsTitle": {
     "defaultMessage": "Shape Drawing Tips"
+  },
+  "shapeTool.alignToAxes": {
+    "defaultMessage": "Align first side to axes"
+  },
+  "shapeTool.alignToAxesHint": {
+    "defaultMessage": "The scene's axes, or the open group's when you draw into a group"
+  },
+  "shapeTool.displayHeading": {
+    "defaultMessage": "Show on canvas (all shapes, when selected)"
+  },
+  "shapeTool.openPanelOnSelect": {
+    "defaultMessage": "Open this panel when the Shape Tool is selected"
+  },
+  "shapeTool.showAngles": {
+    "defaultMessage": "Angles"
+  },
+  "shapeTool.showArea": {
+    "defaultMessage": "Area"
+  },
+  "shapeTool.showLengths": {
+    "defaultMessage": "Side lengths"
+  },
+  "shapeTool.snap": {
+    "defaultMessage": "Angle snap"
+  },
+  "shapeTool.snapOff": {
+    "defaultMessage": "Off"
+  },
+  "shapeTool.snapStep": {
+    "defaultMessage": "{step}°"
+  },
+  "shapeTool.title": {
+    "defaultMessage": "Shape Tool"
   },
   "shareModal.anonymous": {
     "defaultMessage": "anonymous"

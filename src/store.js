@@ -8,6 +8,11 @@ import { saveUserProfile } from '@shared/utils/username';
 import { resolveInitialLocale, persistLocale } from './editor/i18n/config';
 import { EMPTY_ASSET_LOAD_SUMMARY } from './asset-load-tracker';
 import { isProjectPassHash, isRedeemHash } from './tested/project-pass-link.js';
+import {
+  loadShapeToolSettings,
+  normaliseShapeToolSettings,
+  persistShapeToolSettings
+} from './editor/lib/shapeToolPrefs.js';
 
 const firstModal = () => {
   const hash = window.location.hash;
@@ -155,6 +160,18 @@ const useStore = create(
         setUnitsPreference: (newUnitsPreference) => {
           localStorage.setItem('unitsPreference', newUnitsPreference);
           set({ unitsPreference: newUnitsPreference });
+        },
+        // Per-device shape tool preferences (shapeToolPrefs.js). Several views
+        // subscribe — the tool section, a selected shape's panel, the draw
+        // tool — so the live value is here; the module persists it.
+        shapeToolSettings: loadShapeToolSettings(),
+        setShapeToolSetting: (key, value) => {
+          const next = normaliseShapeToolSettings({
+            ...useStore.getState().shapeToolSettings,
+            [key]: value
+          });
+          persistShapeToolSettings(next);
+          set({ shapeToolSettings: next });
         },
         // Whether the shape draw tool is currently active — drives the
         // right-panel instructions block.

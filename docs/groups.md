@@ -103,7 +103,10 @@ the elements). The stack is session state only and is never saved.
   around it are exactly those. A scene loaded meanwhile forgets them.
   `restorableScope` in `groupScope.js` decides. The Escape that returns from the
   viewer does nothing more: the editor acts on an Escape key-up only after
-  seeing its key-down (`shortcuts.js`).
+  seeing its key-down (`shortcuts.js`). That record is read and cleared in a
+  capture-phase key-up listener, so a tool that stops Escape's key-up (the
+  shape draw tool finishing a shape, a modal closing) cannot leave it set for a
+  later key-up.
 - **Pick targets.** The selected group's box, the markers and the open group's
   volume are ray/box tests, not scene objects, so camera navigation and
   placement never land on them.

@@ -926,6 +926,32 @@ describe('the Escape that returns from the viewer', () => {
     expect(h.openIds()).toEqual(['A', 'B', 'C']);
     expect(selected()).toBe(tree);
   });
+
+  // A tool that acts on Escape (the shape draw tool, the vertex editor) stops
+  // its key-up in the window capture phase; a modal that closes on it stops it
+  // at the document. Either way the editor never sees that key-up, and a later
+  // lone key-up — an inline rename cancelled on its key-down — must not count
+  // as the end of that press.
+  it('is not left armed by a key-up a tool stopped (fails if the latch is read only in the bubble phase)', () => {
+    const stoppers = [
+      [window, true],
+      [document, false]
+    ];
+    const { tree } = nestedScene();
+    h.inspector.selectEntity(tree);
+    for (const [target, capture] of stoppers) {
+      const stop = (e) => {
+        if (e.keyCode === 27) e.stopPropagation();
+      };
+      target.addEventListener('keyup', stop, capture);
+      h.escape();
+      target.removeEventListener('keyup', stop, capture);
+      expect(h.openIds()).toEqual(['A', 'B', 'C']);
+      h.escapeKey('keyup');
+      expect(h.openIds()).toEqual(['A', 'B', 'C']);
+      expect(selected()).toBe(tree);
+    }
+  });
 });
 
 describe('ordinary items, with no group in the scene', () => {

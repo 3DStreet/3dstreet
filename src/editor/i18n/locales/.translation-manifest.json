@@ -961,7 +961,21 @@
     "sunDial.south": "S",
     "sunDial.sun": "Sun",
     "sunDial.valueText": "From {azimuth}°, {elevation}° above the horizon",
-    "sunDial.west": "W"
+    "sunDial.west": "W",
+    "shapeDraw.closeRefused": "This shape can't close here. Add another point, or press Enter to finish it open.",
+    "shapeDraw.snapCloseRefused": "This shape can't close on the current angle snap. Add another point, press Enter to finish it open, or turn snap off.",
+    "shapeSidebar.tipInsertPlus": "Click a side's + to add a vertex to that side",
+    "shapeTool.alignToAxes": "Align first side to axes",
+    "shapeTool.alignToAxesHint": "The scene's axes, or the open group's when you draw into a group",
+    "shapeTool.displayHeading": "Show on canvas (all shapes, when selected)",
+    "shapeTool.openPanelOnSelect": "Open this panel when the Shape Tool is selected",
+    "shapeTool.showAngles": "Angles",
+    "shapeTool.showArea": "Area",
+    "shapeTool.showLengths": "Side lengths",
+    "shapeTool.snap": "Angle snap",
+    "shapeTool.snapOff": "Off",
+    "shapeTool.snapStep": "{step}°",
+    "shapeTool.title": "Shape Tool"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1925,7 +1939,21 @@
     "sunDial.south": "S",
     "sunDial.sun": "Sun",
     "sunDial.valueText": "From {azimuth}°, {elevation}° above the horizon",
-    "sunDial.west": "W"
+    "sunDial.west": "W",
+    "shapeDraw.closeRefused": "This shape can't close here. Add another point, or press Enter to finish it open.",
+    "shapeDraw.snapCloseRefused": "This shape can't close on the current angle snap. Add another point, press Enter to finish it open, or turn snap off.",
+    "shapeSidebar.tipInsertPlus": "Click a side's + to add a vertex to that side",
+    "shapeTool.alignToAxes": "Align first side to axes",
+    "shapeTool.alignToAxesHint": "The scene's axes, or the open group's when you draw into a group",
+    "shapeTool.displayHeading": "Show on canvas (all shapes, when selected)",
+    "shapeTool.openPanelOnSelect": "Open this panel when the Shape Tool is selected",
+    "shapeTool.showAngles": "Angles",
+    "shapeTool.showArea": "Area",
+    "shapeTool.showLengths": "Side lengths",
+    "shapeTool.snap": "Angle snap",
+    "shapeTool.snapOff": "Off",
+    "shapeTool.snapStep": "{step}°",
+    "shapeTool.title": "Shape Tool"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2889,6 +2917,20 @@
     "sunDial.south": "S",
     "sunDial.sun": "Sun",
     "sunDial.valueText": "From {azimuth}°, {elevation}° above the horizon",
-    "sunDial.west": "W"
+    "sunDial.west": "W",
+    "shapeDraw.closeRefused": "This shape can't close here. Add another point, or press Enter to finish it open.",
+    "shapeDraw.snapCloseRefused": "This shape can't close on the current angle snap. Add another point, press Enter to finish it open, or turn snap off.",
+    "shapeSidebar.tipInsertPlus": "Click a side's + to add a vertex to that side",
+    "shapeTool.alignToAxes": "Align first side to axes",
+    "shapeTool.alignToAxesHint": "The scene's axes, or the open group's when you draw into a group",
+    "shapeTool.displayHeading": "Show on canvas (all shapes, when selected)",
+    "shapeTool.openPanelOnSelect": "Open this panel when the Shape Tool is selected",
+    "shapeTool.showAngles": "Angles",
+    "shapeTool.showArea": "Area",
+    "shapeTool.showLengths": "Side lengths",
+    "shapeTool.snap": "Angle snap",
+    "shapeTool.snapOff": "Off",
+    "shapeTool.snapStep": "{step}°",
+    "shapeTool.title": "Shape Tool"
   }
 }

@@ -25,6 +25,7 @@ import {
 } from '../../lib/shapeStyle.js';
 import { Button } from './Button';
 import Collapsible from '../Collapsible';
+import { ShapeDisplayPrefControls } from './ShapeToolSection';
 import { Chevron24Down } from '@shared/icons';
 
 const MAX_LABELLED_VERTICES = 12;
@@ -169,6 +170,9 @@ function renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef) {
   const closed = isClosedShape(entity, verts.length);
   const revealed = revealedSegment(closed, els);
   if (lastRenderElsRef) lastRenderElsRef.current = els;
+  // Read on every render: a curve-type change re-derives the shape, which
+  // renders again.
+  const curveType = entity.components?.shape?.data?.curveType ?? 'linear';
   readouts.renderAll(
     verts,
     MAX_LABELLED_VERTICES,
@@ -178,7 +182,8 @@ function renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef) {
     {
       isInsertable: (i) => canOfferInsert(verts, i),
       revealedSegment: revealed
-    }
+    },
+    { cornerAngles: curveType === 'linear' }
   );
 }
 
@@ -187,6 +192,12 @@ const ShapeSidebar = ({ entity }) => {
   const [, setTick] = useState(0);
   const [showAllSegments, setShowAllSegments] = useState(false);
   const { unitsPreference } = useStore();
+  // The editor-wide display preferences: what the canvas shows on a selected
+  // shape. The panel rows below are never gated on them — they are how the
+  // numbers are read with the canvas readouts off.
+  const { showLengths, showArea, showAngles } = useStore(
+    (s) => s.shapeToolSettings
+  );
 
   // A freshly selected shape starts with the segment list collapsed.
   useEffect(() => {
@@ -241,11 +252,14 @@ const ShapeSidebar = ({ entity }) => {
       })
     );
     readouts.setUnits(unitsPreference);
+    const settings = useStore.getState().shapeToolSettings;
+    readouts.setDisplay(settings);
     readoutsRef.current = readouts;
     // The area label is the component's own (it tracks every re-derive) but
     // it shows only for as long as this panel is mounted, i.e. while the shape
-    // is selected — the same lifetime as the chips. Off again in the cleanup.
-    entity.components.shape?.setAreaLabelVisible(true);
+    // is selected — the same lifetime as the chips — and only with the
+    // area preference on. Off again in the cleanup.
+    entity.components.shape?.setAreaLabelVisible(settings.showArea);
 
     const render = (hoverPoint) =>
       renderReadouts(readouts, entity, hoverPoint, lastRenderElsRef);
@@ -435,6 +449,17 @@ const ShapeSidebar = ({ entity }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unitsPreference]);
 
+  // And the display preferences, which either control in the panel — or the
+  // Shape Tool section — may change while this shape is selected.
+  useEffect(() => {
+    const r = readoutsRef.current;
+    if (!r) return;
+    r.setDisplay({ showLengths, showAngles });
+    renderReadouts(r, entity, lastHoverRef.current, lastRenderElsRef);
+    entity.components.shape?.setAreaLabelVisible(showArea);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLengths, showArea, showAngles]);
+
   const vertices = getShapeVertices(entity);
   // Measure in the WORLD frame: a shape nested inside a scaled (or rotated)
   // group must report the size it renders at, matching the on-canvas readouts
@@ -586,6 +611,7 @@ const ShapeSidebar = ({ entity }) => {
             )}
           </div>
           <ShapeSectionControls entity={entity} />
+          <ShapeDisplayPrefControls />
           <div className="propertyRow">
             <div className="rounded bg-blue-50 p-2 text-gray-600">
               <div className="mb-1 font-semibold uppercase">
@@ -614,11 +640,17 @@ const ShapeSidebar = ({ entity }) => {
                 </li>
                 <li>
                   •{' '}
-                  {intl.formatMessage({
-                    id: 'shapeSidebar.tipInsert',
-                    defaultMessage:
-                      "Click a side's length to add a vertex to that side"
-                  })}
+                  {showLengths
+                    ? intl.formatMessage({
+                        id: 'shapeSidebar.tipInsert',
+                        defaultMessage:
+                          "Click a side's length to add a vertex to that side"
+                      })
+                    : intl.formatMessage({
+                        id: 'shapeSidebar.tipInsertPlus',
+                        defaultMessage:
+                          "Click a side's + to add a vertex to that side"
+                      })}
                 </li>
                 <li>
                   •{' '}

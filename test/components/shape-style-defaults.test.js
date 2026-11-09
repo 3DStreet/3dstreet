@@ -45,4 +45,22 @@ describe('shape schema defaults vs DEFAULT_SHAPE_STYLE', () => {
     expect(schema.fillOpacity.min).toBe(0);
     expect(schema.fillOpacity.max).toBe(100);
   });
+
+  // Every editor preference about shapes (what the canvas shows, how the
+  // tool snaps) is kept out of the scene, so the schema gains no property.
+  it('keeps the schema to the shape’s own properties', () => {
+    expect(Object.keys(AFRAME.components.shape.schema).sort()).toEqual(
+      [
+        'lineColor',
+        'lineWidth',
+        'closed',
+        'selectInside',
+        'fillColor',
+        'fillOpacity',
+        'curveType',
+        'filletRadius',
+        'updateEvent'
+      ].sort()
+    );
+  });
 });
