@@ -9,12 +9,57 @@ build SHA shown in-app (+a1b2c3d) identifies the exact deployed commit. -->
 
 ## 2026.11.0
 
+Thanks to **Diarmid Mackenzie** (groups, the combined move and rotate tool,
+keeping placed objects within their limits) for critical contributions to
+this release.
+
 - **Managed streets are now the default.** After two years in beta, every
   street you import from Streetmix, whether from a Streetmix link, New Scene,
   or the Add Layer panel, is a managed street: edit lanes in the cross-section,
   reorder and resize segments, toggle vehicles and striping, reload from
   Streetmix, and more. Your existing scenes load as before, and a classic
   street can still be converted from its properties panel ([#2156](https://github.com/3DStreet/3dstreet/pull/2156)).
+- **Convert a classic street.** Older Streetmix streets show a notice with a
+  Convert to managed street button that re-fetches the street from Streetmix
+  ([#2105](https://github.com/3DStreet/3dstreet/pull/2105)). Coastmix links import too ([#2110](https://github.com/3DStreet/3dstreet/pull/2110)).
+- **Move one car, tree, or stencil.** Drag any object a managed street
+  generated, or click Detach, to make it your own without converting the
+  whole street ([#2013](https://github.com/3DStreet/3dstreet/pull/2013)). **Detach all** does the same for every object of
+  one kind in a lane ([#2051](https://github.com/3DStreet/3dstreet/pull/2051)).
+- **Groups.** Nest layers into groups, move and turn a group about its
+  center, and open a group to edit its members, drawn shapes included
+  ([#2094](https://github.com/3DStreet/3dstreet/pull/2094), [#2107](https://github.com/3DStreet/3dstreet/pull/2107), [#2108](https://github.com/3DStreet/3dstreet/pull/2108), [#2111](https://github.com/3DStreet/3dstreet/pull/2111), [#2112](https://github.com/3DStreet/3dstreet/pull/2112), [#2115](https://github.com/3DStreet/3dstreet/pull/2115)).
+- **Move and rotate in one tool.** Drag objects along streets, roofs, and 3D
+  Tiles and turn them with the same handles ([#2007](https://github.com/3DStreet/3dstreet/pull/2007), [#2063](https://github.com/3DStreet/3dstreet/pull/2063)). Streets,
+  intersections, and shapes stay within their limits when placed
+  ([#2109](https://github.com/3DStreet/3dstreet/pull/2109)).
+- **Visitor Build.** Draw a closed shape and add a Build Area: visitors to
+  your scene can place objects from a palette you choose while playing, then
+  open the result in 3DStreet. Works in embeds too ([#2029](https://github.com/3DStreet/3dstreet/pull/2029)).
+- **Better shadows and lighting.** Placed objects cast shadows onto image
+  planes and 3D Tiles ([#2124](https://github.com/3DStreet/3dstreet/pull/2124)), shadows follow the camera across large
+  scenes ([#2125](https://github.com/3DStreet/3dstreet/pull/2125)), and a sun dial sets the light angle. A color background
+  no longer darkens your models ([#2126](https://github.com/3DStreet/3dstreet/pull/2126)).
+- **Project Pass.** 90 days of Pro plus 300 AI tokens, with no subscription.
+  Buy one at checkout or redeem a pass code ([#2071](https://github.com/3DStreet/3dstreet/pull/2071), [#2097](https://github.com/3DStreet/3dstreet/pull/2097)).
+- **Shareable scene links.** Cloud scenes now live at `/scenes/...` links that
+  preview properly when shared. Old links keep working ([#1972](https://github.com/3DStreet/3dstreet/pull/1972)).
+- **New AI models.** Image: Flux 3, Seedream 5.0 Pro, Grok Imagine 2.0, and
+  Muse Image ([#2086](https://github.com/3DStreet/3dstreet/pull/2086)), plus a 4K output option for Nano Banana Pro
+  ([#2121](https://github.com/3DStreet/3dstreet/pull/2121)). Video: Seedance 2.0 Fast, Wan 2.7, and LTX-2.5 Fast
+  ([#2082](https://github.com/3DStreet/3dstreet/pull/2082)). 3D: Hunyuan3D 3.1 Rapid and Meshy 7.1 ([#2075](https://github.com/3DStreet/3dstreet/pull/2075)). Every model
+  menu now shows its token cost ([#2079](https://github.com/3DStreet/3dstreet/pull/2079)).
+- **Splats behind glass and map layers.** Splats now draw correctly behind
+  see-through models and translucent map layers ([#2045](https://github.com/3DStreet/3dstreet/pull/2045)), and SPZ v4 splats
+  load ([#2138](https://github.com/3DStreet/3dstreet/pull/2138)).
+- **Fixes.** Add Layer cards land where the preview arrow points ([#2028](https://github.com/3DStreet/3dstreet/pull/2028)).
+  Duplicating a lane gives it fresh random placement ([#2050](https://github.com/3DStreet/3dstreet/pull/2050)). New scenes
+  and Reset Camera View reset the field of view ([#2040](https://github.com/3DStreet/3dstreet/pull/2040), [#2046](https://github.com/3DStreet/3dstreet/pull/2046)).
+  Imported scenes no longer keep the previous scene's link ([#2067](https://github.com/3DStreet/3dstreet/pull/2067)).
+  Locations no longer resolve to the wrong country ([#2114](https://github.com/3DStreet/3dstreet/pull/2114)). A freshly
+  dropped rigged vehicle can be selected right away ([#2119](https://github.com/3DStreet/3dstreet/pull/2119)). Splat uploads
+  no longer get stuck on "Preparing..." ([#2136](https://github.com/3DStreet/3dstreet/pull/2136)). AI chat replies no longer
+  come back empty ([#2130](https://github.com/3DStreet/3dstreet/pull/2130)).
 - **Splat selection boxes fit the splat.** The box around a selected splat now
   wraps it, including after you move, turn, or scale it ([#2152](https://github.com/3DStreet/3dstreet/pull/2152)).
 - **Splat icon in the scene graph.** Splats now have their own layer icon,
