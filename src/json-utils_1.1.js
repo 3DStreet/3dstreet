@@ -1202,30 +1202,37 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (isStreetmixURL(streetURL)) {
         console.log(
           '[set-loader-from-hash]',
-          'Create new street with Streetmix URL',
+          'Create new Managed Street with Streetmix URL',
           streetURL
         );
 
         const definition = {
           id: createUniqueId(),
           components: {
-            'streetmix-loader': {
-              streetmixStreetURL: streetURL,
+            'managed-street': {
+              sourceType: 'streetmix-url',
+              sourceValue: streetURL,
               synchronize: true,
               // Tag as the URL-fragment auto-import path so the loader fires
               // streetmix_import_completed/_failed with source 'url_fragment'
-              // (#1874) — the path most Streetmix users actually arrive on.
+              // (#1874), the path most Streetmix users actually arrive on.
               importSource: 'url_fragment'
             }
           }
         };
 
+        // Save once the street has loaded (the Streetmix fetch is async), so
+        // a slow fetch never saves an empty scene. No save on a failed load.
+        AFRAME.scenes[0].addEventListener(
+          'managed-street-streetmix-loaded',
+          () => {
+            console.log('trigger saveScene from managed street');
+            useStore.getState().saveScene(true);
+          },
+          { once: true }
+        );
         setTimeout(() => {
           AFRAME.INSPECTOR.execute('entitycreate', definition);
-          setTimeout(() => {
-            console.log('trigger saveScene from street component');
-            useStore.getState().saveScene(true);
-          }, 3000);
         }, 1000);
       } else if (streetURL.includes('streetplan.net/')) {
         // instead, load streetplan via managed street the new addlayerpanel
@@ -1401,34 +1408,6 @@ function getUUIDFromPath(path) {
 
   return null; // return null or whatever default value you prefer if no UUID found
 }
-
-// this use os text input prompt, delete current scene, then load streetmix file
-function inputStreetmix() {
-  const streetmixURL = prompt(
-    'Please enter a Streetmix URL',
-    'https://streetmix.net/kfarr/3/example-street'
-  );
-  // clear scene data, create new blank scene.
-  // clearMetadata = true, clearUrlHash = false
-  STREET.utils.newScene(true, false);
-
-  setTimeout(function () {
-    window.location.hash = streetmixURL;
-  });
-
-  AFRAME.INSPECTOR.execute('entitycreate', {
-    id: createUniqueId(),
-    components: {
-      'streetmix-loader': {
-        streetmixStreetURL: streetmixURL,
-        synchronize: true
-      }
-    }
-  });
-  AFRAME.scenes[0].emit('newScene');
-}
-
-STREET.utils.inputStreetmix = inputStreetmix;
 
 // JSON loading starts here
 function getValidJSON(stringJSON) {

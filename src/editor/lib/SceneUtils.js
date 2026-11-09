@@ -45,22 +45,26 @@ export function inputStreetmix() {
     window.location.hash = streetmixURL;
   });
 
-  AFRAME.scenes[0].addEventListener('streetmix-loader-street-loaded', () => {
-    // setTimeout very important here, otherwise all entities are positionned at 0,0,0 when reloading the scene
-    setTimeout(() => {
-      AFRAME.scenes[0].emit('newScene');
-    });
-  });
+  AFRAME.scenes[0].addEventListener(
+    'managed-street-streetmix-loaded',
+    () => {
+      // setTimeout very important here, otherwise all entities are positionned at 0,0,0 when reloading the scene
+      setTimeout(() => {
+        AFRAME.scenes[0].emit('newScene');
+      });
+    },
+    { once: true }
+  );
 
   AFRAME.INSPECTOR.execute('entitycreate', {
     id: createUniqueId(),
     components: {
-      'streetmix-loader': {
-        streetmixStreetURL: streetmixURL,
+      'managed-street': {
+        sourceType: 'streetmix-url',
+        sourceValue: streetmixURL,
         synchronize: true,
-        // The streetmix-loader now fires streetmix_import_completed/_failed
-        // itself (source 'dialog') so success AND failure are both measurable
-        // from one place — see captureStreetmixImport in index.js (#1874).
+        // managed-street fires streetmix_import_completed/_failed with
+        // source 'dialog' (#1874).
         importSource: 'dialog'
       }
     }

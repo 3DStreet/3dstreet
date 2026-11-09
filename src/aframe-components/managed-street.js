@@ -1301,6 +1301,10 @@ AFRAME.registerComponent('managed-street', {
         }
         // Success Message
         STREET.notify.successMessage('Loaded from Streetmix: ' + streetmixName);
+        // Bubbles to the scene so whole-scene import flows (New Scene →
+        // Import from Streetmix, Streetmix URL hash) can save once the
+        // street exists, not on a timer racing the fetch.
+        this.el.emit('managed-street-streetmix-loaded', { streetmixName });
         // Streetmix-import telemetry (#1874). loadAndParseStreetmixURL only
         // runs on a genuine import (synchronize=true), not on saved-scene
         // reloads, so this fires once per real import — not on every load.

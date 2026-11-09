@@ -80,18 +80,9 @@ export const layerCardMessages = defineMessages({
     defaultMessage:
       'Create an additional Streetmix street in your 3DStreet scene without replacing any existing streets.'
   },
-  managedStreetmixName: {
-    id: 'addLayer.card.managedStreetmix.name',
-    defaultMessage: '(Beta) Managed Street from Streetmix URL'
-  },
-  managedStreetmixDesc: {
-    id: 'addLayer.card.managedStreetmix.desc',
-    defaultMessage:
-      'Create a new street from Streetmix URL using the Managed Street component.'
-  },
   managedStreet4024Name: {
     id: 'addLayer.card.managedStreet4024.name',
-    defaultMessage: '(Beta) Managed Street 40ft RoW / 24ft Roadway Width'
+    defaultMessage: 'Street 40ft RoW / 24ft Roadway Width'
   },
   managedStreet4024Desc: {
     id: 'addLayer.card.managedStreet4024.desc',
@@ -99,7 +90,7 @@ export const layerCardMessages = defineMessages({
   },
   managedStreet6036Name: {
     id: 'addLayer.card.managedStreet6036.name',
-    defaultMessage: '(Beta) Managed Street 60ft RoW / 36ft Roadway Width'
+    defaultMessage: 'Street 60ft RoW / 36ft Roadway Width'
   },
   managedStreet6036Desc: {
     id: 'addLayer.card.managedStreet6036.desc',
@@ -107,7 +98,7 @@ export const layerCardMessages = defineMessages({
   },
   managedStreet8056Name: {
     id: 'addLayer.card.managedStreet8056.name',
-    defaultMessage: '(Beta) Managed Street 80ft RoW / 56ft Roadway Width'
+    defaultMessage: 'Street 80ft RoW / 56ft Roadway Width'
   },
   managedStreet8056Desc: {
     id: 'addLayer.card.managedStreet8056.desc',
@@ -115,7 +106,7 @@ export const layerCardMessages = defineMessages({
   },
   managedStreet9470Name: {
     id: 'addLayer.card.managedStreet9470.name',
-    defaultMessage: '(Beta) Managed Street 94ft RoW / 70ft Roadway Width'
+    defaultMessage: 'Street 94ft RoW / 70ft Roadway Width'
   },
   managedStreet9470Desc: {
     id: 'addLayer.card.managedStreet9470.desc',
@@ -123,7 +114,7 @@ export const layerCardMessages = defineMessages({
   },
   managedStreet150124Name: {
     id: 'addLayer.card.managedStreet150124.name',
-    defaultMessage: '(Beta) Managed Street 150ft RoW / 124ft Roadway Width'
+    defaultMessage: 'Street 150ft RoW / 124ft Roadway Width'
   },
   managedStreet150124Desc: {
     id: 'addLayer.card.managedStreet150124.desc',
@@ -140,7 +131,7 @@ export const layerCardMessages = defineMessages({
   },
   managedStreetplanName: {
     id: 'addLayer.card.managedStreetplan.name',
-    defaultMessage: '(Beta) Managed Street from Streetplan URL'
+    defaultMessage: 'Street from StreetPlan URL'
   },
   managedStreetplanDesc: {
     id: 'addLayer.card.managedStreetplan.desc',
