@@ -49,23 +49,13 @@ AFRAME.scenes[0].setAttribute('screentock', 'takeScreenshot', true);
 - To set a custom URL for a scene's assets, add the following syntax to your `a-assets` block: `<streetmix-assets url="./"></streetmix-assets>`. Change "./" to your own path, or keep to use assets loaded from your local server.
 - How does this work? Getting assets to be dynamically injected into an A-Frame scene is tricky because `a-assets` gets created in the document body, _after the streetmix javascript has been included in the header_. The contents of this file is a scheme to try to intercept the creation of `a-assets` and get them to wait for 3DStreet assets just like assets defined in the document body. It's not perfect, but seems to work. There a [Stack Overflow question and answer that goes into more detail on the original creation](https://stackoverflow.com/questions/64841550/a-frame-scene-initializes-before-assets-ready-when-dynamically-adding-a-asset-i/64868581#64868581) as well as [a GitHub Issue with additional questions and answers](https://github.com/3DStreet/3dstreet/issues/98).
 
-### [aframe-streetmix-parsers.js](aframe-streetmix-parsers.js)
-
-- `processSegments` function - takes an array of streetmix segments and render them to the DOM - this is the "main" function of the entire application
-- `processBuildings` function - takes `left`, `right` and street width
-- Many other (untested) helper functions
-
-### [tested/aframe-streetmix-parsers-tested.js](tested/aframe-streetmix-parsers-tested.js) - Now with tests!
-
-- `isSidewalk` function - for a streetmix segment name passed as string, tell me if the segment is on a sidewalk?
-- `createBuildingsArray` function - create an array of dictionaries that represent a psuedorandom block of buildings for use with `create-from-json`
-
 ### [tested/streetmix-utils.js](tested/streetmix-utils.js)
 
 These are a handful of functions ([and accompanying tests!](/test/streetmix-utils-test.js) that help deal with Streetmix URLs:
 
 - `streetmixUserToAPI(userURL)` takes a user facing Streetmix.net URL like `https://streetmix.net/kfarr/3/a-frame-city-builder-street-only` and turns it into the API redirect URL like `https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr`
 - `streetmixAPIToUser(APIURL)` takes a Streetmix.net API redirect URL like `https://streetmix.net/api/v1/streets?namespacedId=3&creatorId=kfarr` and turns it into the user facing friendly Streetmix.net URL like `https://streetmix.net/kfarr/3/a-frame-city-builder-street-only`
+- `isSidewalk(segmentType)` tells whether a Streetmix segment type sits on the sidewalk
 - `calcStreetWidth` takes an array of segments (data.streets.segments from a Streetmix API JSON String response) and returns the width in meters
 
 ### [components/create-from-json.js](components/create-from-json.js)

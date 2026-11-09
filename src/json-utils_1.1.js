@@ -23,6 +23,7 @@ import {
 import { isStreetmixURL } from './tested/streetmix-utils.js';
 import { migrateMeasureLinesToShapes } from './tested/migrate-measure-lines';
 import { migrateImplicitStreetAlign } from './tested/migrate-street-align';
+import { migrateLegacyStreetmixLoader } from './tested/migrate-legacy-streetmix-loader';
 import {
   describeConformedItems,
   conformToKindLimits
@@ -604,6 +605,13 @@ function createEntities(entitiesData, parentEl) {
   migrateLegacyFlatteningShape(entitiesData);
   migrateMeasureLinesToShapes(entitiesData);
   migrateImplicitStreetAlign(entitiesData);
+  // After the street-align pass, so a converted street gets the schema
+  // alignment (as the Convert to managed street command does), and before
+  // conformToKindLimits, which drops the scale a managed street never has.
+  const legacyStreets = migrateLegacyStreetmixLoader(entitiesData);
+  if (legacyStreets.converted || legacyStreets.synchronized) {
+    console.log('[migration] legacy streetmix-loader streets', legacyStreets);
+  }
   // Unlike the migrations above, this one discards part of a saved transform
   // (the tilt or scale an item's kind forbids), so it says so. It runs after
   // the ruler migration, which turns an old ruler into a shape.

@@ -40,7 +40,7 @@ import {
   CROSSWALK_MIXINS,
   CROSSWALK_INSET
 } from '../../../aframe-components/managed-intersection';
-import { isSidewalk } from '../../../tested/aframe-streetmix-parsers-tested';
+import { isSidewalk } from '../../../tested/streetmix-utils';
 import {
   buildCenterlinePoints,
   computeRibbonOutline
@@ -295,7 +295,6 @@ export function buildStreetPlanModel(options = {}) {
 
   if (opts.includeSegments) {
     collectManagedStreets(ctx);
-    collectLegacyStreets(ctx);
   }
   if (opts.includeIntersections) {
     collectIntersections(ctx);
@@ -450,87 +449,6 @@ function collectManagedStreets(ctx) {
       }
 
       previousSegmentType = segData.type;
-    }
-  }
-}
-
-// --- legacy street pass -----------------------------------------------------
-// Streets built by the deprecated street component (incl. streetmix-loader
-// imports). Their DOM children are mixin-driven meshes with no per-segment
-// geometry attributes, so the footprint is reconstructed from the component's
-// streetmix segments JSON with the same layout math as
-// aframe-streetmix-parsers.js (createCenteredStreetElement + processSegments):
-// segments run along local Z for `length` meters, laid out left-to-right on
-// local X and centered on the street entity.
-function collectLegacyStreets(ctx) {
-  const streetEls = Array.from(document.querySelectorAll('[street]'));
-
-  for (const streetEl of streetEls) {
-    const data = streetEl.getAttribute('street');
-    if (!data?.JSON || !streetEl.object3D) continue;
-    if (entityIsHidden(streetEl)) continue;
-
-    let segments;
-    try {
-      segments = JSON.parse(data.JSON).streetmixSegmentsMetric;
-    } catch {
-      continue;
-    }
-    const length = Number(data.length) || 0;
-    if (!Array.isArray(segments) || segments.length === 0 || length <= 0) {
-      continue;
-    }
-
-    ctx.streetCount++;
-    streetEl.object3D.updateWorldMatrix(true, false);
-
-    const totalWidth = segments.reduce(
-      (sum, segment) => sum + (Number(segment.width) || 0),
-      0
-    );
-
-    let cumulativeWidth = 0;
-    let previousSegmentType = null;
-
-    for (const segment of segments) {
-      const width = Number(segment.width) || 0;
-      if (width <= 0) {
-        previousSegmentType = null;
-        continue;
-      }
-      const centerX = cumulativeWidth + width / 2 - totalWidth / 2;
-      cumulativeWidth += width;
-
-      const type = normalizeLegacySegmentType(segment.type);
-      const planPoints = ctx.localPointsToPlan(
-        streetEl,
-        segmentLocalCorners(width, length).map(([x, y, z]) => [
-          x + centerX,
-          y,
-          z
-        ])
-      );
-
-      const layerName = ctx.resolveAndAddLayer(
-        SEGMENT_TYPE_TO_LAYER[type] || FALLBACK_LAYER
-      );
-      ctx.polylines.push({
-        layer: layerName,
-        points: planPoints,
-        closed: true
-      });
-      ctx.segmentCount++;
-
-      if (previousSegmentType && needsCurbBetween(previousSegmentType, type)) {
-        const curbLayerName = ctx.resolveAndAddLayer(CURB_LAYER);
-        ctx.lines.push({
-          layer: curbLayerName,
-          p1: planPoints[0],
-          p2: planPoints[3]
-        });
-      }
-
-      previousSegmentType = type;
     }
   }
 }

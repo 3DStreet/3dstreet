@@ -212,7 +212,11 @@ const kindsToLevel = () => [
       ),
       item('classic-street', {
         street: 'length: 60',
-        'streetmix-loader': 'streetmixStreetURL: https://streetmix.net/x/1',
+        // As saved: synchronized (a still-rebuilding loader with no saved
+        // street becomes a managed street at load, see
+        // migrate-legacy-streetmix-loader.js).
+        'streetmix-loader':
+          'streetmixStreetURL: https://streetmix.net/x/1; synchronize: false',
         scale: '2 2 2'
       })
     ]
