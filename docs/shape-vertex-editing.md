@@ -1,11 +1,13 @@
 # Shape vertex editing — the on-canvas layer
 
 A selected `shape` gets an editing overlay: a draggable handle per vertex, a
-delete button on the sub-selected vertex, and length and angle measurements on
-every side and corner. How a side takes a new vertex depends on the input:
-**under a hovering pointer the side's own measurement becomes the "+"**, and on
-an input with no hover a separate insert ("+") button appears above the
-measurement that was tapped. The next section says why the two differ.
+delete button on the sub-selected vertex, and — with the Side lengths
+preference on, the default — a length measurement on every side (on a large
+shape, the side nearest the pointer), with angles at the corners beside them
+when the Angles preference is on. How a side takes a new vertex depends on
+the input: **under a hovering pointer the side's own measurement becomes the
+"+"**, and on an input with no hover a separate insert ("+") button appears
+above the measurement that was tapped. The next section says why the two differ.
 
 Six modules cooperate, and the split is by _who can answer the question_:
 
@@ -228,6 +230,29 @@ assertable in a test environment that evaluates no stylesheet at all.
 Interactivity is scoped **structurally** rather than by a condition:
 `interaction` is a parameter of `renderAll` and of no other method, so the draw
 preview's entry point (`renderActive`) has no parameter to pass.
+
+### With side lengths off: the "+"-only chip
+
+With the Side lengths preference off there is no number on a side, so an
+insertable side's chip shows only "+", and a side that cannot take a vertex
+shows nothing (there is no number to mute). The chip is the same control —
+same stamping, same hit box, same bands — with a different inner:
+
+- the glyph (`.shape-readout-plus-glyph`) is **in flow** at the label's own
+  size. There is no number to hold a footprint for, so no lock is needed, and
+  the inner keeps the height `CAPTION_HALF_PX` assumes;
+- a "+" is narrower than a number, so the outer gets `min-width` as well as
+  `min-height` from `MIN_TAP_TARGET_PX`;
+- the accessible name is the insert hint, in a visually hidden span, since
+  there is no measurement to read out.
+
+Touch keeps the two-step: a tap reveals the separate insert button above the
+chip, so two "+" show for a moment. That leaves `activateSide` with one rule for
+both kinds of chip.
+
+Angle captions (Angles preference on) are `caption`-band and never controls:
+inline `pointer-events: none` on both elements, offset below their corner by
+`ANGLE_CAPTION_OFFSET_PX` so they clear a handle at its target size.
 
 ## CSS2D draw order
 

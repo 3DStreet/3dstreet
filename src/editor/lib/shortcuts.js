@@ -28,11 +28,30 @@ export const Shortcuts = {
   // accepted. The viewer returns to the editor on Escape's key-down, and the
   // key-up of that same press must not then also leave a group level or
   // clear the selection.
+  //
+  // The key-down record is read and cleared in the CAPTURE phase, because
+  // tools that act on Escape stop its key-up before the bubble phase (see
+  // docs/groups.md). Stopping propagation does not keep other listeners on
+  // the same target and phase from running, so this listener sees every
+  // Escape key-up whatever the order tools registered in. The bubble listener
+  // reads escapePressAccepted: whether the press now ending had a key-down the
+  // editor accepted.
   escapeDown: false,
+  escapePressAccepted: false,
+  resetEscape: function () {
+    this.escapeDown = false;
+    this.escapePressAccepted = false;
+  },
+  onKeyUpCapture: function (event) {
+    if (event.keyCode !== 27) return;
+    this.escapePressAccepted = this.escapeDown;
+    this.escapeDown = false;
+  },
   onKeyUp: function (event) {
-    // Cleared before the gate below, so a gated key-up does not leave it set.
-    const escapeDown = this.escapeDown;
-    if (event.keyCode === 27) this.escapeDown = false;
+    // escapePressAccepted is cleared before the gate below, so a gated key-up
+    // does not leave it set.
+    const pressAccepted = event.keyCode === 27 && this.escapePressAccepted;
+    if (event.keyCode === 27) this.escapePressAccepted = false;
 
     if (!shouldCaptureKeyEvent(event) || !AFRAME.INSPECTOR.opened) {
       return;
@@ -41,7 +60,11 @@ export const Shortcuts = {
     var keyCode = event.keyCode;
 
     // esc: leave one open group level if a group is open, else unselect entity
-    if (keyCode === 27 && escapeDown && !this.inspector.groupScope.escape()) {
+    if (
+      keyCode === 27 &&
+      pressAccepted &&
+      !this.inspector.groupScope.escape()
+    ) {
       if (this.inspector.selectedEntity) {
         this.inspector.selectEntity(null);
       }
@@ -236,21 +259,23 @@ export const Shortcuts = {
       this.disable();
     }
 
-    this.escapeDown = false;
+    this.resetEscape();
     window.addEventListener('keydown', this.onKeyDown, false);
+    window.addEventListener('keyup', this.onKeyUpCapture, true);
     window.addEventListener('keyup', this.onKeyUp, false);
     window.addEventListener('blur', this.onBlur, false);
     this.enabled = true;
   },
   disable: function () {
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUpCapture, true);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
-    this.escapeDown = false;
+    this.resetEscape();
     this.enabled = false;
   },
   onBlur: function () {
-    this.escapeDown = false;
+    this.resetEscape();
   },
   checkModuleShortcutCollision: function (keyCode, moduleName, mustBeActive) {
     if (
@@ -289,6 +314,7 @@ export const Shortcuts = {
   init: function (inspector) {
     this.inspector = inspector;
     this.onKeyDown = this.onKeyDown.bind(this);
+    this.onKeyUpCapture = this.onKeyUpCapture.bind(this);
     this.onKeyUp = this.onKeyUp.bind(this);
     this.onBlur = this.onBlur.bind(this);
   }

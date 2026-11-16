@@ -12,6 +12,12 @@
 // funnel step a clean per-user first-touch: step N = `nav_control_used` where
 // `control = X`. See `src/editor/lib/nav-experimental/index.js` for the
 // controls that emit these.
+//
+// A second, non-deduplicated event, `nav_rotate_gesture`, fires once per
+// rotate drag (#1993 selection rotation pivot) with `pivot_source` (selection
+// | fallback_none | fallback_hidden | fallback_offscreen | street_inplace),
+// `selected_type`, `drag_ms`, `yaw_deg` and `pitch_deg`, so the selection
+// pivot's effect can be measured. Emitted from dragGestureController.
 
 import posthog from 'posthog-js';
 import { getNavScheme } from './nav-experimental/flag.js';
@@ -79,5 +85,20 @@ export function captureNavDiscovery(control, extra) {
     nav_mode: getNavScheme(),
     control,
     ...extra
+  });
+}
+
+/**
+ * Report one finished rotate drag (#1993). NOT deduplicated: one event per
+ * rotate sub-gesture that actually moved the camera, so the selection pivot's
+ * effect can be measured after launch. Fired at drag end, never per move.
+ *
+ * @param {object} props pivot_source, selected_type, drag_ms, yaw_deg,
+ *   pitch_deg (see dragGestureController `flushRotateGesture`).
+ */
+export function captureRotateGesture(props) {
+  posthog.capture('nav_rotate_gesture', {
+    nav_mode: getNavScheme(),
+    ...props
   });
 }

@@ -16,6 +16,7 @@ import StreetSegmentSidebar from './StreetSegmentSidebar';
 import ManagedStreetSidebar from './ManagedStreetSidebar';
 import LegacyStreetNotice from './LegacyStreetNotice';
 import ShapeSidebar, { ShapeDrawInstructions } from './ShapeSidebar';
+import ShapeToolSection from './ShapeToolSection';
 import DriveControlsSidebar from './DriveControlsSidebar';
 import FlyControlsSidebar from './FlyControlsSidebar';
 import StreetTrafficReplaySidebar from './StreetTrafficReplaySidebar';
@@ -91,6 +92,11 @@ export default class Sidebar extends React.Component {
       return (
         <div className="properties-empty-state">
           <ShapeDrawInstructions />
+          {/* The panel styles the section's rows expect: the empty state has
+              none of its own. */}
+          <div className="properties-panel shape-tool-panel">
+            <ShapeToolSection />
+          </div>
           <FormattedMessage
             id="sidebar.selectObject"
             defaultMessage="Select an object to edit properties."
@@ -127,6 +133,7 @@ export default class Sidebar extends React.Component {
     return (
       <div className="properties-panel" tabIndex="0">
         <ShapeDrawInstructions />
+        <ShapeToolSection />
         {!hasOwnHeader && (
           <div id="layers-title">
             <div className="layersBlock">
