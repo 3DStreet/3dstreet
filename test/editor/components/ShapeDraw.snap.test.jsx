@@ -442,7 +442,21 @@ describe('Shape Tool settings while drawing', () => {
     const created = lastCreate();
     expect(created.shape.closed).toBe(true);
     expect(Object.keys(created.shape).sort()).toEqual(
-      ['closed', 'fillColor', 'fillOpacity', 'lineColor', 'lineWidth'].sort()
+      [
+        'closed',
+        'fillAngle',
+        'fillColor',
+        'fillMaterial',
+        'fillOpacity',
+        'fillPattern',
+        'fillPatternColor',
+        'fillPatternOpacity',
+        'fillPatternSpacing',
+        'fillPatternWidth',
+        'fillTint',
+        'lineColor',
+        'lineWidth'
+      ].sort()
     );
     created.vertices.forEach((v, i) => expectNear(v, ring[i]));
   });
