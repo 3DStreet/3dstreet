@@ -165,6 +165,9 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
       this.fatMaterial
     );
     this.fatBox.raycast = function () {};
+    // In the editor-overlay band (100+): at the default 0 the box drew before
+    // the transparent shape fills (renderOrder 1-3), which painted over it.
+    this.fatBox.renderOrder = 100;
     this.add(this.fatBox);
     if (fill) {
       // Mesh with BoxGeometry and Semi-transparent Material
@@ -176,6 +179,7 @@ export class OrientedBoxHelper extends THREE.BoxHelper {
         depthTest: false
       });
       const boxFill = new THREE.Mesh(boxFillGeometry, boxFillMaterial);
+      boxFill.renderOrder = 100;
       this.boxFill = boxFill;
       this.add(boxFill);
     }

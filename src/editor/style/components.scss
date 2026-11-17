@@ -1377,26 +1377,6 @@ a.help-linkhover {
   width: auto;
 }
 
-/* A shape's Fill group is a sub-heading inside its Style section, not a peer
-   section: no top rule, a compact header in the panel's label voice, and rows
-   flush with the line rows above. After the section-header rule above, which
-   these selectors tie on specificity, so they win by order. */
-.properties-panel .shape-style-controls .fill-subsection {
-  border-top: none;
-  > .static {
-    padding: 6px 0 2px;
-  }
-  .componentTitle span {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: normal;
-    text-transform: none;
-  }
-  > .content {
-    margin-bottom: 0;
-  }
-}
-
 /* Role component bodies (hotspot description, Starting View tip) use the
    same label voice as the compact rows. */
 .properties-panel .roleSectionBody > .text {
