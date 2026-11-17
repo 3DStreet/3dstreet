@@ -118,6 +118,47 @@ describe('buildReplicateImageInput', () => {
 });
 
 describe('buildFalImagePayload', () => {
+  describe('Nano Banana Pro fal failover', () => {
+    const nbp = REPLICATE_MODELS['nano-banana-pro'];
+    const cfg = { ...nbp, payloadStyle: nbp.falFallback.payloadStyle };
+
+    it('edits at the default 2K, keeping the input aspect', () => {
+      expect(buildFalImagePayload(cfg, { prompt: 'p', imageUrl: IMG })).toEqual(
+        {
+          prompt: 'p',
+          image_urls: [IMG],
+          resolution: '2K',
+          aspect_ratio: 'auto',
+          output_format: 'jpeg',
+          num_images: 1
+        }
+      );
+    });
+
+    it('passes the 4K tier through', () => {
+      expect(
+        buildFalImagePayload(cfg, {
+          prompt: 'p',
+          imageUrl: IMG,
+          resolution: '4K'
+        }).resolution
+      ).toBe('4K');
+    });
+
+    it('sends no image_urls for a text-only render', () => {
+      expect(
+        buildFalImagePayload(cfg, { prompt: 'p', imageUrl: null })
+      ).not.toHaveProperty('image_urls');
+    });
+
+    it('has edit and text-to-image endpoints', () => {
+      expect(nbp.falFallback).toMatchObject({
+        endpoint: 'fal-ai/nano-banana-pro/edit',
+        textEndpoint: 'fal-ai/nano-banana-pro'
+      });
+    });
+  });
+
   it('FLUX.3 uses the 2k tier and the input aspect ratio', () => {
     expect(
       buildFalImagePayload(REPLICATE_MODELS['fal-flux-3-edit'], falArgs)

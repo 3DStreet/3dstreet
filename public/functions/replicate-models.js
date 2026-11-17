@@ -102,7 +102,15 @@ const REPLICATE_MODELS = {
     // Paid output tiers above the default `resolution` (see
     // resolveOutputTier in image-model-inputs.js). Mirrored in the picker.
     outputTiers: { '4K': { tokenCost: 5 } },
-    tokenCost: 3
+    tokenCost: 3,
+    // Failover target when config/providerRouting routes this model to fal
+    // (provider-routing.js). Same Google model; token cost and output tiers
+    // are unchanged, so the switch is invisible to the user.
+    falFallback: {
+      endpoint: 'fal-ai/nano-banana-pro/edit',
+      textEndpoint: 'fal-ai/nano-banana-pro',
+      payloadStyle: 'nano-banana'
+    }
   },
   // $0.101/image at 2K.
   'nano-banana-2': {

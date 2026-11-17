@@ -6,7 +6,8 @@
  *   Replicate models: `inputStyle` — 'nano-banana' | 'seedream' | 'grok' |
  *     'kontext' (the default, for the legacy FLUX Kontext version hashes).
  *   fal models: `payloadStyle` — 'flux-2' (the default) | 'flux-2-klein' |
- *     'flux-3' | 'muse'.
+ *     'flux-3' | 'muse' | 'nano-banana' (the Nano Banana Pro fal failover,
+ *     see `falFallback` in replicate-models.js).
  *
  * Pure functions (no Firebase), so they're unit tested directly
  * (test/generator/image-model-inputs.test.js).
@@ -96,12 +97,29 @@ function buildReplicateImageInput(
  *   {width, height}
  * @param {number} args.guidanceScale - FLUX.2 [pro/max/dev] only
  * @param {number} args.numInferenceSteps - FLUX.2 [pro/max/dev] only
+ * @param {string} [args.resolution] - Nano Banana only: output tier
+ *   ('1K' | '2K' | '4K'); defaults to the config's `resolution`
  */
 function buildFalImagePayload(
   modelConfig,
-  { prompt, imageUrl, imageSize, guidanceScale, numInferenceSteps }
+  { prompt, imageUrl, imageSize, guidanceScale, numInferenceSteps, resolution }
 ) {
   switch (modelConfig?.payloadStyle) {
+    case 'nano-banana': {
+      // Same Google model as Replicate's nano-banana-pro, on fal: the edit
+      // endpoint takes image_urls; the text-to-image endpoint takes none.
+      // 'auto' keeps the source image's aspect (or lets the model pick for
+      // text-only), matching Replicate's match_input_image.
+      const payload = {
+        prompt,
+        resolution: resolution || modelConfig.resolution || '2K',
+        aspect_ratio: 'auto',
+        output_format: 'jpeg',
+        num_images: 1
+      };
+      if (imageUrl) payload.image_urls = [imageUrl];
+      return payload;
+    }
     case 'flux-3':
       // FLUX.3 renders at fixed resolution tiers; 'auto' takes the aspect
       // ratio from the first reference image.

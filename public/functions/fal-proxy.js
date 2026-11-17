@@ -170,61 +170,6 @@ const generateFalImage = functions
 
       // Write the pending job BEFORE charging/submitting, mirroring the other
       // submit paths — a crash mid-submit becomes a visible, reconcilable row.
-      await jobRef.set({
-        status: 'queued',
-        providerStatus: null,
-        kind: 'image',
-        provider: 'fal',
-        providerJobId: null,
-        statusUrl: null,
-        responseUrl: null,
-        model: modelConfig.name,
-        modelId: model_id,
-        endpoint: modelConfig.endpoint,
-        source,
-        tokenCost,
-        tokenCharged: false,
-        refunded: false,
-        tempFilePath: tempImagePath || null,
-        webhookSecret,
-        originalFilename,
-        assetName,
-        // Everything the terminal processor needs to finish the job without a
-        // browser: gallery generationMetadata + the Discord post inputs.
-        generationParams: {
-          model_id,
-          model_name: modelConfig.name,
-          prompt,
-          guidance: guidance_scale,
-          num_inference_steps,
-          scene_id: scene_id || null
-        },
-        // Client extras merged into the saved asset's generationMetadata (the
-        // editor's sceneTitle/cameraState/renderMode — see saveImageToGallery).
-        galleryMetadata: sanitizeGalleryMetadata(gallery_metadata),
-        notify: {
-          email: wantsEmail,
-          pending: wantsEmail,
-          // Editor 4x renders stamp a shared batch identity so the whole
-          // batch produces at most one email (first finisher decides).
-          ...sanitizeNotifyBatch(notify)
-        },
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      // Charge at submit and set `tokenCharged` in the same transaction
-      // (chargeGenerationTokens), so every later refund path (poll, webhook,
-      // reconciler) observes tokenCharged:true and refunds exactly once.
-      const { remainingTokens } = await chargeGenerationTokens(db, {
-        userId,
-        jobRef,
-        tokenCost,
-        source: 'image-generation',
-        relatedModel: modelConfig.name
-      });
-
-      // Build the fal.ai request payload; the model config's `payloadStyle`
-      // picks the shape.
       const falPayload = buildFalImagePayload(modelConfig, {
         prompt,
         imageUrl,
@@ -232,110 +177,282 @@ const generateFalImage = functions
         guidanceScale: guidance_scale,
         numInferenceSteps: num_inference_steps
       });
-
       console.log(`Submitting fal.ai image job for user ${userId} with model ${model_id} (cost: ${tokenCost} tokens)`);
-
-      // Submit the request to fal.ai queue. fal_webhook makes fal call
-      // falJobWebhook on completion for real-time finalize + email; the client
-      // poll and the reconciler remain as backstops.
-      const submitResponse = await fetch(
-        falQueueSubmitUrl(modelConfig.endpoint, {
-          jobId,
-          userId,
-          webhookSecret
-        }),
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Key ${process.env.FAL_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(falPayload)
-        }
-      );
-
-      if (!submitResponse.ok) {
-        const errorText = await submitResponse.text();
-        console.error(`fal.ai submit error: ${submitResponse.status} - ${errorText}`);
-        throw new Error(`fal.ai API error: ${submitResponse.status}`);
-      }
-
-      const submitResult = await submitResponse.json();
-      const requestId = submitResult.request_id;
-      const statusUrl = submitResult.status_url;
-      const responseUrl = submitResult.response_url;
-
-      if (!requestId || !statusUrl || !responseUrl) {
-        console.error('Missing required fields in fal.ai response:', JSON.stringify(submitResult, null, 2));
-        throw new Error('Invalid response from fal.ai - missing request_id, status_url, or response_url');
-      }
-
-      // Record the provider identity so the webhook/poll/reconciler can
-      // finalize it.
-      await jobRef.update({
-        providerJobId: requestId,
-        statusUrl,
-        responseUrl,
-        providerStatus: 'IN_QUEUE'
-      });
-
-      return {
-        success: true,
-        jobId,
-        status: 'queued',
-        remainingTokens
-      };
-    } catch (error) {
-      console.error('Error submitting image to fal.ai:', error.message);
-
-      // Refund if we already charged, and finalize the job as failed so it
-      // doesn't sit non-terminal until the reconciler's give-up window.
-      await refundFalJobInline(db, userId, jobRef, tokenCost);
-      await jobRef
-        .update({
-          status: 'failed',
-          error: error.message,
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
-        })
-        .catch(() => {});
-
-      // Best-effort temp cleanup.
-      if (tempImagePath) {
-        admin
-          .storage()
-          .bucket()
-          .file(tempImagePath)
-          .delete()
-          .catch(() => {});
-      }
-
-      // Fire-and-forget: write failed generation audit log
-      admin.firestore().collection('generationLog').add({
+      return await submitFalImageJob(db, {
         userId,
-        provider: 'fal',
-        model: modelConfig.endpoint,
-        modelId: model_id,
-        generationType: 'image',
+        jobId,
+        jobRef,
+        webhookSecret,
+        endpoint: modelConfig.endpoint,
+        payload: falPayload,
         tokenCost,
-        status: 'failed',
-        error: error.message,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
-      }).catch(err => console.error('Failed to write generationLog:', err));
-
-      // Check if it's a Firebase HttpsError and rethrow
-      if (
-        error.code &&
-        (error.code.startsWith('resource-exhausted') ||
-          error.code.startsWith('unauthenticated') ||
-          error.code.startsWith('invalid-argument') ||
-          error.code.startsWith('failed-precondition') ||
-          error.code.startsWith('not-found'))
-      ) {
-        throw error;
-      }
-
-      throw new functions.https.HttpsError('internal', `Failed to generate image: ${error.message}`);
+        chargeModelName: modelConfig.name,
+        job: {
+          model: modelConfig.name,
+          modelId: model_id,
+          source,
+          tempFilePath: tempImagePath || null,
+          originalFilename,
+          assetName,
+          // Everything the terminal processor needs to finish the job without a
+          // browser: gallery generationMetadata + the Discord post inputs.
+          generationParams: {
+            model_id,
+            model_name: modelConfig.name,
+            prompt,
+            guidance: guidance_scale,
+            num_inference_steps,
+            scene_id: scene_id || null
+          },
+          // Client extras merged into the saved asset's generationMetadata (the
+          // editor's sceneTitle/cameraState/renderMode — see saveImageToGallery).
+          galleryMetadata: sanitizeGalleryMetadata(gallery_metadata),
+          notify: {
+            email: wantsEmail,
+            pending: wantsEmail,
+            // Editor 4x renders stamp a shared batch identity so the whole
+            // batch produces at most one email (first finisher decides).
+            ...sanitizeNotifyBatch(notify)
+          }
+        }
+      });
+    } catch (error) {
+      await failFalImageJob(db, {
+        userId,
+        jobRef,
+        tokenCost,
+        tempFilePath: tempImagePath,
+        endpoint: modelConfig.endpoint,
+        modelId: model_id,
+        error
+      });
+      throw toFalHttpsError(error);
     }
   });
 
-module.exports = { generateFalImage };
+/**
+ * Write a pending `kind: 'image'` / `provider: 'fal'` job, charge for it,
+ * submit it to fal's queue with our completion webhook, and record the fal
+ * request identity. Completion (gallery save, Discord, email) is the shared
+ * terminal processor's job, reached via falJobWebhook / poll / reconciler.
+ * Throws on any failure; the caller then runs failFalImageJob.
+ *
+ * Used by generateFalImage and by generateReplicateImage's fal failover
+ * (submitImageViaFalFallback).
+ *
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {Object} args
+ * @param {Object} args.job - job-doc fields specific to the caller (model,
+ *   modelId, source, tempFilePath, originalFilename, assetName,
+ *   generationParams, galleryMetadata, notify)
+ * @returns {Promise<{success: true, jobId: string, status: 'queued', remainingTokens: number}>}
+ */
+async function submitFalImageJob(
+  db,
+  { userId, jobId, jobRef, webhookSecret, endpoint, payload, tokenCost, chargeModelName, job }
+) {
+  await jobRef.set({
+    status: 'queued',
+    providerStatus: null,
+    kind: 'image',
+    provider: 'fal',
+    providerJobId: null,
+    statusUrl: null,
+    responseUrl: null,
+    endpoint,
+    tokenCost,
+    tokenCharged: false,
+    refunded: false,
+    webhookSecret,
+    ...job,
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  });
+
+  // Charge at submit and set `tokenCharged` in the same transaction
+  // (chargeGenerationTokens), so every later refund path (poll, webhook,
+  // reconciler) observes tokenCharged:true and refunds exactly once.
+  const { remainingTokens } = await chargeGenerationTokens(db, {
+    userId,
+    jobRef,
+    tokenCost,
+    source: 'image-generation',
+    relatedModel: chargeModelName
+  });
+
+  // Submit the request to fal.ai queue. fal_webhook makes fal call
+  // falJobWebhook on completion for real-time finalize + email; the client
+  // poll and the reconciler remain as backstops.
+  const submitResponse = await fetch(
+    falQueueSubmitUrl(endpoint, { jobId, userId, webhookSecret }),
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Key ${process.env.FAL_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    }
+  );
+
+  if (!submitResponse.ok) {
+    const errorText = await submitResponse.text();
+    console.error(`fal.ai submit error: ${submitResponse.status} - ${errorText}`);
+    throw new Error(`fal.ai API error: ${submitResponse.status}`);
+  }
+
+  const submitResult = await submitResponse.json();
+  const requestId = submitResult.request_id;
+  const statusUrl = submitResult.status_url;
+  const responseUrl = submitResult.response_url;
+
+  if (!requestId || !statusUrl || !responseUrl) {
+    console.error('Missing required fields in fal.ai response:', JSON.stringify(submitResult, null, 2));
+    throw new Error('Invalid response from fal.ai - missing request_id, status_url, or response_url');
+  }
+
+  // Record the provider identity so the webhook/poll/reconciler can
+  // finalize it.
+  await jobRef.update({
+    providerJobId: requestId,
+    statusUrl,
+    responseUrl,
+    providerStatus: 'IN_QUEUE'
+  });
+
+  return { success: true, jobId, status: 'queued', remainingTokens };
+}
+
+/**
+ * Submit-time failure for a fal image job: refund once if charged, finalize
+ * the job as failed (so it doesn't sit non-terminal until the reconciler's
+ * give-up window), delete the staged input, and write the failed
+ * generationLog row. Never throws.
+ */
+async function failFalImageJob(db, { userId, jobRef, tokenCost, tempFilePath, endpoint, modelId, error }) {
+  console.error('Error submitting image to fal.ai:', error.message);
+
+  await refundFalJobInline(db, userId, jobRef, tokenCost);
+  await jobRef
+    .update({
+      status: 'failed',
+      error: error.message,
+      completedAt: admin.firestore.FieldValue.serverTimestamp()
+    })
+    .catch(() => {});
+
+  // Best-effort temp cleanup.
+  if (tempFilePath) {
+    admin.storage().bucket().file(tempFilePath).delete().catch(() => {});
+  }
+
+  // Fire-and-forget: write failed generation audit log
+  db.collection('generationLog').add({
+    userId,
+    provider: 'fal',
+    model: endpoint,
+    modelId: modelId || null,
+    generationType: 'image',
+    tokenCost,
+    status: 'failed',
+    error: error.message,
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  }).catch(err => console.error('Failed to write generationLog:', err));
+}
+
+// Client-facing errors pass through; anything else becomes 'internal'.
+function toFalHttpsError(error) {
+  if (
+    error.code &&
+    (error.code.startsWith('resource-exhausted') ||
+      error.code.startsWith('unauthenticated') ||
+      error.code.startsWith('invalid-argument') ||
+      error.code.startsWith('failed-precondition') ||
+      error.code.startsWith('not-found'))
+  ) {
+    return error;
+  }
+  return new functions.https.HttpsError('internal', `Failed to generate image: ${error.message}`);
+}
+
+/**
+ * generateReplicateImage's failover: submit a Replicate image model to its
+ * `falFallback` endpoint instead (see provider-routing.js). The caller has
+ * already priced the request (outputTier), checked the balance, and staged
+ * the source image. Handles its own failure (refund, job, log, temp file)
+ * and throws an HttpsError marked `falHandled` so the caller rethrows it
+ * without logging a second, Replicate-attributed failure.
+ */
+async function submitImageViaFalFallback(db, {
+  userId,
+  modelId,
+  modelConfig,
+  modelDisplayName,
+  prompt,
+  imageUrl,
+  tempFilePath,
+  outputTier,
+  source,
+  sceneId,
+  guidance,
+  numInferenceSteps,
+  galleryMetadata,
+  notify,
+  wantsEmail
+}) {
+  const fallback = modelConfig.falFallback;
+  // Text-only renders go to the text-to-image endpoint (no image_urls).
+  const endpoint = imageUrl ? fallback.endpoint : fallback.textEndpoint || fallback.endpoint;
+  const tokenCost = outputTier.tokenCost;
+  const jobId = crypto.randomUUID();
+  const webhookSecret = crypto.randomUUID();
+  const jobRef = db.collection('users').doc(userId).collection('generationJobs').doc(jobId);
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+
+  console.log(`Routing ${modelId} to fal (${endpoint}) for user ${userId} (cost: ${tokenCost} tokens)`);
+  try {
+    if (!process.env.FAL_KEY) throw new Error('FAL_KEY secret not loaded');
+    return await submitFalImageJob(db, {
+      userId,
+      jobId,
+      jobRef,
+      webhookSecret,
+      endpoint,
+      payload: buildFalImagePayload(
+        { ...modelConfig, payloadStyle: fallback.payloadStyle },
+        { prompt, imageUrl, resolution: outputTier.resolution }
+      ),
+      tokenCost,
+      chargeModelName: modelDisplayName,
+      job: {
+        model: modelDisplayName,
+        modelId,
+        source,
+        tempFilePath: tempFilePath || null,
+        originalFilename: `ai-image-${stamp}.jpg`,
+        assetName: `AI Image ${stamp}`,
+        generationParams: {
+          model_id: modelId,
+          model_name: modelDisplayName,
+          prompt,
+          guidance,
+          num_inference_steps: numInferenceSteps,
+          resolution: outputTier.resolution,
+          scene_id: sceneId || null
+        },
+        galleryMetadata: sanitizeGalleryMetadata(galleryMetadata),
+        notify: {
+          email: wantsEmail,
+          pending: wantsEmail,
+          ...sanitizeNotifyBatch(notify)
+        }
+      }
+    });
+  } catch (error) {
+    await failFalImageJob(db, { userId, jobRef, tokenCost, tempFilePath, endpoint, modelId, error });
+    const httpsError = toFalHttpsError(error);
+    httpsError.falHandled = true;
+    throw httpsError;
+  }
+}
+
+module.exports = { generateFalImage, submitImageViaFalFallback };
