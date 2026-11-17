@@ -804,6 +804,10 @@ export function useShapeDrawTool(changeTransformMode, isActive) {
         return;
       }
       if (e.key === 'Enter') {
+        // A toolbar button keeps focus after it is clicked (the Shape tool's
+        // own, typically): without this, Enter also "presses" it, which
+        // restarts the tool and deselects the shape just finished (#2163).
+        e.preventDefault();
         finish();
       } else if (e.key === 'Backspace' || e.key === 'Delete') {
         e.preventDefault();
