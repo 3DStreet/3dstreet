@@ -33,6 +33,8 @@ export const REPLICATE_MODELS = {
     type: 'replicate',
     group: 'best-quality',
     logo: '/ui_assets/model-google.png',
+    // Server calls the model endpoint (see public/functions/replicate-models.js).
+    modelName: 'google/nano-banana-pro',
     version: '99256cc418d9ac41854575e2f1c8846ce2defd0c0fb6ff2d5cbc3c826be75bc8',
     estimatedTime: 60,
     includeIn4x: true,
