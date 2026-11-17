@@ -21,6 +21,11 @@ const { MODAL_SECRETS, enqueueModalJob, fetchModalPrediction } = require('./moda
 // reconciler. One-directional require: fal-3d.js does NOT require this module,
 // so there's no cycle.
 const { saveMeshToGallery, fetchFalPrediction, sanitizeGalleryMetadata, sanitizeNotifyBatch } = require('./fal-3d.js');
+// Image models split across Replicate + fal (config/providerRouting).
+// fal-proxy.js requires fal-3d.js and never this module, so the require
+// stays one-directional.
+const { submitImageViaFalFallback } = require('./fal-proxy.js');
+const { getImageProviderRoute } = require('./provider-routing.js');
 // Real-time completion email: the webhook calls this the instant a job finishes
 // so the user isn't waiting on the 10-min reconciler sweep. Shared, idempotent
 // send (the sweep is the backstop). No circular dep: scheduledEmails doesn't
@@ -168,7 +173,8 @@ async function postAIVideoToDiscord(userId, videoUrl, prompt, modelName, duratio
 // processor via webhook + poll + reconciler.
 const generateReplicateImage = functions
   .runWith({
-    secrets: ['REPLICATE_API_TOKEN', 'ALLOWED_PRO_TEAM_DOMAINS'],
+    // FAL_KEY: models with a `falFallback` are split onto fal (provider-routing.js).
+    secrets: ['REPLICATE_API_TOKEN', 'ALLOWED_PRO_TEAM_DOMAINS', 'FAL_KEY'],
     // Creation only (stage the source image + submit); the render is async.
     timeoutSeconds: 120
   })
@@ -254,6 +260,18 @@ const generateReplicateImage = functions
     const db = admin.firestore();
     let tempFilePath = null;
 
+    // Provider mix (provider-routing.js): models with a `falFallback` are
+    // split between Replicate and fal by weight, with a failure breaker.
+    // Resolve the config key even for legacy version-hash callers.
+    const modelKey =
+      model_id && REPLICATE_MODELS[model_id]
+        ? model_id
+        : Object.keys(REPLICATE_MODELS).find((k) => REPLICATE_MODELS[k] === modelConfig) || null;
+    const route = await getImageProviderRoute(modelKey, modelConfig);
+    if (route.reason !== 'single-provider') {
+      console.log(`Image route for ${modelKey}: ${route.provider} (${route.reason})`);
+    }
+
     try {
       const replicate = new Replicate({
         auth: process.env.REPLICATE_API_TOKEN,
@@ -299,6 +317,26 @@ const generateReplicateImage = functions
         // Get the public URL
         imageUrl = `https://storage.googleapis.com/${bucket.name}/temp/${filename}`;
         tempFilePath = `temp/${filename}`;
+      }
+
+      if (route.provider === 'fal') {
+        return await submitImageViaFalFallback(db, {
+          userId,
+          modelId: modelKey,
+          modelConfig,
+          modelDisplayName,
+          prompt,
+          imageUrl: imageUrl || null,
+          tempFilePath,
+          outputTier,
+          source,
+          sceneId: scene_id,
+          guidance,
+          numInferenceSteps: num_inference_steps,
+          galleryMetadata: gallery_metadata,
+          notify,
+          wantsEmail
+        });
       }
 
 
@@ -468,6 +506,8 @@ const generateReplicateImage = functions
         remainingTokens
       };
     } catch (error) {
+      // The fal path already refunded, failed the job, and logged.
+      if (error.falHandled) throw error;
       console.error('Error creating image prediction:', error);
 
       // Best-effort cleanup of the staged input on failure.
@@ -478,6 +518,9 @@ const generateReplicateImage = functions
         userId,
         provider: 'replicate',
         model: modelConfig?.modelName || AI_MODEL_NAMES[modelVersionToUse] || modelVersionToUse,
+        // Keyed like the terminal rows so the SRE check and the provider
+        // breaker see submit-time failures too.
+        modelId: modelKey,
         generationType: 'image',
         tokenCost,
         status: 'failed',
