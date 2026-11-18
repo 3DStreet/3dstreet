@@ -3,7 +3,10 @@ const {
   seedSegmentColliders,
   seedObstacleColliders
 } = require('./scene-colliders.js');
-const { attachTilesColliders } = require('./tiles-colliders.js');
+const {
+  attachTilesColliders,
+  TILES_SAFETY_NET_Y
+} = require('./tiles-colliders.js');
 
 /**
  * fly-mode
@@ -231,14 +234,19 @@ AFRAME.registerComponent('fly-mode', {
       mesh.setAttribute('helicopter-mesh', meshData || '');
       heli.appendChild(mesh);
       sceneEl.appendChild(heli);
+      this._playerEl = heli;
 
       // Google 3D Tiles get real trimesh colliders (terrain +
       // photogrammetry buildings). When a tileset is present the flat
       // ground pad would sit ABOVE tile terrain that dips below y=0,
       // so it drops to a deep safety net that only catches falls
-      // through tile holes.
-      this._tilesColliders = attachTilesColliders(sceneEl);
-      const padY = this._tilesColliders ? -250 : -0.05;
+      // through tile holes. The tiles build nearest-to-spawn first and
+      // the rig holds at its spawn until real ground is under it
+      // (#2030) — see tiles-colliders.js / play-mode-helicopter.js.
+      this._tilesColliders = attachTilesColliders(sceneEl, {
+        focus: spawnPos
+      });
+      const padY = this._tilesColliders ? TILES_SAFETY_NET_Y : -0.05;
       // Big flat ground plane — helicopters outrun the car's 200m pad
       // quickly, so give the sky sandbox a wider floor.
       physics.addStaticCuboid(
@@ -256,6 +264,7 @@ AFRAME.registerComponent('fly-mode', {
 
     this.cleanup = () => {
       this._activationToken = null;
+      this._playerEl = null;
       if (heli && heli.parentNode) heli.parentNode.removeChild(heli);
       flyEntity.object3D.visible = prevVisible;
       if (this._obstacleListeners) {
@@ -270,6 +279,20 @@ AFRAME.registerComponent('fly-mode', {
       }
       physics.deactivate();
     };
+  },
+
+  /**
+   * Keep the tile collider build queue focused on the player, so tiles
+   * entering the LOD selection during a long flight build under the
+   * helicopter first (see tiles-colliders.js, #2030).
+   */
+  tick: function () {
+    if (!this._tilesColliders || !this._playerEl) return;
+    // Until the rig has a physics body its entity sits at the origin —
+    // keep the spawn focus until then.
+    const rig = this._playerEl.components['play-mode-helicopter'];
+    if (!rig || !rig.chassisBody) return;
+    this._tilesColliders.setFocus(this._playerEl.object3D.position);
   },
 
   onPlayStop: function () {

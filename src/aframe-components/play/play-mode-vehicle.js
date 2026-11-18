@@ -10,7 +10,10 @@ const {
   seedSegmentColliders,
   seedObstacleColliders
 } = require('./scene-colliders.js');
-const { attachTilesColliders } = require('./tiles-colliders.js');
+const {
+  attachTilesColliders,
+  TILES_SAFETY_NET_Y
+} = require('./tiles-colliders.js');
 
 /**
  * play-mode-vehicle
@@ -1437,6 +1440,7 @@ AFRAME.registerComponent('drive-mode', {
     car.setAttribute('data-no-transform', '');
     car.setAttribute('play-mode-vehicle', parts.join('; '));
     sceneEl.appendChild(car);
+    this._playerEl = car;
 
     if (hasCustomMesh) {
       const wrapper = document.createElement('a-entity');
@@ -1479,8 +1483,12 @@ AFRAME.registerComponent('drive-mode', {
       // them. With a tileset present, the flat ground pad would sit
       // ABOVE tile terrain that dips below y=0 — drop it to a deep
       // safety net that only catches falls through tile holes.
-      this._tilesColliders = attachTilesColliders(sceneEl);
-      const padY = this._tilesColliders ? -250 : -0.05;
+      // Tiles build nearest-to-spawn first so the ground under the
+      // car has a collider before anything else (#2030).
+      this._tilesColliders = attachTilesColliders(sceneEl, {
+        focus: spawnPos
+      });
+      const padY = this._tilesColliders ? TILES_SAFETY_NET_Y : -0.05;
       // Flat ground plane — catches the player when off-street or in
       // an empty scene with just a driveable vehicle.
       physics.addStaticCuboid(
@@ -1498,6 +1506,7 @@ AFRAME.registerComponent('drive-mode', {
 
     this.cleanup = () => {
       this._activationToken = null;
+      this._playerEl = null;
       if (car && car.parentNode) car.parentNode.removeChild(car);
       driveEntity.object3D.visible = prevVisible;
       if (this._vehicleColliderListeners) {
@@ -1512,6 +1521,20 @@ AFRAME.registerComponent('drive-mode', {
       }
       physics.deactivate();
     };
+  },
+
+  /**
+   * Keep the tile collider build queue focused on the player so tiles
+   * entering the LOD selection during a drive build under the car
+   * first (see tiles-colliders.js, #2030).
+   */
+  tick: function () {
+    if (!this._tilesColliders || !this._playerEl) return;
+    // Until the rig has a physics body its entity sits at the origin —
+    // keep the spawn focus until then.
+    const rig = this._playerEl.components['play-mode-vehicle'];
+    if (!rig || !rig.chassisBody) return;
+    this._tilesColliders.setFocus(this._playerEl.object3D.position);
   },
 
   onPlayStop: function () {

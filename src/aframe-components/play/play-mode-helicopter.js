@@ -5,6 +5,7 @@ const {
   computeHeliForces
 } = require('./heli-flight-model.js');
 const { HeliSound } = require('./heli-sound.js');
+const { isSafetyNetSurface } = require('./tiles-colliders.js');
 
 /**
  * play-mode-helicopter
@@ -83,6 +84,17 @@ const ROTOR_VISUAL_RUN = 32;
 const ROTOR_VISUAL_WORK = 8;
 // Downward ground probe for the approach taper + radar-altitude HUD.
 const GROUND_PROBE_RANGE = 400; // m
+// Spawn hold (#2030): the body is pinned at its spawn pose with gravity
+// off until the ground probe finds a real surface below — a street
+// slab, an obstacle, or a Google 3D Tiles trimesh — rather than the
+// deep tiles safety net (or nothing). Tile colliders are built on a
+// timer after Play starts, so without the hold a helicopter parked at
+// ground level free-falls (rotor still unspooled) through its tile
+// before the collider exists and ends up stuck underneath it when it
+// arrives. Released regardless after this much simulation time so a
+// tile that never builds (over budget) still lets the flight start —
+// the body then drops to the safety net, as before.
+const SPAWN_HOLD_TIMEOUT = 4; // s
 
 // ---------------------------------------------------------------------
 // Component: the flying player rig. Attach to an entity and it becomes
@@ -317,8 +329,13 @@ AFRAME.registerComponent('play-mode-helicopter', {
       // (0.5 m per 60 Hz sub-step), enough to tunnel through the
       // paper-thin 3D-tiles trimeshes without swept checks.
       .setCcdEnabled(true)
-      .setCanSleep(false);
+      .setCanSleep(false)
+      // Weightless until the spawn hold releases (see flightStep).
+      .setGravityScale(0);
     const chassisBody = world.createRigidBody(bodyDesc);
+    // Seconds held at spawn so far; null once released.
+    this._spawnHold = 0;
+    this.groundSurfaceY = null;
     const chassisCollider = world.createCollider(
       R.ColliderDesc.cuboid(COLLIDER_HALF.x, COLLIDER_HALF.y, COLLIDER_HALF.z)
         .setTranslation(0, 0, COLLIDER_OFFSET_Z)
@@ -405,12 +422,15 @@ AFRAME.registerComponent('play-mode-helicopter', {
    * Height of the wheels above the nearest STATIC surface straight
    * below (street, obstacles, 3D tiles). Kinematic traffic twins and
    * other dynamic bodies are excluded — a bus passing underneath must
-   * not brake a descent. Infinity when nothing is within range.
+   * not brake a descent. Infinity when nothing is within range. Also
+   * records that surface's world Y in `groundSurfaceY` (null when
+   * nothing is below) for the spawn hold.
    */
   probeHeightAboveGround: function () {
     const R = this.system.RAPIER;
     const world = this.system.world;
     const body = this.chassisBody;
+    this.groundSurfaceY = null;
     if (!R || !world || !body) return Infinity;
     const t = body.translation();
     const ray =
@@ -432,7 +452,37 @@ AFRAME.registerComponent('play-mode-helicopter', {
       body
     );
     if (!hit) return Infinity;
+    // Unit ray straight down: the hit is timeOfImpact metres below.
+    this.groundSurfaceY = t.y - hit.timeOfImpact;
     return Math.max(0, hit.timeOfImpact - COLLIDER_HALF.y);
+  },
+
+  /**
+   * Spawn hold (#2030): true while the body must stay pinned at its
+   * spawn — nothing but the tiles safety net (or nothing at all) is
+   * under it yet and the timeout hasn't run out. Advances the hold
+   * clock by `dt`.
+   */
+  updateSpawnHold: function (dt) {
+    if (this._spawnHold === null) return false;
+    this._spawnHold += dt;
+    const groundReady =
+      this.groundSurfaceY !== null && !isSafetyNetSurface(this.groundSurfaceY);
+    if (!groundReady && this._spawnHold < SPAWN_HOLD_TIMEOUT) return true;
+    this._spawnHold = null;
+    this.chassisBody.setGravityScale(1, true);
+    return false;
+  },
+
+  /** Pin the body at the spawn pose, motionless and force-free. */
+  holdAtSpawn: function () {
+    const body = this.chassisBody;
+    body.setTranslation(this.data.spawnPosition, true);
+    body.setRotation(this.spawnQuat, true);
+    body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+    body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+    body.resetForces(true);
+    body.resetTorques(true);
   },
 
   flightStep: function (dt) {
@@ -447,7 +497,14 @@ AFRAME.registerComponent('play-mode-helicopter', {
       yawRate: this.data.yawRate,
       stability: this.data.stability
     };
+    // The rotor spools up during the hold too — the helicopter reads
+    // as winding up on the pad, not frozen.
     stepHeliState(this.state, axes, dt, params);
+    if (this.updateSpawnHold(dt)) {
+      this.holdAtSpawn();
+      this.descentScale = 1;
+      return;
+    }
     const { force, torque, thrustFrac, descentScale } = computeHeliForces(
       this.state,
       axes,

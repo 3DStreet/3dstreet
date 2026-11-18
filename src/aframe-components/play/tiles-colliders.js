@@ -46,9 +46,21 @@
  *     silently stopped seeding colliders far from the spawn point (the
  *     other "fell through the ground far away" report).
  *
- * Lifecycle: `attachTilesColliders(sceneEl)` after the physics world is
- * active; call `.dispose()` in the play session's cleanup (before
- * `physics.deactivate()`, though disposal after is also safe).
+ *   - The queue drains NEAREST-FIRST around a focus point (the player
+ *     spawn, passed by the play bootstraps): `visibleTiles` iterates in
+ *     traversal order, so the tile under the player used to build at
+ *     some arbitrary point in a multi-second drain while the player
+ *     body was already falling under gravity — a helicopter parked at
+ *     ground level sank through its tile before the collider existed
+ *     and was stuck underground when it arrived (#2030). With the
+ *     spawn tile built in the first pass, and the player rig holding
+ *     at its spawn until a surface other than the safety net is under
+ *     it (play-mode-helicopter `spawn hold`), that window is closed.
+ *
+ * Lifecycle: `attachTilesColliders(sceneEl, { focus })` after the
+ * physics world is active; call `.dispose()` in the play session's
+ * cleanup (before `physics.deactivate()`, though disposal after is
+ * also safe).
  */
 
 const QUEUE_INTERVAL_MS = 120; // drain cadence
@@ -64,6 +76,41 @@ const MAX_TILE_VERTICES = 200000; // skip absurd single tiles
 // most recent swaps (the ones under the player) keep their cover.
 const MAX_RETIRED_TILES = 40;
 const MAX_TOTAL_TRIANGLES = 2000000; // stop seeding past this budget
+// Where the play bootstraps park the flat ground pad when a tileset is
+// present: a deep safety net that only catches falls through tile
+// holes, well below any terrain the tiles themselves cover. Anything
+// a downward probe hits at or below this level is the net, NOT
+// ground — the tile under the probe has no collider (yet).
+const TILES_SAFETY_NET_Y = -250;
+
+/**
+ * True when a static surface at world Y `surfaceY` is the deep safety
+ * net rather than real (tile / street / obstacle) ground.
+ */
+function isSafetyNetSurface(surfaceY) {
+  return (
+    typeof surfaceY === 'number' &&
+    Number.isFinite(surfaceY) &&
+    surfaceY <= TILES_SAFETY_NET_Y + 1
+  );
+}
+
+/**
+ * Distance from a point (TILESET-LOCAL frame) to a tile's bounding
+ * volume, for the nearest-first build order. Infinity when the tile
+ * carries no usable bounding volume (then it sorts last, in insertion
+ * order — the pre-#2030 behavior).
+ */
+function tileDistanceToPoint(tile, pointLocal) {
+  // 3d-tiles-renderer 0.5 keeps it on `engineData`; older builds on
+  // `cached`.
+  const bv =
+    (tile && tile.engineData && tile.engineData.boundingVolume) ||
+    (tile && tile.cached && tile.cached.boundingVolume);
+  if (!bv || typeof bv.distanceToPoint !== 'function') return Infinity;
+  const d = bv.distanceToPoint(pointLocal);
+  return Number.isFinite(d) ? d : Infinity;
+}
 
 /**
  * Bake every mesh under `sceneObj` into one world-space vertex/index
@@ -121,9 +168,17 @@ function collectWorldGeometry(sceneObj, maxVertices) {
 
 /** Collider bookkeeping for one TilesRenderer instance. */
 class TilesColliderSet {
-  constructor(physics, tiles) {
+  /**
+   * @param {Object} physics — the active `play-mode-physics` system
+   * @param {Object} tiles — the TilesRenderer to mirror
+   * @param {{ focus?: {x,y,z} }} [opts] — `focus`: world-space point
+   *   whose surrounding tiles build first (the player spawn)
+   */
+  constructor(physics, tiles, opts) {
     this.physics = physics;
     this.tiles = tiles;
+    this.focus = null;
+    this.setFocus(opts && opts.focus);
     this.bodies = new Map(); // tile -> { body, triangles }
     this.queue = new Set(); // tiles awaiting a trimesh build
     // Tiles that left the LOD selection keep their body here until the
@@ -152,6 +207,50 @@ class TilesColliderSet {
     }
 
     this.interval = setInterval(() => this.drainQueue(), QUEUE_INTERVAL_MS);
+  }
+
+  /**
+   * Point (world frame) whose surrounding tiles the queue builds first.
+   * Pass null to fall back to insertion order.
+   */
+  setFocus(point) {
+    if (!point) {
+      this.focus = null;
+      return;
+    }
+    this.focus = this.focus || new THREE.Vector3();
+    this.focus.set(point.x || 0, point.y || 0, point.z || 0);
+  }
+
+  /**
+   * Queued tiles ordered nearest-first around the focus (tileset-local
+   * frame, since bounding volumes live there). Stable for ties, so an
+   * unknown-distance set keeps insertion order.
+   */
+  _queuedByDistance() {
+    const tiles = [...this.queue];
+    if (!this.focus || tiles.length < 2) return tiles;
+    const local = this._focusLocal || (this._focusLocal = new THREE.Vector3());
+    local.copy(this.focus);
+    // TilesRenderer keeps `group.matrixWorldInverse` current for exactly
+    // this kind of world -> tileset-local transform.
+    const group = this.tiles.group;
+    if (group && group.matrixWorldInverse) {
+      local.applyMatrix4(group.matrixWorldInverse);
+    } else if (group && group.matrixWorld) {
+      const inv = this._invMat || (this._invMat = new THREE.Matrix4());
+      inv.copy(group.matrixWorld).invert();
+      local.applyMatrix4(inv);
+    }
+    const dist = new Map();
+    for (const t of tiles) dist.set(t, tileDistanceToPoint(t, local));
+    tiles.sort((a, b) => {
+      const da = dist.get(a);
+      const db = dist.get(b);
+      if (da === db) return 0;
+      return da < db ? -1 : 1;
+    });
+    return tiles;
   }
 
   enqueue(tile) {
@@ -194,7 +293,9 @@ class TilesColliderSet {
     // freed world.
     if (!this.physics.active || !this.physics.world) return;
     let built = 0;
-    for (const tile of this.queue) {
+    // Nearest to the focus first so the ground under the player has a
+    // collider before anything else (see the file note, #2030).
+    for (const tile of this._queuedByDistance()) {
       if (built >= TILES_PER_PASS) break;
       this.queue.delete(tile);
       const scene = tile.engineData && tile.engineData.scene;
@@ -257,21 +358,28 @@ class TilesColliderSet {
  * Attach tile colliders for every active [google-maps-aerial] tileset
  * in the scene. Call AFTER `play-mode-physics` is active.
  *
- * @returns {{ dispose: Function }|null} handle, or null when the scene
- *   has no tileset (callers use that to keep the normal ground pad).
+ * @param {Element} sceneEl
+ * @param {{ focus?: {x,y,z} }} [opts] — `focus`: world-space point
+ *   (the player spawn) whose tiles build first
+ * @returns {{ dispose: Function, setFocus: Function }|null} handle, or
+ *   null when the scene has no tileset (callers use that to keep the
+ *   normal ground pad).
  */
-function attachTilesColliders(sceneEl) {
+function attachTilesColliders(sceneEl, opts) {
   const physics = sceneEl.systems['play-mode-physics'];
   if (!physics || !physics.active) return null;
   const sets = [];
   sceneEl.querySelectorAll('[google-maps-aerial]').forEach((el) => {
     const comp = el.components && el.components['google-maps-aerial'];
     if (comp && comp.tiles) {
-      sets.push(new TilesColliderSet(physics, comp.tiles));
+      sets.push(new TilesColliderSet(physics, comp.tiles, opts));
     }
   });
   if (!sets.length) return null;
   return {
+    setFocus(point) {
+      for (const s of sets) s.setFocus(point);
+    },
     dispose() {
       for (const s of sets) s.dispose();
       sets.length = 0;
@@ -282,7 +390,10 @@ function attachTilesColliders(sceneEl) {
 module.exports = {
   attachTilesColliders,
   collectWorldGeometry,
+  isSafetyNetSurface,
+  tileDistanceToPoint,
   MAX_RETIRED_TILES,
+  TILES_SAFETY_NET_Y,
   // Exported for unit tests (budget/retirement bookkeeping).
   TilesColliderSet
 };
