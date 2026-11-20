@@ -189,9 +189,13 @@ There is no undo of the sticky style itself. It is a preference, not scene
 state, and sits outside the undo history — the same class as the units
 preference.
 
-There is also no swatch showing the current default and no reset control. The
-escape route from any style, including an invisible one, is to select a shape
-(a newly drawn one arrives selected) and set a visible value.
+There is no swatch showing the current default. The way back to plain is the
+Style section's **Reset to default** button: it writes every appearance
+property that differs from `DEFAULT_SHAPE_STYLE` to the selected shape in one
+undo step, and that write reseats the sticky style through the usual path, so
+the next shape is drawn plain too. Angle and Offsets are not appearance and
+are left alone. The same route works for any style, including an invisible one:
+select a shape (a newly drawn one arrives selected) and reset it.
 
 ### Validation, in one rule
 

@@ -2621,6 +2621,12 @@
   "shapeSidebar.patternSpacingHelp": {
     "defaultMessage": "Distance between the centers of neighboring stripes or dots."
   },
+  "shapeSidebar.resetStyle": {
+    "defaultMessage": "Reset to default"
+  },
+  "shapeSidebar.resetStyleHelp": {
+    "defaultMessage": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
+  },
   "shapeSidebar.reverse": {
     "defaultMessage": "Reverse"
   },
@@ -2647,6 +2653,9 @@
   },
   "shapeSidebar.stripeWidthHelp": {
     "defaultMessage": "Width of each stripe."
+  },
+  "shapeSidebar.style": {
+    "defaultMessage": "Style"
   },
   "shapeSidebar.styleTitle": {
     "defaultMessage": "Style"

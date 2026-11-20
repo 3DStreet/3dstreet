@@ -183,7 +183,7 @@ function rowByLabel(container, text) {
     (row) =>
       (
         row.querySelector('.fill-help-trigger') || row.querySelector('.text')
-      ).textContent.trim() === text
+      )?.textContent.trim() === text
   );
 }
 
@@ -299,6 +299,61 @@ describe('the shape Style section', () => {
       const writes = executed.slice(before).map((e) => e.payload.property);
       expect(writes).toEqual(['fillTint']);
     }
+  });
+});
+
+describe('Reset to default', () => {
+  const resetButton = (container) =>
+    [...container.querySelectorAll('button')].find(
+      (b) => b.textContent === 'Reset to default'
+    );
+
+  it('puts every appearance property back in one undo step, leaving Angle and Offsets', () => {
+    const styled = {
+      lineColor: '#ff0000',
+      lineWidth: 0.4,
+      fillMaterial: 'grass',
+      fillOpacity: 100,
+      fillTint: '#00ff00',
+      fillPattern: 'stripes',
+      fillPatternOpacity: 50,
+      fillPatternColor: '#0000ff',
+      fillPatternSpacing: 2,
+      fillPatternWidth: 0.5,
+      fillAngle: 30,
+      fillOffsetAlong: 1.5,
+      fillOffsetAcross: -0.5
+    };
+    const entity = makeShape(styled);
+    const { container } = renderPanel(entity);
+    act(() => {
+      fireEvent.click(resetButton(container));
+    });
+    const { data } = entity.components.shape;
+    for (const [k, s] of Object.entries(SCHEMA)) {
+      if (
+        k === 'closed' ||
+        k.startsWith('fillAngle') ||
+        k.startsWith('fillOffset')
+      ) {
+        continue;
+      }
+      expect(data[k], k).toBe(s.default);
+    }
+    expect(data.closed).toBe(true);
+    expect(data.fillAngle).toBe(30);
+    expect(data.fillOffsetAlong).toBe(1.5);
+    expect(data.fillOffsetAcross).toBe(-0.5);
+    expect(executed.map((e) => e.type)).toEqual(['multi']);
+    expect(inspector.history.undos).toHaveLength(1);
+    act(() => inspector.history.undo());
+    expect(data.fillPattern).toBe('stripes');
+    expect(data.lineColor).toBe('#ff0000');
+  });
+
+  it('is disabled when the shape already has the default style', () => {
+    const { container } = renderPanel(makeShape({ fillAngle: 45 }));
+    expect(resetButton(container).disabled).toBe(true);
   });
 });
 

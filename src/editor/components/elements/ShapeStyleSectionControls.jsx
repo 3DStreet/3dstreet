@@ -11,7 +11,9 @@ import ColorWidget from '../widgets/ColorWidget';
 import NumberWidget from '../widgets/NumberWidget';
 import SelectWidget from '../widgets/SelectWidget';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
+import { Button } from './Button';
 import Events from '../../lib/Events';
+import { DEFAULT_SHAPE_STYLE } from '../../lib/shapeStyle';
 import useStore from '@/store.js';
 import {
   FILL_MATERIALS,
@@ -125,6 +127,16 @@ const messages = defineMessages({
     id: 'shapeSidebar.fillOffsetHelp',
     defaultMessage:
       'Slides the pattern and texture along and across their direction.'
+  },
+  style: { id: 'shapeSidebar.style', defaultMessage: 'Style' },
+  resetStyle: {
+    id: 'shapeSidebar.resetStyle',
+    defaultMessage: 'Reset to default'
+  },
+  resetStyleHelp: {
+    id: 'shapeSidebar.resetStyleHelp',
+    defaultMessage:
+      'Sets the line and fill back to the plain default. New shapes are drawn with it too.'
   }
 });
 
@@ -341,6 +353,20 @@ export const ShapeStyleSectionControls = ({ entity }) => {
       return;
     }
     update('fillMaterial', value);
+  };
+
+  // Every appearance property that differs from the cold-start default, in
+  // one undo step. Writing the selected shape also reseats the sticky style
+  // (shapeStyle.js), so the next shape drawn is plain too. Angle and Offsets
+  // are not appearance (see SHAPE_STYLE_SPEC) and are left as they are.
+  const styleResets = Object.entries(DEFAULT_SHAPE_STYLE)
+    .filter(([property, value]) => data[property] !== value)
+    .map(([property, value]) => [
+      'entityupdate',
+      { entity, component: COMPONENT, property, value }
+    ]);
+  const onResetStyle = () => {
+    if (styleResets.length) AFRAME.INSPECTOR.execute('multi', styleResets);
   };
 
   const unit = units === 'imperial' ? 'ft' : 'm';
@@ -583,6 +609,19 @@ export const ShapeStyleSectionControls = ({ entity }) => {
           </Tooltip.Provider>
         </div>
       </Collapsible>
+      <div className="propertyRow">
+        <div className="fakePropertyRowLabel">{t(messages.style)}</div>
+        <div className="fakePropertyRowValue">
+          <Button
+            variant="toolbtn"
+            onClick={onResetStyle}
+            disabled={!styleResets.length}
+            title={t(messages.resetStyleHelp)}
+          >
+            {t(messages.resetStyle)}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

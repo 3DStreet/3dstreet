@@ -1021,7 +1021,10 @@
     "shapeTool.snapOff": "Off",
     "shapeDraw.closeRefused": "This shape can't close here. Add another point, or press Enter to finish it open.",
     "shapeTool.openPanelOnSelect": "Open this panel when the Shape Tool is selected",
-    "shapeTool.showAngles": "Angles"
+    "shapeTool.showAngles": "Angles",
+    "shapeSidebar.style": "Style",
+    "shapeSidebar.resetStyle": "Reset to default",
+    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2045,7 +2048,10 @@
     "shapeTool.snapOff": "Off",
     "shapeDraw.closeRefused": "This shape can't close here. Add another point, or press Enter to finish it open.",
     "shapeTool.openPanelOnSelect": "Open this panel when the Shape Tool is selected",
-    "shapeTool.showAngles": "Angles"
+    "shapeTool.showAngles": "Angles",
+    "shapeSidebar.style": "Style",
+    "shapeSidebar.resetStyle": "Reset to default",
+    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -3069,6 +3075,9 @@
     "shapeTool.snapOff": "Off",
     "shapeDraw.closeRefused": "This shape can't close here. Add another point, or press Enter to finish it open.",
     "shapeTool.openPanelOnSelect": "Open this panel when the Shape Tool is selected",
-    "shapeTool.showAngles": "Angles"
+    "shapeTool.showAngles": "Angles",
+    "shapeSidebar.style": "Style",
+    "shapeSidebar.resetStyle": "Reset to default",
+    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
   }
 }
