@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>3DStreet · WebGPU Buildings MVP</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <style>
+      html, body { margin: 0; height: 100%; background: #0b0d12; font-family: ui-monospace, Menlo, Consolas, monospace; }
+      #hud {
+        position: fixed; top: 12px; left: 12px; z-index: 10;
+        background: rgba(8, 10, 16, 0.78); color: #e7ecf3;
+        padding: 12px 14px; border-radius: 8px; font-size: 12px; line-height: 1.5;
+        max-width: 360px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(4px);
+      }
+      #hud h1 { font-size: 13px; margin: 0 0 6px; letter-spacing: 0.02em; }
+      #hud .ok { color: #5fe39a; }
+      #hud .bad { color: #ff7a7a; }
+      #hud .warn { color: #ffd166; }
+      #hud .dim { color: #8b95a7; }
+      #hud code { color: #9ec1ff; }
+    </style>
+
+    <!--
+      Importmap is the whole trick (issue #1763).
+
+      A-Frame's ESM build (`aframe-master.module.min.js`) has exactly ONE external
+      import: `import * as THREE from 'three'`. So whatever we map `three` to becomes
+      the THREE that A-Frame's renderer, geometry, and component code all use.
+
+      We point it at three.js's `three.webgpu.js` bundle. That bundle exports
+      `WebGPURenderer` and does NOT export the legacy `WebGLRenderer`. A-Frame master's
+      a-scene picks its renderer with:
+
+          ['WebGLRenderer', 'WebGPURenderer'].find(x => THREE[x])
+
+      Since THREE.WebGLRenderer is now undefined, A-Frame instantiates
+      THREE.WebGPURenderer automatically — no monkeypatching of A-Frame required.
+
+      All four specifiers resolve to the SAME pinned three.js commit so the mrdoob
+      city generators (three/webgpu + three/tsl) and A-Frame share one THREE instance.
+    -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@6ee0a4228d78ecb4200d6494ceabd3413541d68a/build/three.webgpu.js",
+          "three/webgpu": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@6ee0a4228d78ecb4200d6494ceabd3413541d68a/build/three.webgpu.js",
+          "three/tsl": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@6ee0a4228d78ecb4200d6494ceabd3413541d68a/build/three.tsl.js",
+          "three/addons/": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@6ee0a4228d78ecb4200d6494ceabd3413541d68a/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="hud">
+      <h1>WebGPU buildings in A-Frame — MVP</h1>
+      <div id="hud-lines"><span class="dim">booting…</span></div>
+    </div>
+
+    <script type="module">
+      // 1) Pull in the WebGPU build of three (gives us WebGPURenderer + the TSL node system).
+      import * as THREE from 'three/webgpu';
+
+      // 2) Import A-Frame's ESM build. Its bare `import ... from 'three'` resolves through
+      //    the importmap above to the SAME three.webgpu.js — so AFRAME and THREE agree.
+      await import('https://cdn.jsdelivr.net/gh/aframevr/aframe@6a054e85953bbcc71854bcd64f9abde0897be649/dist/aframe-master.module.min.js');
+
+      // 3) The mrdoob procedural skyscraper generator + its TSL material (issue #1763).
+      const { uniform } = await import('three/tsl');
+      const { SkyscraperGenerator, createSkyscraperMaterial, pickBuildingColor } =
+        await import('three/addons/generators/city/SkyscraperGenerator.js');
+
+      const hud = document.getElementById('hud-lines');
+      function setHud(lines) { hud.innerHTML = lines.join('<br/>'); }
+
+      // ---------------------------------------------------------------------------
+      // A-Frame component: wraps one mrdoob SkyscraperGenerator mesh as an entity.
+      // The generator returns a single THREE.Mesh that already carries the WebGPU
+      // (TSL) node material, so we just hang it off the entity's object3D.
+      // ---------------------------------------------------------------------------
+      AFRAME.registerComponent('webgpu-skyscraper', {
+        schema: {
+          seed: { default: 7 },
+          height: { default: 100 },
+          width: { default: 34 },
+          depth: { default: 28 },
+          floorHeight: { default: 4 },
+          bayWidth: { default: 2.6 },
+          chamfer: { default: 5 },
+          setback: { default: 1.5 }
+        },
+        init() {
+          const d = this.data;
+
+          // One flat masonry colour per building, exposed as a TSL uniform so the
+          // shared material code can recolour without recompiling (mrdoob pattern).
+          const baseColor = uniform(new THREE.Color(pickBuildingColor(d.seed)));
+          const material = createSkyscraperMaterial(baseColor);
+
+          const generator = new SkyscraperGenerator({
+            seed: d.seed,
+            totalHeight: d.height,
+            footprint: { width: d.width, depth: d.depth },
+            floorHeight: d.floorHeight,
+            bayWidth: d.bayWidth,
+            chamferWidth: d.chamfer,
+            setbackDepth: d.setback
+          }, material);
+
+          const building = generator.build();
+          building.castShadow = true;
+          building.receiveShadow = true;
+          this.el.setObject3D('mesh', building);
+        },
+        remove() {
+          const mesh = this.el.getObject3D('mesh');
+          if (mesh) { mesh.geometry?.dispose?.(); this.el.removeObject3D('mesh'); }
+        }
+      });
+
+      // ---------------------------------------------------------------------------
+      // Build the scene in JS (after registering the component) so A-Frame never
+      // tries to init an entity whose component isn't defined yet.
+      // ---------------------------------------------------------------------------
+      const scene = document.createElement('a-scene');
+      // ACES + exposure to match the mrdoob look; A-Frame maps these onto the renderer.
+      scene.setAttribute('renderer', 'antialias: true; colorManagement: true; toneMapping: ACESFilmic; exposure: 0.7');
+      scene.setAttribute('background', 'color: #aec6df');
+      scene.setAttribute('shadow', 'type: pcfsoft');
+
+      scene.innerHTML = `
+        <a-entity light="type: ambient; color: #bcd2ef; intensity: 0.6"></a-entity>
+        <a-entity
+          light="type: directional; color: #fff4e8; intensity: 3; castShadow: true;
+                 shadowMapWidth: 2048; shadowMapHeight: 2048;
+                 shadowCameraLeft: -200; shadowCameraRight: 200;
+                 shadowCameraTop: 200; shadowCameraBottom: -200;
+                 shadowCameraFar: 1000"
+          position="120 180 90"></a-entity>
+
+        <!-- three mrdoob towers, each its own procedural seed -->
+        <a-entity webgpu-skyscraper="seed: 7;  height: 120; width: 34; depth: 28" position="0 0 0"></a-entity>
+        <a-entity webgpu-skyscraper="seed: 23; height: 84;  width: 26; depth: 30" position="-70 0 -30"></a-entity>
+        <a-entity webgpu-skyscraper="seed: 51; height: 150; width: 30; depth: 24" position="78 0 -55"></a-entity>
+
+        <a-plane rotation="-90 0 0" width="2000" height="2000" color="#5d6b78"
+                 shadow="receive: true" position="0 0 0"></a-plane>
+
+        <a-entity id="rig" position="150 75 200">
+          <a-camera fov="45" wasd-controls="fly: true; acceleration: 200" look-controls>
+          </a-camera>
+        </a-entity>
+      `;
+      document.body.appendChild(scene);
+
+      // Aim the camera at the towers.
+      scene.addEventListener('loaded', async () => {
+        const cam = scene.querySelector('a-camera');
+        cam.object3D.lookAt(new THREE.Vector3(0, 55, 0));
+
+        const renderer = scene.renderer;
+
+        // A-Frame master does not await renderer.init(); WebGPURenderer self-inits on
+        // the first frame, but we await it explicitly here before baking the IBL.
+        try { if (renderer.init) await renderer.init(); } catch (e) { /* WebGL backend fallback */ }
+
+        // A neutral image-based environment so the PBR/TSL glass has something to
+        // reflect (otherwise the standard-node material reads flat).
+        try {
+          const { RoomEnvironment } = await import('three/addons/environments/RoomEnvironment.js');
+          const pmrem = new THREE.PMREMGenerator(renderer);
+          scene.object3D.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+          scene.object3D.environmentIntensity = 0.35;
+        } catch (e) { console.warn('IBL skipped:', e); }
+
+        reportStatus(renderer);
+      });
+
+      function reportStatus(renderer) {
+        const hasGPU = !!navigator.gpu;
+        const isWebGPU = !!renderer?.isWebGPURenderer;
+        const backend = renderer?.backend;
+        const onWebGPUBackend = !!backend?.isWebGPUBackend;
+        const backendName = backend ? (onWebGPUBackend ? 'WebGPUBackend' : 'WebGLBackend (fallback)') : 'unknown';
+
+        setHud([
+          `navigator.gpu: <span class="${hasGPU ? 'ok' : 'bad'}">${hasGPU ? 'available' : 'missing'}</span>`,
+          `A-Frame renderer: <span class="${isWebGPU ? 'ok' : 'bad'}">${renderer?.constructor?.name || '—'}</span>`,
+          `active backend: <span class="${onWebGPUBackend ? 'ok' : 'warn'}">${backendName}</span>`,
+          `three: <code>r${THREE.REVISION}</code> · towers: <span class="ok">3 procedural</span>`,
+          `<span class="dim">WASD + drag to fly. Shader: mrdoob SkyscraperGenerator (TSL).</span>`
+        ]);
+      }
+
+      window.addEventListener('error', (e) => {
+        setHud([`<span class="bad">Error:</span> ${e.message}`,
+                `<span class="dim">See console for the full stack.</span>`]);
+      });
+    </script>
+  </body>
+</html>
