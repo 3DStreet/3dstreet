@@ -384,6 +384,27 @@ const ProfileModal = () => {
                         )}
                       </div>
                     )}
+                    {/* Team-paid generations (#1267 Phase 3): the count above
+                        is what the team's wallet lets this member spend. */}
+                    {tokenProfile?.billing && (
+                      <span
+                        style={{
+                          fontSize: '13px',
+                          color: '#9ca3af',
+                          display: 'block',
+                          marginTop: '6px'
+                        }}
+                      >
+                        <FormattedMessage
+                          id="profileModal.tokensPaidByTeam"
+                          defaultMessage="Paid by {team}. Your own tokens: {count}."
+                          values={{
+                            team: tokenProfile.billing.teamName || '',
+                            count: tokenProfile.personalGenToken ?? 0
+                          }}
+                        />
+                      </span>
+                    )}
                     <TokenDisplayInner
                       showLabel={true}
                       useContainer={true}

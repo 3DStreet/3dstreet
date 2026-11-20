@@ -2168,6 +2168,12 @@
   "profileModal.accountInformation": {
     "defaultMessage": "Account Information"
   },
+  "profileModal.aiPaidBy": {
+    "defaultMessage": "AI generations paid by"
+  },
+  "profileModal.aiPaidByMe": {
+    "defaultMessage": "My own tokens"
+  },
   "profileModal.invitedAs": {
     "defaultMessage": "Invitation as {role}"
   },
@@ -2218,6 +2224,9 @@
   },
   "profileModal.title": {
     "defaultMessage": "3DStreet Account"
+  },
+  "profileModal.tokensPaidByTeam": {
+    "defaultMessage": "Paid by {team}. Your own tokens: {count}."
   },
   "profileModal.unlimitedGeoTokens": {
     "defaultMessage": "Unlimited Geo Tokens"
@@ -3214,6 +3223,27 @@
   },
   "teamScenes.projectNamePlaceholder": {
     "defaultMessage": "Project name"
+  },
+  "teamWallet.balance": {
+    "defaultMessage": "{balance} tokens left this month, from a budget of {budget} per month."
+  },
+  "teamWallet.budgetHint": {
+    "defaultMessage": "To change the monthly budget or add tokens, contact 3DStreet."
+  },
+  "teamWallet.capInfo": {
+    "defaultMessage": "Each member can use up to {cap} tokens per month."
+  },
+  "teamWallet.capLabel": {
+    "defaultMessage": "Limit per member per month"
+  },
+  "teamWallet.noCap": {
+    "defaultMessage": "No limit"
+  },
+  "teamWallet.title": {
+    "defaultMessage": "AI tokens"
+  },
+  "teamWallet.usedTokens": {
+    "defaultMessage": "{tokens} tokens this month"
   },
   "toolbar.edit": {
     "defaultMessage": "Edit"

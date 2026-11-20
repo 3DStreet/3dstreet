@@ -35,6 +35,7 @@ import {
   roleMessages
 } from './orgMessages';
 import styles from './TeamModal.module.scss';
+import { TeamWalletSection } from './TeamWalletSection.jsx';
 
 const ROLES = ['owner', 'admin', 'member', 'viewer'];
 const SEAT_ROLES = ['owner', 'admin', 'member'];
@@ -415,6 +416,12 @@ function TeamModal() {
                   );
                 })}
             </ul>
+
+            <TeamWalletSection
+              orgId={orgId}
+              members={members}
+              canManage={canManage}
+            />
 
             {canManage && invitations.length > 0 && (
               <>

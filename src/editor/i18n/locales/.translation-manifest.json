@@ -1144,7 +1144,17 @@
     "orgs.error.notEditor": "Only owners, admins and members can do this.",
     "orgs.error.notAuthor": "Only the author of a personal scene can move it.",
     "orgs.error.projectNotFound": "This project does not exist.",
-    "orgs.error.invalidMove": "A team scene can only move between projects of its team."
+    "orgs.error.invalidMove": "A team scene can only move between projects of its team.",
+    "profileModal.aiPaidBy": "AI generations paid by",
+    "profileModal.aiPaidByMe": "My own tokens",
+    "teamWallet.balance": "{balance} tokens left this month, from a budget of {budget} per month.",
+    "teamWallet.budgetHint": "To change the monthly budget or add tokens, contact 3DStreet.",
+    "teamWallet.capInfo": "Each member can use up to {cap} tokens per month.",
+    "teamWallet.capLabel": "Limit per member per month",
+    "teamWallet.noCap": "No limit",
+    "teamWallet.title": "AI tokens",
+    "teamWallet.usedTokens": "{tokens} tokens this month",
+    "profileModal.tokensPaidByTeam": "Paid by {team}. Your own tokens: {count}."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2291,7 +2301,17 @@
     "orgs.error.notEditor": "Only owners, admins and members can do this.",
     "orgs.error.notAuthor": "Only the author of a personal scene can move it.",
     "orgs.error.projectNotFound": "This project does not exist.",
-    "orgs.error.invalidMove": "A team scene can only move between projects of its team."
+    "orgs.error.invalidMove": "A team scene can only move between projects of its team.",
+    "profileModal.aiPaidBy": "AI generations paid by",
+    "profileModal.aiPaidByMe": "My own tokens",
+    "teamWallet.balance": "{balance} tokens left this month, from a budget of {budget} per month.",
+    "teamWallet.budgetHint": "To change the monthly budget or add tokens, contact 3DStreet.",
+    "teamWallet.capInfo": "Each member can use up to {cap} tokens per month.",
+    "teamWallet.capLabel": "Limit per member per month",
+    "teamWallet.noCap": "No limit",
+    "teamWallet.title": "AI tokens",
+    "teamWallet.usedTokens": "{tokens} tokens this month",
+    "profileModal.tokensPaidByTeam": "Paid by {team}. Your own tokens: {count}."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -3438,6 +3458,16 @@
     "orgs.error.notEditor": "Only owners, admins and members can do this.",
     "orgs.error.notAuthor": "Only the author of a personal scene can move it.",
     "orgs.error.projectNotFound": "This project does not exist.",
-    "orgs.error.invalidMove": "A team scene can only move between projects of its team."
+    "orgs.error.invalidMove": "A team scene can only move between projects of its team.",
+    "profileModal.aiPaidBy": "AI generations paid by",
+    "profileModal.aiPaidByMe": "My own tokens",
+    "teamWallet.balance": "{balance} tokens left this month, from a budget of {budget} per month.",
+    "teamWallet.budgetHint": "To change the monthly budget or add tokens, contact 3DStreet.",
+    "teamWallet.capInfo": "Each member can use up to {cap} tokens per month.",
+    "teamWallet.capLabel": "Limit per member per month",
+    "teamWallet.noCap": "No limit",
+    "teamWallet.title": "AI tokens",
+    "teamWallet.usedTokens": "{tokens} tokens this month",
+    "profileModal.tokensPaidByTeam": "Paid by {team}. Your own tokens: {count}."
   }
 }

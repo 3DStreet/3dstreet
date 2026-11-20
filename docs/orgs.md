@@ -64,11 +64,13 @@ still works for the others.
 A seat (owner, admin, member) in an active org gives the org's plan,
 everywhere Pro or the plan is checked: `hasProEntitlement` (`orgPlan`),
 `isUserProInternal`, `checkUserProStatus` (which also returns `orgPlan` and
-`orgs`), the monthly token refill (the org's plan allowance), the storage
-quota (`asset-quota.js`) and pass codes (an org seat is already Pro). The
-best plan wins across the user's orgs and their own subscription. A suspended
-org gives nothing. In Phase 1 members spend their own tokens; an org token
-wallet is Phase 3.
+`orgs`), the storage quota (`asset-quota.js`) and pass codes (an org seat
+is already Pro). The best plan wins across the user's orgs and their own
+subscription. A suspended org gives nothing.
+
+A seat does not refill the member's personal AI tokens: the team pays their
+generations from its wallet, within its monthly budget
+([team-wallet.md](team-wallet.md)).
 
 On the client, `currentUser.orgs`, `orgPlan` and `teamName` come from
 `src/shared/auth/api/user.js`. `plan` stays the user's own subscription

@@ -81,6 +81,23 @@
       white-space: nowrap;
     }
 
+    .billingRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 14px;
+    }
+
+    .billingSelect {
+      padding: 6px 8px;
+      border: 1px solid #4b4b4b;
+      border-radius: 6px;
+      background-color: #1f1f1f;
+      color: white;
+      font-size: 13px;
+    }
+
     .teamMeta {
       font-size: 12px;
       color: #b4b4b4;

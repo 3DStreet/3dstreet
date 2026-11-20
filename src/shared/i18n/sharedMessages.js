@@ -1885,6 +1885,52 @@ const SHARED_MESSAGES = {
     fr: "GeoJSON chargé depuis l'URL. Polygones : {count}."
   },
 
+  // Team AI token wallets (#1267 Phase 3), in the token card.
+  teamTokensPaidBy: {
+    en: 'Paid by {team}',
+    es: 'Pagado por {team}',
+    'pt-BR': 'Pago por {team}',
+    fr: 'Payé par {team}'
+  },
+  teamTokensMemberLimit: {
+    en: 'Your monthly limit: {used} of {cap} used',
+    es: 'Tu límite mensual: {used} de {cap} usados',
+    'pt-BR': 'Seu limite mensal: {used} de {cap} usados',
+    fr: 'Votre limite mensuelle : {used} sur {cap} utilisés'
+  },
+  teamTokensCapReached: {
+    en: "You've reached your monthly limit of {cap} AI tokens for {team}.",
+    es: 'Alcanzaste tu límite mensual de {cap} tokens de IA en {team}.',
+    'pt-BR': 'Você atingiu seu limite mensal de {cap} tokens de IA em {team}.',
+    fr: 'Vous avez atteint votre limite mensuelle de {cap} jetons IA pour {team}.'
+  },
+  teamTokensUsedUp: {
+    en: "{team}'s AI tokens are used up for this month.",
+    es: 'Los tokens de IA de {team} se agotaron este mes.',
+    'pt-BR': 'Os tokens de IA de {team} acabaram neste mês.',
+    fr: 'Les jetons IA de {team} sont épuisés pour ce mois-ci.'
+  },
+  teamTokensAskManagers: {
+    en: "Ask the team's owners or admins for more, or use your own tokens instead.",
+    es: 'Pide más a los propietarios o administradores del equipo, o usa tus propios tokens.',
+    'pt-BR':
+      'Peça mais aos proprietários ou administradores da equipe, ou use seus próprios tokens.',
+    fr: "Demandez-en davantage aux propriétaires ou aux administrateurs de l'équipe, ou utilisez vos propres jetons."
+  },
+  teamTokensUseMine: {
+    en: 'Use my own tokens instead',
+    es: 'Usar mis propios tokens',
+    'pt-BR': 'Usar meus próprios tokens',
+    fr: 'Utiliser mes propres jetons'
+  },
+  teamTokensHint: {
+    en: "Your team pays your AI generations. For more tokens, ask your team's owners or admins, or switch to your own tokens in your profile.",
+    es: 'Tu equipo paga tus generaciones con IA. Para obtener más tokens, pide a los propietarios o administradores de tu equipo, o cambia a tus propios tokens en tu perfil.',
+    'pt-BR':
+      'Sua equipe paga suas gerações com IA. Para obter mais tokens, peça aos proprietários ou administradores da equipe, ou passe a usar seus próprios tokens no seu perfil.',
+    fr: 'Votre équipe paie vos générations IA. Pour plus de jetons, demandez aux propriétaires ou aux administrateurs de votre équipe, ou passez à vos propres jetons dans votre profil.'
+  },
+
   // Team scenes (#1267 Phase 2), shown by saveScene (editor/lib/SceneUtils.js).
   teamSceneLocked: {
     en: 'Not saved: {name} is editing this scene.',

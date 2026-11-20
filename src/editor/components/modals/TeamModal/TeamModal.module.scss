@@ -156,3 +156,26 @@
     flex-basis: 100%;
   }
 }
+
+// AI tokens (#1267 Phase 3, TeamWalletSection)
+.walletSummary {
+  margin: 0;
+  font-size: 14px;
+}
+
+.capLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.capInput {
+  width: 110px;
+  padding: 6px 8px;
+  border: 1px solid #4b4b4b;
+  border-radius: 6px;
+  background-color: #1f1f1f;
+  color: white;
+  font-size: 13px;
+}

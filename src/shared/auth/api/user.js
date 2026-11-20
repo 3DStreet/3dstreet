@@ -13,6 +13,8 @@
  * plan, status }]) and `orgPlan` is the plan their org seats give ('PRO' |
  * 'MAX' | null). `plan` stays the user's own subscription (billing UI keys
  * off it); `isProTeam` and `teamName` cover Pro from an org, for labels.
+ * `billingOrgId` is the team paying the user's AI generations (Phase 3), or
+ * null for their own tokens.
  */
 
 const FREE_USER = {
@@ -23,6 +25,7 @@ const FREE_USER = {
   plan: null,
   orgPlan: null,
   orgs: [],
+  billingOrgId: null,
   isProPass: false,
   proUntil: null
 };
@@ -57,7 +60,8 @@ const isUserPro = async (user) => {
       isProPass,
       proUntil,
       orgPlan = null,
-      orgs = []
+      orgs = [],
+      billingOrgId = null
     } = result.data;
     const teamOrg = orgPlan ? orgGivingPlan(orgs, orgPlan) : null;
 
@@ -74,12 +78,13 @@ const isUserPro = async (user) => {
         plan: plan || null,
         orgPlan,
         orgs,
+        billingOrgId,
         isProPass: !!isProPass,
         proUntil: proUntil || null
       };
     }
     console.log('FREE PLAN USER');
-    return { ...FREE_USER, orgs, proUntil: proUntil || null };
+    return { ...FREE_USER, orgs, billingOrgId, proUntil: proUntil || null };
   } catch (error) {
     console.error('Error checking PRO plan:', error);
 

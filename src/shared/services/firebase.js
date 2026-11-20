@@ -136,6 +136,21 @@ window.adminTools = {
   },
 
   /**
+   * A team's AI token wallet (staff only, #1267 Phase 3): the monthly budget
+   * (the wallet is topped up to it each month) and/or tokens added on top.
+   *
+   * Usage:
+   *   await adminTools.updateTeamWallet('orgId', { monthlyTokenBudget: 1000 })
+   *   await adminTools.updateTeamWallet('orgId', { addTokens: 500 })
+   */
+  updateTeamWallet: async (orgId, { monthlyTokenBudget, addTokens } = {}) => {
+    const update = httpsCallable(functions, 'orgUpdateWallet');
+    const result = await update({ orgId, monthlyTokenBudget, addTokens });
+    console.log(result.data);
+    return result.data;
+  },
+
+  /**
    * Trigger scheduled emails (admin only)
    * @param {boolean} dryRun - If true (default), shows what would be sent without sending
    * @returns {Promise} Results showing emails sent or would be sent

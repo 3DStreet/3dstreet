@@ -21,6 +21,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import posthog from 'posthog-js';
 import { useAuthContext } from '@shared/contexts';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@shared/services/firebase';
 import EmbeddedCheckout from '@shared/components/EmbeddedCheckout';
 import { getTokenProfile } from '@shared/utils/tokens';
 import { formatCurrency } from '@shared/utils/format';
@@ -62,7 +64,7 @@ const BuyTokensModal = ({
   onUpgradeInstead,
   onSuccess
 }) => {
-  const { currentUser, tokenProfile } = useAuthContext();
+  const { currentUser, setCurrentUser, tokenProfile } = useAuthContext();
   const t = useSharedMessages();
   const [modalState, setModalState] = useState('packs');
   // 'packs' | 'checkout'
@@ -153,13 +155,32 @@ const BuyTokensModal = ({
   if (!isOpen) return null;
 
   const isPaidUser = !!currentUser?.isPro;
+  // The user's team pays their generations (#1267 Phase 3): buying personal
+  // tokens wouldn't be spent, so explain and offer to switch instead.
+  const billing = tokenProfile?.billing || null;
+
+  const useOwnTokens = async () => {
+    try {
+      await httpsCallable(functions, 'orgSetBilling')({ orgId: null });
+      setCurrentUser((prev) => ({ ...prev, billingOrgId: null }));
+      posthog.capture('team_billing_switched_to_personal', { source });
+    } catch (error) {
+      console.error('Error switching to own tokens:', error);
+    }
+  };
 
   const renderPacks = () => (
     <>
       <div className={styles.pricingHeader}>
         <div className={styles.pricingTitleBlock}>
-          <h2 className={styles.pricingTitle}>{t('buyTokensTitle')}</h2>
-          <p className={styles.pricingSubtitle}>{t('buyTokensSubtitle')}</p>
+          <h2 className={styles.pricingTitle}>
+            {billing
+              ? t('teamTokensPaidBy', { team: billing.teamName || '' })
+              : t('buyTokensTitle')}
+          </h2>
+          {!billing && (
+            <p className={styles.pricingSubtitle}>{t('buyTokensSubtitle')}</p>
+          )}
         </div>
         <button
           className={styles.closeButton}
@@ -172,7 +193,27 @@ const BuyTokensModal = ({
 
       <div className={styles.divider} />
 
-      {!currentUser ? (
+      {billing ? (
+        <div className={styles.signInPrompt}>
+          <p className={styles.signInCopy}>
+            {billing.memberMonthlyCap !== null &&
+            billing.usedThisMonth >= billing.memberMonthlyCap
+              ? t('teamTokensCapReached', {
+                  cap: billing.memberMonthlyCap,
+                  team: billing.teamName || ''
+                })
+              : t('teamTokensUsedUp', { team: billing.teamName || '' })}
+          </p>
+          <p className={styles.signInCopy}>{t('teamTokensAskManagers')}</p>
+          <button
+            type="button"
+            className={styles.ctaButton}
+            onClick={useOwnTokens}
+          >
+            {t('teamTokensUseMine')}
+          </button>
+        </div>
+      ) : !currentUser ? (
         <div className={styles.signInPrompt}>
           <p className={styles.signInCopy}>{t('buyTokensSignInPrompt')}</p>
           <button type="button" className={styles.ctaButton} onClick={onSignIn}>

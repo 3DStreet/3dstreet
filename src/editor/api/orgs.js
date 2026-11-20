@@ -126,10 +126,29 @@ export const refreshMembershipStatus = async (setCurrentUser) => {
     plan: status.plan ?? null,
     orgPlan: status.orgPlan ?? null,
     orgs: status.orgs ?? [],
+    billingOrgId: status.billingOrgId ?? null,
     isProPass: !!status.isProPass,
     proUntil: status.proUntil ?? null
   }));
   window.dispatchEvent(new Event('planChanged'));
   window.dispatchEvent(new Event('tokenCountChanged'));
   return status;
+};
+
+// Team AI token wallets (#1267 Phase 3, docs/team-wallet.md).
+/** Who pays the user's AI generations: a team (orgId) or their own (null). */
+export const setBillingOrg = (orgId) => call('orgSetBilling', { orgId });
+/** Owners and admins: per-member monthly cap (null = none). */
+export const setMemberMonthlyCap = (orgId, memberMonthlyCap) =>
+  call('orgSetMemberCap', { orgId, memberMonthlyCap });
+/** The team's wallet and this month's usage. */
+export const getTeamWallet = async (orgId, month) => {
+  const [wallet, usage] = await Promise.all([
+    getDoc(doc(db, 'orgWallets', orgId)),
+    getDoc(doc(db, 'orgWallets', orgId, 'usage', month))
+  ]);
+  return {
+    wallet: wallet.exists() ? wallet.data() : {},
+    usage: usage.exists() ? usage.data() : {}
+  };
 };

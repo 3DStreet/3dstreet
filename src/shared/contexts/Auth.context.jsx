@@ -1,11 +1,16 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { auth, db } from '@shared/services/firebase';
 import PropTypes from 'prop-types';
 import { isUserPro } from '@shared/auth/api/user';
 import { getTokenProfile, checkAndRefillProTokens } from '@shared/utils/tokens';
 import { detectBrowserLocale } from '@shared/i18n/locales';
 import posthog from 'posthog-js';
+import {
+  memberAvailable,
+  monthKey,
+  refillWallet
+} from '@shared/utils/teamWallet';
 
 const AuthContext = createContext({
   currentUser: null,
@@ -149,6 +154,7 @@ const AuthProvider = ({ children }) => {
         teamName: cachedProStatus?.teamName ?? null,
         orgPlan: cachedProStatus?.orgPlan ?? null,
         orgs: cachedProStatus?.orgs ?? [],
+        billingOrgId: cachedProStatus?.billingOrgId ?? null,
         // One-time pass (#1922). The server re-evaluates expiry in Phase 2;
         // a cached pass that has since lapsed is dropped here already.
         isProPass: cachedPassActive,
@@ -185,6 +191,7 @@ const AuthProvider = ({ children }) => {
               plan: null,
               orgPlan: null,
               orgs: [],
+              billingOrgId: null,
               isProPass: false,
               proUntil: null
             };
@@ -204,6 +211,7 @@ const AuthProvider = ({ children }) => {
         teamName: proStatus.teamName ?? null,
         orgPlan: proStatus.orgPlan ?? null,
         orgs: proStatus.orgs ?? [],
+        billingOrgId: proStatus.billingOrgId ?? null,
         isProPass: !!proStatus.isProPass,
         proUntil: proStatus.proUntil ?? null
       };
@@ -253,6 +261,67 @@ const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // Team AI token wallet (#1267 Phase 3): while a team pays the user's
+  // generations, follow its wallet and this month's usage.
+  const billingOrgId = currentUser?.billingOrgId || null;
+  const uid = currentUser?.uid || null;
+  const [teamWallet, setTeamWallet] = useState(null);
+  useEffect(() => {
+    setTeamWallet(null);
+    if (!billingOrgId || !uid) return undefined;
+    let wallet = null;
+    let usage = null;
+    const update = () =>
+      wallet && setTeamWallet({ orgId: billingOrgId, wallet, usage });
+    const onError = (error) =>
+      console.error('Error following the team wallet:', error);
+    const unsubscribeWallet = onSnapshot(
+      doc(db, 'orgWallets', billingOrgId),
+      (snapshot) => {
+        wallet = snapshot.data() || {};
+        update();
+      },
+      onError
+    );
+    const unsubscribeUsage = onSnapshot(
+      doc(db, 'orgWallets', billingOrgId, 'usage', monthKey()),
+      (snapshot) => {
+        usage = snapshot.data() || {};
+        update();
+      },
+      onError
+    );
+    return () => {
+      unsubscribeWallet();
+      unsubscribeUsage();
+    };
+  }, [billingOrgId, uid]);
+
+  // What the app shows and checks before a generation: the team's wallet
+  // when it pays (genToken = what this member can still spend from it; the
+  // personal balance stays in personalGenToken), else the user's own tokens.
+  const effectiveTokenProfile = useMemo(() => {
+    if (!teamWallet || teamWallet.orgId !== billingOrgId) return tokenProfile;
+    const wallet = refillWallet(teamWallet.wallet);
+    const usedThisMonth = teamWallet.usage?.members?.[uid] || 0;
+    const team = (currentUser?.orgs || []).find(
+      (org) => org.orgId === billingOrgId
+    );
+    return {
+      ...(tokenProfile || {}),
+      genToken: memberAvailable({ wallet, usedThisMonth }),
+      personalGenToken: tokenProfile?.genToken ?? 0,
+      billing: {
+        orgId: billingOrgId,
+        teamName: team?.name || null,
+        balance: wallet.genToken || 0,
+        monthlyTokenBudget: wallet.monthlyTokenBudget || 0,
+        memberMonthlyCap: wallet.memberMonthlyCap ?? null,
+        usedThisMonth
+      }
+    };
+  }, [teamWallet, tokenProfile, billingOrgId, uid, currentUser?.orgs]);
+
   // Listen for token count changes (e.g., after image generation)
   useEffect(() => {
     const handleTokenCountChanged = () => {
@@ -272,7 +341,7 @@ const AuthProvider = ({ children }) => {
       value={{
         currentUser,
         setCurrentUser,
-        tokenProfile,
+        tokenProfile: effectiveTokenProfile,
         refreshTokenProfile,
         isLoading
       }}
