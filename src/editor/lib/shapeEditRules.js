@@ -442,6 +442,28 @@ export function validateVertexDelete(points, closed, index) {
   return true;
 }
 
+// --- Closing an open shape by joining its ends --------------------------
+
+// Dragging one end of an open polyline onto the other end closes it: the
+// dragged vertex is dropped and the rest become a ring. The other end's index
+// when vertex `index` is an end and the join would leave a ring of three or
+// more; -1 otherwise (a closed shape, a middle vertex, or a polyline too short
+// to close this way, where the drop stays an ordinary refused move).
+export function closeByJoiningTarget(vertexCount, closed, index) {
+  if (closed || vertexCount < 4) return -1;
+  if (index === 0) return vertexCount - 1;
+  if (index === vertexCount - 1) return 0;
+  return -1;
+}
+
+// Whether the ring left after dropping vertex `index` is a valid closed shape.
+export function validateCloseByJoining(points, index) {
+  const ring = points.filter((_, i) => i !== index);
+  return (
+    ring.length >= 3 && !ringSelfIntersects(ring) && ringEnclosesArea(ring)
+  );
+}
+
 // --- CSS2D draw order --------------------------------------------------
 
 // The CSS2D layer has an ordering of its own, unrelated to the scene's: the

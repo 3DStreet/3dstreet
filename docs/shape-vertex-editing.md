@@ -307,6 +307,21 @@ own event come back. It is bound per element rather than once on `document`
 because `{ passive: false }` there would opt the whole app out of the compositor
 scroll fast path for the life of every shape selection.
 
+## Closing an open shape by joining its ends
+
+Dragging either end vertex of an open polyline over the other end's handle
+snaps it onto that vertex and arms a close; releasing there drops the dragged
+vertex and sets `closed`, as one `multi` undo step (`shapevertexremove` then an
+`entityupdate` of `closed`). Without this, the drop was a plain move onto
+another vertex, which the minimum separation refuses, so the shape turned red
+and stayed open. The pointer test is the handle's own hit radius for a mouse
+and the draw tool's 24 px close radius for a finger or pen. The resulting ring
+must enclose area and not cross itself, or the snapped preview is red and the
+release falls back to the last valid move. A polyline needs four vertices to
+close this way (joining leaves three); a three-vertex one closes with the
+Closed toggle. Planar drags only, not Shift-vertical. The rules are
+`closeByJoiningTarget` and `validateCloseByJoining` in `shapeEditRules.js`.
+
 ## Vertical drag (Shift)
 
 A vertex drag is planar by default — the drag plane is the shape's own
