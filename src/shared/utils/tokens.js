@@ -26,7 +26,20 @@ export const getTokenProfile = async (userId) => {
         updatedAt: serverTimestamp(),
         lastMonthlyRefill: null // Track when pro tokens were last refilled
       };
-      await setDoc(tokenProfileRef, defaultProfile);
+      try {
+        await setDoc(tokenProfileRef, defaultProfile);
+      } catch (createError) {
+        // On a first sign-in several callers (the auth context, the token
+        // refresh, checkAndRefillImageTokens) can all find no profile and
+        // race to create it. The rules allow only the first write (a second
+        // setDoc is an update, which clients can't do), so a refused create
+        // usually means the profile now exists: return that one.
+        const existing = await getDoc(tokenProfileRef);
+        if (existing.exists()) {
+          return existing.data();
+        }
+        throw createError;
+      }
       return { ...defaultProfile, geoToken: 3, genToken: 5 };
     }
   } catch (error) {
