@@ -2,7 +2,7 @@ import { useContext } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { Tooltip } from 'radix-ui';
 import posthog from 'posthog-js';
-import { faLockOpen } from '@fortawesome/free-solid-svg-icons';
+import { faLock, faLockOpen } from '@fortawesome/free-solid-svg-icons';
 import { ProfileButton } from '@shared/auth/components';
 import useStore from '@/store';
 import { AuthContext } from '@/editor/contexts';
@@ -87,6 +87,9 @@ export default function RightPanel({ entity }) {
               defaultMessage: '3DStreet Pro Plan'
             });
 
+  // Closed padlock for a private scene (#1267).
+  const sceneVisibility = useStore((state) => state.sceneVisibility);
+
   const handleShare = () => {
     if (authUser && window.STREET?.utils?.getAuthorId?.() === authUser.uid) {
       useStore.getState().saveScene(false);
@@ -135,7 +138,12 @@ export default function RightPanel({ entity }) {
               }
             >
               <Button
-                leadingIcon={<AwesomeIcon icon={faLockOpen} size={18} />}
+                leadingIcon={
+                  <AwesomeIcon
+                    icon={sceneVisibility === 'private' ? faLock : faLockOpen}
+                    size={18}
+                  />
+                }
                 onClick={handleShare}
                 variant="toolbtn"
               >

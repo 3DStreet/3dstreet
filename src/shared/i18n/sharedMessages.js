@@ -507,6 +507,12 @@ const SHARED_MESSAGES = {
     'pt-BR': "Baixe instantâneos JPEG sem marca d'água",
     fr: 'Téléchargez des instantanés JPEG sans filigrane'
   },
+  featPrivateScenes: {
+    en: 'Private scenes only you can open',
+    es: 'Escenas privadas que solo tú puedes abrir',
+    'pt-BR': 'Cenas privadas que só você pode abrir',
+    fr: 'Scènes privées que vous seul pouvez ouvrir'
+  },
   featGeoUnlimited: {
     en: 'Unlimited geospatial maps & location changes',
     es: 'Mapas geoespaciales y cambios de ubicación ilimitados',
@@ -842,6 +848,31 @@ const SHARED_MESSAGES = {
     'pt-BR':
       'Renders com IA usam tokens de geração. Um plano pago renova seu saldo de tokens todo mês para você continuar gerando com todos os modelos de IA disponíveis.',
     fr: "Les rendus IA utilisent des jetons de génération. Un forfait payant renouvelle votre solde de jetons chaque mois pour continuer à générer avec tous les modèles d'IA disponibles."
+  },
+  surfacePrivateSceneTitle: {
+    en: 'Private scene',
+    es: 'Escena privada',
+    'pt-BR': 'Cena privada',
+    fr: 'Scène privée'
+  },
+  surfacePrivateSceneSubtitle: {
+    en: 'Only you can open it',
+    es: 'Solo tú puedes abrirla',
+    'pt-BR': 'Só você pode abri-la',
+    fr: "Vous seul pouvez l'ouvrir"
+  },
+  surfacePrivateSceneHeadline: {
+    en: 'Keep your scenes private',
+    es: 'Mantén tus escenas privadas',
+    'pt-BR': 'Mantenha suas cenas privadas',
+    fr: 'Gardez vos scènes privées'
+  },
+  surfacePrivateSceneDesc: {
+    en: 'Work on projects before they are public. A private scene opens only for you, is never listed in the community scenes and cannot be embedded.',
+    es: 'Trabaja en tus proyectos antes de hacerlos públicos. Una escena privada solo se abre para ti, nunca aparece en las escenas de la comunidad y no se puede insertar.',
+    'pt-BR':
+      'Trabalhe em seus projetos antes de torná-los públicos. Uma cena privada abre só para você, nunca aparece nas cenas da comunidade e não pode ser incorporada.',
+    fr: "Travaillez sur vos projets avant de les rendre publics. Une scène privée ne s'ouvre que pour vous, n'apparaît jamais dans les scènes de la communauté et ne peut pas être intégrée."
   },
   surfaceGeoTitle: {
     en: 'Geospatial',
@@ -1750,6 +1781,130 @@ const SHARED_MESSAGES = {
     es: 'Ver origen',
     'pt-BR': 'Ver origem',
     fr: 'Voir la source'
+  },
+
+  // Cloud scene loading (json-utils_1.1.js): progress shown by
+  // LoadingSceneModal, errors shown in its dialog and as toasts.
+  sceneLoading: {
+    en: 'Loading scene...',
+    es: 'Cargando escena...',
+    'pt-BR': 'Carregando cena...',
+    fr: 'Chargement de la scène...'
+  },
+  sceneCreating: {
+    en: 'Creating scene...',
+    es: 'Creando escena...',
+    'pt-BR': 'Criando cena...',
+    fr: 'Création de la scène...'
+  },
+  sceneFinalizing: {
+    en: 'Finalizing...',
+    es: 'Finalizando...',
+    'pt-BR': 'Finalizando...',
+    fr: 'Finalisation...'
+  },
+  sceneLoaded: {
+    en: 'Scene loaded',
+    es: 'Escena cargada',
+    'pt-BR': 'Cena carregada',
+    fr: 'Scène chargée'
+  },
+  sceneInvalidData: {
+    en: 'Could not read scene data.',
+    es: 'No se pudieron leer los datos de la escena.',
+    'pt-BR': 'Não foi possível ler os dados da cena.',
+    fr: 'Impossible de lire les données de la scène.'
+  },
+  sceneInvalidDataToast: {
+    en: 'Error trying to load scene: invalid scene data.',
+    es: 'Error al cargar la escena: datos de escena no válidos.',
+    'pt-BR': 'Erro ao carregar a cena: dados de cena inválidos.',
+    fr: 'Erreur lors du chargement de la scène : données de scène non valides.'
+  },
+  sceneNotFound: {
+    en: 'Scene not found.',
+    es: 'Escena no encontrada.',
+    'pt-BR': 'Cena não encontrada.',
+    fr: 'Scène introuvable.'
+  },
+  sceneNotFoundToast: {
+    en: 'Error trying to load scene: Resource not found.',
+    es: 'Error al cargar la escena: recurso no encontrado.',
+    'pt-BR': 'Erro ao carregar a cena: recurso não encontrado.',
+    fr: 'Erreur lors du chargement de la scène : ressource introuvable.'
+  },
+  sceneConnectionError: {
+    en: 'Could not connect to server.',
+    es: 'No se pudo conectar con el servidor.',
+    'pt-BR': 'Não foi possível conectar ao servidor.',
+    fr: 'Impossible de se connecter au serveur.'
+  },
+  sceneFetchError: {
+    en: 'Could not fetch scene.',
+    es: 'No se pudo obtener la escena.',
+    'pt-BR': 'Não foi possível obter a cena.',
+    fr: 'Impossible de récupérer la scène.'
+  },
+
+  // Scenes and layers loaded from the URL hash (json-utils_1.1.js).
+  managedStreetLoadingFromUrl: {
+    en: 'Loading Managed Street JSON from URL',
+    es: 'Cargando el JSON de la calle gestionada desde la URL',
+    'pt-BR': 'Carregando o JSON da rua gerenciada a partir da URL',
+    fr: "Chargement du JSON de la rue gérée depuis l'URL"
+  },
+  parityFixtureLoading: {
+    en: 'Loading parity fixture: {slug}',
+    es: 'Cargando el fixture de paridad: {slug}',
+    'pt-BR': 'Carregando o fixture de paridade: {slug}',
+    fr: 'Chargement du fixture de parité : {slug}'
+  },
+  geojsonInvalidJson: {
+    en: 'Error parsing GeoJSON from URL: Invalid JSON format',
+    es: 'Error al analizar el GeoJSON de la URL: formato JSON no válido',
+    'pt-BR': 'Erro ao analisar o GeoJSON da URL: formato JSON inválido',
+    fr: "Erreur d'analyse du GeoJSON de l'URL : format JSON non valide"
+  },
+  geojsonNoFeatures: {
+    en: 'Invalid GeoJSON: No valid features found',
+    es: 'GeoJSON no válido: no se encontraron entidades válidas',
+    'pt-BR': 'GeoJSON inválido: nenhuma feição válida encontrada',
+    fr: 'GeoJSON non valide : aucune entité valide trouvée'
+  },
+  geojsonNoPolygons: {
+    en: 'No valid polygon features found in GeoJSON',
+    es: 'No se encontraron polígonos válidos en el GeoJSON',
+    'pt-BR': 'Nenhum polígono válido encontrado no GeoJSON',
+    fr: 'Aucun polygone valide trouvé dans le GeoJSON'
+  },
+  // {count} without a plural form: formatSharedMessage has no ICU plurals.
+  geojsonLoadedFromUrl: {
+    en: 'GeoJSON loaded from URL. Polygon features: {count}.',
+    es: 'GeoJSON cargado desde la URL. Polígonos: {count}.',
+    'pt-BR': 'GeoJSON carregado a partir da URL. Polígonos: {count}.',
+    fr: "GeoJSON chargé depuis l'URL. Polygones : {count}."
+  },
+
+  // Scene visibility (#1267), shown outside React: the scene loader
+  // (json-utils_1.1.js) and saveScene (editor/lib/SceneUtils.js).
+  privateSceneNotAuthor: {
+    en: 'This scene is private. Only its author can open it.',
+    es: 'Esta escena es privada. Solo su autor puede abrirla.',
+    'pt-BR': 'Esta cena é privada. Só o autor pode abri-la.',
+    fr: "Cette scène est privée. Seul son auteur peut l'ouvrir."
+  },
+  privateSceneEmbed: {
+    en: 'This scene is private and cannot be embedded.',
+    es: 'Esta escena es privada y no se puede insertar.',
+    'pt-BR': 'Esta cena é privada e não pode ser incorporada.',
+    fr: 'Cette scène est privée et ne peut pas être intégrée.'
+  },
+  privateSceneCopyUnlisted: {
+    en: 'The copy was saved as unlisted: it could not be made private.',
+    es: 'La copia se guardó como no listada: no se pudo hacer privada.',
+    'pt-BR':
+      'A cópia foi salva como não listada: não foi possível torná-la privada.',
+    fr: "La copie a été enregistrée comme non listée : elle n'a pas pu être rendue privée."
   }
 };
 

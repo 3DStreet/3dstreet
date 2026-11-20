@@ -100,6 +100,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
       useStore.getState().setSceneTitle(sceneTitle);
       AFRAME.scenes[0].setAttribute('metadata', 'authorId', sceneData.author);
+      useStore.getState().setSceneVisibility(sceneData.visibility);
 
       STREET.notify.successMessage(
         intl.formatMessage({

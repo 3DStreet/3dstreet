@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FormattedMessage, useIntl } from 'react-intl';
+import { FormattedMessage, defineMessages, useIntl } from 'react-intl';
 import styles from './ShareModal.module.scss';
 import { useAuthContext } from '../../../contexts';
 import { Copy32Icon } from '@shared/icons';
@@ -9,7 +9,12 @@ import posthog from 'posthog-js';
 import useStore from '@/store';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '@shared/services/firebase';
-import { shareSceneToDiscord } from '../../../api/scene';
+import {
+  shareSceneToDiscord,
+  setSceneVisibility as saveSceneVisibility
+} from '../../../api/scene';
+import { faGlobe, faLink, faLock } from '@fortawesome/free-solid-svg-icons';
+import { AwesomeIcon } from '../../elements/AwesomeIcon';
 import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import { getUserProfile } from '@shared/utils/username';
 import { Tooltip } from 'radix-ui';
@@ -45,6 +50,100 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   );
 };
 
+// Who can open the scene (#1267). Order matches the share link's reach.
+const visibilityMessages = defineMessages({
+  publicLabel: { id: 'shareModal.visibilityPublic', defaultMessage: 'Public' },
+  publicDescription: {
+    id: 'shareModal.visibilityPublicDescription',
+    defaultMessage: 'Anyone can open it. Listed in the community scenes.'
+  },
+  unlistedLabel: {
+    id: 'shareModal.visibilityUnlisted',
+    defaultMessage: 'Unlisted'
+  },
+  unlistedDescription: {
+    id: 'shareModal.visibilityUnlistedDescription',
+    defaultMessage: 'Anyone with the link can open it. Not listed.'
+  },
+  privateLabel: {
+    id: 'shareModal.visibilityPrivate',
+    defaultMessage: 'Private'
+  },
+  privateDescription: {
+    id: 'shareModal.visibilityPrivateDescription',
+    defaultMessage: 'Only you can open it. Embeds are disabled.'
+  }
+});
+
+const VISIBILITY_OPTIONS = [
+  {
+    value: 'public',
+    icon: faGlobe,
+    label: visibilityMessages.publicLabel,
+    description: visibilityMessages.publicDescription
+  },
+  {
+    value: 'unlisted',
+    icon: faLink,
+    label: visibilityMessages.unlistedLabel,
+    description: visibilityMessages.unlistedDescription
+  },
+  {
+    value: 'private',
+    icon: faLock,
+    label: visibilityMessages.privateLabel,
+    description: visibilityMessages.privateDescription
+  }
+];
+
+function VisibilityPicker({ value, isPro, isSaving, onChange }) {
+  const intl = useIntl();
+  return (
+    <div className={styles.visibilitySection}>
+      <div className={styles.visibilityHeading}>
+        <FormattedMessage
+          id="shareModal.visibilityHeading"
+          defaultMessage="Who can open this scene"
+        />
+      </div>
+      <div
+        role="radiogroup"
+        aria-label={intl.formatMessage({
+          id: 'shareModal.visibilityHeading',
+          defaultMessage: 'Who can open this scene'
+        })}
+        className={styles.visibilityOptions}
+      >
+        {VISIBILITY_OPTIONS.map((option) => {
+          const selected = option.value === value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              disabled={isSaving}
+              className={`${styles.visibilityOption} ${selected ? styles.selected : ''}`}
+              onClick={() => onChange(option.value)}
+            >
+              <span className={styles.visibilityLabel}>
+                <AwesomeIcon icon={option.icon} size={14} />
+                <FormattedMessage {...option.label} />
+                {option.value === 'private' && !isPro && (
+                  <span className={styles.proBadge}>PRO</span>
+                )}
+              </span>
+              <span className={styles.visibilityDescription}>
+                <FormattedMessage {...option.description} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ShareModal() {
   const intl = useIntl();
   const setModal = useStore((state) => state.setModal);
@@ -54,6 +153,7 @@ function ShareModal() {
   const [sceneData, setSceneData] = useState(null);
   const [authorUsername, setAuthorUsername] = useState(null);
   const [locationString, setLocationString] = useState(null);
+  const [isSavingVisibility, setIsSavingVisibility] = useState(false);
 
   // Get current scene data
   useEffect(() => {
@@ -296,6 +396,45 @@ function ShareModal() {
   const sceneId = STREET.utils.getCurrentSceneId();
   const shareUrl = getShareUrl();
   const canShare = currentUser && sceneId;
+  const visibility = sceneData?.visibility || 'public';
+  const isAuthor = !!currentUser && sceneData?.author === currentUser.uid;
+
+  const openPrivateScenePaywall = () => {
+    posthog.capture('private_scene_paywall', { scene_id: sceneId });
+    useStore.getState().startCheckout('private_scene');
+  };
+
+  const handleVisibilityChange = async (next) => {
+    if (next === visibility || isSavingVisibility) return;
+    if (next === 'private' && !currentUser?.isPro) {
+      openPrivateScenePaywall();
+      return;
+    }
+    setIsSavingVisibility(true);
+    try {
+      const saved = await saveSceneVisibility(sceneId, next);
+      setSceneData((data) => ({ ...data, visibility: saved }));
+      useStore.getState().setSceneVisibility(saved);
+      posthog.capture('scene_visibility_changed', {
+        scene_id: sceneId,
+        visibility: saved
+      });
+    } catch (error) {
+      if (error?.details?.reason === 'pro-required') {
+        openPrivateScenePaywall();
+      } else {
+        console.error('Error changing scene visibility:', error);
+        STREET.notify.errorMessage(
+          intl.formatMessage({
+            id: 'shareModal.visibilityError',
+            defaultMessage: 'Could not change who can open this scene.'
+          })
+        );
+      }
+    } finally {
+      setIsSavingVisibility(false);
+    }
+  };
 
   return (
     <Tooltip.Provider>
@@ -404,6 +543,15 @@ function ShareModal() {
                 </div>
               </div>
 
+              {isAuthor && (
+                <VisibilityPicker
+                  value={visibility}
+                  isPro={!!currentUser?.isPro}
+                  isSaving={isSavingVisibility}
+                  onChange={handleVisibilityChange}
+                />
+              )}
+
               {/* Share buttons section */}
               <div className={styles.shareButtonsSection}>
                 <TooltipWrapper
@@ -442,17 +590,27 @@ function ShareModal() {
                   </Button>
                 </TooltipWrapper>
                 <TooltipWrapper
-                  content={intl.formatMessage({
-                    id: 'shareModal.discordTooltip',
-                    defaultMessage:
-                      'Post this scene to the 3DStreet Discord server to share with other creators'
-                  })}
+                  content={
+                    visibility === 'public'
+                      ? intl.formatMessage({
+                          id: 'shareModal.discordTooltip',
+                          defaultMessage:
+                            'Post this scene to the 3DStreet Discord server to share with other creators'
+                        })
+                      : intl.formatMessage({
+                          id: 'shareModal.discordPublicOnly',
+                          defaultMessage:
+                            'Only public scenes can be posted to the 3DStreet Discord server'
+                        })
+                  }
                   side="top"
                 >
                   <Button
                     onClick={handleDiscordShare}
                     variant="toolbtn"
                     className={styles.shareButton}
+                    // Posting to the community server is for public scenes.
+                    disabled={visibility !== 'public'}
                   >
                     💬 <FormattedMessage {...commonMessages.discord} />
                   </Button>
@@ -461,6 +619,15 @@ function ShareModal() {
 
               {/* Share URL section */}
               <div className={styles.shareUrlSection}>
+                {visibility === 'private' && (
+                  <p className={styles.privateLinkNote}>
+                    <AwesomeIcon icon={faLock} size={12} />
+                    <FormattedMessage
+                      id="shareModal.privateLinkNote"
+                      defaultMessage="This scene is private: only you can open this link."
+                    />
+                  </p>
+                )}
                 <div className={styles.urlInputWrapper}>
                   <textarea
                     readOnly

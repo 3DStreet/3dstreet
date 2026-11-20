@@ -3,10 +3,12 @@ import useStore from '@/store.js';
 import { resolveSavedCameraStates } from '@/tested/scene-camera-pose.js';
 import {
   createScene,
+  setSceneVisibility,
   updateScene,
   uploadThumbnailImage
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.jsx';
+import { formatSharedMessage } from '@shared/i18n/sharedMessages';
 import { getCurrentCameraState } from '@/editor/lib/cameraUtils.js';
 import { scenePath, clearedSceneUrl } from '@/tested/scene-url-utils.js';
 import { doc, getDoc } from 'firebase/firestore';
@@ -285,7 +287,8 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
     return;
   }
 
-  if (authorId !== currentUser.uid) {
+  const isOwnScene = authorId === currentUser.uid;
+  if (!isOwnScene) {
     // posthog.capture('not_scene_author', {
     //   scene_id: sceneId,
     //   user_id: currentUser.uid
@@ -352,13 +355,33 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
       store.setSceneTitle(newTitle);
       title = newTitle;
     }
+    // A copy of your own scene keeps its visibility (#1267); a copy of
+    // someone else's scene, or a new one, is public. The rules refuse
+    // 'private' on create, so a private copy starts unlisted (never listed)
+    // and is made private through the callable right after.
+    const sourceVisibility = isOwnScene ? store.sceneVisibility : 'public';
     sceneId = await createScene(
       currentUser.uid,
       filteredData.data,
       title,
       filteredData.version,
-      filteredData.memory
+      filteredData.memory,
+      false,
+      sourceVisibility === 'public' ? 'public' : 'unlisted'
     );
+    let visibility = sourceVisibility === 'public' ? 'public' : 'unlisted';
+    if (sourceVisibility === 'private') {
+      try {
+        visibility = await setSceneVisibility(sceneId, 'private');
+      } catch (error) {
+        // e.g. no longer Pro: the copy stays unlisted.
+        console.error('Could not make the scene copy private:', error);
+        STREET.notify.errorMessage(
+          formatSharedMessage('privateSceneCopyUnlisted')
+        );
+      }
+    }
+    useStore.getState().setSceneVisibility(visibility);
   } else {
     await updateScene(
       sceneId,

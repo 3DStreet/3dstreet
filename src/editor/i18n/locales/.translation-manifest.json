@@ -1023,7 +1023,18 @@
     "shapeSidebar.style": "Style",
     "shapeSidebar.resetStyle": "Reset to default",
     "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too.",
-    "geoModal.mapLoadError": "The map couldn't load. Check your connection or content blocker, then reload the page. You can still enter coordinates below."
+    "geoModal.mapLoadError": "The map couldn't load. Check your connection or content blocker, then reload the page. You can still enter coordinates below.",
+    "shareModal.discordPublicOnly": "Only public scenes can be posted to the 3DStreet Discord server",
+    "shareModal.privateLinkNote": "This scene is private: only you can open this link.",
+    "shareModal.visibilityError": "Could not change who can open this scene.",
+    "shareModal.visibilityHeading": "Who can open this scene",
+    "shareModal.visibilityPrivate": "Private",
+    "shareModal.visibilityPrivateDescription": "Only you can open it. Embeds are disabled.",
+    "shareModal.visibilityPublic": "Public",
+    "shareModal.visibilityPublicDescription": "Anyone can open it. Listed in the community scenes.",
+    "shareModal.visibilityUnlisted": "Unlisted",
+    "shareModal.visibilityUnlistedDescription": "Anyone with the link can open it. Not listed.",
+    "signInModal.privateSceneMessage": "This scene is private. Sign in with the account of its author to open it."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2049,7 +2060,18 @@
     "shapeSidebar.style": "Style",
     "shapeSidebar.resetStyle": "Reset to default",
     "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too.",
-    "geoModal.mapLoadError": "The map couldn't load. Check your connection or content blocker, then reload the page. You can still enter coordinates below."
+    "geoModal.mapLoadError": "The map couldn't load. Check your connection or content blocker, then reload the page. You can still enter coordinates below.",
+    "shareModal.discordPublicOnly": "Only public scenes can be posted to the 3DStreet Discord server",
+    "shareModal.privateLinkNote": "This scene is private: only you can open this link.",
+    "shareModal.visibilityError": "Could not change who can open this scene.",
+    "shareModal.visibilityHeading": "Who can open this scene",
+    "shareModal.visibilityPrivate": "Private",
+    "shareModal.visibilityPrivateDescription": "Only you can open it. Embeds are disabled.",
+    "shareModal.visibilityPublic": "Public",
+    "shareModal.visibilityPublicDescription": "Anyone can open it. Listed in the community scenes.",
+    "shareModal.visibilityUnlisted": "Unlisted",
+    "shareModal.visibilityUnlistedDescription": "Anyone with the link can open it. Not listed.",
+    "signInModal.privateSceneMessage": "This scene is private. Sign in with the account of its author to open it."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -3075,6 +3097,17 @@
     "shapeSidebar.style": "Style",
     "shapeSidebar.resetStyle": "Reset to default",
     "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too.",
-    "geoModal.mapLoadError": "The map couldn't load. Check your connection or content blocker, then reload the page. You can still enter coordinates below."
+    "geoModal.mapLoadError": "The map couldn't load. Check your connection or content blocker, then reload the page. You can still enter coordinates below.",
+    "shareModal.discordPublicOnly": "Only public scenes can be posted to the 3DStreet Discord server",
+    "shareModal.privateLinkNote": "This scene is private: only you can open this link.",
+    "shareModal.visibilityError": "Could not change who can open this scene.",
+    "shareModal.visibilityHeading": "Who can open this scene",
+    "shareModal.visibilityPrivate": "Private",
+    "shareModal.visibilityPrivateDescription": "Only you can open it. Embeds are disabled.",
+    "shareModal.visibilityPublic": "Public",
+    "shareModal.visibilityPublicDescription": "Anyone can open it. Listed in the community scenes.",
+    "shareModal.visibilityUnlisted": "Unlisted",
+    "shareModal.visibilityUnlistedDescription": "Anyone with the link can open it. Not listed.",
+    "signInModal.privateSceneMessage": "This scene is private. Sign in with the account of its author to open it."
   }
 }

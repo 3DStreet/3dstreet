@@ -25,7 +25,7 @@
     "test:components": "vitest run --config vitest.components.config.js",
     "test:components:watch": "vitest --config vitest.components.config.js",
     "test:setup": "npx playwright install chromium-headless-shell",
-    "test:rules": "cd public && firebase emulators:exec --only firestore,auth --project demo-3dstreet-rules \"cd .. && vitest run --config vitest.rules.config.js\"",
+    "test:rules": "cd public && firebase emulators:exec --only firestore,auth,storage --project demo-3dstreet-rules \"cd .. && vitest run --config vitest.rules.config.js\"",
     "prettier": "prettier --write 'src/**/*.js' 'src/**/*.jsx' 'src/**/*.scss'",
     "assets:bounds": "node scripts/assets/compute-model-bounds.mjs",
     "assets:bounds:check": "node scripts/assets/compute-model-bounds.mjs --check",

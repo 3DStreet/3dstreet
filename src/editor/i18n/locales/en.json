@@ -2720,6 +2720,9 @@
   "shareModal.discordError": {
     "defaultMessage": "Failed to share scene to Discord. Please try again."
   },
+  "shareModal.discordPublicOnly": {
+    "defaultMessage": "Only public scenes can be posted to the 3DStreet Discord server"
+  },
   "shareModal.discordSuccess": {
     "defaultMessage": "Scene shared to Discord successfully!"
   },
@@ -2750,6 +2753,9 @@
   "shareModal.osShareTooltip": {
     "defaultMessage": "Use your browser's share feature to send your scene to others"
   },
+  "shareModal.privateLinkNote": {
+    "defaultMessage": "This scene is private: only you can open this link."
+  },
   "shareModal.saveToShare": {
     "defaultMessage": "Please save your scene to share it"
   },
@@ -2764,6 +2770,30 @@
   },
   "shareModal.urlCopied": {
     "defaultMessage": "Scene URL copied to clipboard"
+  },
+  "shareModal.visibilityError": {
+    "defaultMessage": "Could not change who can open this scene."
+  },
+  "shareModal.visibilityHeading": {
+    "defaultMessage": "Who can open this scene"
+  },
+  "shareModal.visibilityPrivate": {
+    "defaultMessage": "Private"
+  },
+  "shareModal.visibilityPrivateDescription": {
+    "defaultMessage": "Only you can open it. Embeds are disabled."
+  },
+  "shareModal.visibilityPublic": {
+    "defaultMessage": "Public"
+  },
+  "shareModal.visibilityPublicDescription": {
+    "defaultMessage": "Anyone can open it. Listed in the community scenes."
+  },
+  "shareModal.visibilityUnlisted": {
+    "defaultMessage": "Unlisted"
+  },
+  "shareModal.visibilityUnlistedDescription": {
+    "defaultMessage": "Anyone with the link can open it. Not listed."
   },
   "shareModal.webShareUnsupported": {
     "defaultMessage": "Web Share API is not supported in this browser"
@@ -2818,6 +2848,9 @@
   },
   "signInModal.message": {
     "defaultMessage": "Sign in to save and share scenes."
+  },
+  "signInModal.privateSceneMessage": {
+    "defaultMessage": "This scene is private. Sign in with the account of its author to open it."
   },
   "signInModal.signingIn": {
     "defaultMessage": "Signing in"

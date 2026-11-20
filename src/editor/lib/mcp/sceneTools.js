@@ -15,6 +15,7 @@
 
 import useStore from '@/store.js';
 import { sceneJsonBaseURL } from '@shared/utils/emulators.js';
+import { auth } from '@shared/services/firebase';
 import {
   createElementsForScenesFromJSON,
   saveSceneWithScreenshot
@@ -99,7 +100,16 @@ async function loadSceneHandler(args) {
   // (set-loader-from-hash in json-utils_1.1.js), including its localhost
   // rewrite to the dev deployment or the local functions emulator.
   const base = sceneJsonBaseURL();
-  const response = await fetch(`${base}/scenes/${sceneId}.json`);
+  // Signed in, send the ID token so the author can load their private
+  // scenes (#1267); getScene ignores it for the others.
+  await auth.authStateReady();
+  const headers = auth.currentUser
+    ? { Authorization: `Bearer ${await auth.currentUser.getIdToken()}` }
+    : {};
+  const response = await fetch(`${base}/scenes/${sceneId}.json`, { headers });
+  if (response.status === 403) {
+    throw new Error(`Scene ${sceneId} is private`);
+  }
   if (response.status === 404) {
     throw new Error(`Scene ${sceneId} not found`);
   }
@@ -122,6 +132,7 @@ async function loadSceneHandler(args) {
   if (json.title) {
     useStore.getState().setSceneTitle(json.title);
   }
+  useStore.getState().setSceneVisibility(json.visibility);
   return {
     message: 'Scene loaded; replaced the previous scene contents in this tab.',
     sceneId,

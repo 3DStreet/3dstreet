@@ -144,6 +144,17 @@ const useStore = create(
         // flag when it closes. Any other sign-in saves nothing.
         saveAfterSignIn: false,
         openSignInToSave: () => set({ saveAfterSignIn: true, modal: 'signin' }),
+        // Visibility of the current cloud scene (#1267): 'public' | 'unlisted'
+        // | 'private'. Set when a scene loads or saves; a new scene is public.
+        sceneVisibility: 'public',
+        setSceneVisibility: (sceneVisibility) =>
+          set({ sceneVisibility: sceneVisibility || 'public' }),
+        // True while the URL's scene is private and couldn't be opened
+        // (signed out, or not its author): the sign-in modal then says the
+        // scene is private, and the loader retries with the new account.
+        privateSceneBlocked: false,
+        setPrivateSceneBlocked: (privateSceneBlocked) =>
+          set({ privateSceneBlocked }),
         locationString: null,
         setLocationString: (newLocationString) =>
           set({ locationString: newLocationString }),
@@ -155,6 +166,7 @@ const useStore = create(
           set({
             sceneId: null,
             sceneTitle: null,
+            sceneVisibility: 'public',
             authorId: null,
             locationString: null,
             viewerStartMigrated: false

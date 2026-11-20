@@ -32,7 +32,8 @@ const generateSceneId = async (authorId, isFirstScene = false) => {
   await setDoc(newSceneDocRef, {
     createTimestamp: serverTimestamp(),
     updateTimestamp: serverTimestamp(),
-    author: authorId
+    author: authorId,
+    visibility: 'public'
   });
 
   posthog.capture('scene_created', {
@@ -50,7 +51,11 @@ const createScene = async (
   title,
   version,
   memory,
-  isFirstScene = false
+  isFirstScene = false,
+  // 'public' or 'unlisted' (#1267): the rules refuse 'private' on create;
+  // a private copy is created unlisted, then made private through
+  // setSceneVisibility.
+  visibility = 'public'
 ) => {
   // Generate a new UUID
   const newSceneId = uuidv4();
@@ -60,6 +65,7 @@ const createScene = async (
     createTimestamp: serverTimestamp(),
     updateTimestamp: serverTimestamp(),
     author: authorId,
+    visibility,
     data: sceneData,
     title: title,
     version: version,
@@ -160,6 +166,9 @@ const getCommunityScenes = async (isInitialFetch) => {
     if (isInitialFetch) {
       const communityScenesQuery = query(
         collection(db, 'scenes'),
+        // Only public scenes are listed (#1267); the rules refuse a query
+        // that isn't limited to them.
+        where('visibility', '==', 'public'),
         orderBy('updateTimestamp', 'desc'),
         limit(20)
       );
@@ -172,6 +181,9 @@ const getCommunityScenes = async (isInitialFetch) => {
 
       const communityScenesQuery = query(
         collection(db, 'scenes'),
+        // Only public scenes are listed (#1267); the rules refuse a query
+        // that isn't limited to them.
+        where('visibility', '==', 'public'),
         orderBy('updateTimestamp', 'desc'),
         startAfter(lastVisible),
         limit(20)
@@ -342,6 +354,17 @@ const uploadThumbnailImage = async (sceneDocId) => {
   }
 };
 
+// Change a scene's visibility (#1267). Goes through the setSceneVisibility
+// callable: it is the only path allowed to make a scene private (a Pro
+// feature checked server-side). Throws the callable's error, whose
+// details.reason is 'pro-required' | 'not-author' | 'not-found' |
+// 'invalid-visibility'.
+const setSceneVisibility = async (sceneId, visibility) => {
+  const callable = httpsCallable(getFunctions(), 'setSceneVisibility');
+  const result = await callable({ sceneId, visibility });
+  return result.data.visibility;
+};
+
 // Share scene to Discord
 const shareSceneToDiscord = async (sceneData) => {
   try {
@@ -363,6 +386,7 @@ export {
   generateSceneId,
   getCommunityScenes,
   getUserScenes,
+  setSceneVisibility,
   updateScene,
   updateSceneIdAndTitle,
   uploadThumbnailImage,

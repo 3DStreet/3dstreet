@@ -14,6 +14,7 @@ import posthog from 'posthog-js';
 const SignInModal = () => {
   const intl = useIntl();
   const modal = useStore((state) => state.modal);
+  const privateSceneBlocked = useStore((state) => state.privateSceneBlocked);
   const returnToPreviousModal = useStore(
     (state) => state.returnToPreviousModal
   );
@@ -53,10 +54,18 @@ const SignInModal = () => {
     <SharedSignInModal
       isOpen={modal === 'signin'}
       onClose={onClose}
-      message={intl.formatMessage({
-        id: 'signInModal.message',
-        defaultMessage: 'Sign in to save and share scenes.'
-      })}
+      message={
+        privateSceneBlocked
+          ? intl.formatMessage({
+              id: 'signInModal.privateSceneMessage',
+              defaultMessage:
+                'This scene is private. Sign in with the account of its author to open it.'
+            })
+          : intl.formatMessage({
+              id: 'signInModal.message',
+              defaultMessage: 'Sign in to save and share scenes.'
+            })
+      }
       firebaseAuth={auth}
       onAnalytics={handleAnalytics}
       onNotification={handleNotification}

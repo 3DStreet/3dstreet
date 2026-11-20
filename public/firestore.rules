@@ -2,16 +2,48 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /scenes/{scene} {
-      allow read;
+    // Scene visibility (#1267, docs/scene-visibility.md):
+    //   'public'   — anyone can open it; listed in the community feed
+    //   'unlisted' — anyone with the link can open it; not listed
+    //   'private'  — only the author can open it
+    // Docs written before the field existed are public. Clients may set
+    // 'public' or 'unlisted' themselves; 'private' is a Pro feature whose
+    // entitlement rules can't check (team domains live in a secret), so it
+    // is only ever written by the setSceneVisibility callable (Admin SDK).
+    function sceneVisibility(data) {
+      return data.get('visibility', 'public');
+    }
+
+    function isSceneAuthor(data) {
+      return request.auth != null && request.auth.uid == data.author;
+    }
+
+    function isClientSettableVisibility(data) {
+      return !('visibility' in data) || data.visibility in ['public', 'unlisted'];
     }
 
     match /scenes/{scene} {
-    	// Allow create new scene if user is authenticated
-      allow create: if request.auth != null;
+      allow get: if sceneVisibility(resource.data) != 'private'
+        || isSceneAuthor(resource.data);
 
-      // Allow update or delete scene if user is owner of document
-      allow update, delete: if request.auth.uid == resource.data.author;
+      // A list query must be provably limited to public scenes
+      // (where visibility == 'public') or to the caller's own scenes
+      // (where author == uid); an unfiltered query is refused.
+      allow list: if resource.data.visibility == 'public'
+        || isSceneAuthor(resource.data);
+
+      allow create: if request.auth != null
+        && request.resource.data.author == request.auth.uid
+        && isClientSettableVisibility(request.resource.data);
+
+      // The author keeps the scene (author is immutable) and can lower its
+      // visibility, or leave it untouched, but never make it private.
+      allow update: if isSceneAuthor(resource.data)
+        && request.resource.data.author == resource.data.author
+        && (sceneVisibility(request.resource.data) == sceneVisibility(resource.data)
+            || isClientSettableVisibility(request.resource.data));
+
+      allow delete: if isSceneAuthor(resource.data);
     }
 
     // Social Profile Collection Rules (PUBLIC data - usernames, display info, etc.)

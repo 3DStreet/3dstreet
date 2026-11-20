@@ -122,6 +122,22 @@ const DatabaseIcon = () => (
   </svg>
 );
 
+const LockIcon = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+
 const MapPinIcon = () => (
   <svg
     width="22"
@@ -139,6 +155,23 @@ const MapPinIcon = () => (
 );
 
 export const PAYWALL_SURFACES = {
+  // Private scenes (#1267) — fired from the Share modal when a non-Pro
+  // author picks "Private" (and when setSceneVisibility refuses it).
+  private_scene: {
+    icon: <LockIcon />,
+    titleId: 'surfacePrivateSceneTitle',
+    subtitleId: 'surfacePrivateSceneSubtitle',
+    headlineId: 'surfacePrivateSceneHeadline',
+    descriptionId: 'surfacePrivateSceneDesc',
+    featureIds: [
+      'featPrivateScenes',
+      'featWatermark',
+      'featGeoUnlimited',
+      'featCustomModels',
+      TOKEN_FEATURE_KEY
+    ]
+  },
+
   // GLB + AR-Ready GLB both flow through postCheckout='export'.
   // AR-Ready is on a deprecation path, so a single shared surface is fine.
   export: {

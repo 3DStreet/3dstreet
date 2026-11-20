@@ -37,6 +37,7 @@ import {
   upgradedSceneUrlFromHash
 } from './tested/scene-url-utils';
 import { sceneJsonBaseURL } from './shared/utils/emulators.js';
+import { formatSharedMessage } from './shared/i18n/sharedMessages.js';
 
 /* global AFRAME, Node */
 // Components removed alongside the legacy viewer mode. Stripped from
@@ -931,7 +932,9 @@ AFRAME.registerComponent('set-loader-from-hash', {
         this.urlCameraState = decodeCameraStateFromParam(
           new URLSearchParams(window.location.search).get('camera')
         );
-        useStore.getState().startLoadingScene('Loading scene...');
+        useStore
+          .getState()
+          .startLoadingScene(formatSharedMessage('sceneLoading'));
         console.log(
           '[set-loader-from-hash]',
           'Load 3DStreet scene from path URL',
@@ -1058,7 +1061,9 @@ AFRAME.registerComponent('set-loader-from-hash', {
         setTimeout(() => {
           AFRAME.INSPECTOR.execute('entitycreate', definition);
           // street notify
-          STREET.notify.successMessage('Loading Managed Street JSON from URL');
+          STREET.notify.successMessage(
+            formatSharedMessage('managedStreetLoadingFromUrl')
+          );
         }, 1000);
         return;
       }
@@ -1084,7 +1089,9 @@ AFRAME.registerComponent('set-loader-from-hash', {
         };
         setTimeout(() => {
           AFRAME.INSPECTOR.execute('entitycreate', definition);
-          STREET.notify.successMessage('Loading parity fixture: ' + slug);
+          STREET.notify.successMessage(
+            formatSharedMessage('parityFixtureLoading', { slug })
+          );
         }, 1000);
         return;
       }
@@ -1105,9 +1112,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           );
         } catch (err) {
           console.error('Error parsing GeoJSON fragment:', err);
-          STREET.notify.errorMessage(
-            'Error parsing GeoJSON from URL: Invalid JSON format'
-          );
+          STREET.notify.errorMessage(formatSharedMessage('geojsonInvalidJson'));
           return;
         }
 
@@ -1117,9 +1122,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
           !Array.isArray(geoJsonData.features) ||
           geoJsonData.features.length === 0
         ) {
-          STREET.notify.errorMessage(
-            'Invalid GeoJSON: No valid features found'
-          );
+          STREET.notify.errorMessage(formatSharedMessage('geojsonNoFeatures'));
           return;
         }
 
@@ -1137,9 +1140,7 @@ AFRAME.registerComponent('set-loader-from-hash', {
         });
 
         if (buildingFeatures.length === 0) {
-          STREET.notify.errorMessage(
-            'No valid polygon features found in GeoJSON'
-          );
+          STREET.notify.errorMessage(formatSharedMessage('geojsonNoPolygons'));
           return;
         }
 
@@ -1173,7 +1174,9 @@ AFRAME.registerComponent('set-loader-from-hash', {
           });
 
           STREET.notify.successMessage(
-            `GeoJSON loaded from URL: ${buildingFeatures.length} polygon features.`
+            formatSharedMessage('geojsonLoadedFromUrl', {
+              count: buildingFeatures.length
+            })
           );
 
           // Wait for GeoJSON component to calculate center, then open Geo Modal
@@ -1278,7 +1281,9 @@ AFRAME.registerComponent('set-loader-from-hash', {
         !streetURL.includes('modal') &&
         !streetURL.startsWith('admin/')
       ) {
-        useStore.getState().startLoadingScene('Loading scene...');
+        useStore
+          .getState()
+          .startLoadingScene(formatSharedMessage('sceneLoading'));
         // try to load JSON file from remote resource
         console.log(
           '[set-loader-from-hash]',
@@ -1296,16 +1301,21 @@ AFRAME.registerComponent('set-loader-from-hash', {
       // }
     }
   },
-  fetchJSON: function (requestURL) {
+  fetchJSON: function (requestURL, idToken = null) {
     // Captured for the onload closure (`this` is the XHR in there).
     const urlCameraState = this.urlCameraState || null;
+    const component = this;
     const request = new XMLHttpRequest();
 
     // Prepend the base URL to the requestURL (dev deployment or the local
     // functions emulator when running on localhost)
-    requestURL = sceneJsonBaseURL() + requestURL;
+    const fullURL = sceneJsonBaseURL() + requestURL;
 
-    request.open('GET', requestURL, true);
+    request.open('GET', fullURL, true);
+    if (idToken) {
+      // Private scene (#1267): getScene serves it to its author only.
+      request.setRequestHeader('Authorization', `Bearer ${idToken}`);
+    }
     request.onload = function () {
       if (this.status >= 200 && this.status < 400) {
         // Connection success
@@ -1359,9 +1369,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
           AFRAME.scenes[0].pendingSceneLoadCamera = {
             urlCameraState: urlCameraState || null
           };
-          useStore.getState().updateLoadingProgress(50, 'Creating scene...');
+          useStore
+            .getState()
+            .updateLoadingProgress(50, formatSharedMessage('sceneCreating'));
           STREET.utils.createElementsFromJSON(jsonData, false);
-          const sceneId = getUUIDFromPath(requestURL);
+          const sceneId = getUUIDFromPath(fullURL);
           if (sceneId) {
             console.log('sceneId from fetchJSON from url hash loader', sceneId);
             AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
@@ -1371,24 +1383,30 @@ AFRAME.registerComponent('set-loader-from-hash', {
             'authorId',
             jsonData.author
           );
+          useStore.getState().setSceneVisibility(jsonData.visibility);
+          useStore.getState().setPrivateSceneBlocked(false);
         } catch (err) {
           console.error(
             '[set-loader-from-hash] Error parsing/building scene:',
             err
           );
-          useStore.getState().errorLoadingScene('Could not read scene data.');
+          useStore
+            .getState()
+            .errorLoadingScene(formatSharedMessage('sceneInvalidData'));
           STREET.notify.errorMessage(
-            'Error trying to load scene: invalid scene data.'
+            formatSharedMessage('sceneInvalidDataToast')
           );
         }
+      } else if (this.status === 403 && isPrivateSceneResponse(this)) {
+        component.onPrivateScene(requestURL, !!idToken);
       } else if (this.status === 404) {
         console.error(
           '[set-loader-from-hash] Error trying to load scene: Resource not found.'
         );
-        useStore.getState().errorLoadingScene('Scene not found.');
-        STREET.notify.errorMessage(
-          'Error trying to load scene: Resource not found.'
-        );
+        useStore
+          .getState()
+          .errorLoadingScene(formatSharedMessage('sceneNotFound'));
+        STREET.notify.errorMessage(formatSharedMessage('sceneNotFoundToast'));
       }
     };
     request.onerror = function () {
@@ -1396,12 +1414,65 @@ AFRAME.registerComponent('set-loader-from-hash', {
       console.error(
         'Loading Error: There was a connection error during JSON loading'
       );
-      useStore.getState().errorLoadingScene('Could not connect to server.');
-      STREET.notify.errorMessage('Could not fetch scene.');
+      useStore
+        .getState()
+        .errorLoadingScene(formatSharedMessage('sceneConnectionError'));
+      STREET.notify.errorMessage(formatSharedMessage('sceneFetchError'));
     };
     request.send();
+  },
+  // getScene refused a private scene (#1267). Retry once with the signed-in
+  // user's ID token (getScene serves the scene if they are its author);
+  // signed out, ask them to sign in and retry when they do. An embed never
+  // retries: a private scene can't be embedded.
+  onPrivateScene: async function (requestURL, alreadyRetried) {
+    // Loaded on demand: this module also runs where the Firebase config
+    // isn't defined (component tests), and only private scenes need auth.
+    const [{ auth }, { onAuthStateChanged }] = await Promise.all([
+      import('./shared/services/firebase.js'),
+      import('firebase/auth')
+    ]);
+    const isEmbed =
+      new URLSearchParams(window.location.search).get('embed') === 'true';
+    if (!isEmbed && !alreadyRetried) {
+      await auth.authStateReady();
+      if (auth.currentUser) {
+        this.fetchJSON(requestURL, await auth.currentUser.getIdToken());
+        return;
+      }
+    }
+    useStore.getState().setPrivateSceneBlocked(true);
+    if (isEmbed || auth.currentUser) {
+      // Signing in can't help: an embed, or a signed-in non-author.
+      const message = formatSharedMessage(
+        isEmbed ? 'privateSceneEmbed' : 'privateSceneNotAuthor'
+      );
+      console.error('[set-loader-from-hash]', message);
+      useStore.getState().errorLoadingScene(message);
+      return;
+    }
+    // Signed out: ask to sign in (the modal says why, see SignInModal),
+    // then load with that account.
+    useStore.getState().finishLoadingScene();
+    useStore.getState().setModal('signin');
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      unsubscribe();
+      useStore
+        .getState()
+        .startLoadingScene(formatSharedMessage('sceneLoading'));
+      this.fetchJSON(requestURL, await user.getIdToken());
+    });
   }
 });
+
+function isPrivateSceneResponse(request) {
+  try {
+    return JSON.parse(request.response).reason === 'private';
+  } catch {
+    return false;
+  }
+}
 
 function getUUIDFromPath(path) {
   // UUID regex pattern: [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
@@ -1455,8 +1526,10 @@ function createElementsFromJSON(streetJSON, clearUrlHash) {
   migrateDefaultSnapshotToViewerStart(streetObject.data, streetObject.memory);
   createEntities(streetObject.data, streetContainerEl);
   resolveCloudAssetUrls(streetContainerEl);
-  useStore.getState().updateLoadingProgress(90, 'Finalizing...');
-  STREET.notify.successMessage('Scene loaded');
+  useStore
+    .getState()
+    .updateLoadingProgress(90, formatSharedMessage('sceneFinalizing'));
+  STREET.notify.successMessage(formatSharedMessage('sceneLoaded'));
 
   const pending = AFRAME.scenes[0].pendingSceneLoadCamera || {};
   delete AFRAME.scenes[0].pendingSceneLoadCamera;

@@ -22,6 +22,7 @@ const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./sch
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
+const { setSceneVisibility, canReadScene, uidFromAuthorizationHeader } = require('./scene-visibility.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -107,11 +108,24 @@ exports.onSplatAssetCreated = onSplatAssetCreated;
 // callable. See ai-chat-proxy.js.
 exports.generateEditorChat = generateEditorChat;
 
+// Scene visibility (#1267): the only writer of visibility 'private'.
+exports.setSceneVisibility = setSceneVisibility;
+
 exports.getScene = functions
   .https
   .onRequest(async (req, res) => {
-    // Extract scene id from the path, remove the .json part
     res.set('Access-Control-Allow-Origin', '*');
+    // A private scene is fetched with an `Authorization: Bearer <ID token>`
+    // header, which makes a cross-origin request (localhost against the dev
+    // deployment) send a preflight first.
+    if (req.method === 'OPTIONS') {
+      res.set('Access-Control-Allow-Methods', 'GET');
+      res.set('Access-Control-Allow-Headers', 'Authorization');
+      res.set('Access-Control-Max-Age', '3600');
+      res.status(204).send('');
+      return;
+    }
+    // Extract scene id from the path, remove the .json part
     const documentId = req.path
       .split('/')
       .filter(Boolean)[1]
@@ -132,7 +146,18 @@ exports.getScene = functions
           .status(404)
           .send({ error: `Scene not found. DocumentID: ${documentId}` });
       } else {
-        res.send(doc.data());
+        const scene = doc.data();
+        if (!canReadScene(scene, null)) {
+          // Private: only the author, identified by their ID token. Never
+          // cached, and refused the same way whether signed out or not.
+          res.set('Cache-Control', 'private, no-store');
+          const uid = await uidFromAuthorizationHeader(req);
+          if (!canReadScene(scene, uid)) {
+            res.status(403).send({ error: 'This scene is private.', reason: 'private' });
+            return;
+          }
+        }
+        res.send(scene);
       }
     } catch {
       res.status(500).send({ error: 'Error retrieving scene' });

@@ -174,6 +174,8 @@ scene's render loop.
 
 **Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
 
+**Scene visibility (#1267):** `scenes.visibility` is `public` | `unlisted` | `private` (missing = public). Private is Pro and author-only, enforced by the Firestore and Storage rules and by `getScene` (ID token); clients can never write `private`, only the `setSceneVisibility` callable can. Scene list queries must filter on `visibility == 'public'` or `author == uid`. Read [docs/scene-visibility.md](docs/scene-visibility.md) before touching scene loading, saving, sharing or the `scenes` rules.
+
 **Project Pass (#1922):** one-time time-boxed Pro. Pro = plan claim OR team domain OR `tokenProfile.proUntil > now` (`hasProEntitlement`, `public/functions/pro-pass.js`); never store pass state in claims. All pass fulfilment (Stripe checkout and `#redeem` pass codes) goes through `grantPass` (idempotency key per grant). Read [docs/project-pass.md](docs/project-pass.md) before touching Pro checks, checkout gating or the Stripe webhook.
 
 **Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `redeemPassCode` (Project Pass activated), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Localized (en/es/pt-BR/fr, hand-written copy per locale in `templates.js`): recipient locale resolved from `socialProfile/{uid}` (`locale` explicit pick > `detectedLocale` captured at sign-in > en) via `email/locale.js`. Docs: [docs/email-lifecycle.md](docs/email-lifecycle.md).
@@ -229,7 +231,7 @@ Gate verbose per-area console output (navigation, batching, ...) on
 `isDebugEnabled()` / `debugLog()`; never add a per-feature debug flag.
 Warnings and errors for real problems stay ungated.
 
-**Firestore emulator tests:** `npm run test:rules` — local-only (boots the firestore + auth emulators via `firebase emulators:exec`, runs vitest against `test/rules/`). Covers security rules AND the lifecycle email send service (`sendLifecycleEmail`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules` or `public/functions/email/`. Requires JDK 21+ on `PATH` (emulator dependency; if `java -version` shows an older default, prefix with `JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"`).
+**Firestore emulator tests:** `npm run test:rules` — local-only (boots the firestore + auth + storage emulators via `firebase emulators:exec`, runs vitest against `test/rules/`). Covers Firestore and Storage security rules AND the lifecycle email send service (`sendLifecycleEmail`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules`, `public/storage.rules` or `public/functions/email/`. Requires JDK 21+ on `PATH` (emulator dependency; if `java -version` shows an older default, prefix with `JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"`).
 
 **Deploy:** `npm run deploy` or `npm run deploy:staging`
 
