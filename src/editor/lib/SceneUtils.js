@@ -31,11 +31,14 @@ export function createBlankScene() {
   STREET.utils.emitNewScene({ skipFlyIn: true });
 }
 
+// Returns false, leaving the current scene untouched, when the prompt is
+// cancelled or left blank.
 export function inputStreetmix() {
   const streetmixURL = prompt(
     'Please enter a Streetmix URL',
     'https://streetmix.net/kfarr/3/example-street'
   );
+  if (!streetmixURL?.trim()) return false;
 
   // clear scene data, create new blank scene.
   // clearMetadata = true, clearUrlHash = false
@@ -69,6 +72,7 @@ export function inputStreetmix() {
       }
     }
   });
+  return true;
 }
 
 export function createElementsForScenesFromJSON(streetData, memoryData) {
