@@ -36,6 +36,7 @@ const {
   orgRemoveMember
 } = require('./orgs.js');
 const { orgCreateProject, orgRenameProject, orgMoveScene } = require('./team-scenes.js');
+const { orgSetBilling, orgSetMemberCap, orgUpdateWallet } = require('./team-wallet.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -141,6 +142,11 @@ exports.orgRemoveMember = orgRemoveMember;
 exports.orgCreateProject = orgCreateProject;
 exports.orgRenameProject = orgRenameProject;
 exports.orgMoveScene = orgMoveScene;
+
+// Team AI token wallets (#1267 Phase 3, docs/team-wallet.md).
+exports.orgSetBilling = orgSetBilling;
+exports.orgSetMemberCap = orgSetMemberCap;
+exports.orgUpdateWallet = orgUpdateWallet;
 
 exports.getScene = functions
   .https

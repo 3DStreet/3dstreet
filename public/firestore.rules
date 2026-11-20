@@ -163,6 +163,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Team AI token wallets (#1267 Phase 3, docs/team-wallet.md): the
+    // team's members read the balance, the budget, the member cap and the
+    // month's usage (the app shows what each member can still spend). Only
+    // the functions write them (charges, refunds, team-wallet.js callables).
+    match /orgWallets/{orgId} {
+      allow read: if isOrgMember(orgId);
+      allow write: if false;
+
+      match /usage/{month} {
+        allow read: if isOrgMember(orgId);
+        allow write: if false;
+      }
+    }
+
     // Organizations (teams, #1267 Phase 1, docs/orgs.md). Every write goes
     // through the org callables (public/functions/orgs.js, Admin SDK); the
     // helper functions are above the scenes rules.

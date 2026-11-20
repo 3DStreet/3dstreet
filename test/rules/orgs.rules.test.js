@@ -161,6 +161,29 @@ describe('firestore.rules — organizations', () => {
     );
   });
 
+  it("members read their team's wallet and usage; nobody writes them", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'orgWallets/org1'), { genToken: 10 });
+      await setDoc(doc(ctx.firestore(), 'orgWallets/org1/usage/2026-10'), {
+        total: 1
+      });
+    });
+    await assertSucceeds(getDoc(doc(as(MEMBER), 'orgWallets/org1')));
+    await assertSucceeds(
+      getDoc(doc(as(MEMBER), 'orgWallets/org1/usage/2026-10'))
+    );
+    await assertFails(getDoc(doc(as(OUTSIDER), 'orgWallets/org1')));
+    await assertFails(
+      getDoc(doc(as(OUTSIDER), 'orgWallets/org1/usage/2026-10'))
+    );
+    await assertFails(
+      updateDoc(doc(as(OWNER), 'orgWallets/org1'), { genToken: 9999 })
+    );
+    await assertFails(
+      setDoc(doc(as(OWNER), 'orgWallets/org1/usage/2026-10'), { total: 0 })
+    );
+  });
+
   it('userOrgs is readable by its user only and never writable', async () => {
     await assertSucceeds(getDoc(doc(as(MEMBER), 'userOrgs', MEMBER)));
     await assertFails(getDoc(doc(as(OUTSIDER), 'userOrgs', MEMBER)));

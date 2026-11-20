@@ -5,7 +5,7 @@ const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { computeMonthlyRefill } = require('./token-packs.js');
 const { readOrgPlan, autoJoinDomainOrgs, readUserOrgs } = require('./orgs.js');
-const { higherPlan } = require('./org-utils.js');
+const { resolveBillingOrg, prepareWalletCharge, spendableGenTokens } = require('./team-wallet.js');
 const {
   isPaidPlanClaim,
   toMillis,
@@ -114,13 +114,14 @@ const checkAndRefillImageTokens = functions
 
       // Use centralized domain validation
       const { isProDomain } = await validateUserDomain(userRecord.email);
-      // A seat in an org counts like a subscription to the org's plan.
-      const orgPlan = await readOrgPlan(userId);
+      // A team seat (#1267) gives no personal top-up: the team pays its
+      // members' AI usage from its wallet (team-wallet.js), within its
+      // monthly budget.
 
       // Subscription + team only: a one-time pass (proUntil) gets no monthly
       // top-up — its token lump sum replaces the drip (#1922).
-      const isProUser = isPro || isProDomain || isPaidPlanClaim(orgPlan);
-      const monthlyAllowance = monthlyAllowanceForPlan(higherPlan(plan, orgPlan));
+      const isProUser = isPro || isProDomain;
+      const monthlyAllowance = monthlyAllowanceForPlan(plan);
 
       // Get current token profile
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
@@ -246,12 +247,13 @@ const checkAndRefillImageTokensInternal = async (userId) => {
 
     // Use centralized domain validation
     const { isProDomain } = await validateUserDomain(userRecord.email);
-    // A seat in an org counts like a subscription to the org's plan.
-    const orgPlan = await readOrgPlan(userId);
+    // A team seat (#1267) gives no personal top-up: the team pays its
+    // members' AI usage from its wallet (team-wallet.js), within its
+    // monthly budget.
 
     // Subscription + team only — no monthly top-up for pass holders (#1922).
-    const isProUser = isPro || isProDomain || isPaidPlanClaim(orgPlan);
-    const monthlyAllowance = monthlyAllowanceForPlan(higherPlan(plan, orgPlan));
+    const isProUser = isPro || isProDomain;
+    const monthlyAllowance = monthlyAllowanceForPlan(plan);
 
     // Get current token profile
     const tokenProfileRef = db.collection('tokenProfile').doc(userId);
@@ -407,6 +409,8 @@ const checkUserProStatus = functions
         // team settings.
         orgPlan,
         orgs,
+        // The team paying the user's AI generations (#1267 Phase 3), or null.
+        billingOrgId: await resolveBillingOrg(userId).catch(() => null),
         email: userRecord.email
       };
       
@@ -429,7 +433,28 @@ const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, r
   const tokenProfileRef = db.collection('tokenProfile').doc(userId);
   let remainingTokens = 0;
   let tokensBefore = 0;
+  // Team wallet (#1267 Phase 3, team-wallet.js): when the user's billing
+  // team is still valid, the team pays. The job records it so the refund
+  // goes back to the same wallet and month.
+  let chargedOrgId = null;
   await db.runTransaction(async (transaction) => {
+    chargedOrgId = await resolveBillingOrg(userId, transaction);
+    if (chargedOrgId) {
+      const charge = await prepareWalletCharge(transaction, {
+        orgId: chargedOrgId,
+        uid: userId,
+        cost: tokenCost
+      });
+      tokensBefore = charge.tokensBefore;
+      remainingTokens = charge.tokensAfter;
+      charge.commit();
+      transaction.update(jobRef, {
+        tokenCharged: true,
+        chargedOrgId,
+        chargedMonth: charge.monthKey
+      });
+      return;
+    }
     const tokenDoc = await transaction.get(tokenProfileRef);
     if (!tokenDoc.exists) {
       throw new functions.https.HttpsError('not-found', 'Token profile not found');
@@ -450,6 +475,8 @@ const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, r
   // Fire-and-forget: write token deduction audit log
   db.collection('tokenLog').add({
     userId,
+    // The team whose wallet paid (#1267), or null for personal tokens.
+    orgId: chargedOrgId,
     type: 'deduction',
     tokensBefore,
     tokensAfter: remainingTokens,
@@ -459,7 +486,7 @@ const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, r
     createdAt: FieldValue.serverTimestamp()
   }).catch(err => console.error('Failed to write tokenLog:', err));
 
-  return { tokensBefore, remainingTokens };
+  return { tokensBefore, remainingTokens, chargedOrgId };
 };
 
 // One-time gen-token pack purchase (#1374): credit the purchased tokens and
@@ -737,5 +764,6 @@ module.exports = {
   readProUntil,
   validateUserDomain,
   checkUserProStatus,
-  isUserProInternal
+  isUserProInternal,
+  spendableGenTokens
 };

@@ -43,6 +43,7 @@ const {
   planFromMemberships,
   invitationExpiry
 } = require('./org-utils.js');
+const { defaultMonthlyBudget } = require('./wallet-utils.js');
 
 const db = () => admin.firestore();
 const orgRef = (orgId) => db().collection('orgs').doc(orgId);
@@ -97,10 +98,27 @@ const toHttpsError = (error) => {
   return new functions.https.HttpsError('internal', 'Something went wrong.');
 };
 
-const userOrgsPatch = (orgId, role) => ({
-  orgs: { [orgId]: role === null ? FieldValue.delete() : role },
-  updatedAt: FieldValue.serverTimestamp()
-});
+/**
+ * The userOrgs update for `uid` getting `role` in `orgId` (null = leaving).
+ * `current` is their userOrgs data as read in the transaction. Also keeps
+ * who pays their AI usage (#1267 Phase 3, team-wallet.js) consistent: a new
+ * seat makes the team pay when the user hasn't picked one; losing the seat
+ * (leaving, viewer) switches back to personal tokens if this team paid.
+ */
+const userOrgsPatch = (orgId, role, current = {}) => {
+  const patch = {
+    orgs: { [orgId]: role === null ? FieldValue.delete() : role },
+    updatedAt: FieldValue.serverTimestamp()
+  };
+  if (takesSeat(role) && !current.billingOrgId) patch.billingOrgId = orgId;
+  if (!takesSeat(role) && current.billingOrgId === orgId) patch.billingOrgId = null;
+  return patch;
+};
+
+const readUserOrgsData = async (tx, uid) => {
+  const snapshot = await tx.get(userOrgsRef(uid));
+  return snapshot.exists ? snapshot.data() : {};
+};
 
 /** The members and live invitations of an org, read in a transaction. */
 const readSeatState = async (tx, orgId) => {
@@ -173,6 +191,18 @@ async function createOrg({ name, plan, seats, domains = [], ownerEmail, actorUid
   if (!isPlausibleEmail(email)) throw new OrgError('invalid-email');
 
   const ref = db().collection('orgs').doc();
+  // The team's AI token wallet (#1267 Phase 3, team-wallet.js); staff can
+  // change the budget with orgUpdateWallet.
+  await db()
+    .collection('orgWallets')
+    .doc(ref.id)
+    .set({
+      genToken: 0,
+      monthlyTokenBudget: defaultMonthlyBudget(plan, seats),
+      memberMonthlyCap: null,
+      lastRefill: null,
+      updatedAt: FieldValue.serverTimestamp()
+    });
   await ref.set({
     name: normalizeOrgName(name),
     plan,
@@ -222,6 +252,7 @@ async function addMember({ orgId, uid, role, via, invitedBy = null }) {
     const org = requireOrg(await tx.get(orgRef(orgId)));
     const existing = await tx.get(memberRef(orgId, uid));
     if (existing.exists) return;
+    const current = await readUserOrgsData(tx, uid);
     if (takesSeat(role)) {
       const state = await readSeatState(tx, orgId);
       if (countSeatsUsed(state) >= org.seats) throw new OrgError('no-seat-left');
@@ -235,7 +266,7 @@ async function addMember({ orgId, uid, role, via, invitedBy = null }) {
       invitedBy,
       via
     });
-    tx.set(userOrgsRef(uid), userOrgsPatch(orgId, role), { merge: true });
+    tx.set(userOrgsRef(uid), userOrgsPatch(orgId, role, current), { merge: true });
   });
 }
 
@@ -419,6 +450,7 @@ async function acceptInvitation({ uid, invitationId }) {
     const org = requireOrg(await tx.get(orgRef(inv.orgId)));
     if (org.status !== 'active') throw new OrgError('org-suspended');
     const existing = await tx.get(memberRef(inv.orgId, uid));
+    const current = await readUserOrgsData(tx, uid);
     if (!existing.exists) {
       if (takesSeat(inv.role)) {
         // This invitation already holds a seat, unless the seat count was
@@ -439,7 +471,9 @@ async function acceptInvitation({ uid, invitationId }) {
         invitedBy: inv.invitedBy || null,
         via: 'invitation'
       });
-      tx.set(userOrgsRef(uid), userOrgsPatch(inv.orgId, inv.role), { merge: true });
+      tx.set(userOrgsRef(uid), userOrgsPatch(inv.orgId, inv.role, current), {
+        merge: true
+      });
     }
     tx.update(invitationRef(invitationId), {
       status: 'accepted',
@@ -481,6 +515,7 @@ async function changeMemberRole({ actorUid, orgId, targetUid, role }) {
     if (!target.exists) throw new OrgError('member-not-found');
     const targetRole = target.data().role;
     if (targetRole === role) return;
+    const current = await readUserOrgsData(tx, targetUid);
     const state = await readSeatState(tx, orgId);
     const refusal = roleChangeRefusal({
       actorRole,
@@ -494,7 +529,9 @@ async function changeMemberRole({ actorUid, orgId, targetUid, role }) {
       throw new OrgError('no-seat-left');
     }
     tx.update(memberRef(orgId, targetUid), { role });
-    tx.set(userOrgsRef(targetUid), userOrgsPatch(orgId, role), { merge: true });
+    tx.set(userOrgsRef(targetUid), userOrgsPatch(orgId, role, current), {
+      merge: true
+    });
   });
   return { orgId, uid: targetUid, role };
 }
@@ -506,6 +543,7 @@ async function removeMember({ actorUid, orgId, targetUid }) {
     const actorRole = requireActorRole(await tx.get(memberRef(orgId, actorUid)));
     const target = await tx.get(memberRef(orgId, targetUid));
     if (!target.exists) throw new OrgError('member-not-found');
+    const current = await readUserOrgsData(tx, targetUid);
     const state = await readSeatState(tx, orgId);
     const refusal = removalRefusal({
       actorUid,
@@ -516,7 +554,9 @@ async function removeMember({ actorUid, orgId, targetUid }) {
     });
     if (refusal) throw new OrgError(refusal);
     tx.delete(memberRef(orgId, targetUid));
-    tx.set(userOrgsRef(targetUid), userOrgsPatch(orgId, null), { merge: true });
+    tx.set(userOrgsRef(targetUid), userOrgsPatch(orgId, null, current), {
+      merge: true
+    });
   });
   return { orgId, uid: targetUid };
 }

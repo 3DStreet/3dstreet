@@ -5,7 +5,8 @@ const { FieldValue } = require('firebase-admin/firestore');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
-const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
+const { checkAndRefillImageTokensInternal, chargeGenerationTokens, spendableGenTokens } = require('./token-management.js');
+const { refundToWallet } = require('./team-wallet.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, REPLICATE_MODELS } = require('./replicate-models.js');
 const { buildReplicateImageInput, resolveOutputTier } = require('./image-model-inputs.js');
 const { assertAppCheck } = require('./app-check.js');
@@ -241,8 +242,11 @@ const generateReplicateImage = functions
     }
 
 
-    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
-        throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData.genToken || 0}.`);
+    // What the user can spend: their billing team's wallet (#1267) or
+    // their own tokens.
+    const { available: spendable } = await spendableGenTokens(userId, tokenData.genToken);
+    if (!spendable || spendable < tokenCost) {
+        throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${spendable || 0}.`);
     }
 
     // Validate required data - prompt is always required, input_image is optional
@@ -639,8 +643,11 @@ const generateReplicateVideo = functions
     }
 
     // Check if user has enough tokens for this generation
-    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
-      throw new functions.https.HttpsError('resource-exhausted', `Insufficient tokens. This video requires ${tokenCost} tokens, but you have ${tokenData.genToken || 0}.`);
+    // What the user can spend: their billing team's wallet (#1267) or
+    // their own tokens.
+    const { available: spendable } = await spendableGenTokens(userId, tokenData.genToken);
+    if (!spendable || spendable < tokenCost) {
+      throw new functions.https.HttpsError('resource-exhausted', `Insufficient tokens. This video requires ${tokenCost} tokens, but you have ${spendable || 0}.`);
     }
 
     // Validate required data
@@ -988,8 +995,11 @@ const generateReplicateSplat = functions
       throw new functions.https.HttpsError('internal', 'Failed to retrieve token information. Please try again.');
     }
 
-    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
-      throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData.genToken || 0}.`);
+    // What the user can spend: their billing team's wallet (#1267) or
+    // their own tokens.
+    const { available: spendable } = await spendableGenTokens(userId, tokenData.genToken);
+    if (!spendable || spendable < tokenCost) {
+      throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${spendable || 0}.`);
     }
 
     if (inputKind === 'video') {
@@ -1329,11 +1339,26 @@ async function refundSplatToken(db, userId, jobRef, job) {
   const tokenCost = job.tokenCost || 1;
   const tokenProfileRef = db.collection('tokenProfile').doc(userId);
   let remainingTokens;
+  let refundedOrgId = null;
   try {
     await db.runTransaction(async (transaction) => {
+      refundedOrgId = null; // the transaction may retry
       const jobDoc = await transaction.get(jobRef);
       if (jobDoc.exists && jobDoc.data().refunded) {
         return; // another poll already refunded
+      }
+      // Charged to a team's wallet (#1267 Phase 3): it goes back there.
+      const chargedOrgId = jobDoc.exists ? jobDoc.data().chargedOrgId : null;
+      if (chargedOrgId) {
+        refundToWallet(transaction, {
+          orgId: chargedOrgId,
+          uid: userId,
+          cost: tokenCost,
+          chargedMonth: jobDoc.data().chargedMonth
+        });
+        transaction.update(jobRef, { refunded: true });
+        refundedOrgId = chargedOrgId;
+        return;
       }
       const tokenDoc = await transaction.get(tokenProfileRef);
       if (!tokenDoc.exists) {
@@ -1352,9 +1377,10 @@ async function refundSplatToken(db, userId, jobRef, job) {
     console.error('Failed to refund splat token:', error);
     return undefined;
   }
-  if (typeof remainingTokens !== 'undefined') {
+  if (typeof remainingTokens !== 'undefined' || refundedOrgId) {
     db.collection('tokenLog').add({
       userId,
+      orgId: refundedOrgId,
       type: 'refund',
       tokenCost,
       source: `${job.kind || 'splat'}-generation-failed`,
