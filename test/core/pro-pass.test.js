@@ -151,6 +151,21 @@ describe('hasProEntitlement', () => {
     );
   });
 
+  it('a seat in an org with a paid plan is Pro (#1267)', () => {
+    assert.strictEqual(
+      hasProEntitlement({ plan: '', orgPlan: 'PRO', nowMs: NOW }),
+      true
+    );
+    assert.strictEqual(
+      hasProEntitlement({ plan: '', orgPlan: 'MAX', nowMs: NOW }),
+      true
+    );
+    assert.strictEqual(
+      hasProEntitlement({ plan: '', orgPlan: null, nowMs: NOW }),
+      false
+    );
+  });
+
   it('an unexpired pass is Pro with no plan claim', () => {
     assert.strictEqual(
       hasProEntitlement({ plan: '', proUntil: future, nowMs: NOW }),

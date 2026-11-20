@@ -4,6 +4,8 @@ const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { computeMonthlyRefill } = require('./token-packs.js');
+const { readOrgPlan, autoJoinDomainOrgs, readUserOrgs } = require('./orgs.js');
+const { higherPlan } = require('./org-utils.js');
 const {
   isPaidPlanClaim,
   toMillis,
@@ -112,11 +114,13 @@ const checkAndRefillImageTokens = functions
 
       // Use centralized domain validation
       const { isProDomain } = await validateUserDomain(userRecord.email);
+      // A seat in an org counts like a subscription to the org's plan.
+      const orgPlan = await readOrgPlan(userId);
 
       // Subscription + team only: a one-time pass (proUntil) gets no monthly
       // top-up — its token lump sum replaces the drip (#1922).
-      const isProUser = isPro || isProDomain;
-      const monthlyAllowance = monthlyAllowanceForPlan(plan);
+      const isProUser = isPro || isProDomain || isPaidPlanClaim(orgPlan);
+      const monthlyAllowance = monthlyAllowanceForPlan(higherPlan(plan, orgPlan));
 
       // Get current token profile
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
@@ -242,10 +246,12 @@ const checkAndRefillImageTokensInternal = async (userId) => {
 
     // Use centralized domain validation
     const { isProDomain } = await validateUserDomain(userRecord.email);
+    // A seat in an org counts like a subscription to the org's plan.
+    const orgPlan = await readOrgPlan(userId);
 
     // Subscription + team only — no monthly top-up for pass holders (#1922).
-    const isProUser = isPro || isProDomain;
-    const monthlyAllowance = monthlyAllowanceForPlan(plan);
+    const isProUser = isPro || isProDomain || isPaidPlanClaim(orgPlan);
+    const monthlyAllowance = monthlyAllowanceForPlan(higherPlan(plan, orgPlan));
 
     // Get current token profile
     const tokenProfileRef = db.collection('tokenProfile').doc(userId);
@@ -362,7 +368,24 @@ const checkUserProStatus = functions
       const proUntilMs = await readProUntil(userId);
       const isProPass = isProUntilActive(proUntilMs);
 
-      const isProUser = hasProEntitlement({ plan, isProDomain, proUntil: proUntilMs });
+      // Organizations (#1267): this call runs on every sign-in, so it is
+      // where a user joins the orgs claiming their verified email domain.
+      // Best-effort: a failure never blocks the status check.
+      await autoJoinDomainOrgs(userId).catch((error) =>
+        console.error(`autoJoinDomainOrgs failed for ${userId}:`, error)
+      );
+      const orgs = await readUserOrgs(userId).catch((error) => {
+        console.error(`readUserOrgs failed for ${userId}:`, error);
+        return [];
+      });
+      const orgPlan = await readOrgPlan(userId);
+
+      const isProUser = hasProEntitlement({
+        plan,
+        isProDomain,
+        proUntil: proUntilMs,
+        orgPlan
+      });
 
       return {
         isPro: isProUser,
@@ -379,6 +402,11 @@ const checkUserProStatus = functions
         // support/UI can say "your pass ended on …".
         isProPass,
         proUntil: proUntilMs !== null ? new Date(proUntilMs).toISOString() : null,
+        // The plan from the user's org seats ('PRO' | 'MAX' | null) and their
+        // orgs ([{ orgId, name, role, plan, status }]), for labels and the
+        // team settings.
+        orgPlan,
+        orgs,
         email: userRecord.email
       };
       
@@ -683,14 +711,15 @@ const grantProPassForCheckout = async ({ checkoutSession, summary }) => {
 
 // Internal helper function to check if user is pro (for other functions to use)
 // Same rule as checkUserProStatus (hasProEntitlement): subscription claim OR
-// team domain OR unexpired pass. The pass read is skipped when the cheaper
-// checks already answer yes.
+// team domain OR org seat OR unexpired pass. The org and pass reads are
+// skipped when the cheaper checks already answer yes.
 const isUserProInternal = async (userId) => {
   try {
     const userRecord = await getAuth().getUser(userId);
     const plan = userRecord.customClaims && userRecord.customClaims.plan;
     const { isProDomain } = await validateUserDomain(userRecord.email);
     if (hasProEntitlement({ plan, isProDomain })) return true;
+    if (isPaidPlanClaim(await readOrgPlan(userId))) return true;
     return isProUntilActive(await readProUntil(userId));
   } catch (error) {
     console.error('Error checking user pro status:', error);

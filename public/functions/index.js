@@ -23,6 +23,18 @@ const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./s
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
 const { setSceneVisibility, canReadScene, uidFromAuthorizationHeader } = require('./scene-visibility.js');
+const {
+  orgCreate,
+  orgUpdate,
+  orgRename,
+  orgInvite,
+  orgResendInvitation,
+  orgRevokeInvitation,
+  orgAcceptInvitation,
+  orgDeclineInvitation,
+  orgChangeRole,
+  orgRemoveMember
+} = require('./orgs.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -110,6 +122,19 @@ exports.generateEditorChat = generateEditorChat;
 
 // Scene visibility (#1267): the only writer of visibility 'private'.
 exports.setSceneVisibility = setSceneVisibility;
+
+// Organizations (#1267 Phase 1, docs/orgs.md). orgCreate / orgUpdate are
+// staff-only (admin claim); the rest check the caller's org role.
+exports.orgCreate = orgCreate;
+exports.orgUpdate = orgUpdate;
+exports.orgRename = orgRename;
+exports.orgInvite = orgInvite;
+exports.orgResendInvitation = orgResendInvitation;
+exports.orgRevokeInvitation = orgRevokeInvitation;
+exports.orgAcceptInvitation = orgAcceptInvitation;
+exports.orgDeclineInvitation = orgDeclineInvitation;
+exports.orgChangeRole = orgChangeRole;
+exports.orgRemoveMember = orgRemoveMember;
 
 exports.getScene = functions
   .https

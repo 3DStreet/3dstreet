@@ -12,6 +12,7 @@ const { FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { grantPass, validateUserDomain } = require('./token-management.js');
+const { readOrgPlan } = require('./orgs.js');
 const { isPaidPlanClaim, toMillis, DAY_MS } = require('./pro-pass.js');
 const { sendLifecycleEmail } = require('./email/lifecycle-email.js');
 const { sendPostmarkEmail, getUserInfo } = require('./email/postmark.js');
@@ -31,6 +32,8 @@ const hasSubscriptionOrTeamPro = async (userId) => {
   try {
     const user = await getAuth().getUser(userId);
     if (isPaidPlanClaim(user.customClaims && user.customClaims.plan)) return true;
+    // An org seat (#1267) is team Pro too.
+    if (isPaidPlanClaim(await readOrgPlan(userId))) return true;
     const { isProDomain } = await validateUserDomain(user.email);
     return !!isProDomain;
   } catch (err) {

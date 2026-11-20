@@ -113,8 +113,9 @@ https://3dstreet.com${footnote ? `\n\n---\n${footnote.replace(/<[^>]+>/g, '')}` 
  * footnoteText? } — each entry a string or a function of `data`. `footnote`
  * is the HTML footnote; `footnoteText` overrides the plain-text variant when
  * tag-stripping the HTML would lose information (e.g. a link URL).
- * `ctaUrl(content)` builds the (locale-independent) CTA link, receiving the
- * utm_content value ('cta_button' for HTML, 'cta_link' for text).
+ * `ctaUrl(content, data)` builds the (locale-independent) CTA link, receiving
+ * the utm_content value ('cta_button' for HTML, 'cta_link' for text) and the
+ * email's data.
  */
 const defineTemplate = (copy, { ctaUrl = null } = {}) => {
   const fallback = copy[DEFAULT_EMAIL_LOCALE];
@@ -138,7 +139,7 @@ const defineTemplate = (copy, { ctaUrl = null } = {}) => {
       const loc = normalizeEmailLocale(locale);
       const c = pick(loc);
       return htmlLayout(loc, userName, resolve(c.bodyHtml, data), {
-        ctaUrl: ctaUrl ? ctaUrl('cta_button') : null,
+        ctaUrl: ctaUrl ? ctaUrl('cta_button', data) : null,
         ctaLabel: resolve(c.ctaLabel, data),
         footnote: resolve(c.footnote, data)
       });
@@ -147,7 +148,7 @@ const defineTemplate = (copy, { ctaUrl = null } = {}) => {
       const loc = normalizeEmailLocale(locale);
       const c = pick(loc);
       return textLayout(loc, userName, resolve(c.bodyText, data), {
-        ctaUrl: ctaUrl ? ctaUrl('cta_link') : null,
+        ctaUrl: ctaUrl ? ctaUrl('cta_link', data) : null,
         ctaLabel: resolve(c.ctaLabel, data),
         footnote: resolve(c.footnoteText ?? c.footnote, data)
       });
@@ -1309,6 +1310,132 @@ const passCodeRedeemed = defineTemplate({
   })
 });
 
+// ---------------------------------------------------------------------------
+// Organization invitation (#1267 Phase 1, orgs.js). Sent to an email address,
+// not a user: the invitee may have no account yet. Every field is optional
+// so the template renders with unrelated data (template test suite).
+// ---------------------------------------------------------------------------
+
+const invitationFacts = (data = {}) => {
+  const text = (value) => (typeof value === 'string' && value.trim() ? value.trim() : '');
+  return {
+    org: text(data.orgName),
+    inviter: text(data.inviterName),
+    role: ['owner', 'admin', 'member', 'viewer'].includes(data.role) ? data.role : 'member',
+    expiresAtMs: Number.isFinite(data.expiresAtMs) ? data.expiresAtMs : null,
+    // The project's app (staging invites open staging) and the invitation,
+    // opened by the #invite= route.
+    appBase: text(data.appBase) || APP_BASE,
+    invitationId: text(data.invitationId)
+  };
+};
+
+const orgInvitationCopy = (locale, words) => {
+  const lines = (f, strong) => {
+    const org = f.org ? strong(f.org) : words.anOrg;
+    return {
+      lead: f.inviter ? words.lead(strong(f.inviter), org) : words.leadNoInviter(org),
+      role: words.role(strong(words.roles[f.role])),
+      expires: f.expiresAtMs !== null ? words.expires(passDate(f.expiresAtMs, locale)) : ''
+    };
+  };
+  return {
+    subject: (data) => {
+      const f = invitationFacts(data);
+      return words.subject(f.org || words.anOrg);
+    },
+    bodyHtml: (data) => {
+      const f = invitationFacts(data);
+      const l = lines(f, (s) => `<strong>${escapeHtml(s)}</strong>`);
+      return `  <p>${l.lead}</p>
+
+  <p>${l.role}</p>
+
+  <p>${words.signIn}</p>
+${l.expires ? `\n  <p style="color: #666;">${l.expires}</p>\n` : ''}`;
+    },
+    bodyText: (data) => {
+      const f = invitationFacts(data);
+      const l = lines(f, (s) => s);
+      return `${l.lead}
+
+${l.role}
+
+${words.signIn}${l.expires ? `\n\n${l.expires}` : ''}`;
+    },
+    ctaLabel: words.cta,
+    footnote: words.footnote
+  };
+};
+
+const orgInvitation = defineTemplate(
+  {
+    en: orgInvitationCopy('en', {
+      subject: (org) => `You're invited to join ${org} on 3DStreet`,
+      anOrg: 'a team',
+      lead: (inviter, org) => `${inviter} invited you to join ${org} on 3DStreet.`,
+      leadNoInviter: (org) => `You're invited to join ${org} on 3DStreet.`,
+      role: (role) => `Your role: ${role}.`,
+      roles: { owner: 'Owner', admin: 'Admin', member: 'Member', viewer: 'Viewer' },
+      signIn:
+        "To accept, open the invitation and sign in with this email address. If you don't have a 3DStreet account yet, signing in creates one.",
+      expires: (date) => `This invitation expires on ${date}.`,
+      cta: 'Open the invitation',
+      footnote:
+        "You received this email because someone invited this address to a 3DStreet team. If you weren't expecting it, you can ignore it."
+    }),
+    es: orgInvitationCopy('es', {
+      subject: (org) => `Te invitaron a unirte a ${org} en 3DStreet`,
+      anOrg: 'un equipo',
+      lead: (inviter, org) => `${inviter} te invitó a unirte a ${org} en 3DStreet.`,
+      leadNoInviter: (org) => `Te invitaron a unirte a ${org} en 3DStreet.`,
+      role: (role) => `Tu rol: ${role}.`,
+      roles: { owner: 'Propietario', admin: 'Administrador', member: 'Miembro', viewer: 'Lector' },
+      signIn:
+        'Para aceptar, abre la invitación e inicia sesión con esta dirección de correo. Si todavía no tienes una cuenta de 3DStreet, al iniciar sesión se crea una.',
+      expires: (date) => `Esta invitación vence el ${date}.`,
+      cta: 'Abrir la invitación',
+      footnote:
+        'Recibes este correo porque alguien invitó esta dirección a un equipo de 3DStreet. Si no lo esperabas, puedes ignorarlo.'
+    }),
+    'pt-BR': orgInvitationCopy('pt-BR', {
+      subject: (org) => `Você foi convidado para entrar em ${org} no 3DStreet`,
+      anOrg: 'uma equipe',
+      lead: (inviter, org) => `${inviter} convidou você para entrar em ${org} no 3DStreet.`,
+      leadNoInviter: (org) => `Você foi convidado para entrar em ${org} no 3DStreet.`,
+      role: (role) => `Sua função: ${role}.`,
+      roles: { owner: 'Proprietário', admin: 'Administrador', member: 'Membro', viewer: 'Leitor' },
+      signIn:
+        'Para aceitar, abra o convite e entre com este endereço de e-mail. Se você ainda não tem uma conta do 3DStreet, ao entrar uma conta é criada.',
+      expires: (date) => `Este convite expira em ${date}.`,
+      cta: 'Abrir o convite',
+      footnote:
+        'Você recebeu este e-mail porque alguém convidou este endereço para uma equipe do 3DStreet. Se não esperava por isso, pode ignorá-lo.'
+    }),
+    fr: orgInvitationCopy('fr', {
+      subject: (org) => `Vous êtes invité à rejoindre ${org} sur 3DStreet`,
+      anOrg: 'une équipe',
+      lead: (inviter, org) => `${inviter} vous invite à rejoindre ${org} sur 3DStreet.`,
+      leadNoInviter: (org) => `Vous êtes invité à rejoindre ${org} sur 3DStreet.`,
+      role: (role) => `Votre rôle : ${role}.`,
+      roles: { owner: 'Propriétaire', admin: 'Administrateur', member: 'Membre', viewer: 'Lecteur' },
+      signIn:
+        "Pour accepter, ouvrez l'invitation et connectez-vous avec cette adresse e-mail. Si vous n'avez pas encore de compte 3DStreet, la connexion en crée un.",
+      expires: (date) => `Cette invitation expire le ${date}.`,
+      cta: "Ouvrir l'invitation",
+      footnote:
+        "Vous recevez cet e-mail parce que quelqu'un a invité cette adresse dans une équipe 3DStreet. Si vous ne vous y attendiez pas, vous pouvez l'ignorer."
+    })
+  },
+  {
+    ctaUrl: (content, data) => {
+      const f = invitationFacts(data);
+      const route = f.invitationId ? `#invite=${encodeURIComponent(f.invitationId)}` : '';
+      return `${f.appBase}/?${utm('org_invitation', content)}${route}`;
+    }
+  }
+);
+
 module.exports = {
   welcome,
   postUpgradeWelcome,
@@ -1321,6 +1448,7 @@ module.exports = {
   genTokenExhaustion,
   passActivated,
   passCodeRedeemed,
+  orgInvitation,
   // Exported for unit tests only (per-key fallback + lang normalization); not
   // a lifecycle template, so callers that enumerate templates must skip it.
   defineTemplate

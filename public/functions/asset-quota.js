@@ -27,6 +27,7 @@ const { FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { readProUntil } = require('./token-management.js');
+const { readOrgPlan } = require('./orgs.js');
 const { isProUntilActive } = require('./pro-pass.js');
 
 const MB = 1000 * 1000;
@@ -73,7 +74,11 @@ async function resolvePlanForUser(uid) {
     const record = await getAuth().getUser(uid);
     const claims = record.customClaims || {};
     if (claims.plan === 'MAX') return { tier: 'MAX', membership: 'individual' };
+    // An org seat gives the org's plan (#1267); a Max org beats a Pro claim.
+    const orgPlan = await readOrgPlan(uid);
+    if (orgPlan === 'MAX') return { tier: 'MAX', membership: 'team' };
     if (claims.plan === 'PRO') return { tier: 'PRO', membership: 'individual' };
+    if (orgPlan === 'PRO') return { tier: 'PRO', membership: 'team' };
 
     // Domain-based team access grants PRO at the team membership level.
     // Mirrors token-management.js validateUserDomain.

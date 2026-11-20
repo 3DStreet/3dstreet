@@ -46,6 +46,47 @@ service cloud.firestore {
       allow delete: if isSceneAuthor(resource.data);
     }
 
+    // Organizations (teams, #1267 Phase 1, docs/orgs.md). Every write goes
+    // through the org callables (public/functions/orgs.js, Admin SDK).
+    function orgMember(orgId) {
+      return get(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid));
+    }
+
+    function isOrgMember(orgId) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid));
+    }
+
+    function isOrgManager(orgId) {
+      return isOrgMember(orgId) && orgMember(orgId).data.role in ['owner', 'admin'];
+    }
+
+    match /orgs/{orgId} {
+      allow read: if isOrgMember(orgId);
+      allow write: if false;
+
+      match /members/{memberUid} {
+        allow read: if isOrgMember(orgId);
+        allow write: if false;
+      }
+    }
+
+    // Invitations: the invitee (by verified email; stored lowercase) and the
+    // org's managers. List queries must filter on email or on orgId.
+    match /orgInvitations/{invitationId} {
+      allow read: if request.auth != null && (
+        (request.auth.token.email_verified == true
+          && resource.data.email == request.auth.token.email.lower())
+        || isOrgManager(resource.data.orgId));
+      allow write: if false;
+    }
+
+    // The user's orgs ({ orgs: { [orgId]: role } }), maintained by orgs.js.
+    match /userOrgs/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
+    }
+
     // Social Profile Collection Rules (PUBLIC data - usernames, display info, etc.)
     match /socialProfile/{userId} {
       // Allow any authenticated user to read (for username lookups, public profiles)
