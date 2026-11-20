@@ -36,6 +36,9 @@
     "deploy": "npm run dist && npm run prefirebase && cd public && firebase use dstreet-305604 && firebase deploy --only hosting:app3dstreet",
     "deploy:staging": "npm run dist:staging && npm run prefirebase && cd public && firebase use dev-3dstreet && firebase deploy --only hosting:dev-3dstreet",
     "emulator": "npm run dist:staging && npm run prefirebase && cd public && firebase emulators:start",
+    "emulators": "cd public && firebase emulators:start --only auth,firestore,storage,functions --project demo-3dstreet --import ../.emulator-data --export-on-exit ../.emulator-data",
+    "emulators:seed": "node scripts/seed-emulators.js",
+    "start:emulators": "FIREBASE_EMULATORS=true npm start",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

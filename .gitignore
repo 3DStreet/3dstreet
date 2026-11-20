@@ -14,3 +14,6 @@ dist/
 storybook-static
 .vitest-attachments
 __screenshots__
+
+# Local Firebase emulator data (npm run emulators)
+.emulator-data/

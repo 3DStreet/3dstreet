@@ -14,6 +14,7 @@
  */
 
 import useStore from '@/store.js';
+import { sceneJsonBaseURL } from '@shared/utils/emulators.js';
 import {
   createElementsForScenesFromJSON,
   saveSceneWithScreenshot
@@ -96,10 +97,8 @@ async function loadSceneHandler(args) {
   const sceneId = match[0].toLowerCase();
   // Same endpoint the /scenes/<id> loader fetches at startup
   // (set-loader-from-hash in json-utils_1.1.js), including its localhost
-  // rewrite to the dev deployment.
-  const base = window.location.href.includes('localhost')
-    ? 'https://dev-3dstreet.web.app'
-    : '';
+  // rewrite to the dev deployment or the local functions emulator.
+  const base = sceneJsonBaseURL();
   const response = await fetch(`${base}/scenes/${sceneId}.json`);
   if (response.status === 404) {
     throw new Error(`Scene ${sceneId} not found`);

@@ -36,6 +36,7 @@ import {
   scenePath,
   upgradedSceneUrlFromHash
 } from './tested/scene-url-utils';
+import { sceneJsonBaseURL } from './shared/utils/emulators.js';
 
 /* global AFRAME, Node */
 // Components removed alongside the legacy viewer mode. Stripped from
@@ -1300,11 +1301,9 @@ AFRAME.registerComponent('set-loader-from-hash', {
     const urlCameraState = this.urlCameraState || null;
     const request = new XMLHttpRequest();
 
-    // Prepend the base URL to the requestURL
-    if (window.location.href.includes('localhost')) {
-      const baseURL = 'https://dev-3dstreet.web.app';
-      requestURL = baseURL + requestURL;
-    }
+    // Prepend the base URL to the requestURL (dev deployment or the local
+    // functions emulator when running on localhost)
+    requestURL = sceneJsonBaseURL() + requestURL;
 
     request.open('GET', requestURL, true);
     request.onload = function () {
