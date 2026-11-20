@@ -331,7 +331,7 @@ function ShareModal() {
                 )}
               </h3>
               {!currentUser && (
-                <Button onClick={() => setModal('signin')}>
+                <Button onClick={() => useStore.getState().openSignInToSave()}>
                   <FormattedMessage {...commonMessages.signInToCloud} />
                 </Button>
               )}

@@ -453,7 +453,7 @@ const AppMenu = ({ currentUser }) => {
               disabled={!STREET.utils.getCurrentSceneId()}
               onClick={() => {
                 if (!currentUser) {
-                  setModal('signin');
+                  useStore.getState().openSignInToSave();
                   return;
                 }
                 if (currentUser?.uid !== STREET.utils.getAuthorId()) {
@@ -468,7 +468,7 @@ const AppMenu = ({ currentUser }) => {
               className="MenubarItem"
               onClick={() => {
                 if (!currentUser) {
-                  setModal('signin');
+                  useStore.getState().openSignInToSave();
                   return;
                 }
                 saveScene(true, true);

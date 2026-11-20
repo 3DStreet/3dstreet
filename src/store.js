@@ -134,6 +134,11 @@ const useStore = create(
           set({ isExportingScene: false, exportingSceneMessage: '' }),
         sceneTitle: null,
         setSceneTitle: (newSceneTitle) => set({ sceneTitle: newSceneTitle }),
+        // Set when sign-in is opened to save the scene (Save, Save As, Share):
+        // SignInModal saves it once the user is signed in, and clears the
+        // flag when it closes. Any other sign-in saves nothing.
+        saveAfterSignIn: false,
+        openSignInToSave: () => set({ saveAfterSignIn: true, modal: 'signin' }),
         locationString: null,
         setLocationString: (newLocationString) =>
           set({ locationString: newLocationString }),
