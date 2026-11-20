@@ -78,7 +78,13 @@ const REASON_TO_HTTPS = {
   'invitation-closed': ['failed-precondition', 'This invitation is no longer valid.'],
   'wrong-account': ['permission-denied', 'This invitation was sent to another email address.'],
   'email-not-verified': ['permission-denied', 'Your email address is not verified.'],
-  'member-not-found': ['not-found', 'Member not found.']
+  'member-not-found': ['not-found', 'Member not found.'],
+  // Team scenes and projects (team-scenes.js)
+  'not-editor': ['permission-denied', 'Only owners, admins and members can do this.'],
+  'not-author': ['permission-denied', 'Only the author of a personal scene can move it.'],
+  'scene-not-found': ['not-found', 'Scene not found.'],
+  'project-not-found': ['not-found', 'Project not found.'],
+  'invalid-move': ['failed-precondition', 'A team scene can only move between projects of its team.']
 };
 
 const toHttpsError = (error) => {
@@ -696,6 +702,8 @@ const orgRemoveMember = callable((data, context) =>
 
 module.exports = {
   OrgError,
+  callable,
+  requireAuth,
   createOrg,
   updateOrg,
   addMember,

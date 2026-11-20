@@ -22,7 +22,7 @@ const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./sch
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 const { onSplatAssetCreated } = require('./rad-dispatch.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
-const { setSceneVisibility, canReadScene, uidFromAuthorizationHeader } = require('./scene-visibility.js');
+const { setSceneVisibility, canReadScene, readSceneAccess, uidFromAuthorizationHeader } = require('./scene-visibility.js');
 const {
   orgCreate,
   orgUpdate,
@@ -35,6 +35,7 @@ const {
   orgChangeRole,
   orgRemoveMember
 } = require('./orgs.js');
+const { orgCreateProject, orgRenameProject, orgMoveScene } = require('./team-scenes.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -136,6 +137,11 @@ exports.orgDeclineInvitation = orgDeclineInvitation;
 exports.orgChangeRole = orgChangeRole;
 exports.orgRemoveMember = orgRemoveMember;
 
+// Team scenes and projects (#1267 Phase 2, docs/team-scenes.md).
+exports.orgCreateProject = orgCreateProject;
+exports.orgRenameProject = orgRenameProject;
+exports.orgMoveScene = orgMoveScene;
+
 exports.getScene = functions
   .https
   .onRequest(async (req, res) => {
@@ -173,11 +179,12 @@ exports.getScene = functions
       } else {
         const scene = doc.data();
         if (!canReadScene(scene, null)) {
-          // Private: only the author, identified by their ID token. Never
-          // cached, and refused the same way whether signed out or not.
+          // Private: identified by the ID token. Never cached, and refused
+          // the same way whether signed out or not.
           res.set('Cache-Control', 'private, no-store');
           const uid = await uidFromAuthorizationHeader(req);
-          if (!canReadScene(scene, uid)) {
+          // The author of a personal scene, or a member of a team scene's org.
+          if (!(await readSceneAccess(scene, uid))) {
             res.status(403).send({ error: 'This scene is private.', reason: 'private' });
             return;
           }

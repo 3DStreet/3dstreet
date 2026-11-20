@@ -72,9 +72,10 @@ describe('firestore.rules — scenes visibility', () => {
   beforeEach(async () => {
     await testEnv.clearFirestore();
     await seed('legacy', scene()); // no visibility field: public
-    await seed('public', scene({ visibility: 'public' }));
-    await seed('unlisted', scene({ visibility: 'unlisted' }));
-    await seed('private', scene({ visibility: 'private' }));
+    // Backfilled personal scenes carry orgId: null (My scenes queries it).
+    await seed('public', scene({ visibility: 'public', orgId: null }));
+    await seed('unlisted', scene({ visibility: 'unlisted', orgId: null }));
+    await seed('private', scene({ visibility: 'private', orgId: null }));
   });
 
   describe('get', () => {
@@ -112,21 +113,31 @@ describe('firestore.rules — scenes visibility', () => {
       await assertFails(getDocs(collection(otherDb(), 'scenes')));
     });
 
-    it('the author lists all their own scenes, private included', async () => {
-      const snapshot = await assertSucceeds(
+    const myScenes = (db, author) =>
+      getDocs(
+        query(
+          collection(db, 'scenes'),
+          where('author', '==', author),
+          where('orgId', '==', null)
+        )
+      );
+
+    it('the author lists their personal scenes, private included', async () => {
+      const snapshot = await assertSucceeds(myScenes(authorDb(), AUTHOR));
+      // The legacy doc has no orgId until the backfill sets it.
+      if (snapshot.size !== 3) throw new Error(`got ${snapshot.size}`);
+    });
+
+    it('listing by author alone is refused (team scenes need membership)', async () => {
+      await assertFails(
         getDocs(
           query(collection(authorDb(), 'scenes'), where('author', '==', AUTHOR))
         )
       );
-      if (snapshot.size !== 4) throw new Error(`got ${snapshot.size}`);
     });
 
     it("listing someone else's scenes by author is refused", async () => {
-      await assertFails(
-        getDocs(
-          query(collection(otherDb(), 'scenes'), where('author', '==', AUTHOR))
-        )
-      );
+      await assertFails(myScenes(otherDb(), AUTHOR));
     });
   });
 

@@ -45,6 +45,17 @@ describe('scene visibility', () => {
       assert.strictEqual(canReadScene(scene, null), false);
     });
 
+    it('lets only org members read a private team scene, not its author', () => {
+      const scene = { author: AUTHOR, orgId: 'org1', visibility: 'private' };
+      assert.strictEqual(canReadScene(scene, 'member', true), true);
+      assert.strictEqual(canReadScene(scene, AUTHOR, false), false);
+      assert.strictEqual(canReadScene(scene, null, true), false);
+      assert.strictEqual(
+        canReadScene({ ...scene, visibility: 'unlisted' }, null),
+        true
+      );
+    });
+
     it('never matches a private scene that has no author', () => {
       assert.strictEqual(
         canReadScene({ visibility: 'private' }, undefined),
@@ -107,6 +118,38 @@ describe('scene visibility', () => {
         }),
         'not-author'
       );
+    });
+
+    it('on a team scene, lets owners and admins change sharing, without a Pro check', async () => {
+      const teamScene = {
+        author: AUTHOR,
+        orgId: 'org1',
+        visibility: 'private'
+      };
+      for (const role of ['owner', 'admin']) {
+        assert.strictEqual(
+          await visibilityChangeRefusal({
+            scene: teamScene,
+            uid: 'someone',
+            visibility: 'public',
+            isPro: notCalled,
+            orgRole: async () => role
+          }),
+          null
+        );
+      }
+      for (const role of ['member', 'viewer', null]) {
+        assert.strictEqual(
+          await visibilityChangeRefusal({
+            scene: teamScene,
+            uid: AUTHOR,
+            visibility: 'private',
+            isPro: notCalled,
+            orgRole: async () => role
+          }),
+          'not-manager'
+        );
+      }
     });
 
     it('refuses a missing scene and an unknown value', async () => {

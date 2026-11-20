@@ -1,13 +1,15 @@
 /**
- * Backfill `visibility: 'public'` on scenes written before scene visibility
- * existed (#1267, docs/scene-visibility.md).
+ * Backfill `visibility: 'public'` and `orgId: null` on scenes written before
+ * scene visibility and team scenes existed (#1267, docs/scene-visibility.md,
+ * docs/team-scenes.md).
  *
- * The community feed queries `where('visibility', '==', 'public')`, which
- * can't match a document without the field, so every existing scene must
- * get it before the new client and rules are deployed — otherwise the feed
- * comes back empty. Rules and getScene already treat a missing field as
- * public, so the backfill changes nothing else. updateTimestamp (the feed's
- * sort key) is left untouched.
+ * The community feed queries `where('visibility', '==', 'public')` and My
+ * scenes `where('orgId', '==', null)`; neither can match a document without
+ * the field, so every existing scene must get both before the new client
+ * and rules are deployed — otherwise those lists come back empty. Rules and
+ * getScene already treat missing fields as public and personal, so the
+ * backfill changes nothing else. updateTimestamp (the lists' sort key) is
+ * left untouched.
  *
  * Usage:
  *   gcloud auth application-default login   # one-time
@@ -58,7 +60,7 @@ async function main() {
     // Only the field we need, paged by document id.
     let page = db
       .collection('scenes')
-      .select('visibility')
+      .select('visibility', 'orgId')
       .orderBy(FieldPath.documentId())
       .limit(PAGE_SIZE);
     if (last) page = page.startAfter(last);
@@ -69,20 +71,21 @@ async function main() {
     let inBatch = 0;
     for (const doc of snapshot.docs) {
       scanned++;
-      if (doc.get('visibility') === undefined) {
+      const patch = {};
+      if (doc.get('visibility') === undefined) patch.visibility = 'public';
+      if (doc.get('orgId') === undefined) patch.orgId = null;
+      if (Object.keys(patch).length) {
         missing++;
         inBatch++;
-        batch.update(doc.ref, { visibility: 'public' });
+        batch.update(doc.ref, patch);
       }
     }
     if (apply && inBatch) await batch.commit();
     last = snapshot.docs[snapshot.docs.length - 1];
-    process.stdout.write(
-      `\r  scanned ${scanned}, without visibility ${missing}`
-    );
+    process.stdout.write(`\r  scanned ${scanned}, to backfill ${missing}`);
   }
   console.log(
-    `\n${apply ? 'Set' : 'Would set'} visibility 'public' on ${missing} of ${scanned} scenes.` +
+    `\n${apply ? 'Backfilled' : 'Would backfill'} ${missing} of ${scanned} scenes (visibility 'public', orgId null where missing).` +
       (apply ? '' : ' Re-run with --apply to write.')
   );
 }

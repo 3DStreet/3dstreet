@@ -2,52 +2,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Scene visibility (#1267, docs/scene-visibility.md):
-    //   'public'   — anyone can open it; listed in the community feed
-    //   'unlisted' — anyone with the link can open it; not listed
-    //   'private'  — only the author can open it
-    // Docs written before the field existed are public. Clients may set
-    // 'public' or 'unlisted' themselves; 'private' is a Pro feature whose
-    // entitlement rules can't check (team domains live in a secret), so it
-    // is only ever written by the setSceneVisibility callable (Admin SDK).
-    function sceneVisibility(data) {
-      return data.get('visibility', 'public');
-    }
-
-    function isSceneAuthor(data) {
-      return request.auth != null && request.auth.uid == data.author;
-    }
-
-    function isClientSettableVisibility(data) {
-      return !('visibility' in data) || data.visibility in ['public', 'unlisted'];
-    }
-
-    match /scenes/{scene} {
-      allow get: if sceneVisibility(resource.data) != 'private'
-        || isSceneAuthor(resource.data);
-
-      // A list query must be provably limited to public scenes
-      // (where visibility == 'public') or to the caller's own scenes
-      // (where author == uid); an unfiltered query is refused.
-      allow list: if resource.data.visibility == 'public'
-        || isSceneAuthor(resource.data);
-
-      allow create: if request.auth != null
-        && request.resource.data.author == request.auth.uid
-        && isClientSettableVisibility(request.resource.data);
-
-      // The author keeps the scene (author is immutable) and can lower its
-      // visibility, or leave it untouched, but never make it private.
-      allow update: if isSceneAuthor(resource.data)
-        && request.resource.data.author == resource.data.author
-        && (sceneVisibility(request.resource.data) == sceneVisibility(resource.data)
-            || isClientSettableVisibility(request.resource.data));
-
-      allow delete: if isSceneAuthor(resource.data);
-    }
-
-    // Organizations (teams, #1267 Phase 1, docs/orgs.md). Every write goes
-    // through the org callables (public/functions/orgs.js, Admin SDK).
+    // Organizations (teams, #1267, docs/orgs.md): membership helpers, used
+    // by the scenes rules below and the orgs rules further down.
     function orgMember(orgId) {
       return get(/databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid));
     }
@@ -61,6 +17,155 @@ service cloud.firestore {
       return isOrgMember(orgId) && orgMember(orgId).data.role in ['owner', 'admin'];
     }
 
+    // Owners, admins and members (not viewers) of an active org edit its
+    // scenes.
+    function isOrgEditor(orgId) {
+      return isOrgMember(orgId)
+        && orgMember(orgId).data.role in ['owner', 'admin', 'member']
+        && get(/databases/$(database)/documents/orgs/$(orgId)).data.status == 'active';
+    }
+
+    // Scenes (#1267, docs/scene-visibility.md, docs/team-scenes.md).
+    //
+    // A personal scene has orgId null and belongs to its author. A team
+    // scene has an orgId (and optionally a projectId) and belongs to the
+    // org: its author is only who created it.
+    //
+    // visibility:
+    //   'public'   — anyone can open it; listed in the community feed
+    //   'unlisted' — anyone with the link can open it; not listed
+    //   'private'  — personal scene: only the author; team scene: only the
+    //                org's members
+    // Docs written before the fields existed are public and personal
+    // (scripts/backfill-scene-visibility.js writes both fields; list queries
+    // need them).
+    //
+    // On a personal scene, 'private' is a Pro feature whose entitlement the
+    // rules can't check (team domains live in a secret): only the
+    // setSceneVisibility callable writes it. On a team scene the org's plan
+    // pays for it: org editors may create it private, and only managers
+    // change sharing (through the callable).
+    function sceneVisibility(data) {
+      return data.get('visibility', 'public');
+    }
+
+    function sceneOrgId(data) {
+      return data.get('orgId', null);
+    }
+
+    function isSceneAuthor(data) {
+      return request.auth != null && request.auth.uid == data.author;
+    }
+
+    function isClientSettableVisibility(data) {
+      return !('visibility' in data) || data.visibility in ['public', 'unlisted'];
+    }
+
+    function canReadScene(data) {
+      return sceneVisibility(data) != 'private'
+        || (sceneOrgId(data) == null && isSceneAuthor(data))
+        || (sceneOrgId(data) != null && isOrgMember(sceneOrgId(data)));
+    }
+
+    // One editor at a time on team scenes (Phase 2): editLock is
+    // { uid, name, expiresAt }, renewed by the editor every 30 seconds and
+    // valid for at most 3 minutes. A save needs the caller's unexpired lock.
+    function lockIsFree(data) {
+      return !('editLock' in data) || data.editLock == null
+        || data.editLock.expiresAt < request.time;
+    }
+
+    function lockIsMine(data) {
+      return 'editLock' in data && data.editLock != null
+        && data.editLock.uid == request.auth.uid
+        && data.editLock.expiresAt > request.time;
+    }
+
+    function isValidNewLock(lock) {
+      return lock.keys().hasOnly(['uid', 'name', 'expiresAt'])
+        && lock.uid == request.auth.uid
+        && lock.expiresAt is timestamp
+        && lock.expiresAt <= request.time + duration.value(3, 'm');
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    match /scenes/{scene} {
+      allow get: if canReadScene(resource.data);
+
+      // A list query must be provably limited to public scenes
+      // (visibility == 'public', the community feed), to the caller's
+      // personal scenes (author == uid and orgId == null, My scenes) or to
+      // an org the caller is in (orgId == X, a team's scenes).
+      allow list: if resource.data.visibility == 'public'
+        || (resource.data.orgId == null && isSceneAuthor(resource.data))
+        || (resource.data.orgId != null && isOrgMember(resource.data.orgId));
+
+      // Personal: in the caller's name, public or unlisted.
+      // Team: in the caller's name by an org editor, any visibility, in an
+      // existing project of that org (or none), optionally holding the lock.
+      allow create: if request.auth != null
+        && request.resource.data.author == request.auth.uid
+        && (
+          (sceneOrgId(request.resource.data) == null
+            && isClientSettableVisibility(request.resource.data))
+          || (sceneOrgId(request.resource.data) != null
+            && isOrgEditor(request.resource.data.orgId)
+            && sceneVisibility(request.resource.data) in ['public', 'unlisted', 'private']
+            && (request.resource.data.get('projectId', null) == null
+              || exists(/databases/$(database)/documents/orgs/$(request.resource.data.orgId)/projects/$(request.resource.data.projectId)))
+            && (!('editLock' in request.resource.data)
+              || isValidNewLock(request.resource.data.editLock)))
+        );
+
+      // Personal: the author keeps the scene, can lower its visibility or
+      // leave it untouched, never make it private, never give it to an org
+      // (moving into a team is the orgMoveScene callable).
+      // Team: editors take, renew or release the lock (managers can take it
+      // over), and save content while holding it; the org, project, author
+      // and visibility only change through the callables.
+      allow update: if
+        (sceneOrgId(resource.data) == null
+          && isSceneAuthor(resource.data)
+          && request.resource.data.author == resource.data.author
+          && sceneOrgId(request.resource.data) == null
+          && (sceneVisibility(request.resource.data) == sceneVisibility(resource.data)
+              || isClientSettableVisibility(request.resource.data)))
+        || (sceneOrgId(resource.data) != null
+          && isOrgEditor(resource.data.orgId)
+          && !changedKeys().hasAny(['author', 'orgId', 'projectId', 'visibility'])
+          && (
+            // Take or renew the lock.
+            (changedKeys().hasOnly(['editLock'])
+              && request.resource.data.editLock != null
+              && isValidNewLock(request.resource.data.editLock)
+              && (lockIsFree(resource.data) || lockIsMine(resource.data)
+                  || isOrgManager(resource.data.orgId)))
+            // Release it.
+            || (changedKeys().hasOnly(['editLock'])
+              && request.resource.data.editLock == null
+              && lockIsMine(resource.data))
+            // Save while holding it.
+            || (!changedKeys().hasAny(['editLock']) && lockIsMine(resource.data))
+          ));
+
+      allow delete: if
+        (sceneOrgId(resource.data) == null && isSceneAuthor(resource.data))
+        || (sceneOrgId(resource.data) != null && isOrgManager(resource.data.orgId));
+    }
+
+    // Projects: folders of a team's scenes. Members read them; the
+    // team-scenes callables (public/functions/team-scenes.js) write them.
+    match /orgs/{orgId}/projects/{projectId} {
+      allow read: if isOrgMember(orgId);
+      allow write: if false;
+    }
+
+    // Organizations (teams, #1267 Phase 1, docs/orgs.md). Every write goes
+    // through the org callables (public/functions/orgs.js, Admin SDK); the
+    // helper functions are above the scenes rules.
     match /orgs/{orgId} {
       allow read: if isOrgMember(orgId);
       allow write: if false;
