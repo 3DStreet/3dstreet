@@ -30,6 +30,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const { assertAppCheck } = require('./app-check.js');
 const { GoogleGenAI } = require('@google/genai');
 
@@ -131,7 +132,7 @@ async function enforceRateLimit(uid) {
         minCount: minCount + 1,
         dayStart: nextDayStart,
         dayCount: dayCount + 1,
-        lastRequestAt: admin.firestore.FieldValue.serverTimestamp()
+        lastRequestAt: FieldValue.serverTimestamp()
       },
       { merge: true }
     );

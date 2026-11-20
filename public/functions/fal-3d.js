@@ -1,5 +1,6 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
@@ -105,7 +106,7 @@ async function saveMeshToGallery(userId, glbUrl, job) {
   const modelName = job.attribution?.modelName || job.model || null;
   const credit = job.attribution?.credit || modelName;
 
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const now = FieldValue.serverTimestamp();
 
   await admin
     .firestore()
@@ -362,7 +363,7 @@ async function refundFalJobInline(db, userId, jobRef, tokenCost) {
       if (tokenDoc.exists) {
         tx.update(tokenProfileRef, {
           genToken: (tokenDoc.data().genToken || 0) + tokenCost,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          updatedAt: FieldValue.serverTimestamp()
         });
       }
       tx.update(jobRef, { refunded: true });
@@ -379,7 +380,7 @@ async function refundFalJobInline(db, userId, jobRef, tokenCost) {
           tokenCost,
           source: refundSource,
           relatedModel,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
+          createdAt: FieldValue.serverTimestamp()
         })
         .catch((err) => console.error('Failed to write tokenLog:', err));
     }
@@ -545,7 +546,7 @@ const generateFalMesh = functions
         },
         sceneId: scene_id || null,
         notify: { email: wantsEmail, pending: wantsEmail },
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       });
 
       // Charge at submit and set `tokenCharged` in the same transaction
@@ -620,7 +621,7 @@ const generateFalMesh = functions
         .update({
           status: 'failed',
           error: error.message,
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         })
         .catch(() => {});
 
@@ -646,7 +647,7 @@ const generateFalMesh = functions
           tokenCost,
           status: 'failed',
           error: error.message,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
+          createdAt: FieldValue.serverTimestamp()
         })
         .catch((err) => console.error('Failed to write generationLog:', err));
 

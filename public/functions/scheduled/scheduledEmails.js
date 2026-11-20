@@ -1,5 +1,6 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const { assertAppCheck } = require('../app-check.js');
 const { withJobHealth } = require('./job-health.js');
 const {
@@ -550,7 +551,7 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
         tx.set(batchRef, {
           decision: 'failed',
           kind: job.kind || null,
-          at: admin.firestore.FieldValue.serverTimestamp()
+          at: FieldValue.serverTimestamp()
         });
         return;
       }
@@ -561,7 +562,7 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
           tx.set(batchRef, {
             decision: 'seen',
             kind: job.kind || null,
-            at: admin.firestore.FieldValue.serverTimestamp()
+            at: FieldValue.serverTimestamp()
           });
         }
         return;
@@ -575,7 +576,7 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
       tx.set(batchRef, {
         decision: 'sent',
         kind: job.kind || null,
-        at: admin.firestore.FieldValue.serverTimestamp()
+        at: FieldValue.serverTimestamp()
       });
       return;
     }
@@ -672,7 +673,7 @@ const sendGenerationOutcomeEmail = async (db, uid, jobRef, options = {}) => {
       tpl.getTextBody(greetName, job.kind, ctaUrl, emailCtx)
     );
     await jobRef.update({
-      'notify.sentAt': admin.firestore.FieldValue.serverTimestamp()
+      'notify.sentAt': FieldValue.serverTimestamp()
     });
     return { action: 'sent' };
   } catch (err) {

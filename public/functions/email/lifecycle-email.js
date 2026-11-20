@@ -32,6 +32,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldPath, FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('../app-check.js');
 const { isUserProInternal } = require('../token-management.js');
@@ -240,7 +241,7 @@ const sendLifecycleEmail = async ({
       email: summary?.emails?.[emailId] ?? null,
       category: summary?.categories?.[category] ?? null
     };
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    const now = FieldValue.serverTimestamp();
     // set + merge (not update) so map keys like Stripe ids are literal and the
     // doc is created on first send.
     tx.set(
@@ -252,7 +253,7 @@ const sendLifecycleEmail = async ({
         emails: {
           [emailId]: {
             lastSentAt: now,
-            sentCount: admin.firestore.FieldValue.increment(1),
+            sentCount: FieldValue.increment(1),
             ...(dedupeKey ? { dedupeKeys: { [dedupeKey]: now } } : {})
           }
         },
@@ -288,7 +289,7 @@ const sendLifecycleEmail = async ({
     await sendRef.update({
       status: 'sent',
       messageId: result.MessageID || null,
-      sentAt: admin.firestore.FieldValue.serverTimestamp()
+      sentAt: FieldValue.serverTimestamp()
     });
     console.log(
       `Sent lifecycle email ${emailId} to ${userInfo.email} (stream=${stream}, MessageID=${result.MessageID})`
@@ -302,7 +303,6 @@ const sendLifecycleEmail = async ({
     // other dotted keys are safe. Restoring the captured pre-claim entries can
     // race another concurrent send of a *different* email to the same user
     // (only the category entry overlaps); at current volumes that's acceptable.
-    const { FieldPath, FieldValue } = admin.firestore;
     await summaryRef
       .update(
         new FieldPath('emails', emailId),
@@ -316,7 +316,7 @@ const sendLifecycleEmail = async ({
       .update({
         status: permanent ? 'rejected' : 'error',
         error: String(err?.message || err),
-        sentAt: admin.firestore.FieldValue.serverTimestamp()
+        sentAt: FieldValue.serverTimestamp()
       })
       .catch(() => {});
     if (permanent) {
@@ -487,10 +487,10 @@ const postmarkSubscriptionWebhook = functions
         {
           userId: userRecord.uid,
           email: body.Recipient,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
           // Reactivation in Postmark also lifts our undeliverable mark.
           ...(body.SuppressSending === false
-            ? { undeliverable: admin.firestore.FieldValue.delete() }
+            ? { undeliverable: FieldValue.delete() }
             : {}),
           streams: {
             [stream]: {

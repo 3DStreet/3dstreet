@@ -1,5 +1,6 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { computeMonthlyRefill } = require('./token-packs.js');
@@ -130,8 +131,8 @@ const checkAndRefillImageTokens = functions
           geoToken: 3,
           genToken: initialTokens,
           lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp()
         };
         
         await tokenProfileRef.set(newProfile);
@@ -156,7 +157,7 @@ const checkAndRefillImageTokens = functions
         await tokenProfileRef.update({
           genToken: initialGenTokens,
           lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          updatedAt: FieldValue.serverTimestamp()
         });
         
         tokenData.genToken = initialGenTokens;
@@ -187,7 +188,7 @@ const checkAndRefillImageTokens = functions
         await tokenProfileRef.update({
           genToken: newImageTokens,
           lastMonthlyRefill: currentMonthKey,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          updatedAt: FieldValue.serverTimestamp()
         });
 
         // Fire-and-forget: write token refill audit log
@@ -199,7 +200,7 @@ const checkAndRefillImageTokens = functions
           tokenCost: null,
           source: 'monthly-refill',
           relatedModel: null,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
+          createdAt: FieldValue.serverTimestamp()
         }).catch(err => console.error('Failed to write tokenLog:', err));
 
         console.log(`Refilled Pro tokens for user ${userId}: ${tokensBefore} -> ${newImageTokens}`);
@@ -257,8 +258,8 @@ const checkAndRefillImageTokensInternal = async (userId) => {
         geoToken: 3,
         genToken: isProUser ? monthlyAllowance : 3, // Paid users get their monthly allowance, free users get 3
         lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
       };
       
       await tokenProfileRef.set(newProfile);
@@ -275,7 +276,7 @@ const checkAndRefillImageTokensInternal = async (userId) => {
       await tokenProfileRef.update({
         genToken: initialGenTokens,
         lastMonthlyRefill: isProUser ? `${new Date().getFullYear()}-${new Date().getMonth()}` : null,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
       });
       
       tokenData.genToken = initialGenTokens;
@@ -302,7 +303,7 @@ const checkAndRefillImageTokensInternal = async (userId) => {
       await tokenProfileRef.update({
         genToken: newImageTokens,
         lastMonthlyRefill: currentMonthKey,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
       });
 
       // Fire-and-forget: write token refill audit log
@@ -314,7 +315,7 @@ const checkAndRefillImageTokensInternal = async (userId) => {
         tokenCost: null,
         source: 'monthly-refill',
         relatedModel: null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write tokenLog:', err));
 
       return {
@@ -413,7 +414,7 @@ const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, r
     remainingTokens = Math.max(0, currentTokens - tokenCost);
     transaction.update(tokenProfileRef, {
       genToken: remainingTokens,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      updatedAt: FieldValue.serverTimestamp()
     });
     transaction.update(jobRef, { tokenCharged: true });
   });
@@ -427,7 +428,7 @@ const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, r
     tokenCost,
     source,
     relatedModel,
-    createdAt: admin.firestore.FieldValue.serverTimestamp()
+    createdAt: FieldValue.serverTimestamp()
   }).catch(err => console.error('Failed to write tokenLog:', err));
 
   return { tokensBefore, remainingTokens };
@@ -480,7 +481,7 @@ const grantPurchasedTokens = async ({ checkoutSession, items }) => {
     if (tokenDoc.exists) {
       transaction.update(tokenProfileRef, {
         genToken: tokensAfter,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
       });
     } else {
       // A paid subscriber should always have a profile by now, but if not,
@@ -490,8 +491,8 @@ const grantPurchasedTokens = async ({ checkoutSession, items }) => {
         geoToken: 3,
         genToken: tokensAfter,
         lastMonthlyRefill: null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
       });
     }
 
@@ -513,7 +514,7 @@ const grantPurchasedTokens = async ({ checkoutSession, items }) => {
       amountTotal: checkoutSession.amount_total ?? null, // smallest currency unit (e.g. cents)
       currency: checkoutSession.currency ?? null,
       stripeSessionId: checkoutSession.id,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp()
     });
   });
 
@@ -584,18 +585,18 @@ const grantPass = async (
     }
 
     const { tokensBefore, tokensAfter, proUntilBeforeMs, proUntilAfterMs } = plan;
-    const proUntilAfter = admin.firestore.Timestamp.fromMillis(proUntilAfterMs);
+    const proUntilAfter = Timestamp.fromMillis(proUntilAfterMs);
 
     // Support-visible pass state lives right on tokenProfile: proUntil plus
     // the session ids that paid for it (tokenLog has the full audit rows).
     const passFields = {
       genToken: tokensAfter,
       proUntil: proUntilAfter,
-      proPassLastGrantedAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      proPassLastGrantedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp()
     };
     if (sessionId) {
-      passFields.proPassSessionIds = admin.firestore.FieldValue.arrayUnion(sessionId);
+      passFields.proPassSessionIds = FieldValue.arrayUnion(sessionId);
     }
 
     if (tokenDoc.exists) {
@@ -605,7 +606,7 @@ const grantPass = async (
         userId,
         geoToken: 3,
         lastMonthlyRefill: null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
         ...passFields
       });
     }
@@ -622,11 +623,11 @@ const grantPass = async (
       tokensPurchased: tokens,
       daysPurchased: days,
       proUntilBefore: proUntilBeforeMs !== null
-        ? admin.firestore.Timestamp.fromMillis(proUntilBeforeMs)
+        ? Timestamp.fromMillis(proUntilBeforeMs)
         : null,
       proUntilAfter,
       idempotencyKey: String(idempotencyKey),
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp()
     });
 
     result = { alreadyGranted: false, proUntilMs: proUntilAfterMs };

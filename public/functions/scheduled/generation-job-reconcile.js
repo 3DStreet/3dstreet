@@ -25,6 +25,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const { assertAppCheck } = require('../app-check.js');
 const Replicate = require('replicate');
 
@@ -180,8 +181,8 @@ async function failJob(db, uid, jobRef, job, reason) {
     // worker reporting its own failure. Keep them distinguishable for later
     // analysis: worker-failed jobs have no terminatedBy.
     terminatedBy: 'reconciler',
-    reconciledAt: admin.firestore.FieldValue.serverTimestamp(),
-    completedAt: admin.firestore.FieldValue.serverTimestamp()
+    reconciledAt: FieldValue.serverTimestamp(),
+    completedAt: FieldValue.serverTimestamp()
   });
   return remainingTokens;
 }
@@ -311,7 +312,7 @@ async function reconcile({ dryRun }) {
             // Reset the dispatch clock so the next sweep measures from THIS
             // re-enqueue, not the original — no duplicate-per-sweep spiral.
             await jobRef.update({
-              dispatchedAt: admin.firestore.FieldValue.serverTimestamp()
+              dispatchedAt: FieldValue.serverTimestamp()
             });
           }
         } else {

@@ -23,6 +23,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { Timestamp } = require('firebase-admin/firestore');
 const { assertAppCheck } = require('../app-check.js');
 const { withJobHealth } = require('./job-health.js');
 
@@ -46,7 +47,7 @@ async function deleteStorageObject(bucket, path) {
 async function purgeBatch({ dryRun }) {
   const db = admin.firestore();
   const bucket = admin.storage().bucket();
-  const cutoff = admin.firestore.Timestamp.fromMillis(
+  const cutoff = Timestamp.fromMillis(
     Date.now() - GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000
   );
 

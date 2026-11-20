@@ -6,6 +6,7 @@
  */
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { isUserProInternal, grantPurchasedTokens, grantProPassForCheckout } = require('./token-management.js');
@@ -175,7 +176,7 @@ const createStripeSession = functions
     // who actually reached checkout. Never blocks checkout on failure.
     try {
       const db = admin.firestore();
-      const now = admin.firestore.FieldValue.serverTimestamp();
+      const now = FieldValue.serverTimestamp();
       await db.collection('checkoutSessions').doc(session.id).set({
         userId,
         email: userEmail || null,
@@ -349,7 +350,7 @@ const markCheckoutSessionStatus = async (sessionId, status) => {
   try {
     await admin.firestore().collection('checkoutSessions').doc(sessionId).set({
       status,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      updatedAt: FieldValue.serverTimestamp()
     }, { merge: true });
   } catch (err) {
     console.error(`Failed to mark checkoutSession ${sessionId} ${status}:`, err);
@@ -633,7 +634,7 @@ const stripeWebhook = functions
           await tokenProfileRef.update({
             genToken: currentTokens + tokensToGrant,
             lastMonthlyRefill: `${new Date().getFullYear()}-${new Date().getMonth()}`,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: FieldValue.serverTimestamp()
           });
           console.log(`${planType} tokens granted: user=${checkoutSession.metadata.userId} added=${tokensToGrant} total=${currentTokens + tokensToGrant}`);
         } else {
@@ -643,8 +644,8 @@ const stripeWebhook = functions
             geoToken: 3,
             genToken: tokensToGrant, // tier monthly floor: PRO 100 · MAX 500 (both cycles)
             lastMonthlyRefill: `${new Date().getFullYear()}-${new Date().getMonth()}`,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp()
           };
 
           await tokenProfileRef.set(newProfile);

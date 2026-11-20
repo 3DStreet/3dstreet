@@ -27,6 +27,7 @@
  */
 
 const admin = require('firebase-admin');
+const { Timestamp } = require('firebase-admin/firestore');
 
 // How many recent runs to keep inline on the doc. Summaries are small (counts),
 // so even 20 is well under the 1 MB doc ceiling.
@@ -61,7 +62,7 @@ async function writeHealth(jobName, meta, record) {
   // serverTimestamp() can't live inside an array element, so the inline history
   // uses the function's clock. lastRunAt/lastSuccessAt use the same value for
   // consistency with the newest history entry.
-  const now = admin.firestore.Timestamp.now();
+  const now = Timestamp.now();
   const entry = {
     runAt: now,
     status: record.status,

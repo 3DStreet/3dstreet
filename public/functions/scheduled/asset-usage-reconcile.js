@@ -16,6 +16,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldPath, FieldValue } = require('firebase-admin/firestore');
 const { assertAppCheck } = require('../app-check.js');
 
 const { PLAN_LIMITS } = require('../asset-quota');
@@ -38,7 +39,7 @@ async function computeTotals() {
   while (true) {
     let q = db
       .collectionGroup('assets')
-      .orderBy(admin.firestore.FieldPath.documentId())
+      .orderBy(FieldPath.documentId())
       .limit(PAGE_SIZE);
     if (cursor) q = q.startAfter(cursor);
     const snap = await q.get();
@@ -132,8 +133,8 @@ async function reconcile({ dryRun }) {
       await ref.set(
         {
           bytesUsed: truth,
-          lastReconciled: admin.firestore.FieldValue.serverTimestamp(),
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+          lastReconciled: FieldValue.serverTimestamp(),
+          lastUpdated: FieldValue.serverTimestamp()
         },
         { merge: true }
       );

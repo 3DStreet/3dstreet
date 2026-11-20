@@ -1,5 +1,6 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const { getGeoidHeightFromPGM } = require('./geoid.js');
 const { Client: GoogleMapsClient } = require('@googlemaps/google-maps-services-js');
 const { isUserProInternal } = require('./token-management.js');
@@ -84,8 +85,8 @@ exports.getGeoidHeight = functions
         await tokenProfileRef.set({
           userId: userId,
           geoToken: 3,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp()
         });
         canProceed = true;
       }
@@ -214,10 +215,10 @@ exports.getGeoidHeight = functions
 
         await tokenProfileRef.update({
           geoToken: newTokenCount,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
           ...(tokenDoc.data().firstGeoActivatedAt
             ? {}
-            : { firstGeoActivatedAt: admin.firestore.FieldValue.serverTimestamp() })
+            : { firstGeoActivatedAt: FieldValue.serverTimestamp() })
         });
 
         remainingTokens = newTokenCount;
@@ -232,7 +233,7 @@ exports.getGeoidHeight = functions
         const tokenDoc = await tokenProfileRef.get();
         if (tokenDoc.exists && !tokenDoc.data().firstGeoActivatedAt) {
           await tokenProfileRef.update({
-            firstGeoActivatedAt: admin.firestore.FieldValue.serverTimestamp()
+            firstGeoActivatedAt: FieldValue.serverTimestamp()
           });
         }
       } catch (err) {
