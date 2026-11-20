@@ -49,11 +49,41 @@
 
     .authSection,
     .publicProfileSection,
+    .teamsSection,
     .subscriptionSection {
       display: flex;
       flex-direction: column;
       width: 100%;
       gap: 8px;
+    }
+
+    .teamRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 12px;
+      border: 1px solid #404040;
+      border-radius: 6px;
+      background: #2a2a2a;
+    }
+
+    .teamInfo {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .teamName {
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .teamMeta {
+      font-size: 12px;
+      color: #b4b4b4;
     }
 
     .sectionTitle {

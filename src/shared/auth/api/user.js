@@ -8,16 +8,35 @@
  * isProPass / proUntil (#1922): a one-time pass grants Pro until `proUntil`
  * (ISO string) with no plan claim. The server evaluates expiry on every call;
  * proUntil is returned even after it lapses, so the UI can say when it ended.
+ *
+ * Organizations (#1267): `orgs` lists the user's orgs ([{ orgId, name, role,
+ * plan, status }]) and `orgPlan` is the plan their org seats give ('PRO' |
+ * 'MAX' | null). `plan` stays the user's own subscription (billing UI keys
+ * off it); `isProTeam` and `teamName` cover Pro from an org, for labels.
  */
 
 const FREE_USER = {
   isPro: false,
   isProTeam: false,
   teamDomain: null,
+  teamName: null,
   plan: null,
+  orgPlan: null,
+  orgs: [],
   isProPass: false,
   proUntil: null
 };
+
+// The org a user's plan comes from: the first active org where they hold a
+// seat with that plan.
+const SEAT_ROLES = ['owner', 'admin', 'member'];
+const orgGivingPlan = (orgs, orgPlan) =>
+  (orgs || []).find(
+    (org) =>
+      org.status === 'active' &&
+      SEAT_ROLES.includes(org.role) &&
+      org.plan === orgPlan
+  ) || null;
 
 const isUserPro = async (user) => {
   if (!user) return FREE_USER;
@@ -36,24 +55,31 @@ const isUserPro = async (user) => {
       teamDomain,
       plan,
       isProPass,
-      proUntil
+      proUntil,
+      orgPlan = null,
+      orgs = []
     } = result.data;
+    const teamOrg = orgPlan ? orgGivingPlan(orgs, orgPlan) : null;
 
     if (isPro) {
       if (isProSubscription) console.log('PRO PLAN USER (subscription)');
       if (isProDomain) console.log(`PRO PLAN USER (domain: ${teamDomain})`);
       if (isProPass) console.log(`PRO PLAN USER (pass until ${proUntil})`);
+      if (teamOrg) console.log(`PRO PLAN USER (org: ${teamOrg.name})`);
       return {
         isPro: true,
-        isProTeam: !!isProDomain,
+        isProTeam: !!isProDomain || !!teamOrg,
         teamDomain,
+        teamName: teamOrg ? teamOrg.name : null,
         plan: plan || null,
+        orgPlan,
+        orgs,
         isProPass: !!isProPass,
         proUntil: proUntil || null
       };
     }
     console.log('FREE PLAN USER');
-    return { ...FREE_USER, proUntil: proUntil || null };
+    return { ...FREE_USER, orgs, proUntil: proUntil || null };
   } catch (error) {
     console.error('Error checking PRO plan:', error);
 

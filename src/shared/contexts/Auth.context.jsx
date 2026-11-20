@@ -145,6 +145,10 @@ const AuthProvider = ({ children }) => {
         // Paid tier ('PRO' | 'MAX' | null). Caches written before this field
         // existed simply lack it; Phase 2 backfills on the next enrich.
         plan: cachedProStatus?.plan ?? null,
+        // Organizations (#1267): see src/shared/auth/api/user.js.
+        teamName: cachedProStatus?.teamName ?? null,
+        orgPlan: cachedProStatus?.orgPlan ?? null,
+        orgs: cachedProStatus?.orgs ?? [],
         // One-time pass (#1922). The server re-evaluates expiry in Phase 2;
         // a cached pass that has since lapsed is dropped here already.
         isProPass: cachedPassActive,
@@ -177,7 +181,10 @@ const AuthProvider = ({ children }) => {
               isPro: false,
               isProTeam: false,
               teamDomain: null,
+              teamName: null,
               plan: null,
+              orgPlan: null,
+              orgs: [],
               isProPass: false,
               proUntil: null
             };
@@ -194,6 +201,9 @@ const AuthProvider = ({ children }) => {
         isProTeam: proStatus.isProTeam,
         teamDomain: proStatus.teamDomain,
         plan: proStatus.plan ?? null,
+        teamName: proStatus.teamName ?? null,
+        orgPlan: proStatus.orgPlan ?? null,
+        orgs: proStatus.orgs ?? [],
         isProPass: !!proStatus.isProPass,
         proUntil: proStatus.proUntil ?? null
       };

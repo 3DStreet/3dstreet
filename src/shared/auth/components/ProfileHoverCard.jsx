@@ -137,7 +137,11 @@ const ProfileHoverCard = ({
   // Entitlement comes from checkUserProStatus (subscription, team or a
   // one-time pass, #1922) via the auth context — tokenProfile has no plan.
   const isPro = !!currentUser?.isPro;
-  const planBadgeLabel = currentUser?.plan === 'MAX' ? 'MAX' : 'PRO';
+  // A Max org seat (#1267) is Max too.
+  const planBadgeLabel =
+    currentUser?.plan === 'MAX' || currentUser?.orgPlan === 'MAX'
+      ? 'MAX'
+      : 'PRO';
 
   return (
     <Popover.Root open={isOpen} onOpenChange={setIsOpen}>

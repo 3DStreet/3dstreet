@@ -10,6 +10,8 @@ import { ExportModal } from './modals/ExportModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
+import { TeamModal } from './modals/TeamModal';
+import { InvitationModal } from './modals/InvitationModal';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import EditorUpgradeModal from './EditorUpgradeModal.jsx';
@@ -224,6 +226,8 @@ export default function Main() {
       <ShareModal />
       <ExportModal />
       <SignInModal />
+      <TeamModal />
+      <InvitationModal />
       <EditorUpgradeModal />
       <EditorBuyTokensModal />
       <EditorProjectPassModal />

@@ -30,6 +30,7 @@ import {
 } from './tested/group-pose';
 import { readMixinPose } from './editor/lib/groups/groupLevel.js';
 import { isProjectPassHash, isRedeemHash } from './tested/project-pass-link.js';
+import { isInviteHash } from './tested/org-invite-link.js';
 import {
   getSceneIdFromPathname,
   getSceneIdFromHash,
@@ -985,12 +986,13 @@ AFRAME.registerComponent('set-loader-from-hash', {
       if (streetURL.startsWith('asset:')) {
         return;
       }
-      // `#project-pass` opens the one-time Project Pass checkout and
-      // `#redeem?code=` the pass-code redemption (#1922, store.firstModal),
-      // not a scene.
+      // `#project-pass` opens the one-time Project Pass checkout,
+      // `#redeem?code=` the pass-code redemption (#1922) and `#invite=` an
+      // organization invitation (#1267), see store.firstModal; not a scene.
       if (
         isProjectPassHash(window.location.hash) ||
-        isRedeemHash(window.location.hash)
+        isRedeemHash(window.location.hash) ||
+        isInviteHash(window.location.hash)
       ) {
         return;
       }

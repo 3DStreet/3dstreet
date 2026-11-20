@@ -24,6 +24,7 @@ import {
 } from '@shared/utils/username';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { formatDate } from '@shared/utils/format';
+import { ProfileTeamsSection } from './ProfileTeamsSection.jsx';
 
 const ProfileModal = () => {
   const intl = useIntl();
@@ -187,6 +188,12 @@ const ProfileModal = () => {
 
             <hr className={styles.divider} />
 
+            {/* Teams Section (#1267) */}
+            <ProfileTeamsSection
+              currentUser={currentUser}
+              isOpen={modal === 'profile'}
+            />
+
             {/* Subscription Section */}
             <div className={styles.subscriptionSection}>
               <h3 className={styles.sectionTitle}>
@@ -273,7 +280,8 @@ const ProfileModal = () => {
                       }}
                     >
                       <span>
-                        {currentUser?.plan === 'MAX'
+                        {currentUser?.plan === 'MAX' ||
+                        currentUser?.orgPlan === 'MAX'
                           ? intl.formatMessage({
                               id: 'profileModal.planMax',
                               defaultMessage: 'Plan: Max'
@@ -284,7 +292,12 @@ const ProfileModal = () => {
                                   id: 'profileModal.planProTeam',
                                   defaultMessage: 'Plan: Pro Team ({domain})'
                                 },
-                                { domain: currentUser?.teamDomain }
+                                // An org seat (#1267) shows the org name.
+                                {
+                                  domain:
+                                    currentUser?.teamName ??
+                                    currentUser?.teamDomain
+                                }
                               )
                             : isPassOnly
                               ? intl.formatMessage(

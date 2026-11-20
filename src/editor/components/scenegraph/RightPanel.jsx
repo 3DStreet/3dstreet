@@ -46,9 +46,9 @@ export default function RightPanel({ entity }) {
   const setActiveTab = useStore((s) => s.setRightPanelTab);
   const panelsVisible = useStore((s) => s.panelsVisible);
 
-  // Tier ('MAX' | 'PRO' | null) takes precedence over the team label since
-  // there is no Max Team product yet — domain teams are always Pro-level.
-  const isMax = authUser?.plan === 'MAX';
+  // Tier ('MAX' | 'PRO' | null) takes precedence over the team label. A Max
+  // org seat (#1267) is Max too; domain teams are always Pro-level.
+  const isMax = authUser?.plan === 'MAX' || authUser?.orgPlan === 'MAX';
   const planLabel = !authUser?.isPro
     ? 'FREE'
     : isMax
@@ -72,7 +72,8 @@ export default function RightPanel({ entity }) {
               id: 'rightPanel.planTooltipTeam',
               defaultMessage: '3DStreet Team Plan ({teamDomain})'
             },
-            { teamDomain: authUser?.teamDomain }
+            // The org's name for an org seat (#1267), else the email domain.
+            { teamDomain: authUser?.teamName ?? authUser?.teamDomain }
           )
         : authUser?.isProPass && !authUser?.plan
           ? intl.formatMessage(

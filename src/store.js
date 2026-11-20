@@ -13,25 +13,30 @@ import {
   normaliseShapeToolSettings,
   persistShapeToolSettings
 } from './editor/lib/shapeToolPrefs.js';
+import { isInviteHash, getInviteId } from './tested/org-invite-link.js';
 
 const firstModal = () => {
   const hash = window.location.hash;
   // A path-form scene URL (/scenes/UUID, #1970) is a deep link like the old
   // hash form: the scene is loading, so no intro modal.
   const isSceneDeepLink = window.location.pathname.startsWith('/scenes/');
-  // `#project-pass` and `#redeem` (#1922) are matched as exact routes first, so they can
-  // never be shadowed by (or shadow) the substring checks below.
+  // `#project-pass`, `#redeem` (#1922) and `#invite=` (#1267) are matched as
+  // exact routes first, so they can never be shadowed by (or shadow) the
+  // substring checks below.
   let modal = isProjectPassHash(hash)
     ? 'project-pass'
     : isRedeemHash(hash)
       ? 'redeem-pass'
-      : hash.includes('payment')
-        ? 'payment'
-        : hash.includes('profile') || hash.includes('/modal/profile')
-          ? 'profile'
-          : !hash.length && !isSceneDeepLink
-            ? 'new'
-            : null;
+      : // An organization invitation link (#1267).
+        isInviteHash(hash)
+        ? 'invitation'
+        : hash.includes('payment')
+          ? 'payment'
+          : hash.includes('profile') || hash.includes('/modal/profile')
+            ? 'profile'
+            : !hash.length && !isSceneDeepLink
+              ? 'new'
+              : null;
   const isStreetMix = hash.includes('streetmix') || hash.includes('coastmix');
   if (isStreetMix) {
     modal = localStorage.getItem('shownIntro') ? null : 'intro';
@@ -149,6 +154,23 @@ const useStore = create(
         sceneVisibility: 'public',
         setSceneVisibility: (sceneVisibility) =>
           set({ sceneVisibility: sceneVisibility || 'public' }),
+        // The invitation the invitation modal shows (#1267): from the
+        // #invite= link at startup, or picked in the profile.
+        invitationId: getInviteId(window.location.hash) || null,
+        openInvitation: (invitationId) =>
+          set((state) => ({
+            invitationId,
+            modal: 'invitation',
+            previousModal: state.modal
+          })),
+        // The organization the team settings modal shows (#1267).
+        teamModalOrgId: null,
+        openTeamModal: (orgId) =>
+          set((state) => ({
+            teamModalOrgId: orgId,
+            modal: 'team',
+            previousModal: state.modal
+          })),
         // True while the URL's scene is private and couldn't be opened
         // (signed out, or not its author): the sign-in modal then says the
         // scene is private, and the loader retries with the new account.

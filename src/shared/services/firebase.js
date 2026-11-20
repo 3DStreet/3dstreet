@@ -107,6 +107,35 @@ if (useEmulators) {
 // Server-side functions still enforce admin claim check
 window.adminTools = {
   /**
+   * Create an organization (teams, #1267; staff only). The owner is added
+   * right away when they have an account, otherwise invited by email.
+   *
+   * Usage:
+   *   await adminTools.createOrg({ name: 'LA Metro', plan: 'MAX', seats: 10,
+   *     ownerEmail: 'owner@metro.net', domains: ['metro.net'] })
+   */
+  createOrg: async ({ name, plan, seats, ownerEmail, domains = [] }) => {
+    const create = httpsCallable(functions, 'orgCreate');
+    const result = await create({ name, plan, seats, ownerEmail, domains });
+    console.log(result.data);
+    return result.data;
+  },
+
+  /**
+   * Update an organization (staff only): name, plan ('PRO' | 'MAX'), seats,
+   * status ('active' | 'suspended'), domains.
+   *
+   * Usage:
+   *   await adminTools.updateOrg('orgId', { seats: 20, status: 'active' })
+   */
+  updateOrg: async (orgId, patch) => {
+    const update = httpsCallable(functions, 'orgUpdate');
+    const result = await update({ orgId, patch });
+    console.log(result.data);
+    return result.data;
+  },
+
+  /**
    * Trigger scheduled emails (admin only)
    * @param {boolean} dryRun - If true (default), shows what would be sent without sending
    * @returns {Promise} Results showing emails sent or would be sent

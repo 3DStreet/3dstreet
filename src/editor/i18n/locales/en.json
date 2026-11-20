@@ -1703,6 +1703,51 @@
   "intersectionSidebar.trafficControl": {
     "defaultMessage": "Traffic Control:"
   },
+  "invitationModal.accept": {
+    "defaultMessage": "Join the team"
+  },
+  "invitationModal.close": {
+    "defaultMessage": "Close"
+  },
+  "invitationModal.decline": {
+    "defaultMessage": "Decline"
+  },
+  "invitationModal.declined": {
+    "defaultMessage": "You declined the invitation."
+  },
+  "invitationModal.invited": {
+    "defaultMessage": "You're invited to join {team} on 3DStreet."
+  },
+  "invitationModal.invitedBy": {
+    "defaultMessage": "{inviter} invited you to join {team} on 3DStreet."
+  },
+  "invitationModal.joined": {
+    "defaultMessage": "You joined {team}."
+  },
+  "invitationModal.loading": {
+    "defaultMessage": "Loading the invitation…"
+  },
+  "invitationModal.openTeam": {
+    "defaultMessage": "See the team"
+  },
+  "invitationModal.role": {
+    "defaultMessage": "Your role: {role}. {description}"
+  },
+  "invitationModal.signIn": {
+    "defaultMessage": "Sign in"
+  },
+  "invitationModal.signInFirst": {
+    "defaultMessage": "Sign in with the email address that received the invitation to see it."
+  },
+  "invitationModal.switchAccount": {
+    "defaultMessage": "Use another account"
+  },
+  "invitationModal.title": {
+    "defaultMessage": "Team invitation"
+  },
+  "invitationModal.wrongAccount": {
+    "defaultMessage": "This invitation was sent to another email address. You are signed in as {email}."
+  },
   "jobHealthModal.adminsOnly": {
     "defaultMessage": "Admins only. Sign in with an admin account to view background-job health."
   },
@@ -1967,6 +2012,84 @@
   "newModal.title": {
     "defaultMessage": "Create a New Scene"
   },
+  "orgs.error.emailNotVerified": {
+    "defaultMessage": "Your email address is not verified."
+  },
+  "orgs.error.generic": {
+    "defaultMessage": "Something went wrong. Please try again."
+  },
+  "orgs.error.invalidName": {
+    "defaultMessage": "Enter a team name of 80 characters or fewer."
+  },
+  "orgs.error.invitationClosed": {
+    "defaultMessage": "This invitation is no longer valid."
+  },
+  "orgs.error.invitationExpired": {
+    "defaultMessage": "This invitation has expired. Ask the person who invited you to send it again."
+  },
+  "orgs.error.invitationNotFound": {
+    "defaultMessage": "This invitation does not exist."
+  },
+  "orgs.error.lastOwner": {
+    "defaultMessage": "A team needs at least one owner. Make someone else an owner first."
+  },
+  "orgs.error.noSeatLeft": {
+    "defaultMessage": "No seat left in this team. Free a seat or contact 3DStreet for more."
+  },
+  "orgs.error.notManager": {
+    "defaultMessage": "Only owners and admins can do this."
+  },
+  "orgs.error.orgSuspended": {
+    "defaultMessage": "This team is suspended."
+  },
+  "orgs.error.ownerOnly": {
+    "defaultMessage": "Only owners can do this."
+  },
+  "orgs.error.wrongAccount": {
+    "defaultMessage": "This invitation was sent to another email address. Sign in with that address to accept it."
+  },
+  "orgs.inviteResult.alreadyInvited": {
+    "defaultMessage": "{email} already has a pending invitation."
+  },
+  "orgs.inviteResult.alreadyMember": {
+    "defaultMessage": "{email} is already in the team."
+  },
+  "orgs.inviteResult.invalidEmail": {
+    "defaultMessage": "{email} is not a valid email address."
+  },
+  "orgs.inviteResult.invited": {
+    "defaultMessage": "{email}: invitation sent."
+  },
+  "orgs.inviteResult.invitedNoEmail": {
+    "defaultMessage": "{email}: invitation created, but the email could not be sent. Use Resend."
+  },
+  "orgs.inviteResult.noSeatLeft": {
+    "defaultMessage": "{email}: no seat left."
+  },
+  "orgs.role.admin": {
+    "defaultMessage": "Admin"
+  },
+  "orgs.role.member": {
+    "defaultMessage": "Member"
+  },
+  "orgs.role.owner": {
+    "defaultMessage": "Owner"
+  },
+  "orgs.role.viewer": {
+    "defaultMessage": "Viewer"
+  },
+  "orgs.roleDescription.admin": {
+    "defaultMessage": "Manages members and invitations."
+  },
+  "orgs.roleDescription.member": {
+    "defaultMessage": "Uses the team's plan. Takes a seat."
+  },
+  "orgs.roleDescription.owner": {
+    "defaultMessage": "Manages the team, its members and its owners."
+  },
+  "orgs.roleDescription.viewer": {
+    "defaultMessage": "Can view the team's work. Takes no seat."
+  },
   "playControls.brakeForce": {
     "defaultMessage": "Brake force"
   },
@@ -2012,6 +2135,9 @@
   "profileModal.accountInformation": {
     "defaultMessage": "Account Information"
   },
+  "profileModal.invitedAs": {
+    "defaultMessage": "Invitation as {role}"
+  },
   "profileModal.loadingUsername": {
     "defaultMessage": "Loading username..."
   },
@@ -2026,6 +2152,9 @@
   },
   "profileModal.nextMonthlyRefill": {
     "defaultMessage": "Next monthly refill: {date}"
+  },
+  "profileModal.openTeam": {
+    "defaultMessage": "Open"
   },
   "profileModal.planFree": {
     "defaultMessage": "Plan: Free"
@@ -2051,11 +2180,17 @@
   "profileModal.subscription": {
     "defaultMessage": "Subscription"
   },
+  "profileModal.teams": {
+    "defaultMessage": "Teams"
+  },
   "profileModal.title": {
     "defaultMessage": "3DStreet Account"
   },
   "profileModal.unlimitedGeoTokens": {
     "defaultMessage": "Unlimited Geo Tokens"
+  },
+  "profileModal.viewInvitation": {
+    "defaultMessage": "View invitation"
   },
   "propertyRow.linkAxes": {
     "defaultMessage": "Link axes: editing one axis sets all three"
@@ -2884,6 +3019,78 @@
   },
   "sunDial.west": {
     "defaultMessage": "W"
+  },
+  "teamModal.invitationExpired": {
+    "defaultMessage": "Expired"
+  },
+  "teamModal.invitationExpires": {
+    "defaultMessage": "Expires {date}"
+  },
+  "teamModal.invitationsTitle": {
+    "defaultMessage": "Pending invitations ({count})"
+  },
+  "teamModal.invite": {
+    "defaultMessage": "Invite"
+  },
+  "teamModal.inviteEmailsLabel": {
+    "defaultMessage": "Email addresses"
+  },
+  "teamModal.inviteRoleLabel": {
+    "defaultMessage": "Role for the people invited"
+  },
+  "teamModal.inviteTitle": {
+    "defaultMessage": "Invite people"
+  },
+  "teamModal.leave": {
+    "defaultMessage": "Leave team"
+  },
+  "teamModal.leaveMessage": {
+    "defaultMessage": "You will lose access to {team} and its plan. An owner or admin can invite you again."
+  },
+  "teamModal.leaveTitle": {
+    "defaultMessage": "Leave this team?"
+  },
+  "teamModal.loading": {
+    "defaultMessage": "Loading…"
+  },
+  "teamModal.membersTitle": {
+    "defaultMessage": "Members ({count})"
+  },
+  "teamModal.nameLabel": {
+    "defaultMessage": "Team name"
+  },
+  "teamModal.remove": {
+    "defaultMessage": "Remove"
+  },
+  "teamModal.removeMessage": {
+    "defaultMessage": "{name} will lose access to {team} and its plan. You can invite them again later."
+  },
+  "teamModal.removeTitle": {
+    "defaultMessage": "Remove this member?"
+  },
+  "teamModal.resend": {
+    "defaultMessage": "Resend"
+  },
+  "teamModal.revoke": {
+    "defaultMessage": "Revoke"
+  },
+  "teamModal.roleOf": {
+    "defaultMessage": "Role of {name}"
+  },
+  "teamModal.save": {
+    "defaultMessage": "Save"
+  },
+  "teamModal.seats": {
+    "defaultMessage": "{used} of {total} seats used"
+  },
+  "teamModal.suspended": {
+    "defaultMessage": "Suspended"
+  },
+  "teamModal.title": {
+    "defaultMessage": "Team"
+  },
+  "teamModal.you": {
+    "defaultMessage": "(you)"
   },
   "toolbar.edit": {
     "defaultMessage": "Edit"

@@ -27,7 +27,8 @@ mint-script flag to pick it.
 
 ## Entitlement
 
-**Pro = paid plan claim (PRO/MAX) OR Pro-team domain OR `proUntil > now`**
+**Pro = paid plan claim (PRO/MAX) OR Pro-team domain OR `proUntil > now` OR a
+seat in an active org with a paid plan** (see [orgs.md](orgs.md))
 (`hasProEntitlement` in `pro-pass.js`). Expiry is evaluated when entitlement
 is read — there is no scheduled job, and nothing is touched when a pass
 lapses: scenes, assets and already-granted tokens all stay.
