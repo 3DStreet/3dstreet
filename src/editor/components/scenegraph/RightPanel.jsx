@@ -5,6 +5,7 @@ import posthog from 'posthog-js';
 import { faLock, faLockOpen } from '@fortawesome/free-solid-svg-icons';
 import { ProfileButton } from '@shared/auth/components';
 import useStore from '@/store';
+import { canSaveInPlace } from '@/editor/lib/sceneAccess';
 import { AuthContext } from '@/editor/contexts';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import ComponentsSidebar from '../elements/Sidebar';
@@ -92,7 +93,7 @@ export default function RightPanel({ entity }) {
   const sceneVisibility = useStore((state) => state.sceneVisibility);
 
   const handleShare = () => {
-    if (authUser && window.STREET?.utils?.getAuthorId?.() === authUser.uid) {
+    if (authUser && canSaveInPlace(authUser)) {
       useStore.getState().saveScene(false);
     }
     useStore.getState().setModal('share');

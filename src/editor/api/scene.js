@@ -3,6 +3,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  increment,
   getDocs,
   limit,
   orderBy,
@@ -10,6 +11,7 @@ import {
   serverTimestamp,
   setDoc,
   startAfter,
+  Timestamp,
   updateDoc,
   where
 } from 'firebase/firestore';
@@ -33,7 +35,8 @@ const generateSceneId = async (authorId, isFirstScene = false) => {
     createTimestamp: serverTimestamp(),
     updateTimestamp: serverTimestamp(),
     author: authorId,
-    visibility: 'public'
+    visibility: 'public',
+    orgId: null
   });
 
   posthog.capture('scene_created', {
@@ -52,10 +55,13 @@ const createScene = async (
   version,
   memory,
   isFirstScene = false,
-  // 'public' or 'unlisted' (#1267): the rules refuse 'private' on create;
-  // a private copy is created unlisted, then made private through
-  // setSceneVisibility.
-  visibility = 'public'
+  // Personal scene: 'public' or 'unlisted' (#1267); the rules refuse
+  // 'private' on create, so a private copy is created unlisted, then made
+  // private through setSceneVisibility. Team scene: any visibility.
+  visibility = 'public',
+  // A team scene (#1267 Phase 2): { orgId, projectId, lockName }. The
+  // creator holds its edit lock (src/editor/lib/editLock.js).
+  team = null
 ) => {
   // Generate a new UUID
   const newSceneId = uuidv4();
@@ -66,6 +72,16 @@ const createScene = async (
     updateTimestamp: serverTimestamp(),
     author: authorId,
     visibility,
+    orgId: team ? team.orgId : null,
+    ...(team && {
+      projectId: team.projectId || null,
+      revision: 0,
+      editLock: {
+        uid: authorId,
+        name: team.lockName || null,
+        expiresAt: Timestamp.fromMillis(Date.now() + 2 * 60 * 1000)
+      }
+    }),
     data: sceneData,
     title: title,
     version: version,
@@ -92,7 +108,15 @@ const deleteScene = async (sceneId) => {
   }
 };
 
-const updateScene = async (sceneId, sceneData, title, version, memory) => {
+const updateScene = async (
+  sceneId,
+  sceneData,
+  title,
+  version,
+  memory,
+  // A team scene's saves count revisions (#1267, see editLock.js).
+  { bumpRevision = false } = {}
+) => {
   try {
     const sceneDocRef = doc(sceneRef, sceneId);
     await updateDoc(sceneDocRef, {
@@ -100,7 +124,8 @@ const updateScene = async (sceneId, sceneData, title, version, memory) => {
       updateTimestamp: serverTimestamp(),
       title: title,
       version: version,
-      memory: memory
+      memory: memory,
+      ...(bumpRevision && { revision: increment(1) })
     });
   } catch (error) {
     throw new Error(error);
@@ -134,6 +159,8 @@ const getUserScenes = async (currentUserUID, isInitialFetch) => {
       const userScenesQuery = query(
         collection(db, 'scenes'),
         where('author', '==', currentUserUID),
+        // Personal scenes only: team scenes are listed per team (#1267).
+        where('orgId', '==', null),
         orderBy('updateTimestamp', 'desc'),
         limit(20)
       );
@@ -146,6 +173,8 @@ const getUserScenes = async (currentUserUID, isInitialFetch) => {
       const userScenesQuery = query(
         collection(db, 'scenes'),
         where('author', '==', currentUserUID),
+        // Personal scenes only: team scenes are listed per team (#1267).
+        where('orgId', '==', null),
         orderBy('updateTimestamp', 'desc'),
         startAfter(lastVisible),
         limit(20)
@@ -158,6 +187,19 @@ const getUserScenes = async (currentUserUID, isInitialFetch) => {
   } catch (error) {
     console.error(error);
   }
+};
+
+// A team's scenes (#1267 Phase 2), newest first; projectId narrows to one
+// project. Pass the previous page's last doc to continue.
+const getTeamScenes = async (orgId, { projectId, after } = {}) => {
+  const constraints = [where('orgId', '==', orgId)];
+  if (projectId !== undefined) {
+    constraints.push(where('projectId', '==', projectId));
+  }
+  constraints.push(orderBy('updateTimestamp', 'desc'));
+  if (after) constraints.push(startAfter(after));
+  constraints.push(limit(20));
+  return (await getDocs(query(collection(db, 'scenes'), ...constraints))).docs;
 };
 
 let communityScenesSnapshot;
@@ -386,6 +428,7 @@ export {
   generateSceneId,
   getCommunityScenes,
   getUserScenes,
+  getTeamScenes,
   setSceneVisibility,
   updateScene,
   updateSceneIdAndTitle,

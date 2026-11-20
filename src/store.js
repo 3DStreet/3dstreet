@@ -154,6 +154,35 @@ const useStore = create(
         sceneVisibility: 'public',
         setSceneVisibility: (sceneVisibility) =>
           set({ sceneVisibility: sceneVisibility || 'public' }),
+        // The team the current cloud scene belongs to (#1267 Phase 2,
+        // docs/team-scenes.md): orgId null for a personal scene. Set with
+        // the visibility when a scene loads or saves.
+        sceneOrgId: null,
+        sceneProjectId: null,
+        // Loading or saving a scene also ends a pending "new scene in this
+        // project" (newSceneTarget).
+        setSceneTeam: ({ orgId = null, projectId = null } = {}) =>
+          set({
+            sceneOrgId: orgId || null,
+            sceneProjectId: projectId || null,
+            newSceneTarget: null
+          }),
+        // The team scene's revision this tab has (#1267): set on load,
+        // incremented by each in-place save. Taking the edit lock reloads
+        // the scene first when Firestore's revision differs (editLock.js),
+        // so a save never overwrites another member's changes.
+        sceneRevision: 0,
+        setSceneRevision: (sceneRevision) =>
+          set({ sceneRevision: sceneRevision || 0 }),
+        // Where the next new scene is saved: { orgId, projectId } of a team
+        // project picked in the scenes modal, or null for a personal scene.
+        newSceneTarget: null,
+        setNewSceneTarget: (newSceneTarget) => set({ newSceneTarget }),
+        // The team scene's edit lock as seen by this tab (editLock.js):
+        // status 'none' | 'acquiring' | 'mine' | 'other', with the holder
+        // when someone else edits.
+        editLock: { status: 'none', holderName: null, holderUid: null },
+        setEditLock: (editLock) => set({ editLock }),
         // The invitation the invitation modal shows (#1267): from the
         // #invite= link at startup, or picked in the profile.
         invitationId: getInviteId(window.location.hash) || null,
@@ -189,6 +218,8 @@ const useStore = create(
             sceneId: null,
             sceneTitle: null,
             sceneVisibility: 'public',
+            sceneOrgId: null,
+            sceneProjectId: null,
             authorId: null,
             locationString: null,
             viewerStartMigrated: false
@@ -478,8 +509,13 @@ window.addEventListener('beforeunload', (event) => {
 
   // Scene is unsaved if:
   // 1. No scene ID (new unsaved scene)
-  // 2. Current user is not the author (scene not saved by current user)
-  const isUnsaved = !sceneId || (currentUser && currentUser.uid !== authorId);
+  // 2. Edits don't reach it: someone else's scene, or a team scene this tab
+  //    doesn't hold the edit lock of (#1267)
+  const { sceneOrgId, editLock } = useStore.getState();
+  const savesInPlace = sceneOrgId
+    ? editLock.status === 'mine'
+    : !currentUser || currentUser.uid === authorId;
+  const isUnsaved = !sceneId || !savesInPlace;
 
   // Only show warning if there are actual changes (undo button would be enabled) AND is unsaved
   const hasChanges = AFRAME.INSPECTOR?.history?.undos?.length > 0;

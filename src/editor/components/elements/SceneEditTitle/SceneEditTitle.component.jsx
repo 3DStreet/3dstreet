@@ -4,6 +4,7 @@ import styles from './SceneEditTitle.module.scss';
 import { useAuthContext } from '../../../contexts/index.js';
 import { updateSceneIdAndTitle } from '../../../api/scene';
 import useStore from '../../../../store.js';
+import { canSaveInPlace } from '@/editor/lib/sceneAccess';
 import InlineEditInput from '../InlineEditInput';
 import { Edit24Icon } from '@shared/icons';
 
@@ -39,7 +40,7 @@ const SceneEditTitle = ({ readOnly = false }) => {
       // New unsaved scene: run the normal save pipeline to create the scene
       // (and its uuid) under the freshly set title.
       saveScene(false);
-    } else if (currentUser.uid === STREET.utils.getAuthorId()) {
+    } else if (canSaveInPlace(currentUser)) {
       saveNewTitle(newTitle);
     }
     // Not the author: local-only, same as before.

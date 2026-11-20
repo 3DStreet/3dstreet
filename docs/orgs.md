@@ -1,8 +1,9 @@
 # Organizations (teams, #1267 Phase 1)
 
 An organization ("team" in the UI) has a plan (`PRO` or `MAX`), a number of
-seats, and members with a role. Phase 1 covers membership and the plan it
-gives; team-owned scenes and projects come in Phase 2.
+seats, and members with a role. This page covers membership and the plan it
+gives; team-owned scenes, projects and the edit lock are in
+[team-scenes.md](team-scenes.md).
 
 ## Roles
 

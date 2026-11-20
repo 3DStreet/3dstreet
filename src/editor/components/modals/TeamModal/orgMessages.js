@@ -78,6 +78,23 @@ export const orgErrorMessages = defineMessages({
     id: 'orgs.error.invalidName',
     defaultMessage: 'Enter a team name of 80 characters or fewer.'
   },
+  // Team scenes and projects (team-scenes.js)
+  'not-editor': {
+    id: 'orgs.error.notEditor',
+    defaultMessage: 'Only owners, admins and members can do this.'
+  },
+  'not-author': {
+    id: 'orgs.error.notAuthor',
+    defaultMessage: 'Only the author of a personal scene can move it.'
+  },
+  'project-not-found': {
+    id: 'orgs.error.projectNotFound',
+    defaultMessage: 'This project does not exist.'
+  },
+  'invalid-move': {
+    id: 'orgs.error.invalidMove',
+    defaultMessage: 'A team scene can only move between projects of its team.'
+  },
   generic: {
     id: 'orgs.error.generic',
     defaultMessage: 'Something went wrong. Please try again.'

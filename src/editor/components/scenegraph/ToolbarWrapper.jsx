@@ -1,6 +1,7 @@
 /* global STREET */
 import { useEffect, useState } from 'react';
 import useStore from '@/store';
+import { isTeamEditorRole, teamRoleOf } from '@/editor/lib/sceneAccess';
 import { useAuthContext } from '@/editor/contexts';
 import Toolbar from './Toolbar';
 
@@ -44,7 +45,12 @@ function useViewerFirstEntry() {
 
   useEffect(() => {
     if (!pendingAuthorId || isLoading) return;
-    const isAuthor = currentUser && currentUser.uid === pendingAuthorId;
+    // A team scene opens in the editor for the team's editors (#1267), like
+    // a personal scene for its author.
+    const { sceneOrgId } = useStore.getState();
+    const isAuthor =
+      (currentUser && currentUser.uid === pendingAuthorId) ||
+      (!!sceneOrgId && isTeamEditorRole(teamRoleOf(currentUser, sceneOrgId)));
     const { isInspectorEnabled, enterViewerMode } = useStore.getState();
     // No camera vantage handling needed here: view and edit share the
     // editor camera (#1848), and the newScene camera animation already

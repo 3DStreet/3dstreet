@@ -306,3 +306,26 @@
     }
   }
 }
+
+// Where the scene lives (#1267 Phase 2, ShareTeamSection).
+.teamSection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  font-size: 14px;
+}
+
+.teamLabel {
+  margin-right: 4px;
+}
+
+.teamSelect {
+  padding: 6px 8px;
+  border: 1px solid #4b4b4b;
+  border-radius: 6px;
+  background-color: #1f1f1f;
+  color: white;
+  font-size: 13px;
+}

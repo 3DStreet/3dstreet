@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { FormattedMessage, defineMessages, useIntl } from 'react-intl';
+import { commonMessages } from '@/editor/i18n/commonMessages';
 import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import styles from './SceneCard.module.scss';
 import { formatDistanceToNow } from 'date-fns';
@@ -29,12 +31,38 @@ function TimeAgo({ timestamp, includeAgo = false, locale }) {
   return timeAgo;
 }
 
+const messages = defineMessages({
+  confirmDelete: {
+    id: 'sceneCard.confirmDelete',
+    defaultMessage: 'Are you sure you want to delete this scene?'
+  },
+  deleteError: {
+    id: 'sceneCard.deleteError',
+    defaultMessage: 'Could not delete the scene.'
+  },
+  titleSaved: {
+    id: 'sceneCard.titleSaved',
+    defaultMessage: 'New scene title saved: {title}'
+  },
+  titleError: {
+    id: 'sceneCard.titleError',
+    defaultMessage: 'Error updating scene title: {error}'
+  }
+});
+
+// showAuthor: the author's @username under each card (community and team
+// scenes). canRename / canDelete: the card menu's actions (your own scenes:
+// both; a team's scenes: delete for owners and admins, #1267).
 const SceneCard = ({
   scenesData,
   handleSceneClick,
   setScenesData,
-  isCommunityTabSelected
+  isCommunityTabSelected,
+  showAuthor = isCommunityTabSelected,
+  canRename = !isCommunityTabSelected,
+  canDelete = !isCommunityTabSelected
 }) => {
+  const intl = useIntl();
   const locale = useStore((state) => state.locale);
   const [showMenu, setShowMenu] = useState(null);
   const [editIndex, setEditIndex] = useState(null);
@@ -48,22 +76,28 @@ const SceneCard = ({
     setEditIndex(null);
   };
 
-  const handleDeleteScene = (scene, e) => {
+  const handleDeleteScene = async (scene, e) => {
     e.stopPropagation();
 
     // Show the system confirm dialog
     const isConfirmed = window.confirm(
-      'Are you sure you want to delete this scene?'
+      intl.formatMessage(messages.confirmDelete)
     );
 
     // Only proceed with the delete if the user pressed OK
     if (isConfirmed) {
-      deleteScene(scene.id);
+      setShowMenu(null);
+      try {
+        await deleteScene(scene.id);
+      } catch (error) {
+        console.error('Error deleting scene:', error);
+        STREET.notify.errorMessage(intl.formatMessage(messages.deleteError));
+        return;
+      }
       const updatedScenesData = scenesData.filter(
         (item) => item.id !== scene.id
       );
       setScenesData(updatedScenesData);
-      setShowMenu(null);
     }
   };
 
@@ -98,10 +132,14 @@ const SceneCard = ({
 
       setScenesData(updatedScenes);
       setEditIndex(null);
-      STREET.notify.successMessage(`New scene title saved: ${editInputValue}`);
+      STREET.notify.successMessage(
+        intl.formatMessage(messages.titleSaved, { title: editInputValue })
+      );
     } catch (error) {
       console.error('Error with update title', error);
-      STREET.notify.errorMessage(`Error updating scene title: ${error}`);
+      STREET.notify.errorMessage(
+        intl.formatMessage(messages.titleError, { error: `${error}` })
+      );
     }
   };
 
@@ -199,18 +237,28 @@ const SceneCard = ({
           />
           {showMenu === index && (
             <div className={styles.menuBlock}>
-              <div
-                className={`${styles.menuItem} menu-item`}
-                onClick={() => handleEditScene(index)}
-              >
-                Edit scene name
-              </div>
-              <div
-                className={`${styles.menuItem} menu-item`}
-                onClick={(e) => handleDeleteScene(scene, e)}
-              >
-                Delete scene
-              </div>
+              {canRename && (
+                <div
+                  className={`${styles.menuItem} menu-item`}
+                  onClick={() => handleEditScene(index)}
+                >
+                  <FormattedMessage
+                    id="sceneCard.editName"
+                    defaultMessage="Edit scene name"
+                  />
+                </div>
+              )}
+              {canDelete && (
+                <div
+                  className={`${styles.menuItem} menu-item`}
+                  onClick={(e) => handleDeleteScene(scene, e)}
+                >
+                  <FormattedMessage
+                    id="sceneCard.delete"
+                    defaultMessage="Delete scene"
+                  />
+                </div>
+              )}
             </div>
           )}
           <div>
@@ -232,7 +280,7 @@ const SceneCard = ({
             <>
               <div className={styles.userBlock}>
                 <div className={styles.userName}>
-                  {isCommunityTabSelected &&
+                  {showAuthor &&
                   scene.data().author &&
                   authorUsernames[scene.data().author] ? (
                     <div className={styles.communityInfo}>
@@ -260,7 +308,7 @@ const SceneCard = ({
                     </div>
                   )}
                 </div>
-                {!isCommunityTabSelected && (
+                {(canRename || canDelete) && (
                   <div
                     ref={(el) => (menuRefs.current[index] = el)}
                     onClick={(e) => toggleMenu(index, e)}
@@ -282,14 +330,17 @@ const SceneCard = ({
                 onClick={handleSaveTitle}
                 disabled={editInputValue === scene.data().title}
               >
-                Save changes
+                <FormattedMessage
+                  id="sceneCard.saveChanges"
+                  defaultMessage="Save changes"
+                />
               </Button>
               <Button
                 variant="toolbtn"
                 className={styles.editButton}
                 onClick={handleCancelClick}
               >
-                Cancel
+                <FormattedMessage {...commonMessages.cancel} />
               </Button>
             </div>
           )}

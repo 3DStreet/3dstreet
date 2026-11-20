@@ -9,6 +9,11 @@ import {
 } from '@/editor/api/scene';
 import { createUniqueId } from '@/editor/lib/entity.jsx';
 import { formatSharedMessage } from '@shared/i18n/sharedMessages';
+import {
+  isTeamEditorRole,
+  sceneSaveMode,
+  teamRoleOf
+} from '@/editor/lib/sceneAccess';
 import { getCurrentCameraState } from '@/editor/lib/cameraUtils.js';
 import { scenePath, clearedSceneUrl } from '@/tested/scene-url-utils.js';
 import { doc, getDoc } from 'firebase/firestore';
@@ -271,7 +276,6 @@ export async function makeScreenshot(hideOverlays = false) {
 
 export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   const sceneTitle = useStore.getState().sceneTitle;
-  const authorId = STREET.utils.getAuthorId();
   let sceneId = STREET.utils.getCurrentSceneId();
   const store = useStore.getState();
 
@@ -287,12 +291,33 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
     return;
   }
 
-  const isOwnScene = authorId === currentUser.uid;
+  // Who may save what (#1267, sceneAccess.js): your personal scene, or a
+  // team scene this tab holds the edit lock of, saves in place; anything
+  // else saves as a copy, except a team scene you may not edit right now.
+  const saveMode = sceneSaveMode(currentUser);
+  const isTeamBlocked =
+    saveMode === 'team-locked' || saveMode === 'team-viewer';
+  if (isTeamBlocked && !doSaveAs) {
+    STREET.notify.warningMessage(
+      saveMode === 'team-viewer'
+        ? formatSharedMessage('teamSceneViewOnly')
+        : formatSharedMessage('teamSceneLocked', {
+            name: store.editLock.holderName || '?'
+          })
+    );
+    return;
+  }
+  if (
+    doSaveAs &&
+    saveMode === 'team-viewer' &&
+    store.sceneVisibility === 'private'
+  ) {
+    // A viewer copying a team-only scene out would publish it.
+    STREET.notify.warningMessage(formatSharedMessage('teamSceneNoCopy'));
+    return;
+  }
+  const isOwnScene = saveMode === 'own' || saveMode === 'team';
   if (!isOwnScene) {
-    // posthog.capture('not_scene_author', {
-    //   scene_id: sceneId,
-    //   user_id: currentUser.uid
-    // });
     doSaveAs = true;
   }
 
@@ -343,7 +368,8 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   }
 
   // we want to save, so if we *still* have no sceneID at this point, then create a new one
-  if (!sceneId || !!doSaveAs) {
+  const isCreating = !sceneId || !!doSaveAs;
+  if (isCreating) {
     let title = sceneTitle;
     if (doPromptTitle) {
       // Prompt user for new scene title when saving as
@@ -354,6 +380,37 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
       if (!newTitle) return; // User cancelled the prompt
       store.setSceneTitle(newTitle);
       title = newTitle;
+    }
+    // Where the new scene goes (#1267, docs/team-scenes.md): a new scene
+    // started from a team project goes there; a copy made by one of the
+    // team's editors stays in the team and project; anything else is a
+    // personal scene.
+    const team = !sceneId
+      ? store.newSceneTarget
+      : store.sceneOrgId &&
+          isTeamEditorRole(teamRoleOf(currentUser, store.sceneOrgId))
+        ? { orgId: store.sceneOrgId, projectId: store.sceneProjectId }
+        : null;
+    if (team) {
+      // A team scene: team-only when new, the source's sharing when a copy
+      // (the team's plan covers private). The creator holds the edit lock.
+      const visibility = sceneId ? store.sceneVisibility : 'private';
+      sceneId = await createScene(
+        currentUser.uid,
+        filteredData.data,
+        title,
+        filteredData.version,
+        filteredData.memory,
+        false,
+        visibility,
+        { ...team, lockName: currentUser.displayName || currentUser.email }
+      );
+      store.setNewSceneTarget(null);
+      store.setSceneTeam(team);
+      store.setSceneVisibility(visibility);
+      store.setSceneRevision(0);
+      finishSave(sceneId, currentUser, { created: true });
+      return sceneId;
     }
     // A copy of your own scene keeps its visibility (#1267); a copy of
     // someone else's scene, or a new one, is public. The rules refuse
@@ -369,6 +426,7 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
       false,
       sourceVisibility === 'public' ? 'public' : 'unlisted'
     );
+    store.setSceneTeam(null);
     let visibility = sourceVisibility === 'public' ? 'public' : 'unlisted';
     if (sourceVisibility === 'private') {
       try {
@@ -383,23 +441,36 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
     }
     useStore.getState().setSceneVisibility(visibility);
   } else {
+    const isTeamScene = !!store.sceneOrgId;
     await updateScene(
       sceneId,
       filteredData.data,
       sceneTitle,
       filteredData.version,
-      filteredData.memory
+      filteredData.memory,
+      { bumpRevision: isTeamScene }
     );
+    if (isTeamScene) {
+      store.setSceneRevision(useStore.getState().sceneRevision + 1);
+    }
   }
 
+  finishSave(sceneId, currentUser, { created: isCreating });
+  return sceneId;
+}
+
+function finishSave(sceneId, currentUser, { created }) {
   // make sure to update sceneId with new one in metadata component!
   AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
-  AFRAME.scenes[0].setAttribute('metadata', 'authorId', currentUser.uid);
+  // A scene this save created is the user's; an in-place save keeps the
+  // author (a team scene's author is whoever created it).
+  if (created) {
+    AFRAME.scenes[0].setAttribute('metadata', 'authorId', currentUser.uid);
+  }
 
   // Change the URL to the path form without reloading (#1970). The old
   // #/scenes/ hash form still loads but is no longer written anywhere.
   window.history.pushState(null, '', scenePath(sceneId));
-  return sceneId;
 }
 
 export async function saveSceneWithScreenshot(

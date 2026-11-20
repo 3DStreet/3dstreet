@@ -15,6 +15,8 @@ import {
 } from '../../../api/scene';
 import { faGlobe, faLink, faLock } from '@fortawesome/free-solid-svg-icons';
 import { AwesomeIcon } from '../../elements/AwesomeIcon';
+import { isTeamManagerRole } from '@/editor/lib/sceneAccess';
+import { ShareTeamSection } from './ShareTeamSection.jsx';
 import ScenePlaceholder from '../../../../../ui_assets/ScenePlaceholder.svg';
 import { getUserProfile } from '@shared/utils/username';
 import { Tooltip } from 'radix-ui';
@@ -72,6 +74,20 @@ const visibilityMessages = defineMessages({
   privateDescription: {
     id: 'shareModal.visibilityPrivateDescription',
     defaultMessage: 'Only you can open it. Embeds are disabled.'
+  },
+  // A team scene's private (#1267 Phase 2): the team's members.
+  teamOnlyLabel: {
+    id: 'shareModal.visibilityTeamOnly',
+    defaultMessage: 'Team only'
+  },
+  teamOnlyDescription: {
+    id: 'shareModal.visibilityTeamOnlyDescription',
+    defaultMessage: 'Only members of {team} can open it. Embeds are disabled.'
+  },
+  teamSharingManagersOnly: {
+    id: 'shareModal.teamSharingManagersOnly',
+    defaultMessage:
+      "Only the team's owners and admins can change who can open it."
   }
 });
 
@@ -96,7 +112,8 @@ const VISIBILITY_OPTIONS = [
   }
 ];
 
-function VisibilityPicker({ value, isPro, isSaving, onChange }) {
+// `teamName`: a team scene, whose private is team-only and paid by the team.
+function VisibilityPicker({ value, isPro, isSaving, onChange, teamName }) {
   const intl = useIntl();
   return (
     <div className={styles.visibilitySection}>
@@ -114,7 +131,18 @@ function VisibilityPicker({ value, isPro, isSaving, onChange }) {
         })}
         className={styles.visibilityOptions}
       >
-        {VISIBILITY_OPTIONS.map((option) => {
+        {VISIBILITY_OPTIONS.map((baseOption) => {
+          const option =
+            teamName && baseOption.value === 'private'
+              ? {
+                  ...baseOption,
+                  label: visibilityMessages.teamOnlyLabel,
+                  description: {
+                    ...visibilityMessages.teamOnlyDescription,
+                    values: { team: teamName }
+                  }
+                }
+              : baseOption;
           const selected = option.value === value;
           return (
             <button
@@ -129,7 +157,7 @@ function VisibilityPicker({ value, isPro, isSaving, onChange }) {
               <span className={styles.visibilityLabel}>
                 <AwesomeIcon icon={option.icon} size={14} />
                 <FormattedMessage {...option.label} />
-                {option.value === 'private' && !isPro && (
+                {option.value === 'private' && !isPro && !teamName && (
                   <span className={styles.proBadge}>PRO</span>
                 )}
               </span>
@@ -398,6 +426,13 @@ function ShareModal() {
   const canShare = currentUser && sceneId;
   const visibility = sceneData?.visibility || 'public';
   const isAuthor = !!currentUser && sceneData?.author === currentUser.uid;
+  // A team scene (#1267 Phase 2): its owners and admins manage sharing.
+  const sceneTeam = sceneData?.orgId
+    ? (currentUser?.orgs || []).find((org) => org.orgId === sceneData.orgId)
+    : null;
+  const canManageSharing = sceneData?.orgId
+    ? isTeamManagerRole(sceneTeam?.role)
+    : isAuthor;
 
   const openPrivateScenePaywall = () => {
     posthog.capture('private_scene_paywall', { scene_id: sceneId });
@@ -406,7 +441,7 @@ function ShareModal() {
 
   const handleVisibilityChange = async (next) => {
     if (next === visibility || isSavingVisibility) return;
-    if (next === 'private' && !currentUser?.isPro) {
+    if (next === 'private' && !sceneData?.orgId && !currentUser?.isPro) {
       openPrivateScenePaywall();
       return;
     }
@@ -543,14 +578,31 @@ function ShareModal() {
                 </div>
               </div>
 
-              {isAuthor && (
+              {canManageSharing && (
                 <VisibilityPicker
                   value={visibility}
                   isPro={!!currentUser?.isPro}
                   isSaving={isSavingVisibility}
                   onChange={handleVisibilityChange}
+                  teamName={sceneTeam?.name}
                 />
               )}
+              {sceneTeam && !canManageSharing && (
+                <p className={styles.privateLinkNote}>
+                  <FormattedMessage
+                    {...visibilityMessages.teamSharingManagersOnly}
+                  />
+                </p>
+              )}
+
+              <ShareTeamSection
+                sceneId={sceneId}
+                sceneData={sceneData}
+                currentUser={currentUser}
+                onMoved={(orgId, projectId) =>
+                  setSceneData((data) => ({ ...data, orgId, projectId }))
+                }
+              />
 
               {/* Share buttons section */}
               <div className={styles.shareButtonsSection}>
@@ -622,10 +674,18 @@ function ShareModal() {
                 {visibility === 'private' && (
                   <p className={styles.privateLinkNote}>
                     <AwesomeIcon icon={faLock} size={12} />
-                    <FormattedMessage
-                      id="shareModal.privateLinkNote"
-                      defaultMessage="This scene is private: only you can open this link."
-                    />
+                    {sceneData?.orgId ? (
+                      <FormattedMessage
+                        id="shareModal.teamOnlyLinkNote"
+                        defaultMessage="This scene is team-only: only members of {team} can open this link."
+                        values={{ team: sceneTeam?.name || '' }}
+                      />
+                    ) : (
+                      <FormattedMessage
+                        id="shareModal.privateLinkNote"
+                        defaultMessage="This scene is private: only you can open this link."
+                      />
+                    )}
                   </p>
                 )}
                 <div className={styles.urlInputWrapper}>

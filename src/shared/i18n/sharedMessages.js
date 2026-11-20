@@ -1885,6 +1885,27 @@ const SHARED_MESSAGES = {
     fr: "GeoJSON chargé depuis l'URL. Polygones : {count}."
   },
 
+  // Team scenes (#1267 Phase 2), shown by saveScene (editor/lib/SceneUtils.js).
+  teamSceneLocked: {
+    en: 'Not saved: {name} is editing this scene.',
+    es: 'No se guardó: {name} está editando esta escena.',
+    'pt-BR': 'Não foi salvo: {name} está editando esta cena.',
+    fr: 'Non enregistré : {name} est en train de modifier cette scène.'
+  },
+  teamSceneViewOnly: {
+    en: 'Not saved: you can view this team scene, but not edit it.',
+    es: 'No se guardó: puedes ver esta escena del equipo, pero no editarla.',
+    'pt-BR':
+      'Não foi salvo: você pode ver esta cena da equipe, mas não editá-la.',
+    fr: "Non enregistré : vous pouvez voir cette scène de l'équipe, mais pas la modifier."
+  },
+  teamSceneNoCopy: {
+    en: "A viewer can't copy a team-only scene.",
+    es: 'Un lector no puede copiar una escena solo para el equipo.',
+    'pt-BR': 'Um leitor não pode copiar uma cena só da equipe.',
+    fr: "Un lecteur ne peut pas copier une scène réservée à l'équipe."
+  },
+
   // Scene visibility (#1267), shown outside React: the scene loader
   // (json-utils_1.1.js) and saveScene (editor/lib/SceneUtils.js).
   privateSceneNotAuthor: {
@@ -1892,6 +1913,13 @@ const SHARED_MESSAGES = {
     es: 'Esta escena es privada. Solo su autor puede abrirla.',
     'pt-BR': 'Esta cena é privada. Só o autor pode abri-la.',
     fr: "Cette scène est privée. Seul son auteur peut l'ouvrir."
+  },
+  privateSceneNotMember: {
+    en: 'This scene is team-only. Only members of its team can open it.',
+    es: 'Esta escena es solo para el equipo. Solo los miembros de su equipo pueden abrirla.',
+    'pt-BR':
+      'Esta cena é só da equipe. Somente os membros da equipe podem abri-la.',
+    fr: "Cette scène est réservée à l'équipe. Seuls les membres de son équipe peuvent l'ouvrir."
   },
   privateSceneEmbed: {
     en: 'This scene is private and cannot be embedded.',

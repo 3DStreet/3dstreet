@@ -83,6 +83,19 @@ export const removeMember = (orgId, uid) =>
   call('orgRemoveMember', { orgId, uid });
 export const renameOrg = (orgId, name) => call('orgRename', { orgId, name });
 
+// Projects and team scenes (#1267 Phase 2, docs/team-scenes.md).
+export const listProjects = async (orgId) =>
+  (await getDocs(collection(db, 'orgs', orgId, 'projects'))).docs
+    .map((d) => ({ projectId: d.id, ...d.data() }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+export const createProject = (orgId, name) =>
+  call('orgCreateProject', { orgId, name });
+export const renameProject = (orgId, projectId, name) =>
+  call('orgRenameProject', { orgId, projectId, name });
+/** Move a scene into a team project, or between its team's projects. */
+export const moveScene = (sceneId, orgId, projectId = null) =>
+  call('orgMoveScene', { sceneId, orgId, projectId });
+
 const toMillis = (value) =>
   typeof value?.toMillis === 'function' ? value.toMillis() : null;
 

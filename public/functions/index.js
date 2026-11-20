@@ -185,7 +185,12 @@ exports.getScene = functions
           const uid = await uidFromAuthorizationHeader(req);
           // The author of a personal scene, or a member of a team scene's org.
           if (!(await readSceneAccess(scene, uid))) {
-            res.status(403).send({ error: 'This scene is private.', reason: 'private' });
+            // `team`: a team-only scene, so the app can say who may open it.
+            res.status(403).send({
+              error: 'This scene is private.',
+              reason: 'private',
+              team: !!scene.orgId
+            });
             return;
           }
         }

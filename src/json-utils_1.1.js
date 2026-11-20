@@ -1386,6 +1386,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
             jsonData.author
           );
           useStore.getState().setSceneVisibility(jsonData.visibility);
+          useStore.getState().setSceneTeam({
+            orgId: jsonData.orgId,
+            projectId: jsonData.projectId
+          });
+          useStore.getState().setSceneRevision(jsonData.revision);
           useStore.getState().setPrivateSceneBlocked(false);
         } catch (err) {
           console.error(
@@ -1400,7 +1405,9 @@ AFRAME.registerComponent('set-loader-from-hash', {
           );
         }
       } else if (this.status === 403 && isPrivateSceneResponse(this)) {
-        component.onPrivateScene(requestURL, !!idToken);
+        component.onPrivateScene(requestURL, !!idToken, {
+          team: isTeamSceneResponse(this)
+        });
       } else if (this.status === 404) {
         console.error(
           '[set-loader-from-hash] Error trying to load scene: Resource not found.'
@@ -1427,7 +1434,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
   // user's ID token (getScene serves the scene if they are its author);
   // signed out, ask them to sign in and retry when they do. An embed never
   // retries: a private scene can't be embedded.
-  onPrivateScene: async function (requestURL, alreadyRetried) {
+  onPrivateScene: async function (
+    requestURL,
+    alreadyRetried,
+    { team = false } = {}
+  ) {
     // Loaded on demand: this module also runs where the Firebase config
     // isn't defined (component tests), and only private scenes need auth.
     const [{ auth }, { onAuthStateChanged }] = await Promise.all([
@@ -1447,7 +1458,11 @@ AFRAME.registerComponent('set-loader-from-hash', {
     if (isEmbed || auth.currentUser) {
       // Signing in can't help: an embed, or a signed-in non-author.
       const message = formatSharedMessage(
-        isEmbed ? 'privateSceneEmbed' : 'privateSceneNotAuthor'
+        isEmbed
+          ? 'privateSceneEmbed'
+          : team
+            ? 'privateSceneNotMember'
+            : 'privateSceneNotAuthor'
       );
       console.error('[set-loader-from-hash]', message);
       useStore.getState().errorLoadingScene(message);
@@ -1467,6 +1482,14 @@ AFRAME.registerComponent('set-loader-from-hash', {
     });
   }
 });
+
+function isTeamSceneResponse(request) {
+  try {
+    return JSON.parse(request.response).team === true;
+  } catch {
+    return false;
+  }
+}
 
 function isPrivateSceneResponse(request) {
   try {

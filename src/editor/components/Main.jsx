@@ -23,6 +23,7 @@ import { NewModal } from './modals/NewModal';
 import { LoadingSceneModal } from './modals/LoadingSceneModal';
 import { ExportingSceneModal } from './modals/ExportingSceneModal';
 import { ConfirmModal } from './modals/ConfirmModal';
+import { EditLockBanner } from './elements/EditLockBanner';
 import AssetDeepLinkModal from './AssetDeepLinkModal.jsx';
 import JobHealthModal from './JobHealthModal.jsx';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
@@ -185,6 +186,8 @@ export default function Main() {
   return (
     <div id="inspectorContainer">
       <UnofficialDeploymentBanner />
+      {/* One editor at a time on team scenes (#1267) */}
+      <EditLockBanner />
       <ToolbarWrapper />
       {!isInspectorEnabled && <PlayModeControls />}
       {!isInspectorEnabled && <FlyModeControls />}

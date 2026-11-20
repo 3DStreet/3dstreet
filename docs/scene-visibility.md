@@ -2,11 +2,11 @@
 
 Every cloud scene has a `visibility` field on its `scenes/{id}` document:
 
-| Value      | Who can open it      | Listed in the community scenes | Embeds |
-| ---------- | -------------------- | ------------------------------ | ------ |
-| `public`   | anyone               | yes                            | yes    |
-| `unlisted` | anyone with the link | no                             | yes    |
-| `private`  | its author only      | no                             | no     |
+| Value      | Who can open it                                                                          | Listed in the community scenes | Embeds |
+| ---------- | ---------------------------------------------------------------------------------------- | ------------------------------ | ------ |
+| `public`   | anyone                                                                                   | yes                            | yes    |
+| `unlisted` | anyone with the link                                                                     | no                             | yes    |
+| `private`  | its author only (a team scene: its team's members, see [team-scenes.md](team-scenes.md)) | no                             | no     |
 
 A scene without the field (written before visibility existed) is public
 everywhere: the rules, `getScene` and the client all read a missing field as

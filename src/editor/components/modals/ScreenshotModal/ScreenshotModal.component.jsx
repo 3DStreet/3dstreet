@@ -4,6 +4,7 @@ import styles from './ScreenshotModal.module.scss';
 import Modal from '@shared/components/Modal/Modal.jsx';
 import posthog from 'posthog-js';
 import useStore from '@/store';
+import { canSaveInPlace } from '@/editor/lib/sceneAccess';
 import { Button } from '../../elements';
 import { DownloadIcon } from '@shared/icons';
 import { getCurrentCameraState } from '../../../lib/cameraUtils';
@@ -328,7 +329,6 @@ function ScreenshotModal() {
 
   const handleSetAsSceneThumbnail = async () => {
     const sceneId = STREET.utils.getCurrentSceneId();
-    const authorId = STREET.utils.getAuthorId();
 
     if (!sceneId) {
       STREET.notify.errorMessage(
@@ -340,7 +340,8 @@ function ScreenshotModal() {
       return;
     }
 
-    if (!currentUser || currentUser.uid !== authorId) {
+    // Your scene, or a team scene this tab holds the edit lock of (#1267).
+    if (!currentUser || !canSaveInPlace(currentUser)) {
       STREET.notify.errorMessage(
         intl.formatMessage({
           id: 'screenshotModal.onlyAuthorCanSetThumbnail',
@@ -1531,7 +1532,7 @@ function ScreenshotModal() {
                 {/* Set as Scene Thumbnail button - only show for scene authors */}
                 {currentUser &&
                   STREET.utils.getCurrentSceneId() &&
-                  currentUser.uid === STREET.utils.getAuthorId() && (
+                  canSaveInPlace(currentUser) && (
                     <button
                       className={styles.thumbnailButton}
                       onClick={handleSetAsSceneThumbnail}
@@ -1608,7 +1609,7 @@ function ScreenshotModal() {
                   {/* Set as Scene Thumbnail button - only show for scene authors */}
                   {currentUser &&
                     STREET.utils.getCurrentSceneId() &&
-                    currentUser.uid === STREET.utils.getAuthorId() && (
+                    canSaveInPlace(currentUser) && (
                       <button
                         className={styles.thumbnailButton}
                         onClick={handleSetAsSceneThumbnail}

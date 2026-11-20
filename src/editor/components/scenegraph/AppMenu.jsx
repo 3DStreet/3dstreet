@@ -2,6 +2,7 @@ import { Menubar } from 'radix-ui';
 import { FormattedMessage, useIntl } from 'react-intl';
 import '../../style/AppMenu.scss';
 import useStore from '@/store';
+import { sceneSaveMode } from '@/editor/lib/sceneAccess';
 import { makeScreenshot } from '@/editor/lib/SceneUtils';
 import posthog from 'posthog-js';
 import Events from '../../lib/Events.js';
@@ -456,7 +457,9 @@ const AppMenu = ({ currentUser }) => {
                   useStore.getState().openSignInToSave();
                   return;
                 }
-                if (currentUser?.uid !== STREET.utils.getAuthorId()) {
+                // Someone else's scene: Save As makes the copy. A team
+                // scene saveScene can't save says why (#1267).
+                if (sceneSaveMode(currentUser) === 'copy') {
                   return;
                 }
                 saveScene(false);

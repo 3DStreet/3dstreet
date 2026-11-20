@@ -133,6 +133,10 @@ async function loadSceneHandler(args) {
     useStore.getState().setSceneTitle(json.title);
   }
   useStore.getState().setSceneVisibility(json.visibility);
+  useStore
+    .getState()
+    .setSceneTeam({ orgId: json.orgId, projectId: json.projectId });
+  useStore.getState().setSceneRevision(json.revision);
   return {
     message: 'Scene loaded; replaced the previous scene contents in this tab.',
     sceneId,

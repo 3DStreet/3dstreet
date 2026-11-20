@@ -1124,6 +1124,27 @@
   "driveControls.tipsHeading": {
     "defaultMessage": "💡 Drive tips"
   },
+  "editLock.gained": {
+    "defaultMessage": "You can edit this scene now."
+  },
+  "editLock.gainedReloaded": {
+    "defaultMessage": "You can edit this scene now. It was reloaded with the latest changes."
+  },
+  "editLock.lost": {
+    "defaultMessage": "{name} took over editing this scene. Your changes are no longer saved."
+  },
+  "editLock.otherEditing": {
+    "defaultMessage": "{name} is editing this scene. Changes you make here are not saved. You can edit as soon as they are done."
+  },
+  "editLock.retry": {
+    "defaultMessage": "Try again"
+  },
+  "editLock.takeOver": {
+    "defaultMessage": "Take over"
+  },
+  "editLock.viewerOnly": {
+    "defaultMessage": "You can view this team scene, but not edit it. Changes you make here are not saved."
+  },
   "editorUpgradeModal.alreadyPro": {
     "defaultMessage": "You're already a Pro member — try that action again to continue."
   },
@@ -2018,6 +2039,9 @@
   "orgs.error.generic": {
     "defaultMessage": "Something went wrong. Please try again."
   },
+  "orgs.error.invalidMove": {
+    "defaultMessage": "A team scene can only move between projects of its team."
+  },
   "orgs.error.invalidName": {
     "defaultMessage": "Enter a team name of 80 characters or fewer."
   },
@@ -2036,6 +2060,12 @@
   "orgs.error.noSeatLeft": {
     "defaultMessage": "No seat left in this team. Free a seat or contact 3DStreet for more."
   },
+  "orgs.error.notAuthor": {
+    "defaultMessage": "Only the author of a personal scene can move it."
+  },
+  "orgs.error.notEditor": {
+    "defaultMessage": "Only owners, admins and members can do this."
+  },
   "orgs.error.notManager": {
     "defaultMessage": "Only owners and admins can do this."
   },
@@ -2044,6 +2074,9 @@
   },
   "orgs.error.ownerOnly": {
     "defaultMessage": "Only owners can do this."
+  },
+  "orgs.error.projectNotFound": {
+    "defaultMessage": "This project does not exist."
   },
   "orgs.error.wrongAccount": {
     "defaultMessage": "This invitation was sent to another email address. Sign in with that address to accept it."
@@ -2315,8 +2348,32 @@
   "save.saving": {
     "defaultMessage": "Saving..."
   },
+  "save.teamSceneNotEditable": {
+    "defaultMessage": "Not saved: you can't edit this team scene right now"
+  },
   "savingModal.saving": {
     "defaultMessage": "Saving"
+  },
+  "sceneCard.confirmDelete": {
+    "defaultMessage": "Are you sure you want to delete this scene?"
+  },
+  "sceneCard.delete": {
+    "defaultMessage": "Delete scene"
+  },
+  "sceneCard.deleteError": {
+    "defaultMessage": "Could not delete the scene."
+  },
+  "sceneCard.editName": {
+    "defaultMessage": "Edit scene name"
+  },
+  "sceneCard.saveChanges": {
+    "defaultMessage": "Save changes"
+  },
+  "sceneCard.titleError": {
+    "defaultMessage": "Error updating scene title: {error}"
+  },
+  "sceneCard.titleSaved": {
+    "defaultMessage": "New scene title saved: {title}"
   },
   "sceneGraph.addLayerButton": {
     "defaultMessage": "Add Layer"
@@ -2897,6 +2954,12 @@
   "shareModal.signInToShare": {
     "defaultMessage": "Please sign in to share your scene"
   },
+  "shareModal.teamOnlyLinkNote": {
+    "defaultMessage": "This scene is team-only: only members of {team} can open this link."
+  },
+  "shareModal.teamSharingManagersOnly": {
+    "defaultMessage": "Only the team's owners and admins can change who can open it."
+  },
   "shareModal.title": {
     "defaultMessage": "Share Scene"
   },
@@ -2924,6 +2987,12 @@
   "shareModal.visibilityPublicDescription": {
     "defaultMessage": "Anyone can open it. Listed in the community scenes."
   },
+  "shareModal.visibilityTeamOnly": {
+    "defaultMessage": "Team only"
+  },
+  "shareModal.visibilityTeamOnlyDescription": {
+    "defaultMessage": "Only members of {team} can open it. Embeds are disabled."
+  },
   "shareModal.visibilityUnlisted": {
     "defaultMessage": "Unlisted"
   },
@@ -2932,6 +3001,33 @@
   },
   "shareModal.webShareUnsupported": {
     "defaultMessage": "Web Share API is not supported in this browser"
+  },
+  "shareTeam.confirmMessage": {
+    "defaultMessage": "The scene will belong to the team: its members can open and edit it, and you can't move it back to your scenes. If it's private, it becomes team-only."
+  },
+  "shareTeam.confirmTitle": {
+    "defaultMessage": "Move this scene to {team}?"
+  },
+  "shareTeam.inTeam": {
+    "defaultMessage": "Team: {team}"
+  },
+  "shareTeam.move": {
+    "defaultMessage": "Move"
+  },
+  "shareTeam.moveToTeam": {
+    "defaultMessage": "Move to a team"
+  },
+  "shareTeam.moved": {
+    "defaultMessage": "The scene now belongs to {team}."
+  },
+  "shareTeam.pickTeam": {
+    "defaultMessage": "Pick a team"
+  },
+  "shareTeam.project": {
+    "defaultMessage": "Project"
+  },
+  "shareTeam.team": {
+    "defaultMessage": "Team"
   },
   "sidebar.cloneEditHint": {
     "defaultMessage": "Editing this object detaches it from the generator. Undo puts it back."
@@ -3091,6 +3187,33 @@
   },
   "teamModal.you": {
     "defaultMessage": "(you)"
+  },
+  "teamScenes.allProjects": {
+    "defaultMessage": "All projects"
+  },
+  "teamScenes.createProject": {
+    "defaultMessage": "Create"
+  },
+  "teamScenes.empty": {
+    "defaultMessage": "No scenes here yet."
+  },
+  "teamScenes.newProject": {
+    "defaultMessage": "New project"
+  },
+  "teamScenes.newScene": {
+    "defaultMessage": "New team scene"
+  },
+  "teamScenes.newSceneInProject": {
+    "defaultMessage": "New scene in {project}"
+  },
+  "teamScenes.noProject": {
+    "defaultMessage": "No project"
+  },
+  "teamScenes.projectFilter": {
+    "defaultMessage": "Project"
+  },
+  "teamScenes.projectNamePlaceholder": {
+    "defaultMessage": "Project name"
   },
   "toolbar.edit": {
     "defaultMessage": "Edit"

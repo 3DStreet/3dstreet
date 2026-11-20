@@ -2,6 +2,7 @@ import { faPlay } from '@fortawesome/free-solid-svg-icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { Tooltip } from 'radix-ui';
 import useStore from '@/store';
+import { canSaveInPlace } from '@/editor/lib/sceneAccess';
 import { useAuthContext } from '@/editor/contexts';
 import { useHasPlayable } from '@/editor/hooks';
 import { Button } from '../Button';
@@ -50,7 +51,7 @@ export const PrimaryToolbar = () => {
   };
 
   const handleSnapshot = () => {
-    if (currentUser && STREET.utils.getAuthorId() === currentUser.uid) {
+    if (currentUser && canSaveInPlace(currentUser)) {
       useStore.getState().saveScene(false);
     }
     makeScreenshot();

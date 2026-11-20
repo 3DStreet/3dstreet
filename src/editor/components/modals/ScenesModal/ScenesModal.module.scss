@@ -122,3 +122,48 @@
     }
   }
 }
+
+// A team's tab (#1267): project filter, new project, new scene.
+.teamPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.teamToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.teamSpacer {
+  flex: 1;
+}
+
+.teamInlineForm {
+  display: flex;
+  gap: 8px;
+}
+
+.teamSelect,
+.teamInput {
+  padding: 6px 8px;
+  border: 1px solid #4b4b4b;
+  border-radius: 6px;
+  background-color: #1f1f1f;
+  color: white;
+  font-size: 14px;
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+  }
+}
+
+.teamEmpty {
+  margin: 24px 0;
+  color: #b4b4b4;
+  text-align: center;
+}
