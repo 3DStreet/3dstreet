@@ -41,13 +41,16 @@ seats free up. Only managers see the count (members can't read invitations).
 - The link is `<app>/?utm_…#invite=<id>` (`src/tested/org-invite-link.js`),
   pointing at the project's own app (`appBaseForProject`), so staging
   invitations open staging. It opens `InvitationModal`; signed-out visitors
-  sign in first and come back to it, without the usual "save the scene after
-  sign-in".
+  sign in first and come back to it.
 - Accepting requires signing in with the invited email, verified. Invitations
   expire after 7 days; an expired one can be resent (new expiry, and a seat
   again). Invitees also find their pending invitations in the profile.
 
 ## Domain auto-join
+
+The lookup (`domains` array-contains + `status ==`) needs the composite
+index on `orgs` in `public/firestore.indexes.json`; the emulator doesn't
+enforce indexes, so the tests can't catch a missing one.
 
 An org's `domains` (set by staff) make users with a verified email on those
 domains join it as members when they sign in (`autoJoinDomainOrgs`, run by
