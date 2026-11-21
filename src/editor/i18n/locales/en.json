@@ -3155,6 +3155,9 @@
   "teamModal.leaveTitle": {
     "defaultMessage": "Leave this team?"
   },
+  "teamModal.libraryUsage": {
+    "defaultMessage": "Asset library: {used} of {limit}"
+  },
   "teamModal.loading": {
     "defaultMessage": "Loading…"
   },

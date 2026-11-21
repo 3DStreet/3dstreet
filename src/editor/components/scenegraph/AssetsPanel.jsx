@@ -23,17 +23,22 @@ const handlePlaceAsset = (asset) => {
   placeCloudAsset(asset, position);
 };
 
-const AssetsPanel = () => (
-  <AssetsPanelBody
-    placeable
-    onPlaceAsset={handlePlaceAsset}
-    onUpload={(file) => uploadAndPlaceAsset(file)}
-    onUseForGenerator={(item) => openInGenerator(item, 'image')}
-    onUseForVideo={(item) => openInGenerator(item, 'video')}
-    onFocusScene={focusSnapshotScene}
-    onSignIn={() => signIn()}
-    onUpgrade={() => useStore.getState().startCheckout('storage')}
-  />
-);
+const AssetsPanel = () => {
+  // A team scene opens its team's library first (#1267 Phase 4).
+  const sceneOrgId = useStore((state) => state.sceneOrgId);
+  return (
+    <AssetsPanelBody
+      defaultLibrary={sceneOrgId || null}
+      placeable
+      onPlaceAsset={handlePlaceAsset}
+      onUpload={(file) => uploadAndPlaceAsset(file)}
+      onUseForGenerator={(item) => openInGenerator(item, 'image')}
+      onUseForVideo={(item) => openInGenerator(item, 'video')}
+      onFocusScene={focusSnapshotScene}
+      onSignIn={() => signIn()}
+      onUpgrade={() => useStore.getState().startCheckout('storage')}
+    />
+  );
+};
 
 export default AssetsPanel;

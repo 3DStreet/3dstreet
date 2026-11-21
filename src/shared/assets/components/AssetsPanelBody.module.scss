@@ -316,3 +316,15 @@
     background: #8965ef;
   }
 }
+
+// Team asset library switch (#1267 Phase 4)
+.librarySelect {
+  width: calc(100% - 24px);
+  margin: 8px 12px;
+  padding: 6px 8px;
+  border: 1px solid #4b4b4b;
+  border-radius: 6px;
+  background-color: #1f1f1f;
+  color: white;
+  font-size: 13px;
+}

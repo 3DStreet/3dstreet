@@ -12,6 +12,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import posthog from 'posthog-js';
 import {
   useAssets,
+  useTeamAssets,
+  libraryTeams,
   AssetsContent,
   formatBytes,
   useStorageUsage,
@@ -25,6 +27,7 @@ import {
   FILE_PICKER_ACCEPT
 } from '@shared/asset-upload';
 import { useSharedMessages } from '@shared/i18n/sharedMessages';
+import { useAuthContext } from '@shared/contexts';
 import { getUploadStageLabel } from '../uploadStageLabels.js';
 import styles from './AssetsPanelBody.module.scss';
 
@@ -87,12 +90,27 @@ const AssetsPanelBody = ({
   // Storage upsell entry point (#1644). Editor passes a startCheckout
   // wrapper; when omitted (generator today) the usage meter still warns but
   // no upgrade CTAs render — keeps this shared body free of checkout wiring.
-  onUpgrade
+  onUpgrade,
+  // The team library to show first (#1267 Phase 4), e.g. the open team
+  // scene's team; null = the user's own assets.
+  defaultLibrary = null
 }) => {
-  const assetsState = useAssets();
+  const personalState = useAssets();
+  const t = useSharedMessages();
+  const { currentUser } = useAuthContext();
+
+  // Which library: the user's own assets (null) or a team's (orgId).
+  const teams = libraryTeams(currentUser?.orgs);
+  const [chosenLibrary, setChosenLibrary] = useState(undefined);
+  const wanted = chosenLibrary === undefined ? defaultLibrary : chosenLibrary;
+  const library = teams.some((org) => org.orgId === wanted) ? wanted : null;
+  const teamState = useTeamAssets(library);
+  const isTeamLibrary = !!library;
+  const assetsState = isTeamLibrary
+    ? { ...teamState, isLoggedIn: personalState.isLoggedIn }
+    : personalState;
   const { items, isLoggedIn, isLoadingMore, hasMore, reloadItems, loadMore } =
     assetsState;
-  const t = useSharedMessages();
 
   const sentinelRef = useRef(null);
   const [filter, setFilter] = useState('all');
@@ -230,49 +248,75 @@ const AssetsPanelBody = ({
 
   const filteredAssetsState = { ...assetsState, items: filteredItems };
 
+  const librarySwitch = teams.length > 0 && (
+    <select
+      className={styles.librarySelect}
+      value={library || ''}
+      onChange={(e) => {
+        setChosenLibrary(e.target.value || null);
+        posthog.capture('assets_library_switched', {
+          library: e.target.value ? 'team' : 'personal'
+        });
+      }}
+      aria-label={t('assetLibrary')}
+    >
+      <option value="">{t('assetLibraryMine')}</option>
+      {teams.map((org) => (
+        <option key={org.orgId} value={org.orgId}>
+          {t('assetLibraryTeam', { team: org.name })}
+        </option>
+      ))}
+    </select>
+  );
+
   return (
     <div className={styles.body}>
+      {librarySwitch}
       <div className={styles.toolbar}>
         <span className={styles.count}>
           {filteredItems.length}
           {hasMore ? '+' : ''}{' '}
           {filteredItems.length === 1 ? t('itemSingular') : t('itemPlural')}
         </span>
-        <div className={styles.toolbarActions}>
-          <button
-            type="button"
-            className={styles.uploadButton}
-            onClick={triggerUploadPicker}
-            disabled={isUploading}
-            title={isUploading ? t('uploadInProgress') : t('uploadAnAsset')}
-          >
-            {isUploading
-              ? // Stage only, no percentage: a button label should not tick.
-                getUploadStageLabel(t, uploadStatus) || t('uploading')
-              : t('upload')}
-          </button>
-          <button
-            type="button"
-            className={styles.refreshButton}
-            onClick={() => reloadItems()}
-            aria-label={t('refreshAssets')}
-            title={t('refreshAssets')}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        {/* A team library is filled from members' own assets (Add to
+            team library), never by uploading into it directly. */}
+        {!isTeamLibrary && (
+          <div className={styles.toolbarActions}>
+            <button
+              type="button"
+              className={styles.uploadButton}
+              onClick={triggerUploadPicker}
+              disabled={isUploading}
+              title={isUploading ? t('uploadInProgress') : t('uploadAnAsset')}
             >
-              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-            </svg>
-          </button>
-        </div>
+              {isUploading
+                ? // Stage only, no percentage: a button label should not tick.
+                  getUploadStageLabel(t, uploadStatus) || t('uploading')
+                : t('upload')}
+            </button>
+            <button
+              type="button"
+              className={styles.refreshButton}
+              onClick={() => reloadItems()}
+              aria-label={t('refreshAssets')}
+              title={t('refreshAssets')}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
       <div className={styles.filterTabs} role="tablist">
         {FILTERS.map((f) => (
@@ -288,56 +332,67 @@ const AssetsPanelBody = ({
           </button>
         ))}
       </div>
-      <div
-        className={`${styles.usageRow} ${isNearFull || isFull ? styles.usageRowWarn : ''}`}
-      >
-        {planKnown ? (
-          <>
-            Uploads: {formatBytes(usage.bytesUsed)} /{' '}
-            {formatBytes(usage.planLimit)} ({usage.planName})
-          </>
-        ) : (
-          <>Uploads: {formatBytes(usage.bytesUsed)}</>
-        )}
-        <div className={styles.usageBar}>
-          <div
-            className={`${styles.usageFill} ${isFull ? styles.full : ''} ${isNearFull ? styles.warn : ''}`}
-            style={{ width: `${Math.round(usageRatio * 100)}%` }}
-          />
+      {isTeamLibrary ? (
+        <div className={styles.usageRow}>
+          {t('teamLibraryUsage', {
+            used: formatBytes(teamState.bytesUsed || 0)
+          })}
         </div>
-      </div>
-      {showStorageUpsell && (isNearFull || isFull) && !fullCardDismissed && (
-        <div className={styles.storageFullCard}>
-          <div className={styles.storageFullTitle}>
-            {isFull
-              ? "You've filled your free storage"
-              : "You've almost filled your free storage"}
+      ) : (
+        <div
+          className={`${styles.usageRow} ${isNearFull || isFull ? styles.usageRowWarn : ''}`}
+        >
+          {planKnown ? (
+            <>
+              Uploads: {formatBytes(usage.bytesUsed)} /{' '}
+              {formatBytes(usage.planLimit)} ({usage.planName})
+            </>
+          ) : (
+            <>Uploads: {formatBytes(usage.bytesUsed)}</>
+          )}
+          <div className={styles.usageBar}>
+            <div
+              className={`${styles.usageFill} ${isFull ? styles.full : ''} ${isNearFull ? styles.warn : ''}`}
+              style={{ width: `${Math.round(usageRatio * 100)}%` }}
+            />
           </div>
-          <div className={styles.storageFullCopy}>
-            {isFull ? 'Your work is safe. ' : ''}Pro gives you 5 GB to grow
-            into, 50× more space for custom models and textures.
-          </div>
-          <button
-            type="button"
-            className={styles.goProButton}
-            onClick={() => handleUpgradeClick(isFull ? 'full' : 'near_full')}
-          >
-            Go Pro: unlock 5 GB{' '}
-            <span className={styles.pricePill}>
-              {formatCurrency(PRICING.pro.yearly.pricePerMonth)}
-              {getPeriodSuffix('month')}
-            </span>
-          </button>
-          <button
-            type="button"
-            className={styles.linkButton}
-            onClick={() => setFullCardDismissed(true)}
-          >
-            or free up space instead
-          </button>
         </div>
       )}
-      {showLowUsageHint && (
+      {!isTeamLibrary &&
+        showStorageUpsell &&
+        (isNearFull || isFull) &&
+        !fullCardDismissed && (
+          <div className={styles.storageFullCard}>
+            <div className={styles.storageFullTitle}>
+              {isFull
+                ? "You've filled your free storage"
+                : "You've almost filled your free storage"}
+            </div>
+            <div className={styles.storageFullCopy}>
+              {isFull ? 'Your work is safe. ' : ''}Pro gives you 5 GB to grow
+              into, 50× more space for custom models and textures.
+            </div>
+            <button
+              type="button"
+              className={styles.goProButton}
+              onClick={() => handleUpgradeClick(isFull ? 'full' : 'near_full')}
+            >
+              Go Pro: unlock 5 GB{' '}
+              <span className={styles.pricePill}>
+                {formatCurrency(PRICING.pro.yearly.pricePerMonth)}
+                {getPeriodSuffix('month')}
+              </span>
+            </button>
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => setFullCardDismissed(true)}
+            >
+              or free up space instead
+            </button>
+          </div>
+        )}
+      {!isTeamLibrary && showLowUsageHint && (
         <div className={styles.hintCard}>
           <div className={styles.hintHeader}>
             <span className={styles.hintTitle}>Make your scenes feel real</span>
@@ -372,7 +427,9 @@ const AssetsPanelBody = ({
           }
           emptyState={
             <div className={styles.empty}>
-              {t(EMPTY_MESSAGE_BY_FILTER[filter] || 'noAssetsYet')}
+              {isTeamLibrary
+                ? t('teamLibraryEmpty')
+                : t(EMPTY_MESSAGE_BY_FILTER[filter] || 'noAssetsYet')}
             </div>
           }
           onUseForGenerator={onUseForGenerator}

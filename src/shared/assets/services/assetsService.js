@@ -27,6 +27,7 @@ import {
   serverTimestamp,
   FieldValue
 } from 'firebase/firestore';
+import { assetOwnerSegments, teamIdOfOwner } from '../assetOwner.js';
 import { createAggregateProgress } from '../uploadProgress.js';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@shared/services/firebase.js';
@@ -705,7 +706,7 @@ class AssetsServiceV2 {
    * @returns {Promise<object|null>}
    */
   async getAsset(assetId, userId) {
-    const assetRef = doc(db, 'users', userId, 'assets', assetId);
+    const assetRef = doc(db, ...assetOwnerSegments(userId), 'assets', assetId);
     const assetSnap = await getDoc(assetRef);
     if (assetSnap.exists()) {
       return { id: assetSnap.id, ...assetSnap.data() };
@@ -721,6 +722,9 @@ class AssetsServiceV2 {
    * @returns {Promise<Array>}
    */
   async getAssetJobs(assetId, userId) {
+    // A team asset (#1267 Phase 4) has no jobs: they belong to the member
+    // whose asset it was copied from.
+    if (teamIdOfOwner(userId)) return [];
     const jobsRef = collection(db, 'users', userId, 'generationJobs');
     const snap = await getDocs(query(jobsRef, where('assetId', '==', assetId)));
     return snap.docs
@@ -747,7 +751,7 @@ class AssetsServiceV2 {
   ) {
     try {
       // Use subcollection under user
-      const assetsRef = collection(db, 'users', userId, 'assets');
+      const assetsRef = collection(db, ...assetOwnerSegments(userId), 'assets');
       let q = query(assetsRef);
 
       // Apply filters
@@ -800,7 +804,7 @@ class AssetsServiceV2 {
       orderByField = 'createdAt'
     } = {}
   ) {
-    const assetsRef = collection(db, 'users', userId, 'assets');
+    const assetsRef = collection(db, ...assetOwnerSegments(userId), 'assets');
     let q = query(assetsRef);
 
     if (filters.type) {
@@ -845,7 +849,12 @@ class AssetsServiceV2 {
    */
   async updateAsset(assetId, userId, updates) {
     try {
-      const assetRef = doc(db, 'users', userId, 'assets', assetId);
+      const assetRef = doc(
+        db,
+        ...assetOwnerSegments(userId),
+        'assets',
+        assetId
+      );
 
       // Verify asset exists
       const assetSnap = await getDoc(assetRef);
@@ -895,7 +904,12 @@ class AssetsServiceV2 {
       );
     }
     try {
-      const assetRef = doc(db, 'users', userId, 'assets', assetId);
+      const assetRef = doc(
+        db,
+        ...assetOwnerSegments(userId),
+        'assets',
+        assetId
+      );
 
       // Get asset (for the dispatched event's `size` field)
       const assetSnap = await getDoc(assetRef);
@@ -934,7 +948,12 @@ class AssetsServiceV2 {
    */
   async undeleteAsset(assetId, userId) {
     try {
-      const assetRef = doc(db, 'users', userId, 'assets', assetId);
+      const assetRef = doc(
+        db,
+        ...assetOwnerSegments(userId),
+        'assets',
+        assetId
+      );
       const assetSnap = await getDoc(assetRef);
       if (!assetSnap.exists()) throw new Error('Asset not found');
       const asset = assetSnap.data();
@@ -968,7 +987,7 @@ class AssetsServiceV2 {
   subscribeToAssets(userId, filters = {}, callback) {
     try {
       // Use subcollection under user
-      const assetsRef = collection(db, 'users', userId, 'assets');
+      const assetsRef = collection(db, ...assetOwnerSegments(userId), 'assets');
       let q = query(assetsRef);
 
       // Apply filters

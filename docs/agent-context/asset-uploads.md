@@ -8,7 +8,7 @@ Drag-and-drop GLB/image upload with client-side optimization, cloud persistence,
 **Persistence — two identity attributes written to saved JSON:**
 
 - `data-asset-id` — Firestore doc id under the owner's subcollection
-- `data-asset-owner-uid` — needed to reconstruct the owner-only Firestore path (`users/{ownerUid}/assets/{assetId}`) without auth context (e.g. for anonymous viewers)
+- `data-asset-owner-uid` — needed to reconstruct the owner-only Firestore path (`users/{ownerUid}/assets/{assetId}`) without auth context (e.g. for anonymous viewers). It is an **owner key**: a uid, or `org:<orgId>` for an asset in a team's library (`orgs/{orgId}/assets`, #1267 Phase 4). Build asset paths with `assetOwnerSegments` (`src/shared/assets/assetOwner.js`), never `'users', ownerUid` — see [team assets](../team-assets.md)
 
 The cloud URL lives in `gltf-model` / `src`. Firebase Storage download tokens allow anonymous viewers to load the file without Firestore access.
 

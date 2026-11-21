@@ -1,0 +1,105 @@
+@use '../../../editor/style/variables.scss';
+
+// Team asset library actions (#1267 Phase 4), in an asset's details.
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.info {
+  margin: 0;
+  font-size: 12px;
+  color: variables.$lightgray-200;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.button {
+  padding: 7px 12px;
+  background: transparent;
+  color: variables.$lightgray-200;
+  border: 1px solid variables.$darkgray-500;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: variables.$darkgray-500;
+    color: variables.$lightgray-100;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.select {
+  padding: 6px 8px;
+  border: 1px solid variables.$darkgray-500;
+  border-radius: 6px;
+  background: variables.$darkgray-800;
+  color: variables.$lightgray-100;
+  font-size: 13px;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid variables.$darkgray-500;
+  border-left-width: 3px;
+  background: variables.$darkgray-800;
+  font-size: 12px;
+  color: variables.$lightgray-100;
+}
+
+.statusRunning {
+  border-left-color: variables.$purple-400;
+}
+
+.statusDone {
+  border-left-color: variables.$green-200;
+  .glyph {
+    color: variables.$green-200;
+  }
+}
+
+.statusError {
+  border-left-color: #e0473d;
+  color: #f0a09a;
+  .glyph {
+    color: #e0473d;
+  }
+}
+
+.glyph {
+  width: 14px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid variables.$darkgray-500;
+  border-top-color: variables.$purple-400;
+  animation: teamLibrarySpin 0.8s linear infinite;
+}
+
+@keyframes teamLibrarySpin {
+  to {
+    transform: rotate(360deg);
+  }
+}

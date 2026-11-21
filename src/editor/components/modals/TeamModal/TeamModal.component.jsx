@@ -36,6 +36,7 @@ import {
 } from './orgMessages';
 import styles from './TeamModal.module.scss';
 import { TeamWalletSection } from './TeamWalletSection.jsx';
+import { TeamLibraryUsage } from './TeamLibraryUsage.jsx';
 
 const ROLES = ['owner', 'admin', 'member', 'viewer'];
 const SEAT_ROLES = ['owner', 'admin', 'member'];
@@ -281,6 +282,11 @@ function TeamModal() {
                   />
                 </span>
               )}
+              <TeamLibraryUsage
+                orgId={orgId}
+                plan={org.plan}
+                seats={org.seats}
+              />
               {org.status !== 'active' && (
                 <span className={styles.warning}>
                   <FormattedMessage

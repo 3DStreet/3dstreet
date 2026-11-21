@@ -1051,6 +1051,7 @@
   "teamModal.leave": "Salir del equipo",
   "teamModal.leaveMessage": "Perderás el acceso a {team} y a su plan. Un propietario o administrador puede volver a invitarte.",
   "teamModal.leaveTitle": "¿Salir de este equipo?",
+  "teamModal.libraryUsage": "Biblioteca de recursos: {used} de {limit}",
   "teamModal.loading": "Cargando…",
   "teamModal.membersTitle": "Miembros ({count})",
   "teamModal.nameLabel": "Nombre del equipo",

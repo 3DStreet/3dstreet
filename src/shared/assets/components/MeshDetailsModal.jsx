@@ -6,6 +6,9 @@
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import TeamLibraryActions from './TeamLibraryActions.jsx';
+import { useAuthContext } from '@shared/contexts';
+import { teamIdOfOwner } from '../assetOwner.js';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -305,6 +308,8 @@ const MeshDetailsModal = ({
 
   const iframeRef = useRef(null);
   const isOwner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
+  // The user's teams, to name a team asset's library (#1267 Phase 4).
+  const { currentUser } = useAuthContext();
 
   // Synchronous fallback for when the user closes before the viewer's better
   // auto-framed capture fires: read whatever the iframe canvas currently shows
@@ -1014,7 +1019,16 @@ const MeshDetailsModal = ({
               </div>
               <div>
                 <span className={styles.metaLabel}>{t('meshFieldOwner')}</span>
-                {isOwner ? t('meshOwnerYou') : t('meshOwnerOther')}
+                {isOwner
+                  ? t('meshOwnerYou')
+                  : teamIdOfOwner(ownerUid)
+                    ? t('meshOwnerTeam', {
+                        team:
+                          (currentUser?.orgs || []).find(
+                            (org) => org.orgId === teamIdOfOwner(ownerUid)
+                          )?.name || ''
+                      })
+                    : t('meshOwnerOther')}
               </div>
             </div>
 
@@ -1040,6 +1054,19 @@ const MeshDetailsModal = ({
                 )}
                 <span>{copyStatusText}</span>
               </div>
+            )}
+
+            {!loading && data && (
+              <TeamLibraryActions
+                assetId={assetId}
+                type={data.type}
+                ownerUid={ownerUid}
+                deleted={!!data.deleted}
+                addedBy={data.addedBy}
+                addedByName={data.addedByName}
+                showLocation={false}
+                onRemoved={handleClose}
+              />
             )}
 
             <Tooltip.Provider>

@@ -1051,6 +1051,7 @@
   "teamModal.leave": "Quitter l'équipe",
   "teamModal.leaveMessage": "Vous perdrez l'accès à {team} et à son forfait. Un propriétaire ou un administrateur pourra vous réinviter.",
   "teamModal.leaveTitle": "Quitter cette équipe ?",
+  "teamModal.libraryUsage": "Bibliothèque de ressources : {used} sur {limit}",
   "teamModal.loading": "Chargement…",
   "teamModal.membersTitle": "Membres ({count})",
   "teamModal.nameLabel": "Nom de l'équipe",

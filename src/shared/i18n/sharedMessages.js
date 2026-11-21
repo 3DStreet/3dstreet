@@ -1885,6 +1885,178 @@ const SHARED_MESSAGES = {
     fr: "GeoJSON chargé depuis l'URL. Polygones : {count}."
   },
 
+  // Team asset library (#1267 Phase 4), in the Assets panel and asset details.
+  meshOwnerTeam: {
+    en: '{team} (team library)',
+    es: '{team} (biblioteca del equipo)',
+    'pt-BR': '{team} (biblioteca da equipe)',
+    fr: "{team} (bibliothèque de l'équipe)"
+  },
+  assetLibrary: {
+    en: 'Library',
+    es: 'Biblioteca',
+    'pt-BR': 'Biblioteca',
+    fr: 'Bibliothèque'
+  },
+  assetLibraryMine: {
+    en: 'My assets',
+    es: 'Mis recursos',
+    'pt-BR': 'Meus recursos',
+    fr: 'Mes ressources'
+  },
+  assetLibraryTeam: {
+    en: "{team}'s library",
+    es: 'Biblioteca de {team}',
+    'pt-BR': 'Biblioteca de {team}',
+    fr: 'Bibliothèque de {team}'
+  },
+  teamLibraryUsage: {
+    en: 'Team library: {used} used',
+    es: 'Biblioteca del equipo: {used} usados',
+    'pt-BR': 'Biblioteca da equipe: {used} usados',
+    fr: "Bibliothèque de l'équipe : {used} utilisés"
+  },
+  teamLibraryEmpty: {
+    en: "Nothing in this team's library yet. Open one of your assets and choose “Add to team library”.",
+    es: 'Aún no hay nada en la biblioteca de este equipo. Abre uno de tus recursos y elige “Añadir a la biblioteca del equipo”.',
+    'pt-BR':
+      'Ainda não há nada na biblioteca desta equipe. Abra um dos seus recursos e escolha “Adicionar à biblioteca da equipe”.',
+    fr: "Rien dans la bibliothèque de cette équipe pour l'instant. Ouvrez une de vos ressources et choisissez « Ajouter à la bibliothèque de l'équipe »."
+  },
+  teamLibraryAddTo: {
+    en: 'Add to team library',
+    es: 'Añadir a la biblioteca del equipo',
+    'pt-BR': 'Adicionar à biblioteca da equipe',
+    fr: "Ajouter à la bibliothèque de l'équipe"
+  },
+  teamLibraryAddToTeam: {
+    en: "Add to {team}'s library",
+    es: 'Añadir a la biblioteca de {team}',
+    'pt-BR': 'Adicionar à biblioteca de {team}',
+    fr: 'Ajouter à la bibliothèque de {team}'
+  },
+  teamLibraryAddHint: {
+    en: "Copies this asset into the team's library, where every member can use it. Your own copy stays.",
+    es: 'Copia este recurso en la biblioteca del equipo, donde todos los miembros pueden usarlo. Tu copia se queda.',
+    'pt-BR':
+      'Copia este recurso para a biblioteca da equipe, onde todos os membros podem usá-lo. Sua cópia continua com você.',
+    fr: "Copie cette ressource dans la bibliothèque de l'équipe, où chaque membre peut l'utiliser. Votre copie reste."
+  },
+  teamLibraryChooseTeam: {
+    en: 'Team',
+    es: 'Equipo',
+    'pt-BR': 'Equipe',
+    fr: 'Équipe'
+  },
+  teamLibraryAdded: {
+    en: "Added to {team}'s library.",
+    es: 'Añadido a la biblioteca de {team}.',
+    'pt-BR': 'Adicionado à biblioteca de {team}.',
+    fr: 'Ajouté à la bibliothèque de {team}.'
+  },
+  teamLibraryWorking: {
+    en: 'Working…',
+    es: 'Procesando…',
+    'pt-BR': 'Processando…',
+    fr: 'En cours…'
+  },
+  teamLibraryIn: {
+    en: "In {team}'s library",
+    es: 'En la biblioteca de {team}',
+    'pt-BR': 'Na biblioteca de {team}',
+    fr: 'Dans la bibliothèque de {team}'
+  },
+  teamLibraryAddedByCap: {
+    en: 'Added by {name}',
+    es: 'Añadido por {name}',
+    'pt-BR': 'Adicionado por {name}',
+    fr: 'Ajouté par {name}'
+  },
+  teamLibraryReplace: {
+    en: 'Replace file',
+    es: 'Reemplazar archivo',
+    'pt-BR': 'Substituir arquivo',
+    fr: 'Remplacer le fichier'
+  },
+  teamLibraryReplaceTitle: {
+    en: 'Choose the new file',
+    es: 'Elige el nuevo archivo',
+    'pt-BR': 'Escolha o novo arquivo',
+    fr: 'Choisissez le nouveau fichier'
+  },
+  teamLibraryReplaced: {
+    en: 'File replaced. Scenes using this asset show it the next time they open.',
+    es: 'Archivo reemplazado. Las escenas que usan este recurso lo mostrarán la próxima vez que se abran.',
+    'pt-BR':
+      'Arquivo substituído. As cenas que usam este recurso vão mostrá-lo na próxima vez que forem abertas.',
+    fr: 'Fichier remplacé. Les scènes qui utilisent cette ressource l’afficheront à leur prochaine ouverture.'
+  },
+  teamLibraryRemove: {
+    en: 'Remove from library',
+    es: 'Quitar de la biblioteca',
+    'pt-BR': 'Remover da biblioteca',
+    fr: 'Retirer de la bibliothèque'
+  },
+  teamLibraryRemoveConfirm: {
+    en: "Remove this asset from the team's library? Scenes already using it keep working for 30 days.",
+    es: '¿Quitar este recurso de la biblioteca del equipo? Las escenas que ya lo usan siguen funcionando durante 30 días.',
+    'pt-BR':
+      'Remover este recurso da biblioteca da equipe? As cenas que já o usam continuam funcionando por 30 dias.',
+    fr: "Retirer cette ressource de la bibliothèque de l'équipe ? Les scènes qui l'utilisent déjà continuent de fonctionner pendant 30 jours."
+  },
+  teamLibraryNotEditor: {
+    en: "Only the team's owners, admins and members can do this.",
+    es: 'Solo los propietarios, administradores y miembros del equipo pueden hacer esto.',
+    'pt-BR':
+      'Somente proprietários, administradores e membros da equipe podem fazer isso.',
+    fr: "Seuls les propriétaires, administrateurs et membres de l'équipe peuvent faire cela."
+  },
+  teamLibraryNotManager: {
+    en: 'Only owners and admins, or the member who added it, can remove this asset.',
+    es: 'Solo los propietarios y administradores, o el miembro que lo añadió, pueden quitar este recurso.',
+    'pt-BR':
+      'Somente proprietários e administradores, ou o membro que o adicionou, podem remover este recurso.',
+    fr: "Seuls les propriétaires et administrateurs, ou le membre qui l'a ajoutée, peuvent retirer cette ressource."
+  },
+  teamLibraryAssetNotFound: {
+    en: 'This asset no longer exists.',
+    es: 'Este recurso ya no existe.',
+    'pt-BR': 'Este recurso não existe mais.',
+    fr: "Cette ressource n'existe plus."
+  },
+  teamLibraryConverting: {
+    en: 'This splat is still being optimized. Try again when it is done.',
+    es: 'Este splat aún se está optimizando. Inténtalo de nuevo cuando termine.',
+    'pt-BR':
+      'Este splat ainda está sendo otimizado. Tente novamente quando terminar.',
+    fr: "Ce splat est encore en cours d'optimisation. Réessayez quand ce sera fini."
+  },
+  teamLibraryTypeMismatch: {
+    en: 'Choose an asset of the same kind.',
+    es: 'Elige un recurso del mismo tipo.',
+    'pt-BR': 'Escolha um recurso do mesmo tipo.',
+    fr: 'Choisissez une ressource du même type.'
+  },
+  teamLibraryStorageFull: {
+    en: "The team library's storage is full. Ask 3DStreet for more, or remove assets.",
+    es: 'El almacenamiento de la biblioteca del equipo está lleno. Pide más a 3DStreet o quita recursos.',
+    'pt-BR':
+      'O armazenamento da biblioteca da equipe está cheio. Peça mais à 3DStreet ou remova recursos.',
+    fr: "Le stockage de la bibliothèque de l'équipe est plein. Demandez-en plus à 3DStreet ou retirez des ressources."
+  },
+  teamLibrarySuspended: {
+    en: 'This team is suspended.',
+    es: 'Este equipo está suspendido.',
+    'pt-BR': 'Esta equipe está suspensa.',
+    fr: 'Cette équipe est suspendue.'
+  },
+  teamLibraryFailed: {
+    en: "Something went wrong with the team's library. Please try again.",
+    es: 'Algo salió mal con la biblioteca del equipo. Inténtalo de nuevo.',
+    'pt-BR': 'Algo deu errado com a biblioteca da equipe. Tente novamente.',
+    fr: "Un problème est survenu avec la bibliothèque de l'équipe. Veuillez réessayer."
+  },
+
   // Team AI token wallets (#1267 Phase 3), in the token card.
   teamTokensPaidBy: {
     en: 'Paid by {team}',

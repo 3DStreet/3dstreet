@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import TeamLibraryActions from './TeamLibraryActions.jsx';
 import { createPortal } from 'react-dom';
 import { TrashIcon } from '@shared/icons';
 import styles from './Assets.module.scss';
@@ -449,6 +450,17 @@ const AssetsModal = ({
               </div>
             </div>
           )}
+        </div>
+
+        <div style={{ padding: '0 16px' }}>
+          <TeamLibraryActions
+            assetId={item.id}
+            type={item.type}
+            ownerUid={item.userId}
+            addedBy={item.addedBy}
+            addedByName={item.addedByName}
+            onRemoved={onClose}
+          />
         </div>
 
         {/* Action Buttons - Right justified with most important on right */}
