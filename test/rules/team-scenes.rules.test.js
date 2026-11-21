@@ -337,6 +337,33 @@ describe('rules — team scenes', () => {
       await assertFails(getMetadata(fileRef(null, 'team-private')));
     });
 
+    it("members read the team library's files; nobody writes them", async () => {
+      const libraryRef = (uid) =>
+        ref(
+          (uid
+            ? testEnv.authenticatedContext(uid)
+            : testEnv.unauthenticatedContext()
+          ).storage(),
+          'orgs/org1/assets/a1/c1/bench.glb'
+        );
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await uploadString(
+          ref(ctx.storage(), 'orgs/org1/assets/a1/c1/bench.glb'),
+          'x',
+          'raw',
+          { contentType: 'model/gltf-binary' }
+        );
+      });
+      await assertSucceeds(getMetadata(libraryRef(VIEWER)));
+      await assertFails(getMetadata(libraryRef(OUTSIDER)));
+      await assertFails(getMetadata(libraryRef(null)));
+      await assertFails(
+        uploadString(libraryRef(OWNER), 'y', 'raw', {
+          contentType: 'model/gltf-binary'
+        })
+      );
+    });
+
     it('editors write them; viewers and outsiders cannot', async () => {
       const upload = (uid) =>
         uploadString(fileRef(uid, 'team-private'), 'y', 'raw', {

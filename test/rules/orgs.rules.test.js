@@ -161,6 +161,28 @@ describe('firestore.rules — organizations', () => {
     );
   });
 
+  it("members read their team's asset library and its usage; nobody writes them", async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'orgs/org1/assets/a1'), {
+        name: 'Bench',
+        deleted: false
+      });
+      await setDoc(doc(ctx.firestore(), 'orgs/org1/meta/usage'), {
+        bytesUsed: 1
+      });
+    });
+    await assertSucceeds(getDoc(doc(as(MEMBER), 'orgs/org1/assets/a1')));
+    await assertSucceeds(getDoc(doc(as(MEMBER), 'orgs/org1/meta/usage')));
+    await assertFails(getDoc(doc(as(OUTSIDER), 'orgs/org1/assets/a1')));
+    await assertFails(getDoc(doc(as(OUTSIDER), 'orgs/org1/meta/usage')));
+    await assertFails(
+      setDoc(doc(as(OWNER), 'orgs/org1/assets/a2'), { name: 'Mine' })
+    );
+    await assertFails(
+      updateDoc(doc(as(OWNER), 'orgs/org1/meta/usage'), { bytesUsed: 0 })
+    );
+  });
+
   it("members read their team's wallet and usage; nobody writes them", async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'orgWallets/org1'), { genToken: 10 });

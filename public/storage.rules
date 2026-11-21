@@ -50,6 +50,15 @@ service firebase.storage {
       allow write: if canWriteSceneFiles(scene_uuid);
     }
 
+    // Team asset library files (#1267 Phase 4): copied here by the
+    // team-assets callables (Admin SDK). Members read them; nobody writes
+    // from a client. The app loads them through download-token URLs, which
+    // bypass these rules.
+    match /orgs/{orgId}/assets/{allPaths=**} {
+      allow read: if isOrgMember(orgId);
+      allow write: if false;
+    }
+
     // Gallery asset files storage rules (all nested paths)
     // Handles: images/, videos/, meshes/, splats/{taskId}/, etc.
     match /users/{userId}/assets/{allPaths=**} {

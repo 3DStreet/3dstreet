@@ -85,7 +85,12 @@ const REASON_TO_HTTPS = {
   'not-author': ['permission-denied', 'Only the author of a personal scene can move it.'],
   'scene-not-found': ['not-found', 'Scene not found.'],
   'project-not-found': ['not-found', 'Project not found.'],
-  'invalid-move': ['failed-precondition', 'A team scene can only move between projects of its team.']
+  'invalid-move': ['failed-precondition', 'A team scene can only move between projects of its team.'],
+  // Team asset library (team-assets.js)
+  'asset-not-found': ['not-found', 'Asset not found.'],
+  'asset-type-mismatch': ['failed-precondition', 'The new file must be the same kind of asset.'],
+  'asset-converting': ['failed-precondition', 'This splat is still being optimized. Try again when it is done.'],
+  'team-storage-full': ['resource-exhausted', "The team library's storage is full."]
 };
 
 const toHttpsError = (error) => {
