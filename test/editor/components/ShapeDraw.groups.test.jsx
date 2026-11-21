@@ -16,7 +16,11 @@ import {
   getGroupCenter
 } from '@/editor/lib/groups/groupBounds.js';
 import { groupMessage } from '@/editor/lib/groups/groupMessages.js';
-import { getShapeStyle } from '@/editor/lib/shapeStyle.js';
+import {
+  DEFAULT_SHAPE_STYLE,
+  getShapeStyle,
+  setShapeStyle
+} from '@/editor/lib/shapeStyle.js';
 import { defineEntityElement, worldOf } from '../lib/groups/_entityElement.js';
 import { group, mountEditor, solid } from '../lib/groups/_editorHarness.js';
 
@@ -220,6 +224,62 @@ function inFrameOf(groupEl, world) {
 function contains(box, point) {
   return box.clone().expandByScalar(1e-6).containsPoint(point);
 }
+
+// The fill's Angle comes from the first side as drawn in the WORLD. For the
+// three SPOTS seen by the harness camera (60° fov, 1.5 aspect, at (0, 30, 40)
+// looking at the origin, on a 1200 x 800 canvas), the first two land on the
+// ground at about (-6.0521, 10.0869) and (5.8629, 11.7258) in (x, z), so the
+// first side runs (11.9150, 1.6389) and atan2(-11.9150, -1.6389) = -97.83°.
+const FIRST_SIDE_ANGLE = -97.83;
+
+describe('the fill Angle a drawn shape starts with', () => {
+  function drawInTurnedGroup() {
+    const { inspector, streetContainer } = editor;
+    const execute = vi.spyOn(inspector, 'execute');
+    const outer = group(streetContainer, { id: 'outer' });
+    solid(outer, [0, 0, 0], [2, 2, 2], { id: 'outer-member' });
+    const inner = group(outer, {
+      id: 'inner',
+      position: [12, 1, -7],
+      yaw: 40
+    });
+    solid(inner, [0, 0, 0], [2, 2, 2], { id: 'inner-member' });
+    inspector.groupScope.open(inner);
+    drawingTool();
+    clickSpots();
+    pressKey('Enter');
+    const calls = execute.mock.calls.filter(
+      ([type]) => type === 'entitycreate'
+    );
+    expect(calls).toHaveLength(1);
+    expect(createdShape().parentNode).toBe(inner);
+    return calls[0][1].components.shape;
+  }
+
+  it('is the first side’s world direction, even inside a turned group (fails if taken from group-local points, the centroid, or with the wrong sign)', () => {
+    expect(drawInTurnedGroup().fillAngle).toBeCloseTo(FIRST_SIDE_ANGLE, 2);
+  });
+
+  it('commits the sticky fill keys with the shape’s own Angle', () => {
+    setShapeStyle({
+      ...DEFAULT_SHAPE_STYLE,
+      fillMaterial: 'grass',
+      fillPattern: 'dots',
+      fillPatternSpacing: 2.5
+    });
+    try {
+      const shape = drawInTurnedGroup();
+      expect(shape).toMatchObject({
+        fillMaterial: 'grass',
+        fillPattern: 'dots',
+        fillPatternSpacing: 2.5
+      });
+      expect(shape.fillAngle).toBeCloseTo(FIRST_SIDE_ANGLE, 2);
+    } finally {
+      setShapeStyle(DEFAULT_SHAPE_STYLE);
+    }
+  });
+});
 
 describe('drawing a shape with a group open', () => {
   it('puts the shape into the innermost open group at the world position it was drawn, keeps the groups open and raises no notice (fails if the tool still creates at the top level, or converts the points through the wrong frame)', () => {

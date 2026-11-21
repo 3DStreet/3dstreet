@@ -5,6 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ShapeReadouts from '../../src/editor/lib/ShapeReadouts.js';
 import {
+  ANGLE_CAPTION_OFFSET_PX,
+  HANDLE_TARGET_PX,
+  HIT_SLOP_PX,
   MIN_TAP_TARGET_PX,
   READOUT_RENDER_ORDER
 } from '../../src/editor/lib/shapeEditRules.js';
@@ -51,9 +54,8 @@ describe('ShapeReadouts.renderAll — the label cap', () => {
 
   it('labels every segment at or below the cap, cursor or no cursor', () => {
     readouts.renderAll(polygon(12), 12, null, true);
-    // One length label per segment. (Angle values are sidebar rows only —
-    // all on-canvas angle annotation was removed: the degree chip covered
-    // the vertex handle, and the protractor arc went with it.)
+    // One length label per segment. (Angles are off by default: with the
+    // display preferences untouched, corners draw nothing.)
     expect(readouts.labels.length).toBe(12);
   });
 
@@ -208,9 +210,10 @@ describe('ShapeReadouts — the label DOM contract', () => {
     }
   });
 
-  // On-canvas angle annotation is gone for good (the degree chip rendered on
-  // top of the vertex drag handle); the values are sidebar rows.
-  it('renders no angle captions at all', () => {
+  // Angle captions are opt-in: with angles off — the default — the canvas
+  // shows none, and every vertex handle is unobstructed.
+  it('renders no angle captions with angles off, the default', () => {
+    readouts.setDisplay({ showLengths: true, showAngles: false });
     readouts.renderAll(polygon(5), 12, null, true, null, allInsertable());
     const nonInsertable = outers().filter(
       (o) => !o.classList.contains('shape-readout--insertable')
@@ -494,5 +497,220 @@ describe('ShapeReadouts — world-frame measurement', () => {
     readouts.renderAll([p(0, 0), p(10, 0)], 12, null, false);
     expect(readouts.labels.length).toBe(1);
     expect(readouts.labels[0].inner.textContent).toBe('10.00m');
+  });
+});
+
+// The display preferences, pushed in by the owner. With none pushed the
+// renderer behaves as it did before they existed, which the tests above pin.
+describe('ShapeReadouts — display preferences', () => {
+  let readouts;
+
+  beforeEach(() => {
+    readouts = new ShapeReadouts(stubEntity(), 'Insert here');
+  });
+
+  const outers = () => readouts.labels.map((l) => l.outer);
+  const angles = () =>
+    readouts.labels.filter((l) =>
+      l.outer.classList.contains('shape-readout--angle')
+    );
+  const lengths = () =>
+    readouts.labels.filter(
+      (l) =>
+        !l.outer.classList.contains('shape-readout--angle') &&
+        !l.outer.classList.contains('shape-readout--notice')
+    );
+  const allInsertable = () => ({
+    isInsertable: () => true,
+    revealedSegment: null
+  });
+  const near = (actual, expected) => {
+    expect(actual.x).toBeCloseTo(expected.x, 6);
+    expect(actual.y).toBeCloseTo(expected.y, 6);
+    expect(actual.z).toBeCloseTo(expected.z, 6);
+  };
+
+  it('turns an insertable side into a "+"-only control with side lengths off (fails if chips are hidden, keep the number, or miss the width floor)', () => {
+    readouts.setDisplay({ showLengths: false });
+    readouts.renderAll(polygon(5), 12, null, true, null, allInsertable());
+    const chips = outers();
+    expect(chips).toHaveLength(5);
+    for (const outer of chips) {
+      expect(outer.classList.contains('shape-readout--plus-only')).toBe(true);
+      expect(outer.style.pointerEvents).toBe('auto');
+      expect(outer.style.minHeight).toBe(`${MIN_TAP_TARGET_PX}px`);
+      expect(outer.style.minWidth).toBe(`${MIN_TAP_TARGET_PX}px`);
+      expect(outer.dataset.shapeReadouts).toBe(readouts.instanceId);
+      const glyph = outer.querySelector('.shape-readout-plus-glyph');
+      expect(glyph.textContent).toBe('+');
+      expect(outer.querySelector('.shape-readout-value')).toBe(null);
+      expect(outer.querySelector('.shape-readout-plus')).toBe(null);
+      expect(outer.querySelector('.shape-readout-sr').textContent).toBe(
+        'Insert here'
+      );
+    }
+    expect(chips.map((o) => Number(o.dataset.shapeSegment)).sort()).toEqual([
+      0, 1, 2, 3, 4
+    ]);
+  });
+
+  it('shows nothing on a side that cannot take a vertex, and treats an open line as open (fails if the muted caption stays)', () => {
+    readouts.setDisplay({ showLengths: false });
+    readouts.renderAll(polygon(5), 12, null, true, null, {
+      isInsertable: (i) => i !== 3,
+      revealedSegment: null
+    });
+    expect(outers()).toHaveLength(4);
+    expect(
+      outers().some((o) => o.classList.contains('shape-readout--muted'))
+    ).toBe(false);
+    expect(outers().map((o) => o.dataset.shapeSegment)).not.toContain('3');
+
+    const open = [p(0, 0), p(4, 0), p(4, 4), p(0, 4)];
+    readouts.renderAll(open, 12, null, false, null, allInsertable());
+    expect(outers()).toHaveLength(3);
+  });
+
+  it('adds an angle caption per corner that never takes a press, offset clear of the handle', () => {
+    readouts.setDisplay({ showLengths: true, showAngles: true });
+    readouts.renderAll(polygon(5), 12, null, true);
+    const captions = angles();
+    expect(captions).toHaveLength(5);
+    for (const { obj, outer, inner } of captions) {
+      expect(outer.style.pointerEvents).toBe('none');
+      expect(inner.style.pointerEvents).toBe('none');
+      expect(obj.renderOrder).toBe(READOUT_RENDER_ORDER.caption);
+      expect(inner.textContent).toBe('108°');
+      const offset = Number(
+        /translate\(0px, (-?[\d.]+)px\)/.exec(inner.style.transform)[1]
+      );
+      expect(offset).toBeGreaterThan(HANDLE_TARGET_PX + HIT_SLOP_PX);
+      expect(outer.style.transform).toBe('');
+    }
+  });
+
+  it('shows the live corner while drawing, and only what the preferences ask for', () => {
+    const poly = [p(0, 0), p(3, 0), p(3, 4)];
+    readouts.setDisplay({ showLengths: false, showAngles: true });
+    readouts.renderActive(poly, { corners: [[0, 1, 2]] });
+    expect(readouts.labels).toHaveLength(1);
+    expect(angles()).toHaveLength(1);
+    expect(angles()[0].inner.textContent).toBe('90°');
+    near(angles()[0].obj.position, p(3, 0));
+
+    readouts.setDisplay({ showLengths: true, showAngles: false });
+    readouts.renderActive(poly, { corners: [[0, 1, 2]] });
+    expect(readouts.labels).toHaveLength(1);
+    expect(readouts.labels[0].inner.textContent).toBe('4.00m');
+  });
+
+  it('leaves out corner angles when asked, keeping the lengths (fails if the option is ignored)', () => {
+    readouts.setDisplay({ showLengths: true, showAngles: true });
+    const square = polygon(4);
+    readouts.renderAll(square, 12, null, true, null, null, {
+      cornerAngles: false
+    });
+    expect(angles()).toHaveLength(0);
+    expect(readouts.labels).toHaveLength(4);
+    readouts.renderAll(square, 12, null, true);
+    expect(angles()).toHaveLength(4);
+  });
+
+  it('labels at most the corners beside the sides it shows (fails on one caption per corner)', () => {
+    readouts.setDisplay({ showLengths: true, showAngles: true });
+    const big = polygon(20);
+    // Nearest side 10: between vertices 10 and 11.
+    const mid10 = big[10].clone().add(big[11]).multiplyScalar(0.5);
+    readouts.renderAll(big, 12, mid10, true);
+    const at = (list) => list.map(({ obj }) => obj.position);
+    let shown = at(angles());
+    expect(shown).toHaveLength(2);
+    near(shown[0], big[10]);
+    near(shown[1], big[11]);
+
+    readouts.renderAll(big, 12, mid10, true, [3]);
+    shown = at(angles());
+    expect(shown).toHaveLength(4);
+    [3, 4, 10, 11].forEach((i, k) => near(shown[k], big[i]));
+
+    readouts.setDisplay({ showLengths: false, showAngles: true });
+    readouts.renderAll(big, 12, mid10, true, null, allInsertable());
+    expect(angles()).toHaveLength(2);
+
+    readouts.setDisplay({ showLengths: true, showAngles: false });
+    readouts.renderAll(big, 12, mid10, true);
+    expect(angles()).toHaveLength(0);
+
+    readouts.setDisplay({ showLengths: true, showAngles: true });
+    readouts.renderAll(polygon(12), 12, null, true);
+    expect(angles()).toHaveLength(12);
+    const open = polygon(5);
+    readouts.renderAll(open, 12, null, false);
+    shown = at(angles());
+    expect(shown).toHaveLength(3);
+    [1, 2, 3].forEach((i, k) => near(shown[k], open[i]));
+  });
+
+  it('draws exactly today’s single length by default, plus any extra sides and corners asked for', () => {
+    const ring = [p(0, 0), p(4, 0), p(4, 3), p(0, 0)];
+    readouts.renderActive(ring);
+    expect(readouts.labels).toHaveLength(1);
+    expect(readouts.labels[0].inner.textContent).toBe('5.00m');
+    near(readouts.labels[0].obj.position, p(2, 1.5));
+
+    readouts.renderActive(ring, { extraSegments: [1] });
+    expect(lengths().map((l) => l.inner.textContent)).toEqual([
+      '5.00m',
+      '3.00m'
+    ]);
+
+    readouts.setDisplay({ showLengths: false });
+    readouts.renderActive(ring, { extraSegments: [1] });
+    expect(readouts.labels).toHaveLength(0);
+
+    readouts.setDisplay({ showLengths: true, showAngles: true });
+    readouts.renderActive(ring, {
+      corners: [
+        [1, 2, 3],
+        [2, 0, 1]
+      ]
+    });
+    const shown = angles().map(({ obj }) => obj.position);
+    expect(shown).toHaveLength(2);
+    near(shown[0], p(4, 3));
+    near(shown[1], p(0, 0));
+  });
+
+  it('shows a notice at the first vertex that never takes a press', () => {
+    const poly = [p(0, 0), p(3, 0), p(3, 4)];
+    readouts.renderActive(poly, { notice: 'X' });
+    const notices = readouts.labels.filter((l) =>
+      l.outer.classList.contains('shape-readout--notice')
+    );
+    expect(notices).toHaveLength(1);
+    expect(notices[0].inner.textContent).toBe('X');
+    expect(notices[0].outer.style.pointerEvents).toBe('none');
+    near(notices[0].obj.position, p(0, 0));
+    // Anchored by its bottom edge above the vertex, so a wrapped sentence
+    // grows upward, away from the vertex and its close marker.
+    expect(notices[0].inner.style.transform).toBe(
+      `translate(0px, calc(-50% - ${ANGLE_CAPTION_OFFSET_PX}px))`
+    );
+
+    readouts.renderActive(poly);
+    expect(
+      readouts.labels.some((l) =>
+        l.outer.classList.contains('shape-readout--notice')
+      )
+    ).toBe(false);
+  });
+
+  it('reads a reflex corner as its included angle', () => {
+    // An L: the corner at (2,2) turns inward, 270° inside, read as 90°.
+    const l = [p(0, 0), p(4, 0), p(4, 2), p(2, 2), p(2, 4), p(0, 4)];
+    readouts.setDisplay({ showLengths: true, showAngles: true });
+    readouts.renderAll(l, 12, null, true);
+    const reflex = angles().find(({ obj }) => obj.position.equals(p(2, 2)));
+    expect(reflex.inner.textContent).toBe('90°');
   });
 });

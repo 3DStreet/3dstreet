@@ -2447,11 +2447,17 @@
   "shapeDraw.closeFirstPoint": {
     "defaultMessage": "Click the first point to close the shape"
   },
+  "shapeDraw.closeRefused": {
+    "defaultMessage": "This shape can't close here. Add another point, or press Enter to finish it open."
+  },
   "shapeDraw.finishDoubleClick": {
     "defaultMessage": "Double-click places a last point and finishes"
   },
   "shapeDraw.finishEnterEsc": {
     "defaultMessage": "Enter or Esc finishes the shape"
+  },
+  "shapeDraw.snapCloseRefused": {
+    "defaultMessage": "This shape can't close on the current angle snap. Add another point, press Enter to finish it open, or turn snap off."
   },
   "shapeDraw.title": {
     "defaultMessage": "Draw a shape"
@@ -2464,6 +2470,9 @@
   },
   "shapeSidebar.area": {
     "defaultMessage": "Area"
+  },
+  "shapeSidebar.closed": {
+    "defaultMessage": "Closed"
   },
   "shapeSidebar.cornerAngle": {
     "defaultMessage": "∠ {value}"
@@ -2486,8 +2495,131 @@
   "shapeSidebar.direction": {
     "defaultMessage": "Direction"
   },
+  "shapeSidebar.dotDiameter": {
+    "defaultMessage": "Dot diameter"
+  },
+  "shapeSidebar.dotDiameterHelp": {
+    "defaultMessage": "Width of each dot."
+  },
+  "shapeSidebar.fill": {
+    "defaultMessage": "Fill"
+  },
+  "shapeSidebar.fillAngle": {
+    "defaultMessage": "Angle"
+  },
+  "shapeSidebar.fillAngleHelp": {
+    "defaultMessage": "Direction of the pattern and texture. Set from the shape's first side when it was drawn; turns with the shape. Stripes and crosshatch run diagonally to it."
+  },
+  "shapeSidebar.fillColor": {
+    "defaultMessage": "Color"
+  },
+  "shapeSidebar.fillMaterial": {
+    "defaultMessage": "Fill material"
+  },
+  "shapeSidebar.fillMaterialHelp": {
+    "defaultMessage": "The surface of the shape."
+  },
+  "shapeSidebar.fillOffsetAcross": {
+    "defaultMessage": "Offset across"
+  },
+  "shapeSidebar.fillOffsetAlong": {
+    "defaultMessage": "Offset along"
+  },
+  "shapeSidebar.fillOffsetHelp": {
+    "defaultMessage": "Slides the pattern and texture along and across their direction."
+  },
+  "shapeSidebar.fillPattern": {
+    "defaultMessage": "Fill pattern"
+  },
+  "shapeSidebar.fillPatternHelp": {
+    "defaultMessage": "Paint on top of the material."
+  },
+  "shapeSidebar.fillTint": {
+    "defaultMessage": "Tint"
+  },
+  "shapeSidebar.fillTintHelp": {
+    "defaultMessage": "Colors the texture. White shows it as it is."
+  },
+  "shapeSidebar.fillWhenOpen": {
+    "defaultMessage": "Fill (applies when closed)"
+  },
   "shapeSidebar.length": {
     "defaultMessage": "Length {label}"
+  },
+  "shapeSidebar.lineColor": {
+    "defaultMessage": "Line color"
+  },
+  "shapeSidebar.lineWidth": {
+    "defaultMessage": "Line width"
+  },
+  "shapeSidebar.material.concrete": {
+    "defaultMessage": "Concrete"
+  },
+  "shapeSidebar.material.crackedAsphalt": {
+    "defaultMessage": "Cracked asphalt"
+  },
+  "shapeSidebar.material.grass": {
+    "defaultMessage": "Grass"
+  },
+  "shapeSidebar.material.gravel": {
+    "defaultMessage": "Gravel"
+  },
+  "shapeSidebar.material.parkingLot": {
+    "defaultMessage": "Parking lot"
+  },
+  "shapeSidebar.material.sand": {
+    "defaultMessage": "Sand"
+  },
+  "shapeSidebar.material.sidewalk": {
+    "defaultMessage": "Sidewalk"
+  },
+  "shapeSidebar.material.solid": {
+    "defaultMessage": "Solid color"
+  },
+  "shapeSidebar.materialOpacity": {
+    "defaultMessage": "Material opacity (%)"
+  },
+  "shapeSidebar.materialOpacityHelp": {
+    "defaultMessage": "How solid the surface is. 0% hides it; any pattern still shows."
+  },
+  "shapeSidebar.pattern.checkerboard": {
+    "defaultMessage": "Checkerboard"
+  },
+  "shapeSidebar.pattern.crosshatch": {
+    "defaultMessage": "Crosshatch"
+  },
+  "shapeSidebar.pattern.dots": {
+    "defaultMessage": "Dots"
+  },
+  "shapeSidebar.pattern.none": {
+    "defaultMessage": "None"
+  },
+  "shapeSidebar.pattern.stripes": {
+    "defaultMessage": "Stripes"
+  },
+  "shapeSidebar.patternColor": {
+    "defaultMessage": "Pattern color"
+  },
+  "shapeSidebar.patternColorHelp": {
+    "defaultMessage": "Color of the stripes, squares or dots."
+  },
+  "shapeSidebar.patternOpacity": {
+    "defaultMessage": "Pattern opacity (%)"
+  },
+  "shapeSidebar.patternOpacityHelp": {
+    "defaultMessage": "How solid the pattern is."
+  },
+  "shapeSidebar.patternSpacing": {
+    "defaultMessage": "Spacing"
+  },
+  "shapeSidebar.patternSpacingHelp": {
+    "defaultMessage": "Distance between the centers of neighboring stripes or dots."
+  },
+  "shapeSidebar.resetStyle": {
+    "defaultMessage": "Reset to default"
+  },
+  "shapeSidebar.resetStyleHelp": {
+    "defaultMessage": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
   },
   "shapeSidebar.reverse": {
     "defaultMessage": "Reverse"
@@ -2504,11 +2636,29 @@
   "shapeSidebar.showFewerSegments": {
     "defaultMessage": "Show fewer segments"
   },
+  "shapeSidebar.squareSize": {
+    "defaultMessage": "Square size"
+  },
+  "shapeSidebar.squareSizeHelp": {
+    "defaultMessage": "Width of one square."
+  },
+  "shapeSidebar.stripeWidth": {
+    "defaultMessage": "Stripe width"
+  },
+  "shapeSidebar.stripeWidthHelp": {
+    "defaultMessage": "Width of each stripe."
+  },
+  "shapeSidebar.style": {
+    "defaultMessage": "Style"
+  },
   "shapeSidebar.styleTitle": {
     "defaultMessage": "Style"
   },
   "shapeSidebar.tipInsert": {
     "defaultMessage": "Click a side's length to add a vertex to that side"
+  },
+  "shapeSidebar.tipInsertPlus": {
+    "defaultMessage": "Click a side's + to add a vertex to that side"
   },
   "shapeSidebar.tipShift": {
     "defaultMessage": "Hold Shift while dragging a vertex to raise or lower it"
@@ -2521,6 +2671,39 @@
   },
   "shapeSidebar.tipsTitle": {
     "defaultMessage": "Shape Drawing Tips"
+  },
+  "shapeTool.alignToAxes": {
+    "defaultMessage": "Align first side to axes"
+  },
+  "shapeTool.alignToAxesHint": {
+    "defaultMessage": "The scene's axes, or the open group's when you draw into a group"
+  },
+  "shapeTool.displayHeading": {
+    "defaultMessage": "Show on canvas (all shapes, when selected)"
+  },
+  "shapeTool.openPanelOnSelect": {
+    "defaultMessage": "Open this panel when the Shape Tool is selected"
+  },
+  "shapeTool.showAngles": {
+    "defaultMessage": "Angles"
+  },
+  "shapeTool.showArea": {
+    "defaultMessage": "Area"
+  },
+  "shapeTool.showLengths": {
+    "defaultMessage": "Side lengths"
+  },
+  "shapeTool.snap": {
+    "defaultMessage": "Angle snap"
+  },
+  "shapeTool.snapOff": {
+    "defaultMessage": "Off"
+  },
+  "shapeTool.snapStep": {
+    "defaultMessage": "{step}°"
+  },
+  "shapeTool.title": {
+    "defaultMessage": "Shape Tool"
   },
   "shareModal.anonymous": {
     "defaultMessage": "anonymous"

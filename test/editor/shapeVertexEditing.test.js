@@ -39,6 +39,7 @@ import {
   canOfferInsert,
   clampHandleRadius,
   clickMoveThreshold,
+  closeByJoiningTarget,
   decidePress,
   segmentForVertexPair,
   hitTestHandles,
@@ -51,6 +52,7 @@ import {
   anyVertexIsDeletable,
   deleteKeyTargetsVertex,
   trashButtonOffset,
+  validateCloseByJoining,
   validateVertexDelete,
   validateVertexEdit
 } from '../../src/editor/lib/shapeEditRules.js';
@@ -1431,5 +1433,82 @@ describe('refuseGuardedTransform on multi payloads', () => {
       ])
     ).toBeNull();
     expect(refuseGuardedTransform('multi', undefined)).toBeNull();
+  });
+});
+
+describe('closing an open shape by joining its ends', () => {
+  it('targets the other end only from an end of an open polyline of 4+', () => {
+    expect(closeByJoiningTarget(5, false, 4)).toBe(0);
+    expect(closeByJoiningTarget(5, false, 0)).toBe(4);
+    expect(closeByJoiningTarget(5, false, 2)).toBe(-1); // a middle vertex
+    expect(closeByJoiningTarget(5, true, 4)).toBe(-1); // already closed
+    // Three vertices would leave two: not a ring, so an ordinary refused move.
+    expect(closeByJoiningTarget(3, false, 2)).toBe(-1);
+  });
+
+  it('accepts a ring that encloses area and refuses a crossing or flat one', () => {
+    // An open square traced 0..3 with a fifth vertex dragged onto the first.
+    const open = [p(0, 0), p(10, 0), p(10, 10), p(0, 10), p(0, 0)];
+    expect(validateCloseByJoining(open, 4)).toBe(true);
+    // Joining would make a bow-tie.
+    const bowtie = [p(0, 0), p(10, 10), p(10, 0), p(0, 10), p(0, 0)];
+    expect(validateCloseByJoining(bowtie, 4)).toBe(false);
+    // Joining a straight line encloses nothing.
+    const line = [p(0, 0), p(5, 0), p(10, 0), p(15, 0), p(0, 0)];
+    expect(validateCloseByJoining(line, 4)).toBe(false);
+  });
+
+  it('ShapeVertexRemoveCommand passes the multi chain on, both ways', () => {
+    const shapeEl = document.createElement('div');
+    shapeEl.id = 'join-shape';
+    const vertices = [0, 1, 2].map(() => {
+      const v = document.createElement('div');
+      shapeEl.appendChild(v);
+      return v;
+    });
+    document.body.appendChild(shapeEl);
+    const cmd = new ShapeVertexRemoveCommand(null, { vertexEl: vertices[2] });
+    const next = vi.fn();
+    cmd.execute(next);
+    expect(shapeEl.children).toHaveLength(2);
+    expect(next).toHaveBeenCalledTimes(1);
+    cmd.undo(next);
+    expect(shapeEl.children[2]).toBe(vertices[2]);
+    expect(next).toHaveBeenCalledTimes(2);
+    shapeEl.remove();
+  });
+
+  it('a release armed to close removes the dragged vertex and closes, as one step', () => {
+    const execute = vi.fn();
+    const savedAframe = globalThis.AFRAME;
+    globalThis.AFRAME = { INSPECTOR: { execute } };
+    try {
+      const c = new ShapeVertexControls();
+      const shapeEl = { components: { shape: { data: { closed: false } } } };
+      const vertexEl = { object3D: { position: new THREE.Vector3() } };
+      c.shapeEl = shapeEl;
+      c.abortGesture = vi.fn(() => {
+        c._gesture = null;
+      });
+      c._gesture = { isDrag: true, closing: true, vertexEl, index: 4 };
+      c._releaseGesture();
+      expect(c.abortGesture).toHaveBeenCalledTimes(1);
+      expect(execute).toHaveBeenCalledTimes(1);
+      const [type, commands] = execute.mock.calls[0];
+      expect(type).toBe('multi');
+      expect(commands.map(([t]) => t)).toEqual([
+        'shapevertexremove',
+        'entityupdate'
+      ]);
+      expect(commands[0][1].vertexEl).toBe(vertexEl);
+      expect(commands[1][1]).toMatchObject({
+        entity: shapeEl,
+        component: 'shape',
+        property: 'closed',
+        value: true
+      });
+    } finally {
+      globalThis.AFRAME = savedAframe;
+    }
   });
 });

@@ -15,6 +15,7 @@ import {
   canOfferInsert,
   clampHandleRadius,
   clickMoveThreshold,
+  closeByJoiningTarget,
   deleteKeyTargetsVertex,
   decidePress,
   hitTestHandles,
@@ -26,6 +27,7 @@ import {
   resolveDragRelease,
   segmentForVertexPair,
   trashButtonOffset,
+  validateCloseByJoining,
   validateVertexDelete,
   validateVertexEdit
 } from './shapeEditRules.js';
@@ -615,6 +617,39 @@ export class ShapeVertexControls extends THREE.Object3D {
 
     const hit = hitTestHandles(list, camera, rect, clientX, clientY);
     return hit === -1 ? null : list[hit];
+  }
+
+  // Whether the pointer is over vertex `index`'s handle. A finger or pen gets
+  // the draw tool's 24 px close radius, since the dragged handle sits under it.
+  _pointerOverHandle(index, event) {
+    const camera = AFRAME.INSPECTOR?.camera;
+    const canvas = this._canvas();
+    const mesh = this.vertexHandles[index];
+    if (!camera || !canvas || !mesh) return false;
+    camera.getWorldPosition(this._tmpCamPos);
+    const list = this._closeHitList || (this._closeHitList = []);
+    const meshes = this._closeMeshes || (this._closeMeshes = []);
+    meshes[0] = mesh;
+    list.length = this._pushHitEntries(
+      list,
+      meshes,
+      camera,
+      canvas.clientHeight
+    );
+    if (!list.length) return false;
+    if (event.pointerType !== 'mouse') {
+      // CLOSE_PX_TOLERANCE_TAP in ShapeDrawAction
+      list[0].screenRadiusPx = Math.max(list[0].screenRadiusPx, 24);
+    }
+    return (
+      hitTestHandles(
+        list,
+        camera,
+        canvas.getBoundingClientRect(),
+        event.clientX,
+        event.clientY
+      ) === 0
+    );
   }
 
   // Fills the shared hit list without allocating: the entry objects and their
@@ -1653,6 +1688,26 @@ export class ShapeVertexControls extends THREE.Object3D {
       g.vertexEl.object3D.position.copy(local);
     }
 
+    // An end of an open polyline held over the other end snaps onto it and
+    // arms a close; release then joins the ends (see _releaseGesture). Not red:
+    // the two vertices coinciding is the point, not a separation violation.
+    g.closing = false;
+    if (!g.vertical) {
+      const target = closeByJoiningTarget(
+        this.vertexEls.length,
+        this._isClosed(),
+        g.index
+      );
+      if (target !== -1 && this._pointerOverHandle(target, event)) {
+        g.vertexEl.object3D.position.copy(
+          this.vertexEls[target].object3D.position
+        );
+        g.closing = validateCloseByJoining(this._localPoints(), g.index);
+        this._setInvalidSignal(!g.closing);
+        return;
+      }
+    }
+
     const valid = validateVertexEdit(
       this._localPoints(),
       this._isClosed(),
@@ -1893,6 +1948,33 @@ export class ShapeVertexControls extends THREE.Object3D {
       const vertexEl = g.vertexEl;
       this.abortGesture();
       if (vertexEl) this.setActiveVertex(vertexEl);
+      return;
+    }
+
+    if (g.closing) {
+      // Join the ends: drop the dragged vertex and close the ring, as one undo
+      // step. abortGesture first puts the dragged vertex back where the drag
+      // began, so undo restores the open polyline exactly.
+      const vertexEl = g.vertexEl;
+      const shapeEl = this.shapeEl;
+      this.abortGesture();
+      try {
+        AFRAME.INSPECTOR.execute('multi', [
+          ['shapevertexremove', { vertexEl }],
+          [
+            'entityupdate',
+            {
+              entity: shapeEl,
+              component: 'shape',
+              property: 'closed',
+              value: true,
+              noSelectEntity: true
+            }
+          ]
+        ]);
+      } catch (error) {
+        console.error('Shape close by joining failed', error);
+      }
       return;
     }
 
