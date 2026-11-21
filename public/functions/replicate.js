@@ -1,6 +1,7 @@
 const functions = require('firebase-functions/v1');
 const Replicate = require('replicate');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
@@ -368,7 +369,7 @@ const generateReplicateImage = functions
           // batch produces at most one email (first finisher decides).
           ...sanitizeNotifyBatch(notify)
         },
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       });
 
       // Charge BEFORE creating the prediction, with tokenCharged flipped in
@@ -389,7 +390,7 @@ const generateReplicateImage = functions
         await jobRef.update({
           status: 'failed',
           error: 'Token charge failed.',
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         });
         await cleanupSplatTempFile(tempFilePath);
         throw chargeError;
@@ -439,7 +440,7 @@ const generateReplicateImage = functions
         await jobRef.update({
           status: 'failed',
           error: `Failed to create prediction: ${createError.message}`,
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         });
         await cleanupSplatTempFile(tempFilePath);
         throw createError;
@@ -482,7 +483,7 @@ const generateReplicateImage = functions
         tokenCost,
         status: 'failed',
         error: error.message,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write generationLog:', err));
 
       if (error instanceof functions.https.HttpsError) {
@@ -810,7 +811,7 @@ const generateReplicateVideo = functions
           scene_id: scene_id || null
         },
         notify: { email: wantsEmail, pending: wantsEmail },
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       });
 
       // Charge BEFORE creating the prediction, with tokenCharged flipped in
@@ -832,7 +833,7 @@ const generateReplicateVideo = functions
         await jobRef.update({
           status: 'failed',
           error: 'Token charge failed.',
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         });
         await cleanupSplatTempFile(tempFilePath);
         throw chargeError;
@@ -875,7 +876,7 @@ const generateReplicateVideo = functions
         await jobRef.update({
           status: 'failed',
           error: `Failed to create prediction: ${createError.message}`,
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         });
         await cleanupSplatTempFile(tempFilePath);
         throw createError;
@@ -916,7 +917,7 @@ const generateReplicateVideo = functions
         tokenCost,
         status: 'failed',
         error: error.message,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write generationLog:', err));
 
       if (error instanceof functions.https.HttpsError) {
@@ -1128,7 +1129,7 @@ const generateReplicateSplat = functions
           sourceType: 'image'
         },
         notify: { email: wantsEmail, pending: wantsEmail },
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       });
 
       // Charge BEFORE creating the prediction, and set `tokenCharged` in the
@@ -1152,7 +1153,7 @@ const generateReplicateSplat = functions
         await jobRef.update({
           status: 'failed',
           error: 'Token charge failed.',
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         });
         await cleanupSplatTempFile(tempFilePath);
         throw chargeError;
@@ -1212,7 +1213,7 @@ const generateReplicateSplat = functions
         await jobRef.update({
           status: 'failed',
           error: `Failed to create prediction: ${createError.message}`,
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         });
         await cleanupSplatTempFile(tempFilePath);
         throw createError;
@@ -1254,7 +1255,7 @@ const generateReplicateSplat = functions
         tokenCost,
         status: 'failed',
         error: error.message,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write generationLog:', err));
 
       if (error instanceof functions.https.HttpsError) {
@@ -1343,7 +1344,7 @@ async function refundSplatToken(db, userId, jobRef, job) {
       remainingTokens = currentTokens + tokenCost;
       transaction.update(tokenProfileRef, {
         genToken: remainingTokens,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
       });
       transaction.update(jobRef, { refunded: true });
     });
@@ -1358,7 +1359,7 @@ async function refundSplatToken(db, userId, jobRef, job) {
       tokenCost,
       source: `${job.kind || 'splat'}-generation-failed`,
       relatedModel: job.model,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp()
     }).catch(err => console.error('Failed to write tokenLog:', err));
   }
   return remainingTokens;
@@ -1520,7 +1521,7 @@ async function saveSplatToGallery(userId, plyUrl, job) {
   const lastDot = originalFilename.lastIndexOf('.');
   const defaultName =
     lastDot > 0 ? originalFilename.slice(0, lastDot) : originalFilename;
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const now = FieldValue.serverTimestamp();
 
   await admin
     .firestore()
@@ -1625,7 +1626,7 @@ async function saveVideoToGallery(userId, videoUrl, job) {
   const lastDot = originalFilename.lastIndexOf('.');
   const defaultName =
     lastDot > 0 ? originalFilename.slice(0, lastDot) : originalFilename;
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const now = FieldValue.serverTimestamp();
   const params = job.generationParams || {};
 
   await admin
@@ -1740,7 +1741,7 @@ async function saveImageToGallery(userId, imageUrl, job) {
   const lastDot = originalFilename.lastIndexOf('.');
   const defaultName =
     lastDot > 0 ? originalFilename.slice(0, lastDot) : originalFilename;
-  const now = admin.firestore.FieldValue.serverTimestamp();
+  const now = FieldValue.serverTimestamp();
   const params = job.generationParams || {};
 
   await admin
@@ -1880,7 +1881,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       claimed = true;
       tx.update(jobRef, {
         status: 'saving',
-        savingStartedAt: admin.firestore.FieldValue.serverTimestamp(),
+        savingStartedAt: FieldValue.serverTimestamp(),
         providerStatus: prediction.status
       });
     });
@@ -1928,7 +1929,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       await jobRef.update({
         status: 'failed',
         error: 'Invalid output from model.',
-        completedAt: admin.firestore.FieldValue.serverTimestamp()
+        completedAt: FieldValue.serverTimestamp()
       });
       return { status: 'failed', error: 'Invalid output from model.', remainingTokens };
     }
@@ -1949,7 +1950,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
           status: 'succeeded',
           assetId,
           videoUrl: storageUrl,
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         });
         db.collection('generationLog').add({
           userId,
@@ -1965,7 +1966,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
           providerPredictionId: job.providerJobId || null,
           status: 'succeeded',
           source: job.source,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
+          createdAt: FieldValue.serverTimestamp()
         }).catch(err => console.error('Failed to write generationLog:', err));
 
         // Fire-and-forget: post the durable Storage URL (the replicate.delivery
@@ -2005,7 +2006,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
           status: 'succeeded',
           assetId,
           meshUrl: storageUrl,
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         });
         db.collection('generationLog').add({
           userId,
@@ -2022,7 +2023,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
           providerPredictionId: job.providerJobId || null,
           status: 'succeeded',
           source: job.source,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
+          createdAt: FieldValue.serverTimestamp()
         }).catch(err => console.error('Failed to write generationLog:', err));
         return { status: 'succeeded', mesh_url: storageUrl, assetId };
       } catch (saveError) {
@@ -2048,7 +2049,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
           status: 'succeeded',
           assetId,
           imageUrl: storageUrl,
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         });
         db.collection('generationLog').add({
           userId,
@@ -2065,7 +2066,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
           providerPredictionId: job.providerJobId || null,
           status: 'succeeded',
           source: job.source,
-          createdAt: admin.firestore.FieldValue.serverTimestamp()
+          createdAt: FieldValue.serverTimestamp()
         }).catch(err => console.error('Failed to write generationLog:', err));
 
         const params = job.generationParams || {};
@@ -2125,7 +2126,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         error: userError,
         failureReason: geometry.reason,
         geometryStats: geometry.stats || null,
-        completedAt: admin.firestore.FieldValue.serverTimestamp()
+        completedAt: FieldValue.serverTimestamp()
       });
       db.collection('generationLog').add({
         userId,
@@ -2144,7 +2145,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         status: 'failed',
         error: geometry.reason,
         source: job.source,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write generationLog:', err));
       return { status: 'failed', error: userError, remainingTokens };
     }
@@ -2159,7 +2160,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         status: 'succeeded',
         assetId,
         splatUrl: storageUrl,
-        completedAt: admin.firestore.FieldValue.serverTimestamp()
+        completedAt: FieldValue.serverTimestamp()
       });
       db.collection('generationLog').add({
         userId,
@@ -2186,7 +2187,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         estCostUsd: estimateModalCostUsd(prediction.metrics),
         status: 'succeeded',
         source: job.source,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write generationLog:', err));
       return { status: 'succeeded', splat_url: storageUrl, assetId };
     } catch (saveError) {
@@ -2216,7 +2217,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       status: normalized,
       providerStatus: prediction.status,
       error: prediction.error || genericError,
-      completedAt: admin.firestore.FieldValue.serverTimestamp()
+      completedAt: FieldValue.serverTimestamp()
     });
     db.collection('generationLog').add({
       userId,
@@ -2231,7 +2232,7 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
       status: 'failed',
       error: prediction.error || null,
       source: job.source,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: FieldValue.serverTimestamp()
     }).catch(err => console.error('Failed to write generationLog:', err));
     return {
       status: normalized,
@@ -2261,7 +2262,7 @@ async function ackClientSeen(jobRef, job) {
   try {
     await jobRef.update({
       'notify.pending': false,
-      'notify.clientAckedAt': admin.firestore.FieldValue.serverTimestamp()
+      'notify.clientAckedAt': FieldValue.serverTimestamp()
     });
     // A watched batch member records the batch-level "seen" decision here,
     // not at send time: this ack just cleared `pending`, so this job can
@@ -2276,7 +2277,7 @@ async function ackClientSeen(jobRef, job) {
           .create({
             decision: 'seen',
             kind: job.kind || null,
-            at: admin.firestore.FieldValue.serverTimestamp()
+            at: FieldValue.serverTimestamp()
           });
       } catch (err) {
         // ALREADY_EXISTS: the batch decision was already made — leave it.

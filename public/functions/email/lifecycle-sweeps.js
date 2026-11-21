@@ -21,6 +21,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { Timestamp } = require('firebase-admin/firestore');
 const { assertAppCheck } = require('../app-check.js');
 const { withJobHealth } = require('../scheduled/job-health.js');
 const { sendLifecycleEmail } = require('./lifecycle-email.js');
@@ -34,7 +35,7 @@ const DAY_MS = 24 * HOUR_MS;
 const ENABLE_ABANDONED_72H = false;
 
 const tsBefore = (nowMs, ageMs) =>
-  admin.firestore.Timestamp.fromMillis(nowMs - ageMs);
+  Timestamp.fromMillis(nowMs - ageMs);
 
 // Per-sweep result tally, mirroring processEmailType's shape.
 const newTally = () => ({

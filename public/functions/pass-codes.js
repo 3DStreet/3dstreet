@@ -8,6 +8,7 @@
  */
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { grantPass, validateUserDomain } = require('./token-management.js');
@@ -134,8 +135,8 @@ const redeemPassCodeForUser = async (userId, rawCode, { nowMs = Date.now() } = {
       maxUses
     } = codeData;
     tx.update(codeRef, {
-      uses: admin.firestore.FieldValue.increment(1),
-      lastRedeemedAt: admin.firestore.FieldValue.serverTimestamp()
+      uses: FieldValue.increment(1),
+      lastRedeemedAt: FieldValue.serverTimestamp()
     });
     tx.set(redemptionRef, {
       code,
@@ -145,7 +146,7 @@ const redeemPassCodeForUser = async (userId, rawCode, { nowMs = Date.now() } = {
       fromName,
       days,
       tokens,
-      redeemedAt: admin.firestore.FieldValue.serverTimestamp()
+      redeemedAt: FieldValue.serverTimestamp()
     });
     return {
       status: 'redeemed',

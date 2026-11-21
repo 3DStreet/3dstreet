@@ -6,7 +6,7 @@
  * sendPostmarkEmail so stream routing and error handling live in one place.
  */
 
-const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 
 const POSTMARK_API_URL = 'https://api.postmarkapp.com/email';
@@ -103,7 +103,7 @@ const markUndeliverable = async (db, uid, email, err) => {
           email,
           code: err?.postmarkCode ?? null,
           error: String(err?.message || err),
-          at: admin.firestore.FieldValue.serverTimestamp()
+          at: FieldValue.serverTimestamp()
         }
       },
       { merge: true }

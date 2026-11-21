@@ -23,6 +23,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { readProUntil } = require('./token-management.js');
@@ -147,7 +148,7 @@ const onAssetWritten = functions.firestore
         usageRef,
         {
           bytesUsed: next,
-          lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+          lastUpdated: FieldValue.serverTimestamp()
         },
         { merge: true }
       );

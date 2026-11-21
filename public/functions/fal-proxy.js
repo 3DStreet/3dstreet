@@ -1,5 +1,6 @@
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const crypto = require('crypto');
 const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
 const { REPLICATE_MODELS } = require('./replicate-models.js');
@@ -209,7 +210,7 @@ const generateFalImage = functions
           // batch produces at most one email (first finisher decides).
           ...sanitizeNotifyBatch(notify)
         },
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       });
 
       // Charge at submit and set `tokenCharged` in the same transaction
@@ -295,7 +296,7 @@ const generateFalImage = functions
         .update({
           status: 'failed',
           error: error.message,
-          completedAt: admin.firestore.FieldValue.serverTimestamp()
+          completedAt: FieldValue.serverTimestamp()
         })
         .catch(() => {});
 
@@ -319,7 +320,7 @@ const generateFalImage = functions
         tokenCost,
         status: 'failed',
         error: error.message,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
       }).catch(err => console.error('Failed to write generationLog:', err));
 
       // Check if it's a Firebase HttpsError and rethrow

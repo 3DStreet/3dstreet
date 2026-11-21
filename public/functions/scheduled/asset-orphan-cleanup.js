@@ -40,6 +40,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldPath } = require('firebase-admin/firestore');
 const { assertAppCheck } = require('../app-check.js');
 const { withJobHealth } = require('./job-health.js');
 
@@ -60,7 +61,7 @@ async function collectReferencedPaths() {
   while (true) {
     let q = db
       .collectionGroup('assets')
-      .orderBy(admin.firestore.FieldPath.documentId())
+      .orderBy(FieldPath.documentId())
       .limit(PAGE_SIZE);
     if (cursor) q = q.startAfter(cursor);
     const snap = await q.get();

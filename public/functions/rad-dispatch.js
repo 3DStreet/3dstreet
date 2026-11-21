@@ -25,6 +25,7 @@
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { FieldValue } = require('firebase-admin/firestore');
 const crypto = require('crypto');
 const { CloudTasksClient } = require('@google-cloud/tasks');
 
@@ -189,12 +190,12 @@ const onSplatAssetCreated = functions.firestore
       tokenCost: 0, // silent backend optimization — never charges the user
       tokenCharged: false,
       refunded: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
       // When the Cloud Task was (last) dispatched. The reconciler measures
       // staleness from this — not createdAt — so it only re-enqueues a job whose
       // current dispatch has genuinely exceeded its deadline, never one that's
       // simply mid-conversion (which keeps status 'queued' the whole time).
-      dispatchedAt: admin.firestore.FieldValue.serverTimestamp()
+      dispatchedAt: FieldValue.serverTimestamp()
     });
 
     try {
