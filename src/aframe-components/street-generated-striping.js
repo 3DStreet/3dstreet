@@ -1,7 +1,7 @@
 /* global AFRAME */
 
 // a-frame component to generate cloned models along a street
-// this moves logic from aframe-streetmix-parsers into this component
+// striping logic, originally ported from the retired legacy Streetmix parser
 
 import {
   MARKING_ALPHA_TEST,

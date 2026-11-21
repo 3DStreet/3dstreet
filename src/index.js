@@ -1,11 +1,7 @@
-/* global AFRAME, XMLHttpRequest, VERSION */
-import useStore from './store.js';
-import { captureStreetmixImport } from './streetmixAnalytics.js';
+/* global AFRAME, VERSION */
 import * as streetUtils from './street-utils.js';
 require('./json-utils_1.1.js'); // this defines STREET.utils
 STREET.utils.newScene = streetUtils.newScene;
-var streetmixParsers = require('./aframe-streetmix-parsers');
-var streetmixUtils = require('./tested/streetmix-utils');
 
 require('./three-bvh.js'); // patch THREE prototypes with three-mesh-bvh (accelerated raycast + BVH)
 require('./batch-models.js');
@@ -77,12 +73,16 @@ require('./aframe-components/asset-fallback-system.js');
 require('./aframe-components/asset-load-status.js');
 require('./aframe-components/model-placeholder.js');
 require('./editor/index.jsx');
-var firebase = require('./shared/services/firebase.js');
+require('./shared/services/firebase.js');
 
 if (typeof VERSION !== 'undefined') {
   console.log(`3DStreet Version: ${VERSION}`);
 }
 
+// Legacy (classic) street root, kept so saved classic streets load and their
+// toggles work. Its street is saved as children; the parser that used to
+// build it from `JSON` is retired (#1720), so JSON/type/left/right/
+// globalAnimated/synchronize are kept only so saved attributes parse.
 AFRAME.registerComponent('street', {
   schema: {
     JSON: { type: 'string' },
@@ -127,64 +127,6 @@ AFRAME.registerComponent('street', {
     if (data.showStriping !== oldData.showStriping) {
       this.toggleStriping(data.showStriping);
     }
-
-    // do not call the update function when the data.synchronize is set to false
-    if (!data.synchronize) {
-      return;
-    }
-
-    if (data.JSON.length === 0) {
-      if (oldData.JSON !== undefined && oldData.JSON.length === 0) {
-        return;
-      } // this has happened before, surpress console log
-      console.log(
-        '[street]',
-        'No JSON provided yet, but it might be set at runtime'
-      );
-      return;
-    }
-
-    const streetmixSegments = JSON.parse(data.JSON);
-
-    // remove .street-parent and .buildings-parent elements, if they exists, with old scene elements.
-    // Because they will be created next in the processSegments and processBuildings functions.
-    // This is also necessary when changing the parameters of the street component to reload the scene.
-    const streetParent = this.el.querySelector('.street-parent');
-    if (streetParent) {
-      streetParent.remove();
-    }
-    const buildingParent = this.el.querySelector('.buildings-parent');
-    if (buildingParent) {
-      buildingParent.remove();
-    }
-    console.log(firebase.auth.currentUser);
-
-    const streetEl = streetmixParsers.processSegments(
-      streetmixSegments.streetmixSegmentsMetric,
-      data.showStriping,
-      data.length,
-      data.globalAnimated,
-      data.showVehicles
-    );
-    this.el.append(streetEl);
-
-    if (data.left || data.right) {
-      const streetWidth = streetmixSegments.streetmixSegmentsMetric.reduce(
-        (streetWidth, segmentData) => streetWidth + segmentData.width,
-        0
-      );
-      const buildingsEl = streetmixParsers.processBuildings(
-        data.left,
-        data.right,
-        streetWidth,
-        data.showGround,
-        data.length
-      );
-      this.el.append(buildingsEl);
-    }
-
-    // the scene has been loaded, set the synchronize flag
-    this.el.setAttribute('street', 'synchronize', false);
   }
 });
 
@@ -196,140 +138,15 @@ AFRAME.registerComponent('streetmix-loader', {
     showBuildings: { default: true },
     name: { default: '' },
     synchronize: { default: true },
-    // Import-telemetry source (#1874). Set to 'url_fragment' or 'dialog' by the
-    // paths we want to measure; left empty for in-app template/preset adds so
-    // those don't inflate the Streetmix-import funnel. When set, this component
-    // fires `streetmix_import_completed` / `streetmix_import_failed`.
+    // Import-telemetry source (#1874), from when this loader imported.
     importSource: { type: 'string', default: '' }
-  },
-  update: function (oldData) {
-    // fired at start and at each subsequent change of any schema value
-    // This method may fire a few times when viewing a streetmix street in 3dstreet:
-    // First to find the proper path, once to actually load the street, and then subsequent updates such as street name
-    const data = this.data;
-    const el = this.el;
-
-    // do not call the update function when the data.synchronize is set to false
-    if (!data.synchronize) return;
-
-    // if the loader has run once already, and upon update neither URL has changed, do not take action
-    if (
-      oldData.streetmixStreetURL === data.streetmixStreetURL &&
-      oldData.streetmixAPIURL === data.streetmixAPIURL
-    ) {
-      // console.log('[streetmix-loader]', 'Neither streetmixStreetURL nor streetmixAPIURL have changed in this component data update, not reloading street.')
-      return;
-    }
-    // if no value for 'streetmixAPIURL' then let's see if there's a streetmixURL
-    if (data.streetmixAPIURL.length === 0) {
-      if (data.streetmixStreetURL.length > 0) {
-        const streetmixAPIURL = streetmixUtils.streetmixUserToAPI(
-          data.streetmixStreetURL
-        );
-        console.log(
-          '[streetmix-loader]',
-          'setting `streetmixAPIURL` to',
-          streetmixAPIURL
-        );
-        el.setAttribute('streetmix-loader', 'streetmixAPIURL', streetmixAPIURL);
-        return;
-      }
-      console.log(
-        '[streetmix-loader]',
-        'Neither `streetmixAPIURL` nor `streetmixStreetURL` properties provided, please provide at least one.'
-      );
-      return;
-    }
-
-    const request = new XMLHttpRequest();
-    console.log('[streetmix-loader]', 'GET ' + data.streetmixAPIURL);
-
-    request.open('GET', data.streetmixAPIURL, true);
-    request.onload = function () {
-      if (this.status >= 200 && this.status < 400) {
-        // Connection success
-        const streetmixResponseObject = JSON.parse(this.response);
-        // convert units of measurement if necessary
-        const streetData = streetmixUtils.convertStreetValues(
-          streetmixResponseObject.data.street
-        );
-        const streetmixSegments = streetData.segments;
-
-        const streetmixName = streetmixResponseObject.name;
-
-        el.setAttribute('streetmix-loader', 'name', streetmixName);
-
-        const state = useStore.getState();
-        if (!state.sceneTitle) {
-          state.setSceneTitle(streetmixName);
-        }
-
-        el.setAttribute('data-layer-name', 'Streetmix • ' + streetmixName);
-
-        if (data.showBuildings) {
-          // Prefer the canonical boundary object (schemaVersion 34+) and fall
-          // back to the deprecated flat *BuildingVariant fields. The legacy
-          // street component only understands the variant string; boundary
-          // floors/elevation are handled by the managed-street path.
-          el.setAttribute(
-            'street',
-            'right',
-            streetmixUtils.getBoundaryFromStreetData(streetData, 'right')
-              ?.variant || ''
-          );
-          el.setAttribute(
-            'street',
-            'left',
-            streetmixUtils.getBoundaryFromStreetData(streetData, 'left')
-              ?.variant || ''
-          );
-        }
-        el.setAttribute('street', 'type', 'streetmixSegmentsMetric');
-        // set JSON attribute last or it messes things up
-        el.setAttribute(
-          'street',
-          'JSON',
-          JSON.stringify({ streetmixSegmentsMetric: streetmixSegments })
-        );
-        el.emit('streetmix-loader-street-loaded');
-        // the streetmix data has been loaded, set the synchronize flag to false
-        el.setAttribute('streetmix-loader', 'synchronize', false);
-        captureStreetmixImport(
-          'streetmix_import_completed',
-          data.importSource,
-          data.streetmixStreetURL
-        );
-      } else {
-        // We reached our target server, but it returned an error
-        console.log(
-          '[streetmix-loader]',
-          'Loading Error: We reached the target server, but it returned an error'
-        );
-        el.emit('streetmix-loader-street-load-error', { status: this.status });
-        captureStreetmixImport(
-          'streetmix_import_failed',
-          data.importSource,
-          data.streetmixStreetURL,
-          { status: this.status }
-        );
-      }
-    };
-    request.onerror = function () {
-      // There was a connection error of some sort
-      console.log(
-        '[streetmix-loader]',
-        'Loading Error: There was a connection error of some sort'
-      );
-      el.emit('streetmix-loader-street-load-error', { status: 0 });
-      captureStreetmixImport(
-        'streetmix_import_failed',
-        data.importSource,
-        data.streetmixStreetURL,
-        { status: 0 }
-      );
-    };
-    request.send();
   }
+  // Inert: the legacy Streetmix parser is retired (#1720). Saved classic
+  // streets carry their full expanded street as children and load without
+  // it; a loader that would still rebuild on load is migrated before the
+  // scene is created (migrate-legacy-streetmix-loader.js). The component
+  // stays registered so those scenes keep its data (Convert to managed
+  // street reads the Streetmix URL from it).
 });
 
 // Vehicle wheel Animation

@@ -6,6 +6,21 @@ import jsdomGlobal from 'jsdom-global';
 jsdomGlobal();
 
 describe('StreetmixUtils', function () {
+  describe('#isSidewalk()', function () {
+    it('is true for a type that is exactly sidewalk', function () {
+      assert.ok(streetmixUtils.isSidewalk('sidewalk'));
+    });
+    it('is true for a type starting with sidewalk', function () {
+      assert.ok(streetmixUtils.isSidewalk('sidewalk-tree'));
+    });
+    it('is true for curbside amenity types like scooter-drop-zone', function () {
+      assert.ok(streetmixUtils.isSidewalk('scooter-drop-zone'));
+    });
+    it('is false for a travel lane', function () {
+      assert.ok(!streetmixUtils.isSidewalk('drive-lane'));
+    });
+  });
+
   describe('#streetmixUserToAPI()', function () {
     it('should return API redirect URL when given user facing URL WITH a creator ID', function () {
       assert.strictEqual(
@@ -77,30 +92,6 @@ describe('StreetmixUtils', function () {
         ),
         'https://streetmix.net/-/3'
       );
-    });
-  });
-
-  describe('#metricElevationToLevel()', function () {
-    it('should convert 0m to level 0', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(0), 0);
-    });
-    it('should convert 0.15m (curb height) to level 1', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.15), 1);
-    });
-    it('should convert 0.30m to level 2', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.3), 2);
-    });
-    it('should convert 0.75m (light rail) to level 5', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.75), 5);
-    });
-    it('should handle undefined as level 0', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(undefined), 0);
-    });
-    it('should handle null as level 0', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(null), 0);
-    });
-    it('should round 0.14m to level 1 (nearest curb height)', function () {
-      assert.strictEqual(streetmixUtils.metricElevationToLevel(0.14), 1);
     });
   });
 

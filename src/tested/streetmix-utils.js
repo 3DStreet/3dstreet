@@ -1,4 +1,4 @@
-import { CURB_HEIGHT, levelToElevation } from './street-segment-utils.js';
+import { levelToElevation } from './street-segment-utils.js';
 
 // Hosts that serve the Streetmix street API (coastmix is a Streetmix fork).
 const STREETMIX_HOSTS = ['streetmix.net', 'coastmix.org'];
@@ -67,17 +67,6 @@ export function streetmixAPIToUser(APIURL) {
   }
 
   return url.origin + '/' + creatorId + '/' + namespacedId;
-}
-
-// Convert metric elevation to the nearest integer level. Kept only for the
-// legacy `street` parser (aframe-streetmix-parsers.js), whose geometry lookup
-// tables are still indexed by integer level.
-// e.g., 0m → 0, 0.15m → 1, 0.30m → 2, 0.75m → 5
-export function metricElevationToLevel(elevation) {
-  if (elevation === undefined || elevation === null) {
-    return 0;
-  }
-  return Math.round(elevation / CURB_HEIGHT);
 }
 
 // Normalize street data to 3DStreet's canonical units — meters everywhere:
@@ -150,4 +139,21 @@ export function getSegmentSlope(segmentData) {
     return null;
   }
   return { start: slope.values[0], end: slope.values[1] };
+}
+
+// Streetmix segment types that sit on the sidewalk: any `sidewalk*` type
+// plus curbside amenities Streetmix models as their own segments.
+const SIDEWALK_TYPES = [
+  'utilities',
+  'scooter-drop-zone',
+  'bikeshare',
+  'flex-zone-curb',
+  'transit-shelter',
+  'brt-station',
+  'street-vendor'
+];
+export function isSidewalk(segmentType) {
+  return (
+    segmentType.startsWith('sidewalk') || SIDEWALK_TYPES.includes(segmentType)
+  );
 }
