@@ -25,6 +25,13 @@
  * resolves to a live doc is kept. Once the doc is purged (asset-gc.js) the
  * variant loses its keeper and is reclaimed here on the next run.
  *
+ * Team asset libraries (#1267 Phase 4, docs/team-assets.md) live under
+ * `orgs/{orgId}/assets/{assetId}/...`. Every file in the folder of a live
+ * team asset is kept: "Replace file" leaves the previous files there for
+ * scenes opened outside the team, which still load the saved URL. Once the
+ * asset is purged, or for an upload whose doc was never written, the folder's
+ * files are reclaimed like any orphan.
+ *
  * Safety:
  *   - Objects newer than GRACE_HOURS are skipped to avoid racing with
  *     in-flight uploads whose Firestore doc is still pending.
@@ -47,13 +54,16 @@ const { withJobHealth } = require('./job-health.js');
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
 const GRACE_HOURS = 24;
-const ASSETS_PREFIX = 'users/';
+const ASSET_PREFIXES = ['users/', 'orgs/'];
 const ASSETS_SUBPATH = '/assets/';
+const TEAM_ASSET_FOLDER = /^orgs\/[^/]+\/assets\/[^/]+\//;
 
 async function collectReferencedPaths() {
   const db = admin.firestore();
   const refs = new Set();
   const liveAssetIds = new Set();
+  // 'orgs/{orgId}/assets/{assetId}/' of every team asset doc.
+  const liveTeamFolders = new Set();
   let cursor = null;
   let scanned = 0;
   const PAGE_SIZE = 1000;
@@ -71,7 +81,14 @@ async function collectReferencedPaths() {
       scanned++;
       const data = docSnap.data();
       liveAssetIds.add(docSnap.id);
-      for (const field of ['storagePath', 'optimizedSourcePath', 'thumbnailPath']) {
+      if (docSnap.ref.path.startsWith('orgs/')) {
+        liveTeamFolders.add(`${docSnap.ref.path}/`);
+      }
+      for (const field of [
+        'storagePath',
+        'optimizedSourcePath',
+        'thumbnailPath'
+      ]) {
         const path = data[field];
         if (path && typeof path === 'string') refs.add(path);
       }
@@ -80,17 +97,18 @@ async function collectReferencedPaths() {
     if (snap.size < PAGE_SIZE) break;
   }
 
-  return { refs, liveAssetIds, scanned };
+  return { refs, liveAssetIds, liveTeamFolders, scanned };
 }
 
-async function cleanup({ dryRun }) {
+async function cleanup({ dryRun, now = Date.now() }) {
   const bucket = admin.storage().bucket();
   const {
     refs,
     liveAssetIds,
+    liveTeamFolders,
     scanned: assetsScanned
   } = await collectReferencedPaths();
-  const cutoffMs = Date.now() - GRACE_HOURS * 60 * 60 * 1000;
+  const cutoffMs = now - GRACE_HOURS * 60 * 60 * 1000;
 
   const summary = {
     assetsScanned,
@@ -107,77 +125,92 @@ async function cleanup({ dryRun }) {
     dryRun
   };
 
-  let pageToken;
-  do {
-    const [files, , apiResponse] = await bucket.getFiles({
-      prefix: ASSETS_PREFIX,
-      maxResults: 1000,
-      pageToken,
-      autoPaginate: false
-    });
-    pageToken = apiResponse?.nextPageToken;
+  for (const prefix of ASSET_PREFIXES) {
+    let pageToken;
+    do {
+      const [files, , apiResponse] = await bucket.getFiles({
+        prefix,
+        maxResults: 1000,
+        pageToken,
+        autoPaginate: false
+      });
+      pageToken = apiResponse?.nextPageToken;
 
-    for (const file of files) {
-      summary.objectsScanned++;
-      const name = file.name;
+      for (const file of files) {
+        summary.objectsScanned++;
+        const name = file.name;
 
-      // Defensive: only consider paths matching users/{uid}/assets/...
-      if (!name.includes(ASSETS_SUBPATH)) {
-        summary.skippedOutsideAssets++;
-        continue;
+        // Defensive: only consider paths matching users/{uid}/assets/...
+        if (!name.includes(ASSETS_SUBPATH)) {
+          summary.skippedOutsideAssets++;
+          continue;
+        }
+        if (refs.has(name)) continue;
+
+        // A team asset's folder: kept while the asset exists (see header).
+        if (prefix === 'orgs/') {
+          const folder = name.match(TEAM_ASSET_FOLDER)?.[0];
+          if (!folder) {
+            summary.skippedOutsideAssets++;
+            continue;
+          }
+          if (liveTeamFolders.has(folder)) {
+            summary.skippedSupersededVariant++;
+            continue;
+          }
+        }
+
+        // Superseded optimized variant of a live asset: scenes may still
+        // reference its URL (see header). Reclaimed once the doc is purged.
+        const custom = file.metadata?.metadata || {};
+        if (
+          custom.assetRole === 'optimized' &&
+          custom.assetId &&
+          liveAssetIds.has(custom.assetId)
+        ) {
+          summary.skippedSupersededVariant++;
+          continue;
+        }
+
+        const createdMs = file.metadata?.timeCreated
+          ? Date.parse(file.metadata.timeCreated)
+          : 0;
+        if (createdMs && createdMs > cutoffMs) {
+          summary.skippedTooNew++;
+          continue;
+        }
+
+        summary.orphans++;
+        const sizeBytes = Number(file.metadata?.size) || 0;
+        summary.bytesReclaimed += sizeBytes;
+        if (summary.samples.length < 20) {
+          summary.samples.push({
+            name,
+            sizeBytes,
+            created: file.metadata?.timeCreated || null
+          });
+        }
+
+        if (dryRun) {
+          console.log(
+            `[asset-orphan-cleanup] would delete ${name} (${sizeBytes} bytes)`
+          );
+          continue;
+        }
+
+        try {
+          await file.delete();
+          summary.deleted++;
+        } catch (err) {
+          summary.deleteErrors++;
+          console.error(
+            `[asset-orphan-cleanup] delete failed ${name}:`,
+            err?.message || err
+          );
+        }
       }
-      if (refs.has(name)) continue;
-
-      // Superseded optimized variant of a live asset: scenes may still
-      // reference its URL (see header). Reclaimed once the doc is purged.
-      const custom = file.metadata?.metadata || {};
-      if (
-        custom.assetRole === 'optimized' &&
-        custom.assetId &&
-        liveAssetIds.has(custom.assetId)
-      ) {
-        summary.skippedSupersededVariant++;
-        continue;
-      }
-
-      const createdMs = file.metadata?.timeCreated
-        ? Date.parse(file.metadata.timeCreated)
-        : 0;
-      if (createdMs && createdMs > cutoffMs) {
-        summary.skippedTooNew++;
-        continue;
-      }
-
-      summary.orphans++;
-      const sizeBytes = Number(file.metadata?.size) || 0;
-      summary.bytesReclaimed += sizeBytes;
-      if (summary.samples.length < 20) {
-        summary.samples.push({
-          name,
-          sizeBytes,
-          created: file.metadata?.timeCreated || null
-        });
-      }
-
-      if (dryRun) {
-        console.log(
-          `[asset-orphan-cleanup] would delete ${name} (${sizeBytes} bytes)`
-        );
-        continue;
-      }
-
-      try {
-        await file.delete();
-        summary.deleted++;
-      } catch (err) {
-        summary.deleteErrors++;
-        console.error(
-          `[asset-orphan-cleanup] delete failed ${name}:`,
-          err?.message || err
-        );
-      }
-    }
-  } while (pageToken);
+    } while (pageToken);
+  }
 
   return summary;
 }
@@ -235,4 +268,4 @@ const triggerCleanupOrphanedStorage = functions
     return summary;
   });
 
-module.exports = { cleanupOrphanedStorage, triggerCleanupOrphanedStorage };
+module.exports = { cleanup, cleanupOrphanedStorage, triggerCleanupOrphanedStorage };

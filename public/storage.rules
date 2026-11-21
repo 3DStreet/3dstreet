@@ -56,7 +56,23 @@ service firebase.storage {
     // bypass these rules.
     match /orgs/{orgId}/assets/{allPaths=**} {
       allow read: if isOrgMember(orgId);
-      allow write: if false;
+    }
+
+    // Seats upload new files into an asset's folder (direct upload into the
+    // library, a thumbnail). Create only: an existing file is never
+    // overwritten from a client. Same types and hard ceiling as personal
+    // assets; the team's storage limit is the getUploadQuota preflight.
+    match /orgs/{orgId}/assets/{assetId}/{fileName} {
+      allow create: if request.auth != null
+        && firestore.get(/databases/(default)/documents/orgs/$(orgId)).data.status == 'active'
+        && orgRole(orgId) in ['owner', 'admin', 'member']
+        && request.resource.size < 5 * 1000 * 1000 * 1000
+        && (
+          request.resource.contentType.matches('image/.*')
+          || request.resource.contentType.matches('model/.*')
+          || request.resource.contentType.matches('application/octet-stream')
+          || request.resource.contentType.matches('video/.*')
+        );
     }
 
     // Gallery asset files storage rules (all nested paths)

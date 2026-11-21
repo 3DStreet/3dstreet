@@ -357,11 +357,28 @@ describe('rules — team scenes', () => {
       await assertSucceeds(getMetadata(libraryRef(VIEWER)));
       await assertFails(getMetadata(libraryRef(OUTSIDER)));
       await assertFails(getMetadata(libraryRef(null)));
+      // An existing file is never overwritten from a client.
       await assertFails(
         uploadString(libraryRef(OWNER), 'y', 'raw', {
           contentType: 'model/gltf-binary'
         })
       );
+    });
+
+    it("seats upload new files into a library asset's folder; viewers can't", async () => {
+      const newFile = (uid) =>
+        uploadString(
+          ref(
+            testEnv.authenticatedContext(uid).storage(),
+            `orgs/org1/assets/a2/${uid}.glb`
+          ),
+          'y',
+          'raw',
+          { contentType: 'model/gltf-binary' }
+        );
+      await assertSucceeds(newFile(MEMBER));
+      await assertFails(newFile(VIEWER));
+      await assertFails(newFile(OUTSIDER));
     });
 
     it('editors write them; viewers and outsiders cannot', async () => {

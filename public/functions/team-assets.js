@@ -230,10 +230,16 @@ const onTeamAssetWritten = functions.firestore
     const sizeAfter = after && !after.deleted ? Number(after.size) || 0 : 0;
     const delta = sizeAfter - sizeBefore;
     if (delta === 0) return null;
-    await usageRef(context.params.orgId).set(
-      { bytesUsed: FieldValue.increment(delta), lastUpdated: FieldValue.serverTimestamp() },
-      { merge: true }
-    );
+    // Never below zero, like users/{uid}/meta/usage (asset-quota.js).
+    await db().runTransaction(async (tx) => {
+      const snapshot = await tx.get(usageRef(context.params.orgId));
+      const current = snapshot.exists ? Number(snapshot.data().bytesUsed) || 0 : 0;
+      tx.set(
+        usageRef(context.params.orgId),
+        { bytesUsed: Math.max(0, current + delta), lastUpdated: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+    });
     return null;
   });
 

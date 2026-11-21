@@ -183,6 +183,73 @@ describe('firestore.rules — organizations', () => {
     );
   });
 
+  it('seats upload straight into the library and rename; nothing else from a client', async () => {
+    const VIEWER = 'viewer-uid';
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'orgs/org1/members', VIEWER), {
+        uid: VIEWER,
+        role: 'viewer'
+      });
+    });
+    const teamAsset = (uid, extra = {}) => ({
+      assetId: 'u1',
+      orgId: 'org1',
+      addedBy: uid,
+      type: 'mesh',
+      name: 'Bench',
+      size: 10,
+      deleted: false,
+      storagePath: 'orgs/org1/assets/u1/u1.glb',
+      storageUrl: 'https://x',
+      ...extra
+    });
+    const ref = (uid, id = 'u1') => doc(as(uid), `orgs/org1/assets/${id}`);
+    await assertFails(setDoc(ref(VIEWER), teamAsset(VIEWER)));
+    await assertFails(setDoc(ref(OUTSIDER), teamAsset(OUTSIDER)));
+    await assertFails(setDoc(ref(MEMBER), teamAsset(OWNER)));
+    await assertFails(
+      setDoc(
+        ref(MEMBER),
+        teamAsset(MEMBER, { storagePath: 'orgs/org1/assets/other/u1.glb' })
+      )
+    );
+    await assertFails(
+      setDoc(ref(MEMBER), teamAsset(MEMBER, { userId: MEMBER }))
+    );
+    await assertFails(
+      setDoc(ref(MEMBER), teamAsset(MEMBER, { deleted: true }))
+    );
+    await assertSucceeds(
+      setDoc(
+        ref(MEMBER),
+        teamAsset(MEMBER, {
+          optimizedSourcePath: 'orgs/org1/assets/u1/u1-optimized.glb'
+        })
+      )
+    );
+    await assertSucceeds(
+      updateDoc(ref(OWNER), {
+        name: 'Park bench',
+        attribution: { author: 'Ana' },
+        thumbnailPath: 'orgs/org1/assets/u1/u1-thumb.jpg',
+        thumbnailUrl: 'https://t'
+      })
+    );
+    await assertFails(updateDoc(ref(VIEWER), { name: 'Mine' }));
+    await assertFails(updateDoc(ref(MEMBER), { deleted: true }));
+    await assertFails(updateDoc(ref(MEMBER), { size: 1 }));
+    await assertFails(
+      updateDoc(ref(MEMBER), {
+        storagePath: 'orgs/org1/assets/u1/other.glb'
+      })
+    );
+    await assertFails(
+      updateDoc(ref(MEMBER), {
+        thumbnailPath: 'users/member-uid/assets/t.jpg'
+      })
+    );
+  });
+
   it("members read their team's wallet and usage; nobody writes them", async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'orgWallets/org1'), { genToken: 10 });

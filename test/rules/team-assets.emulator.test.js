@@ -242,3 +242,90 @@ describe('team asset library (emulator)', () => {
     ).rejects.toMatchObject({ reason: 'asset-not-found' });
   });
 });
+
+describe('team library uploads (emulator)', () => {
+  let quota;
+  let dispatch;
+  let orphans;
+  beforeAll(() => {
+    quota = functionsRequire('./asset-quota.js');
+    dispatch = functionsRequire('./rad-dispatch.js');
+    orphans = functionsRequire('./scheduled/asset-orphan-cleanup.js');
+  });
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+  });
+
+  it("checks an upload against the team's storage, for seats only", async () => {
+    const { orgId, uid } = await setup({ plan: 'MAX', seats: 2 });
+    await db.doc(`orgs/${orgId}/meta/usage`).set({ bytesUsed: 1000 });
+    const ok = await quota.teamUploadQuota({ uid, orgId, proposedBytes: 10 });
+    expect(ok).toMatchObject({
+      allowed: true,
+      bytesUsed: 1000,
+      planLimit: 50 * 1000 * 1000 * 1000,
+      tier: 'MAX',
+      membership: 'team',
+      planName: 'MAX TEAM'
+    });
+    const full = await quota.teamUploadQuota({
+      uid,
+      orgId,
+      proposedBytes: 50 * 1000 * 1000 * 1000
+    });
+    expect(full).toMatchObject({ allowed: false, reason: 'file_too_large' });
+    const viewer = await setup({ role: 'viewer' });
+    await expect(
+      quota.teamUploadQuota({ ...viewer, proposedBytes: 1 })
+    ).rejects.toMatchObject({ code: 'permission-denied' });
+  });
+
+  it("queues a team splat's conversion as its uploader's job, with the team", async () => {
+    const { orgId, uid } = await setup();
+    await dispatch.dispatchSplatConversion({
+      userId: uid,
+      assetId: 'splat1',
+      orgId,
+      asset: {
+        type: 'splat',
+        storagePath: `orgs/${orgId}/assets/splat1/splat1.ply`
+      }
+    });
+    const jobs = await db.collection(`users/${uid}/generationJobs`).get();
+    expect(jobs.docs.map((d) => d.data())).toEqual([
+      expect.objectContaining({
+        kind: 'splat-rad',
+        status: 'queued',
+        assetId: 'splat1',
+        orgId,
+        plyPath: `orgs/${orgId}/assets/splat1/splat1.ply`
+      })
+    ]);
+  });
+
+  it("keeps a live team asset's folder and reclaims a folder without a doc", async () => {
+    const { orgId, uid } = await setup();
+    const { assetId } = await teamAssets.addAssetToTeam({
+      uid,
+      orgId,
+      assetId: await personalAsset(uid)
+    });
+    const superseded = `orgs/${orgId}/assets/${assetId}/old/bench.glb`;
+    const orphan = `orgs/${orgId}/assets/never-written/bench.glb`;
+    for (const path of [superseded, orphan]) {
+      await bucket.file(path).save(Buffer.from('x'));
+    }
+    await orphans.cleanup({
+      dryRun: false,
+      now: Date.now() + 48 * 60 * 60 * 1000
+    });
+    const exists = async (path) => (await bucket.file(path).exists())[0];
+    const asset = await teamAsset(orgId, assetId);
+    expect(await exists(asset.storagePath)).toBe(true);
+    expect(await exists(superseded)).toBe(true);
+    expect(await exists(orphan)).toBe(false);
+  });
+});

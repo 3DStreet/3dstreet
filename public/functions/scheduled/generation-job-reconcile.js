@@ -307,7 +307,8 @@ async function reconcile({ dryRun }) {
               uid,
               assetId: job.assetId,
               plyPath: job.plyPath,
-              jobId: jobRef.id
+              jobId: jobRef.id,
+              orgId: job.orgId || null
             });
             // Reset the dispatch clock so the next sweep measures from THIS
             // re-enqueue, not the original — no duplicate-per-sweep spiral.

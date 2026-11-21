@@ -20,7 +20,7 @@ const { reconcileAssetUsage, triggerReconcileAssetUsage } = require('./scheduled
 const { checkAssetUsageHealth, triggerCheckAssetUsageHealth } = require('./scheduled/asset-usage-health.js');
 const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
-const { onSplatAssetCreated } = require('./rad-dispatch.js');
+const { onSplatAssetCreated, onTeamSplatAssetCreated } = require('./rad-dispatch.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
 const { setSceneVisibility, canReadScene, readSceneAccess, uidFromAuthorizationHeader } = require('./scene-visibility.js');
 const {
@@ -116,6 +116,8 @@ exports.triggerReconcileGenerationJobs = triggerReconcileGenerationJobs;
 
 // --- RAD conversion (splat optimized variant) -----------------------------
 exports.onSplatAssetCreated = onSplatAssetCreated;
+// Splats uploaded straight into a team's asset library (#1267 Phase 4).
+exports.onTeamSplatAssetCreated = onTeamSplatAssetCreated;
 
 // Editor AI Assistant — server-side gate for the Vertex/Gemini chat. The client
 // no longer calls Firebase AI Logic directly (model selection was abusable); all

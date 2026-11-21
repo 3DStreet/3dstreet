@@ -164,11 +164,45 @@ service cloud.firestore {
     }
 
     // Team asset library (#1267 Phase 4, docs/team-assets.md): members read
-    // the team's assets and its storage usage; only the team-assets
-    // callables and triggers write them (public/functions/team-assets.js).
+    // the team's assets and its storage usage.
+    function inTeamAssetFolder(path, orgId, assetId) {
+      return path is string
+        && path.matches('^orgs/' + orgId + '/assets/' + assetId + '/[^/]+$');
+    }
+
     match /orgs/{orgId}/assets/{assetId} {
       allow read: if isOrgMember(orgId);
-      allow write: if false;
+
+      // A seat uploads straight into the library: the doc names its team and
+      // uploader, starts not deleted, and its files are in the asset's own
+      // folder (which storage.rules lets seats create). The usage trigger
+      // counts its size; getUploadQuota({ orgId }) is the preflight.
+      allow create: if isOrgEditor(orgId)
+        && request.resource.data.orgId == orgId
+        && request.resource.data.assetId == assetId
+        && request.resource.data.addedBy == request.auth.uid
+        && request.resource.data.deleted == false
+        && request.resource.data.type in ['image', 'video', 'splat', 'mesh']
+        && inTeamAssetFolder(request.resource.data.storagePath, orgId, assetId)
+        && (!('optimizedSourcePath' in request.resource.data)
+            || inTeamAssetFolder(request.resource.data.optimizedSourcePath, orgId, assetId))
+        && (!('thumbnailPath' in request.resource.data)
+            || inTeamAssetFolder(request.resource.data.thumbnailPath, orgId, assetId))
+        && !request.resource.data.keys().hasAny([
+          'userId', 'addedFrom', 'deletedAt', 'deletedBy', 'replacedBy', 'replacedFrom'
+        ]);
+
+      // Seats rename an asset, edit its attribution and add its thumbnail.
+      // Everything else (file replacement, removal) goes through the
+      // team-assets callables, which check who may.
+      allow update: if isOrgEditor(orgId)
+        && resource.data.deleted == false
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'attribution', 'thumbnailPath', 'thumbnailUrl', 'updatedAt'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['thumbnailPath'])
+            || inTeamAssetFolder(request.resource.data.thumbnailPath, orgId, assetId));
+
+      allow delete: if false;
     }
 
     match /orgs/{orgId}/meta/{docId} {

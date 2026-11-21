@@ -78,7 +78,7 @@ function getTasksClient() {
  * private service accepts it. Idempotent at the worker: a duplicate task just
  * re-converts and overwrites the same -lod.rad / re-patches the same doc.
  */
-async function enqueueRadTask({ uid, assetId, plyPath, jobId }) {
+async function enqueueRadTask({ uid, assetId, plyPath, jobId, orgId = null }) {
   const config = resolveRadConfig();
   if (!config.serviceUrl) {
     // No converter URL known for this project — refuse to dispatch rather than
@@ -94,7 +94,9 @@ async function enqueueRadTask({ uid, assetId, plyPath, jobId }) {
     config.location,
     config.queue
   );
-  const payload = JSON.stringify({ uid, assetId, plyPath, jobId });
+  // orgId: a team library splat (#1267 Phase 4); the converter patches
+  // orgs/{orgId}/assets/{assetId} instead of the user's asset.
+  const payload = JSON.stringify({ uid, assetId, plyPath, jobId, ...(orgId && { orgId }) });
   const task = {
     httpRequest: {
       httpMethod: 'POST',
@@ -119,97 +121,134 @@ async function enqueueRadTask({ uid, assetId, plyPath, jobId }) {
 }
 
 /**
- * Firestore trigger: on a new splat asset doc, queue a RAD conversion.
- * Path: users/{userId}/assets/{assetId}
- *
+ * Queue a RAD conversion for a new splat asset doc.
  * Guard: type==='splat' && no optimizedSourceUrl yet && has a source path.
- * Mirrors onAssetWritten's path/shape in asset-quota.js.
+ * `orgId` set: the asset is in that team's library
+ * (orgs/{orgId}/assets/{assetId}) and `userId` is who uploaded it (the job
+ * lives in their generationJobs, like any job).
+ */
+async function dispatchSplatConversion({ userId, assetId, asset, orgId = null }) {
+  if (asset.type !== 'splat') return null;
+  if (asset.optimizedSourceUrl) return null; // already has a RAD variant
+  const plyPath = asset.storagePath;
+  if (!plyPath) {
+    console.warn(
+      `[rad-dispatch] splat ${userId}/${assetId} has no storagePath; skipping`
+    );
+    return null;
+  }
+  // A user-uploaded .rad is already the streaming-optimized form — the
+  // renderer serves storageUrl and streams it paged — so there's nothing to
+  // convert. Every other splat extension is dispatched to build-lod, which
+  // decodes by extension (the converter preserves it). Formats build-lod can't
+  // handle surface as a deterministic ConversionError and are marked 'skipped'
+  // (terminal, no retry) — the asset still renders from its original source.
+  if (plyPath.toLowerCase().endsWith('.rad')) {
+    console.log(
+      `[rad-dispatch] splat ${userId}/${assetId} uploaded as .rad; already optimized, skipping`
+    );
+    return null;
+  }
+
+  // Source size up front (cheap Storage metadata read) so the queued job doc
+  // carries inputBytes — lets later analysis correlate convert time/cost with
+  // splat size without re-reading the object. Best-effort: a metadata miss
+  // must not block the conversion.
+  let inputBytes = null;
+  try {
+    const [meta] = await admin.storage().bucket().file(plyPath).getMetadata();
+    inputBytes = Number(meta.size) || null;
+  } catch (err) {
+    console.warn(
+      `[rad-dispatch] could not read size for ${plyPath}:`,
+      (err && err.message) || err
+    );
+  }
+
+  const db = admin.firestore();
+  const jobId = crypto.randomUUID();
+  const jobRef = db
+    .collection('users').doc(userId)
+    .collection('generationJobs').doc(jobId);
+
+  // Write the queued job BEFORE enqueueing — a crash mid-enqueue leaves a
+  // visible, reconcilable job rather than silently dropping the conversion.
+  // Normalized status vocab matches the Replicate jobs so the reconciler's
+  // "non-terminal" collectionGroup query stays provider-agnostic.
+  await jobRef.set({
+    // A team library splat (#1267 Phase 4): the reconciler re-enqueues
+    // with it so the converter patches the team's asset.
+    orgId,
+    status: 'queued',
+    providerStatus: null,
+    kind: 'splat-rad',
+    provider: 'cloudrun',
+    providerJobId: null, // cloudrun has none — the worker owns writeback
+    assetId,
+    plyPath,
+    inputBytes, // source splat size (null if the metadata read failed)
+    tokenCost: 0, // silent backend optimization — never charges the user
+    tokenCharged: false,
+    refunded: false,
+    createdAt: FieldValue.serverTimestamp(),
+    // When the Cloud Task was (last) dispatched. The reconciler measures
+    // staleness from this — not createdAt — so it only re-enqueues a job whose
+    // current dispatch has genuinely exceeded its deadline, never one that's
+    // simply mid-conversion (which keeps status 'queued' the whole time).
+    dispatchedAt: FieldValue.serverTimestamp()
+  });
+
+  try {
+    const taskName = await enqueueRadTask({ uid: userId, assetId, plyPath, jobId, orgId });
+    console.log(
+      `[rad-dispatch] queued RAD job ${jobId} for splat ${assetId} → ${taskName}`
+    );
+  } catch (err) {
+    // Leave the job 'queued' so the reconciler re-enqueues it; just record why.
+    console.error(`[rad-dispatch] enqueue failed for ${assetId}:`, err);
+    await jobRef.update({ enqueueError: String((err && err.message) || err) });
+  }
+
+  return null;
+}
+
+/**
+ * Firestore trigger: on a new splat asset doc, queue a RAD conversion.
+ * Path: users/{userId}/assets/{assetId}. Mirrors onAssetWritten's path/shape
+ * in asset-quota.js.
  */
 const onSplatAssetCreated = functions.firestore
   .document('users/{userId}/assets/{assetId}')
-  .onCreate(async (snap, context) => {
-    const { userId, assetId } = context.params;
+  .onCreate((snap, context) =>
+    dispatchSplatConversion({
+      userId: context.params.userId,
+      assetId: context.params.assetId,
+      asset: snap.data() || {}
+    })
+  );
+
+/**
+ * Firestore trigger: a splat uploaded straight into a team's asset library
+ * (#1267 Phase 4). Assets copied in by orgAddAsset/orgReplaceAssetFile
+ * (addedFrom) already carry their converted files and are skipped.
+ */
+const onTeamSplatAssetCreated = functions.firestore
+  .document('orgs/{orgId}/assets/{assetId}')
+  .onCreate((snap, context) => {
     const asset = snap.data() || {};
-
-    if (asset.type !== 'splat') return null;
-    if (asset.optimizedSourceUrl) return null; // already has a RAD variant
-    const plyPath = asset.storagePath;
-    if (!plyPath) {
-      console.warn(
-        `[rad-dispatch] splat ${userId}/${assetId} has no storagePath; skipping`
-      );
-      return null;
-    }
-    // A user-uploaded .rad is already the streaming-optimized form — the
-    // renderer serves storageUrl and streams it paged — so there's nothing to
-    // convert. Every other splat extension is dispatched to build-lod, which
-    // decodes by extension (the converter preserves it). Formats build-lod can't
-    // handle surface as a deterministic ConversionError and are marked 'skipped'
-    // (terminal, no retry) — the asset still renders from its original source.
-    if (plyPath.toLowerCase().endsWith('.rad')) {
-      console.log(
-        `[rad-dispatch] splat ${userId}/${assetId} uploaded as .rad; already optimized, skipping`
-      );
-      return null;
-    }
-
-    // Source size up front (cheap Storage metadata read) so the queued job doc
-    // carries inputBytes — lets later analysis correlate convert time/cost with
-    // splat size without re-reading the object. Best-effort: a metadata miss
-    // must not block the conversion.
-    let inputBytes = null;
-    try {
-      const [meta] = await admin.storage().bucket().file(plyPath).getMetadata();
-      inputBytes = Number(meta.size) || null;
-    } catch (err) {
-      console.warn(
-        `[rad-dispatch] could not read size for ${plyPath}:`,
-        (err && err.message) || err
-      );
-    }
-
-    const db = admin.firestore();
-    const jobId = crypto.randomUUID();
-    const jobRef = db
-      .collection('users').doc(userId)
-      .collection('generationJobs').doc(jobId);
-
-    // Write the queued job BEFORE enqueueing — a crash mid-enqueue leaves a
-    // visible, reconcilable job rather than silently dropping the conversion.
-    // Normalized status vocab matches the Replicate jobs so the reconciler's
-    // "non-terminal" collectionGroup query stays provider-agnostic.
-    await jobRef.set({
-      status: 'queued',
-      providerStatus: null,
-      kind: 'splat-rad',
-      provider: 'cloudrun',
-      providerJobId: null, // cloudrun has none — the worker owns writeback
-      assetId,
-      plyPath,
-      inputBytes, // source splat size (null if the metadata read failed)
-      tokenCost: 0, // silent backend optimization — never charges the user
-      tokenCharged: false,
-      refunded: false,
-      createdAt: FieldValue.serverTimestamp(),
-      // When the Cloud Task was (last) dispatched. The reconciler measures
-      // staleness from this — not createdAt — so it only re-enqueues a job whose
-      // current dispatch has genuinely exceeded its deadline, never one that's
-      // simply mid-conversion (which keeps status 'queued' the whole time).
-      dispatchedAt: FieldValue.serverTimestamp()
+    if (asset.addedFrom || !asset.addedBy) return null;
+    return dispatchSplatConversion({
+      userId: asset.addedBy,
+      assetId: context.params.assetId,
+      asset,
+      orgId: context.params.orgId
     });
-
-    try {
-      const taskName = await enqueueRadTask({ uid: userId, assetId, plyPath, jobId });
-      console.log(
-        `[rad-dispatch] queued RAD job ${jobId} for splat ${assetId} → ${taskName}`
-      );
-    } catch (err) {
-      // Leave the job 'queued' so the reconciler re-enqueues it; just record why.
-      console.error(`[rad-dispatch] enqueue failed for ${assetId}:`, err);
-      await jobRef.update({ enqueueError: String((err && err.message) || err) });
-    }
-
-    return null;
   });
 
-module.exports = { onSplatAssetCreated, enqueueRadTask, resolveRadConfig };
+module.exports = {
+  dispatchSplatConversion,
+  onSplatAssetCreated,
+  onTeamSplatAssetCreated,
+  enqueueRadTask,
+  resolveRadConfig
+};
