@@ -30,6 +30,7 @@ const AssetsModal = ({
   onNavigate,
   onDownload = defaultOnDownload,
   onDelete,
+  onAddedToTeam,
   onUseForGenerator,
   onUseForVideo,
   // Editor-only: open the snapshot's scene (if not active) and return the
@@ -459,6 +460,7 @@ const AssetsModal = ({
             ownerUid={item.userId}
             addedBy={item.addedBy}
             addedByName={item.addedByName}
+            onAdded={onAddedToTeam}
             onRemoved={onClose}
           />
         </div>

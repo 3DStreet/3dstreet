@@ -380,6 +380,9 @@
   "assetInfo.ownershipNotOwned": {
     "defaultMessage": "not owned by you"
   },
+  "assetInfo.ownershipTeam": {
+    "defaultMessage": "{team}''s library"
+  },
   "assetInfo.ownershipYours": {
     "defaultMessage": "your cloud"
   },

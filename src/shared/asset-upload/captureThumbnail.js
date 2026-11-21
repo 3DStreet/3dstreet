@@ -26,7 +26,7 @@
  * iframe.
  */
 
-import { assetsService, STORAGE_PATHS } from '@shared/assets';
+import { assetsService, STORAGE_PATHS, teamIdOfOwner } from '@shared/assets';
 
 const SCREENSHOT_PAGE = '/model-viewer-screenshot.html';
 const DEFAULT_TIMEOUT_MS = 15000;
@@ -133,7 +133,8 @@ export function captureGlbThumbnail(
 
 /**
  * Upload an already-captured thumbnail blob to Storage at
- * `users/{ownerUid}/assets/{subfolder}/{assetId}-thumb.jpg`, and write the
+ * `users/{ownerUid}/assets/{subfolder}/{assetId}-thumb.jpg` (or, for a team
+ * asset's owner key, `orgs/{orgId}/assets/{assetId}/`), and write the
  * paths to the Firestore asset doc. `subfolder` is the asset's type folder
  * ('meshes' for GLB, 'splats' for splats). The 'assetUpdated' event emitted by
  * updateAsset propagates the new thumbnailUrl to the gallery card and
@@ -149,11 +150,11 @@ export async function uploadCapturedThumbnail(
   subfolder = 'meshes'
 ) {
   try {
-    const thumbnailPath = STORAGE_PATHS.assetFile(
-      ownerUid,
-      subfolder,
-      `${assetId}-thumb.jpg`
-    );
+    // A team asset's thumbnail goes in its folder (#1267 Phase 4).
+    const orgId = teamIdOfOwner(ownerUid);
+    const thumbnailPath = orgId
+      ? `orgs/${orgId}/assets/${assetId}/${assetId}-thumb.jpg`
+      : STORAGE_PATHS.assetFile(ownerUid, subfolder, `${assetId}-thumb.jpg`);
     const thumbnailUrl = await assetsService.uploadToStorage(
       jpegBlob,
       thumbnailPath

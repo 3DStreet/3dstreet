@@ -27,7 +27,11 @@ import {
   serverTimestamp,
   FieldValue
 } from 'firebase/firestore';
-import { assetOwnerSegments, teamIdOfOwner } from '../assetOwner.js';
+import {
+  assetOwnerSegments,
+  teamAssetOwner,
+  teamIdOfOwner
+} from '../assetOwner.js';
 import { createAggregateProgress } from '../uploadProgress.js';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '@shared/services/firebase.js';
@@ -138,6 +142,12 @@ class AssetsServiceV2 {
    *   optimization ran and produced a file smaller than the original)
    * @param {object} [options.optimizationMetadata] - Details from the
    *   optimization attempt: { optimizationSkipped, reason?, inputBytes, outputBytes }
+   * @param {string} [options.orgId] - Upload straight into this team's asset
+   *   library (#1267 Phase 4, docs/team-assets.md): files go to
+   *   orgs/{orgId}/assets/{assetId}/ and the doc to orgs/{orgId}/assets,
+   *   with `userId` as its uploader (addedBy).
+   * @param {string} [options.addedByName] - The uploader's name, shown in the
+   *   team library.
    * @param {object} [options.attribution] - Normalized attribution metadata
    *   extracted from the source file (see extractGlbAttribution.js). Empty
    *   strings are persisted so a re-edit can clear a field; the whole object
@@ -157,7 +167,14 @@ class AssetsServiceV2 {
     type = ASSET_TYPES.IMAGE,
     category = ASSET_CATEGORIES.AI_RENDER,
     userId,
-    { signal, optimizedFile, optimizationMetadata, attribution } = {}
+    {
+      signal,
+      optimizedFile,
+      optimizationMetadata,
+      attribution,
+      orgId = null,
+      addedByName = null
+    } = {}
   ) {
     if (!userId) {
       throw new Error('User ID is required to add assets');
@@ -211,8 +228,14 @@ class AssetsServiceV2 {
       }
       const filename = `${assetId}.${extension}`;
 
+      // A team asset's files all live in its own folder (the rules check it).
+      const pathFor = (name) =>
+        orgId
+          ? `orgs/${orgId}/assets/${assetId}/${name}`
+          : this.getStoragePath(userId, type, name);
+
       // Get storage path (original source)
-      const storagePath = this.getStoragePath(userId, type, filename);
+      const storagePath = pathFor(filename);
 
       // IMPORTANT: Upload to Storage FIRST before creating Firestore doc
       // This ensures no orphaned Firestore documents if upload fails.
@@ -246,11 +269,7 @@ class AssetsServiceV2 {
       let optimizedStoragePath = null;
       if (optimizedFile) {
         const optimizedFilename = `${assetId}-optimized.${extension}`;
-        optimizedStoragePath = this.getStoragePath(
-          userId,
-          type,
-          optimizedFilename
-        );
+        optimizedStoragePath = pathFor(optimizedFilename);
         uploadPromises.push(
           this.uploadToStorage(
             optimizedFile,
@@ -293,11 +312,7 @@ class AssetsServiceV2 {
       if (type === ASSET_TYPES.IMAGE) {
         try {
           const thumbnailBlob = await this.generateThumbnail(blob);
-          thumbnailPath = this.getStoragePath(
-            userId,
-            type,
-            `${assetId}-thumb.jpg`
-          );
+          thumbnailPath = pathFor(`${assetId}-thumb.jpg`);
           thumbnailUrl = await this.uploadToStorage(
             thumbnailBlob,
             thumbnailPath
@@ -409,8 +424,21 @@ class AssetsServiceV2 {
         deleted: false
       };
 
-      // Save to Firestore (subcollection under user)
-      const assetRef = doc(db, 'users', userId, 'assets', assetId);
+      // A team asset (firestore.rules orgs/{orgId}/assets): no owner uid or
+      // visibility, the team and its uploader instead.
+      if (orgId) {
+        delete assetDoc.userId;
+        delete assetDoc.visibility;
+        Object.assign(assetDoc, {
+          orgId,
+          addedBy: userId,
+          addedByName: addedByName || null
+        });
+      }
+
+      // Save to Firestore (subcollection under the user, or the team)
+      const owner = orgId ? teamAssetOwner(orgId) : userId;
+      const assetRef = doc(db, ...assetOwnerSegments(owner), 'assets', assetId);
       await setDoc(assetRef, assetDoc);
 
       // Create a version of the asset with resolved timestamp for optimistic UI
@@ -438,9 +466,11 @@ class AssetsServiceV2 {
       // TODO: Remove fallbacks #2 and #3 when generator is fully converted to React
       // with a single React tree (no more islands architecture).
 
+      // userId is the owner key: the personal gallery ignores team uploads
+      // (the team library follows its collection live).
       const eventDetail = {
         assetId,
-        userId,
+        userId: owner,
         asset: assetForEvent
       };
 
@@ -452,7 +482,9 @@ class AssetsServiceV2 {
       // Event #2: Delayed reload fallback via EventTarget
       setTimeout(() => {
         this.events.dispatchEvent(
-          new CustomEvent('assetAddedReload', { detail: { userId, assetId } })
+          new CustomEvent('assetAddedReload', {
+            detail: { userId: owner, assetId }
+          })
         );
       }, 1500);
 

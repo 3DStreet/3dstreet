@@ -160,7 +160,7 @@ const AssetsContent = ({
           totalItems={items.length}
           onClose={() => setSelectedItem(null)}
           onNavigate={handleNavigate}
-          onPlace={onPlaceAsset}
+          onPlace={placeable ? onPlaceAsset : undefined}
           onDownload={handleDownload}
           onDelete={
             teamIdOfOwner(selectedItem.userId) ? undefined : handleDelete

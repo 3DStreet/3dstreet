@@ -12,6 +12,7 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
 import {
   assetsService,
+  teamAssetOwner,
   ASSET_TYPES,
   ASSET_CATEGORIES,
   SPLAT_EXTENSIONS
@@ -59,11 +60,14 @@ export function isAcceptedAssetFile(file) {
   return getAssetKind(file) !== null;
 }
 
-async function preflightQuota(proposedBytes) {
+async function preflightQuota(proposedBytes, orgId = null) {
   if (!auth.currentUser) return { allowed: false, reason: 'not_signed_in' };
   try {
     const callable = httpsCallable(functions, 'getUploadQuota');
-    const { data } = await callable({ proposedBytes });
+    const { data } = await callable({
+      proposedBytes,
+      ...(orgId && { orgId })
+    });
     return data;
   } catch (err) {
     console.warn('[asset-upload] quota check unavailable, skipping', err);
@@ -83,11 +87,19 @@ async function preflightQuota(proposedBytes) {
  * @param {object|null} [opts.attribution] - Stored attribution to use instead
  *   of what is extracted from the GLB (copyAsset passes the source doc's,
  *   which may carry the owner's edits).
+ * @param {string|null} [opts.orgId] - Upload into this team's asset library
+ *   (#1267 Phase 4) instead of the user's own assets.
  * @returns {Promise<{ ok: boolean, assetId?: string, kind?: string, error?: string }>}
  */
 export async function uploadAsset(
   file,
-  { onStatus, onProgress, metadata, attribution: attributionOverride } = {}
+  {
+    onStatus,
+    onProgress,
+    metadata,
+    attribution: attributionOverride,
+    orgId = null
+  } = {}
 ) {
   const kind = getAssetKind(file);
   if (!kind) return { ok: false, error: `Unsupported file type: ${file.name}` };
@@ -130,6 +142,8 @@ export async function uploadAsset(
     return { ok: false, kind, error: 'Sign in to upload assets.' };
   }
   const userId = auth.currentUser.uid;
+  // Who owns the new asset: the user, or the team (owner key, assetOwner.js).
+  const owner = orgId ? teamAssetOwner(orgId) : userId;
 
   uploadStore.start({ filename: file.name, sizeBytes: file.size, kind });
   const signal = uploadStore.getSignal();
@@ -146,7 +160,7 @@ export async function uploadAsset(
 
   try {
     onStatus?.('validating');
-    const quota = await preflightQuota(file.size);
+    const quota = await preflightQuota(file.size, orgId);
     if (quota && quota.allowed === false && !quota.soft) {
       const usedMb = ((quota.bytesUsed || 0) / 1000 / 1000).toFixed(1);
       const limitMb = Math.round((quota.planLimit || 0) / 1000 / 1000);
@@ -218,7 +232,10 @@ export async function uploadAsset(
         signal,
         optimizedFile: optimizedBlob,
         optimizationMetadata,
-        attribution: storedAttribution
+        attribution: storedAttribution,
+        orgId,
+        addedByName:
+          auth.currentUser.displayName || auth.currentUser.email || null
       }
     );
     pendingAssetId = assetId;
@@ -234,12 +251,12 @@ export async function uploadAsset(
       thumbnailCapture.then((jpegBlob) => {
         if (!jpegBlob) return;
         import('./captureThumbnail.js').then(({ uploadCapturedThumbnail }) =>
-          uploadCapturedThumbnail(assetId, userId, jpegBlob)
+          uploadCapturedThumbnail(assetId, owner, jpegBlob)
         );
       });
     }
 
-    return { ok: true, assetId, kind };
+    return { ok: true, assetId, kind, ownerUid: owner };
   } catch (err) {
     if (err.name === 'AbortError') {
       return { ok: false, kind, cancelled: true };

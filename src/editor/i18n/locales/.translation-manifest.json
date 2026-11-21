@@ -1155,7 +1155,8 @@
     "teamWallet.title": "AI tokens",
     "teamWallet.usedTokens": "{tokens} tokens this month",
     "profileModal.tokensPaidByTeam": "Paid by {team}. Your own tokens: {count}.",
-    "teamModal.libraryUsage": "Asset library: {used} of {limit}"
+    "teamModal.libraryUsage": "Asset library: {used} of {limit}",
+    "assetInfo.ownershipTeam": "{team}''s library"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2313,7 +2314,8 @@
     "teamWallet.title": "AI tokens",
     "teamWallet.usedTokens": "{tokens} tokens this month",
     "profileModal.tokensPaidByTeam": "Paid by {team}. Your own tokens: {count}.",
-    "teamModal.libraryUsage": "Asset library: {used} of {limit}"
+    "teamModal.libraryUsage": "Asset library: {used} of {limit}",
+    "assetInfo.ownershipTeam": "{team}''s library"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -3471,6 +3473,7 @@
     "teamWallet.title": "AI tokens",
     "teamWallet.usedTokens": "{tokens} tokens this month",
     "profileModal.tokensPaidByTeam": "Paid by {team}. Your own tokens: {count}.",
-    "teamModal.libraryUsage": "Asset library: {used} of {limit}"
+    "teamModal.libraryUsage": "Asset library: {used} of {limit}",
+    "assetInfo.ownershipTeam": "{team}''s library"
   }
 }

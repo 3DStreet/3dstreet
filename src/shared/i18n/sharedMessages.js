@@ -1917,11 +1917,11 @@ const SHARED_MESSAGES = {
     fr: "Bibliothèque de l'équipe : {used} utilisés"
   },
   teamLibraryEmpty: {
-    en: "Nothing in this team's library yet. Open one of your assets and choose “Add to team library”.",
-    es: 'Aún no hay nada en la biblioteca de este equipo. Abre uno de tus recursos y elige “Añadir a la biblioteca del equipo”.',
+    en: "Nothing in this team's library yet. Upload an asset here, or open one of your assets and choose “Add to team library”.",
+    es: 'Aún no hay nada en la biblioteca de este equipo. Sube un recurso aquí, o abre uno de tus recursos y elige “Añadir a la biblioteca del equipo”.',
     'pt-BR':
-      'Ainda não há nada na biblioteca desta equipe. Abra um dos seus recursos e escolha “Adicionar à biblioteca da equipe”.',
-    fr: "Rien dans la bibliothèque de cette équipe pour l'instant. Ouvrez une de vos ressources et choisissez « Ajouter à la bibliothèque de l'équipe »."
+      'Ainda não há nada na biblioteca desta equipe. Envie um recurso aqui, ou abra um dos seus recursos e escolha “Adicionar à biblioteca da equipe”.',
+    fr: "Rien dans la bibliothèque de cette équipe pour l'instant. Importez une ressource ici, ou ouvrez une de vos ressources et choisissez « Ajouter à la bibliothèque de l'équipe »."
   },
   teamLibraryAddTo: {
     en: 'Add to team library',
@@ -2055,6 +2055,28 @@ const SHARED_MESSAGES = {
     es: 'Algo salió mal con la biblioteca del equipo. Inténtalo de nuevo.',
     'pt-BR': 'Algo deu errado com a biblioteca da equipe. Tente novamente.',
     fr: "Un problème est survenu avec la bibliothèque de l'équipe. Veuillez réessayer."
+  },
+
+  teamSceneNeedsTeamAsset: {
+    en: "This scene belongs to a team: it can only use assets from the team's library. Add the asset to the team library first.",
+    es: 'Esta escena pertenece a un equipo: solo puede usar recursos de la biblioteca del equipo. Primero añade el recurso a la biblioteca del equipo.',
+    'pt-BR':
+      'Esta cena pertence a uma equipe: ela só pode usar recursos da biblioteca da equipe. Primeiro adicione o recurso à biblioteca da equipe.',
+    fr: "Cette scène appartient à une équipe : elle ne peut utiliser que des ressources de la bibliothèque de l'équipe. Ajoutez d'abord la ressource à la bibliothèque de l'équipe."
+  },
+  teamSceneUsesTeamLibrary: {
+    en: "This scene belongs to {team}: only assets from {team}'s library can be placed in it. Open an asset and choose “Add to team library” to use it here.",
+    es: 'Esta escena pertenece a {team}: solo se pueden colocar recursos de la biblioteca de {team}. Abre un recurso y elige “Añadir a la biblioteca del equipo” para usarlo aquí.',
+    'pt-BR':
+      'Esta cena pertence a {team}: só recursos da biblioteca de {team} podem ser colocados nela. Abra um recurso e escolha “Adicionar à biblioteca da equipe” para usá-lo aqui.',
+    fr: "Cette scène appartient à {team} : seules les ressources de la bibliothèque de {team} peuvent y être placées. Ouvrez une ressource et choisissez « Ajouter à la bibliothèque de l'équipe » pour l'utiliser ici."
+  },
+  teamSceneAssetNotInLibrary: {
+    en: "This asset isn't in the team's library, so other members may not see it. Open Details and add it to the team library: the team's copy will take its place.",
+    es: 'Este recurso no está en la biblioteca del equipo, así que otros miembros podrían no verlo. Abre Detalles y añádelo a la biblioteca del equipo: la copia del equipo ocupará su lugar.',
+    'pt-BR':
+      'Este recurso não está na biblioteca da equipe, então outros membros podem não vê-lo. Abra Detalhes e adicione-o à biblioteca da equipe: a cópia da equipe vai substituí-lo.',
+    fr: "Cette ressource n'est pas dans la bibliothèque de l'équipe, d'autres membres risquent de ne pas la voir. Ouvrez Détails et ajoutez-la à la bibliothèque de l'équipe : la copie de l'équipe prendra sa place."
   },
 
   // Team AI token wallets (#1267 Phase 3), in the token card.

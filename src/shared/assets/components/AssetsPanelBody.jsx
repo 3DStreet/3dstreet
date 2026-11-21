@@ -93,7 +93,10 @@ const AssetsPanelBody = ({
   onUpgrade,
   // The team library to show first (#1267 Phase 4), e.g. the open team
   // scene's team; null = the user's own assets.
-  defaultLibrary = null
+  defaultLibrary = null,
+  // Editor: the open scene's team (null = personal scene). A team scene uses
+  // only its team's assets, so other libraries aren't placeable there.
+  sceneOrgId = null
 }) => {
   const personalState = useAssets();
   const t = useSharedMessages();
@@ -106,6 +109,13 @@ const AssetsPanelBody = ({
   const library = teams.some((org) => org.orgId === wanted) ? wanted : null;
   const teamState = useTeamAssets(library);
   const isTeamLibrary = !!library;
+  const libraryTeam = teams.find((org) => org.orgId === library) || null;
+  // Uploading into a team library takes a seat in it (viewers only look).
+  const canUploadHere =
+    !isTeamLibrary || ['owner', 'admin', 'member'].includes(libraryTeam?.role);
+  // In a team scene, only that team's library can be placed.
+  const placeableHere = placeable && (!sceneOrgId || library === sceneOrgId);
+  const sceneTeam = teams.find((org) => org.orgId === sceneOrgId) || null;
   const assetsState = isTeamLibrary
     ? { ...teamState, isLoggedIn: personalState.isLoggedIn }
     : personalState;
@@ -201,15 +211,17 @@ const AssetsPanelBody = ({
     input.onchange = async (event) => {
       const file = event.target.files?.[0];
       if (!file) return;
+      // Into the library on screen: the user's own or a team's.
+      const target = { orgId: library };
       const handler =
         onUpload ||
         ((f) =>
-          sharedUploadAsset(f).then((res) => {
+          sharedUploadAsset(f, target).then((res) => {
             if (!res.ok && res.error) {
               onNotification?.(res.error, 'error');
             }
           }));
-      await handler(file);
+      await handler(file, target);
     };
     input.click();
   };
@@ -278,9 +290,7 @@ const AssetsPanelBody = ({
           {hasMore ? '+' : ''}{' '}
           {filteredItems.length === 1 ? t('itemSingular') : t('itemPlural')}
         </span>
-        {/* A team library is filled from members' own assets (Add to
-            team library), never by uploading into it directly. */}
-        {!isTeamLibrary && (
+        {canUploadHere && (
           <div className={styles.toolbarActions}>
             <button
               type="button"
@@ -294,27 +304,30 @@ const AssetsPanelBody = ({
                   getUploadStageLabel(t, uploadStatus) || t('uploading')
                 : t('upload')}
             </button>
-            <button
-              type="button"
-              className={styles.refreshButton}
-              onClick={() => reloadItems()}
-              aria-label={t('refreshAssets')}
-              title={t('refreshAssets')}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {/* A team library updates live. */}
+            {!isTeamLibrary && (
+              <button
+                type="button"
+                className={styles.refreshButton}
+                onClick={() => reloadItems()}
+                aria-label={t('refreshAssets')}
+                title={t('refreshAssets')}
               >
-                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                </svg>
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -414,6 +427,11 @@ const AssetsPanelBody = ({
           </div>
         </div>
       )}
+      {placeable && sceneOrgId && library !== sceneOrgId && (
+        <div className={styles.usageRow}>
+          {t('teamSceneUsesTeamLibrary', { team: sceneTeam?.name || '' })}
+        </div>
+      )}
       <div className={styles.scrollArea}>
         <AssetsContent
           gallery={filteredAssetsState}
@@ -436,7 +454,7 @@ const AssetsPanelBody = ({
           onUseForVideo={onUseForVideo}
           onFocusScene={onFocusScene}
           onNotification={onNotification}
-          placeable={placeable}
+          placeable={placeableHere}
           onPlaceAsset={onPlaceAsset}
         />
         {isLoadingMore && (

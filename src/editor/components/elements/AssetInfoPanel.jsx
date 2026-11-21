@@ -25,6 +25,9 @@ import {
 import { signIn } from '../../api';
 import { openInGenerator } from '@/editor/lib/asset-modal-handlers.js';
 import useStore from '@/store.js';
+import { assetsService, teamAssetOwner, teamIdOfOwner } from '@shared/assets';
+import { useAuthContext } from '@shared/contexts';
+import { assetAllowedInScene } from '@/editor/lib/asset-upload/teamSceneAssets.js';
 import { Button } from './Button';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { formatNumber } from '@shared/utils/format';
@@ -46,11 +49,23 @@ const AssetInfoPanel = ({ entity }) => {
   const state = useAssetUploadStatus(entity);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const sceneOrgId = useStore((s) => s.sceneOrgId) || null;
+  const { currentUser } = useAuthContext();
   if (!state) return null;
 
   const meta = STATUS_LABELS[state.status] || STATUS_LABELS.uploaded;
   const sizeStr = state.sizeBytes ? formatBytes(state.sizeBytes) : '';
   const { isOwned } = state;
+  // A team scene uses only its team's assets (#1267 Phase 4): Replace picks
+  // from the team's library, and a personal asset here is flagged.
+  const assetTeamName =
+    (currentUser?.orgs || []).find(
+      (org) => org.orgId === teamIdOfOwner(state.ownerUid)
+    )?.name || '';
+  const notTeamAsset =
+    !!sceneOrgId &&
+    !!state.ownerUid &&
+    !assetAllowedInScene(state.ownerUid, sceneOrgId);
 
   // Upload blocked by the plan's storage quota (#1644). The upload slot
   // keeps the original File, so after a Pro upgrade the same Retry button
@@ -241,10 +256,18 @@ const AssetInfoPanel = ({ entity }) => {
                       id: 'assetInfo.ownershipYours',
                       defaultMessage: 'your cloud'
                     })
-                  : intl.formatMessage({
-                      id: 'assetInfo.ownershipNotOwned',
-                      defaultMessage: 'not owned by you'
-                    }),
+                  : teamIdOfOwner(state.ownerUid)
+                    ? intl.formatMessage(
+                        {
+                          id: 'assetInfo.ownershipTeam',
+                          defaultMessage: "{team}'s library"
+                        },
+                        { team: assetTeamName }
+                      )
+                    : intl.formatMessage({
+                        id: 'assetInfo.ownershipNotOwned',
+                        defaultMessage: 'not owned by you'
+                      }),
                 assetIdShort: state.assetId.slice(0, 8)
               }}
             />
@@ -299,11 +322,17 @@ const AssetInfoPanel = ({ entity }) => {
           {state.originalFilename}
         </div>
       )}
+      {notTeamAsset && (
+        <div style={{ marginTop: 6, color: '#f0b429', fontSize: 11 }}>
+          {t('teamSceneAssetNotInLibrary')}
+        </div>
+      )}
       {pickerOpen && (
         <AssetPickerModal
           type={replaceType}
           title={replaceTitle}
           excludeAssetId={state.assetId}
+          orgId={sceneOrgId || undefined}
           onConfirm={confirmReplace}
           onCancel={() => setPickerOpen(false)}
           onSignIn={() => signIn()}
@@ -327,6 +356,18 @@ const AssetInfoPanel = ({ entity }) => {
               copy
             )
           }
+          // Added to this team scene's library: the team's copy takes its
+          // place in the scene.
+          onAddedToTeam={async ({ orgId, assetId }) => {
+            if (orgId !== sceneOrgId) return;
+            const owner = teamAssetOwner(orgId);
+            const teamAsset = await assetsService.getAsset(assetId, owner);
+            if (!teamAsset) return;
+            replaceCloudAssetInScene(
+              { assetId: state.assetId, ownerUid: state.ownerUid },
+              { ...teamAsset, userId: owner }
+            );
+          }}
           onUseForGenerator={(item) => openInGenerator(item, 'image')}
           onUseForVideo={(item) => openInGenerator(item, 'video')}
         />

@@ -38,6 +38,8 @@ const TeamLibraryActions = ({
   addedByName,
   // The Owner row of the models' details already names the team.
   showLocation = true,
+  // Called with { orgId, assetId } of the new team asset after an add.
+  onAdded,
   onRemoved
 }) => {
   const { currentUser } = useAuthContext();
@@ -195,10 +197,14 @@ const TeamLibraryActions = ({
           disabled={!!status?.running}
           title={t('teamLibraryAddHint')}
           onClick={async () => {
+            let added = null;
             const ok = await run(
-              () => addAssetToTeam(selectedOrgId, assetId),
+              async () => {
+                added = await addAssetToTeam(selectedOrgId, assetId);
+              },
               t('teamLibraryAdded', { team: selectedTeam.name })
             );
+            if (ok && added) onAdded?.(added);
             if (ok) {
               posthog.capture('team_asset_added', {
                 org_id: selectedOrgId,
@@ -225,6 +231,7 @@ TeamLibraryActions.propTypes = {
   addedBy: PropTypes.string,
   addedByName: PropTypes.string,
   showLocation: PropTypes.bool,
+  onAdded: PropTypes.func,
   onRemoved: PropTypes.func
 };
 

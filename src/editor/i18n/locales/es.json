@@ -126,6 +126,7 @@
   "assetInfo.assetSource": "Origen del recurso: {ownership} · {assetIdShort}…",
   "assetInfo.details": "Detalles",
   "assetInfo.ownershipNotOwned": "no te pertenece",
+  "assetInfo.ownershipTeam": "biblioteca de {team}",
   "assetInfo.ownershipYours": "tu nube",
   "assetInfo.upgradeStorage": "Mejora tu plan para {storage} de almacenamiento",
   "buildArea.allowRotate": "Permitir rotar",

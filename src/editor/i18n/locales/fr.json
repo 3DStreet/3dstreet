@@ -126,6 +126,7 @@
   "assetInfo.assetSource": "Source de l'actif : {ownership} · {assetIdShort}…",
   "assetInfo.details": "Détails",
   "assetInfo.ownershipNotOwned": "ne vous appartient pas",
+  "assetInfo.ownershipTeam": "bibliothèque de {team}",
   "assetInfo.ownershipYours": "votre cloud",
   "assetInfo.upgradeStorage": "Passez à {storage} de stockage",
   "buildArea.allowRotate": "Autoriser la rotation",

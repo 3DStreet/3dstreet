@@ -30,7 +30,17 @@
 import posthog from 'posthog-js';
 import { httpsCallable } from 'firebase/functions';
 import { auth, functions } from '@shared/services/firebase.js';
-import { assetsService, ASSET_TYPES, ASSET_CATEGORIES } from '@shared/assets';
+import {
+  assetsService,
+  teamAssetOwner,
+  ASSET_TYPES,
+  ASSET_CATEGORIES
+} from '@shared/assets';
+import {
+  assetAllowedInScene,
+  sceneTeamId,
+  teamSceneAssetMessage
+} from '@/editor/lib/asset-upload/teamSceneAssets.js';
 import { getServedUrl } from '@shared/assets/utils.js';
 import useCurrentUploadStore from '@shared/assets/state/currentUploadStore.js';
 import {
@@ -292,6 +302,10 @@ async function createPlaceholderEntity(file, position, kind, ticket) {
  */
 export function placeCloudAsset(asset, position, ticket = beginPlacement()) {
   if (!asset?.assetId || !getServedUrl(asset)) return;
+  if (!assetAllowedInScene(asset.ownerUid)) {
+    notifyError(teamSceneAssetMessage());
+    return;
+  }
   const isMesh = asset.type === 'mesh';
   const isSplat = asset.type === 'splat';
   const servedUrl = getServedUrl(asset);
@@ -338,11 +352,14 @@ export function placeCloudAsset(asset, position, ticket = beginPlacement()) {
   executePlacedCreate(definition, { ticket });
 }
 
-async function preflightQuota(proposedBytes) {
+async function preflightQuota(proposedBytes, orgId = null) {
   if (!auth.currentUser) return { allowed: false, reason: 'not_signed_in' };
   try {
     const callable = httpsCallable(functions, 'getUploadQuota');
-    const { data } = await callable({ proposedBytes });
+    const { data } = await callable({
+      proposedBytes,
+      ...(orgId && { orgId })
+    });
     return data;
   } catch (err) {
     console.warn(
@@ -364,13 +381,19 @@ async function preflightQuota(proposedBytes) {
  *   from groups/groupPlacement.js `beginPlacement`, taken when the operation
  *   began (a file picker takes it on the click that opened it). Taken now,
  *   before anything is awaited, when not given.
+ * @param {object} [options]
+ * @param {string|null} [options.orgId] - The library the asset goes to:
+ *   a team's (#1267 Phase 4) or the user's own (null). Defaults to the open
+ *   scene's team: a team scene only uses its team's assets
+ *   (docs/team-assets.md).
  * @returns {Promise<{ entity: Element, assetId: string | null, kind: string }>}
  */
 export async function uploadAndPlaceAsset(
   file,
   position,
   existingEntity,
-  ticket = existingEntity ? null : beginPlacement()
+  ticket = existingEntity ? null : beginPlacement(),
+  options = {}
 ) {
   const kind = getAssetKind(file);
   if (!kind) {
@@ -528,8 +551,13 @@ export async function uploadAndPlaceAsset(
   }
 
   const userId = auth.currentUser.uid;
+  const orgId =
+    options.orgId !== undefined ? options.orgId : sceneTeamId() || null;
+  // The owner key written on the entity (assetOwner.js): a team asset
+  // belongs to the team.
+  const owner = orgId ? teamAssetOwner(orgId) : userId;
 
-  const quota = await preflightQuota(file.size);
+  const quota = await preflightQuota(file.size, orgId);
   if (quota && quota.allowed === false && !quota.soft) {
     if (quota.reason === 'file_too_large') {
       const fileLimitMb = Math.round((quota.perFileLimit || 0) / 1000 / 1000);
@@ -684,7 +712,10 @@ export async function uploadAndPlaceAsset(
         signal,
         optimizedFile: optimizedBlob,
         optimizationMetadata,
-        attribution: storedAttribution
+        attribution: storedAttribution,
+        orgId,
+        addedByName:
+          auth.currentUser.displayName || auth.currentUser.email || null
       }
     );
     pendingAssetId = assetId;
@@ -697,7 +728,7 @@ export async function uploadAndPlaceAsset(
         if (!jpegBlob) return;
         import('@shared/asset-upload/captureThumbnail.js').then(
           ({ uploadCapturedThumbnail }) => {
-            uploadCapturedThumbnail(assetId, userId, jpegBlob);
+            uploadCapturedThumbnail(assetId, owner, jpegBlob);
           }
         );
       });
@@ -711,7 +742,7 @@ export async function uploadAndPlaceAsset(
     // leaving it on "Uploading 100%" while the card says Finishing (#1989).
     setUpload(entityId, { status: 'finishing', progress: 100 });
 
-    const asset = await assetsService.getAsset(assetId, userId);
+    const asset = await assetsService.getAsset(assetId, owner);
     // Prefer the optimized GLB when available; fall back to the original source.
     const cloudUrl = getServedUrl(asset);
     if (!cloudUrl) {
@@ -748,7 +779,7 @@ export async function uploadAndPlaceAsset(
       finishIfItReturns(entityId, [
         [modelComponent, modelValue],
         ['data-asset-id', assetId],
-        ['data-asset-owner-uid', userId]
+        ['data-asset-owner-uid', owner]
       ]);
       if (blobUrl) URL.revokeObjectURL(blobUrl);
       clearUpload(entityId);
@@ -797,7 +828,7 @@ export async function uploadAndPlaceAsset(
           {
             entity: placed,
             component: 'data-asset-owner-uid',
-            value: userId,
+            value: owner,
             noSelectEntity: true
           }
         ],

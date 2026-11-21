@@ -5,7 +5,8 @@
  * Unlike useAssets, which pages through all types for the gallery, this asks
  * Firestore for the one type (composite index on type, deleted, createdAt) and
  * loads all of it before reporting ready, so the grid appears once and can be
- * sorted by any field in memory. Items arrive newest first.
+ * sorted by any field in memory. Items arrive newest first. With `orgId`,
+ * the assets of that team's library instead (#1267 Phase 4).
  */
 
 import { useContext, useEffect, useState } from 'react';
@@ -14,10 +15,11 @@ import { AuthContext } from '@shared/contexts';
 import { auth } from '@shared/services/firebase.js';
 import assetsService from '../services/assetsService.js';
 import { assetToDisplayItem } from './useAssets.js';
+import { teamAssetOwner } from '../assetOwner.js';
 
 const PAGE_SIZE = 200;
 
-const useAssetsOfType = (type) => {
+const useAssetsOfType = (type, orgId = null) => {
   // The generator mounts outside AuthProvider, so fall back to the SDK's user
   // (see useAssets).
   const contextUser = useContext(AuthContext)?.currentUser;
@@ -26,6 +28,7 @@ const useAssetsOfType = (type) => {
   );
   useEffect(() => onAuthStateChanged(auth, setFirebaseUser), []);
   const userId = (contextUser || firebaseUser)?.uid || null;
+  const owner = orgId ? teamAssetOwner(orgId) : userId;
 
   const [state, setState] = useState({
     items: [],
@@ -46,7 +49,7 @@ const useAssetsOfType = (type) => {
         let cursor = null;
         let hasMore = true;
         while (hasMore) {
-          const page = await assetsService.getAssetsPage(userId, {
+          const page = await assetsService.getAssetsPage(owner, {
             filters: { type },
             pageSize: PAGE_SIZE,
             cursor
@@ -71,7 +74,7 @@ const useAssetsOfType = (type) => {
     return () => {
       cancelled = true;
     };
-  }, [userId, type]);
+  }, [userId, owner, type]);
 
   return { ...state, isLoggedIn: !!userId };
 };

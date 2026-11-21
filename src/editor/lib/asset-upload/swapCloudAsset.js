@@ -21,6 +21,10 @@
  */
 
 import { getServedUrl } from '@shared/assets';
+import {
+  assetAllowedInScene,
+  teamSceneAssetMessage
+} from './teamSceneAssets.js';
 
 /**
  * The cloud asset type an entity renders, read from its components rather
@@ -89,6 +93,13 @@ export function replaceCloudAssetInScene(source, target, { label } = {}) {
   const targetId = target?.assetId ?? target?.id;
   const targetOwner = target?.userId ?? target?.ownerUid;
   if (!source?.assetId || !source?.ownerUid || !targetId || !targetOwner) {
+    return 0;
+  }
+  // A team scene uses only its team's assets (#1267 Phase 4): never swap a
+  // personal (or another team's) asset in. Callers report 0 as "nothing
+  // repointed"; the message says why.
+  if (!assetAllowedInScene(targetOwner)) {
+    STREET.notify.errorMessage(teamSceneAssetMessage());
     return 0;
   }
   const servedUrl = getServedUrl(target);
