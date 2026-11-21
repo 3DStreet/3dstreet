@@ -46,7 +46,7 @@ export const Save = ({ currentUser }) => {
     isSavingScene,
     doSaveAs,
     doPromptTitle,
-    setModal,
+    openSignInToSave,
     saveScene,
     postSaveScene
   } = useStore();
@@ -98,7 +98,7 @@ export const Save = ({ currentUser }) => {
   }, [isSavingScene]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUnsignedSave = () => {
-    setModal('signin');
+    openSignInToSave();
   };
 
   return (

@@ -23,6 +23,7 @@ const SignInModal = () => {
   // returnToPreviousModal falls through to setting modal=null. So this is
   // safe to use across all entry points.
   const onClose = () => {
+    useStore.setState({ saveAfterSignIn: false });
     returnToPreviousModal();
   };
 
@@ -39,9 +40,12 @@ const SignInModal = () => {
   };
 
   const handleSuccess = async () => {
-    // Save scene after successful sign-in if there's an active scene
-    if (STREET.utils.getCurrentSceneId() !== null) {
-      await saveSceneWithScreenshot(auth.currentUser, true);
+    // Save the scene only when sign-in was opened to save or share it
+    // (openSignInToSave). saveScene saves a copy when the user isn't its
+    // author, and a new scene when it was never saved.
+    if (useStore.getState().saveAfterSignIn) {
+      useStore.setState({ saveAfterSignIn: false });
+      await saveSceneWithScreenshot(auth.currentUser, false);
     }
   };
 

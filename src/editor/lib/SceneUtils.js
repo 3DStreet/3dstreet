@@ -281,7 +281,7 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   });
 
   if (!currentUser) {
-    useStore.getState().setModal('signin');
+    useStore.getState().openSignInToSave();
     return;
   }
 
