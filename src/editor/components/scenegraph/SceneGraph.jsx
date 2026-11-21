@@ -195,7 +195,22 @@ class SceneGraph extends React.Component {
     );
     this.unsubscribePanels?.();
     Events.off('groupscopechanged', this.onGroupScopeChanged);
+    // A pending scroll must not fire after the panel is gone (it reads
+    // `document`, which a test environment has already torn down).
+    this.scrollTimers.forEach(clearTimeout);
+    this.scrollTimers.clear();
   }
+
+  // Pending scrollToRowSoon / scrollToBlockSoon timers, cleared on unmount.
+  scrollTimers = new Set();
+
+  scrollSoon = (fn) => {
+    const id = setTimeout(() => {
+      this.scrollTimers.delete(id);
+      fn();
+    }, 100);
+    this.scrollTimers.add(id);
+  };
 
   // The open groups as elements, outermost first, read from the scope
   // controller each time rather than kept: a moved group keeps its id in the
@@ -284,7 +299,7 @@ class SceneGraph extends React.Component {
   // The row is looked up then, not now: the list may not be built yet, or may
   // have been rebuilt meanwhile.
   scrollToRowSoon = (entity, shouldScroll = () => true) => {
-    setTimeout(() => {
+    this.scrollSoon(() => {
       if (!shouldScroll()) return;
       const i = this.state.entities.findIndex((o) => o.entity === entity);
       const node = i >= 0 ? document.getElementById('sgnode' + i) : null;
@@ -298,14 +313,14 @@ class SceneGraph extends React.Component {
       if (!isVisible) {
         node.scrollIntoView({ behavior: 'smooth' });
       }
-    }, 100);
+    });
   };
 
   // Like scrollToRowSoon, for a group's row and the rows listed under it:
   // scroll as little as brings the whole block into view, or, when it is
   // taller than the list, bring its top row to the top.
   scrollToBlockSoon = (group, shouldScroll = () => true) => {
-    setTimeout(() => {
+    this.scrollSoon(() => {
       if (!shouldScroll()) return;
       const nodes = [];
       this.state.entities.forEach((o, i) => {
@@ -328,7 +343,7 @@ class SceneGraph extends React.Component {
       } else {
         last.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
-    }, 100);
+    });
   };
 
   // A click on a row opens the selected group or selects the row (see

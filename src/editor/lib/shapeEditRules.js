@@ -442,6 +442,28 @@ export function validateVertexDelete(points, closed, index) {
   return true;
 }
 
+// --- Closing an open shape by joining its ends --------------------------
+
+// Dragging one end of an open polyline onto the other end closes it: the
+// dragged vertex is dropped and the rest become a ring. The other end's index
+// when vertex `index` is an end and the join would leave a ring of three or
+// more; -1 otherwise (a closed shape, a middle vertex, or a polyline too short
+// to close this way, where the drop stays an ordinary refused move).
+export function closeByJoiningTarget(vertexCount, closed, index) {
+  if (closed || vertexCount < 4) return -1;
+  if (index === 0) return vertexCount - 1;
+  if (index === vertexCount - 1) return 0;
+  return -1;
+}
+
+// Whether the ring left after dropping vertex `index` is a valid closed shape.
+export function validateCloseByJoining(points, index) {
+  const ring = points.filter((_, i) => i !== index);
+  return (
+    ring.length >= 3 && !ringSelfIntersects(ring) && ringEnclosesArea(ring)
+  );
+}
+
 // --- CSS2D draw order --------------------------------------------------
 
 // The CSS2D layer has an ordering of its own, unrelated to the scene's: the
@@ -535,6 +557,11 @@ export function trashButtonOffset(
 // the only symptom is the button sitting a little closer to or further from the
 // label it belongs to.
 const CAPTION_HALF_PX = 10;
+// How far below its corner an angle caption's centre sits: it clears a handle
+// drawn at its target size; it does not try to clear a larger, clamped handle
+// or a neighbouring corner.
+export const ANGLE_CAPTION_OFFSET_PX =
+  HANDLE_TARGET_PX + HIT_SLOP_PX + OFFSET_MARGIN_PX + CAPTION_HALF_PX;
 // Anchor centre to button centre. The anchor IS the caption's own point, so the
 // gap is measured from the caption's edge outward.
 const INSERT_OFFSET_PX = CAPTION_HALF_PX + OFFSET_MARGIN_PX + BUTTON_PX / 2;

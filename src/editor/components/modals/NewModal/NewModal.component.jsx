@@ -73,6 +73,10 @@ export const NewModal = () => {
         break;
 
       case 'streetmix':
+        // Cancelled prompt: nothing was cleared, so nothing to save. The
+        // listener can be added after the call because newScene only fires
+        // once the street has loaded.
+        if (!inputStreetmix()) break;
         AFRAME.scenes[0].addEventListener(
           'newScene',
           () => {
@@ -84,7 +88,6 @@ export const NewModal = () => {
           },
           { once: true }
         );
-        inputStreetmix();
         break;
 
       case 'geolocation':

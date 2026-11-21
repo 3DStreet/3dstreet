@@ -8,6 +8,32 @@ import {
 const MODULE_PATH = '../../src/editor/lib/shapeStyle.js';
 const STORAGE_KEY = 'lastShapeStyle';
 
+// The fill-appearance keys' cold-start values, as literals - the defaults a
+// value persisted before they existed picks up.
+const NEW_FILL_DEFAULTS = {
+  fillMaterial: 'solid',
+  fillTint: '#ffffff',
+  fillPattern: 'none',
+  fillPatternOpacity: 100,
+  fillPatternColor: '#ffffff',
+  fillPatternSpacing: 1,
+  fillPatternWidth: 0.15
+};
+
+const ALL_STYLE_KEYS = [
+  'fillColor',
+  'fillMaterial',
+  'fillOpacity',
+  'fillPattern',
+  'fillPatternColor',
+  'fillPatternOpacity',
+  'fillPatternSpacing',
+  'fillPatternWidth',
+  'fillTint',
+  'lineColor',
+  'lineWidth'
+];
+
 // A minimal localStorage double. Real jsdom storage would work for the happy
 // paths, but not for the throwing cases, and the call-count assertions need a
 // spy either way.
@@ -31,20 +57,21 @@ afterEach(() => {
 });
 
 describe('normaliseShapeStyle', () => {
-  it('keeps a complete four-key object unchanged', () => {
-    expect(
-      normaliseShapeStyle({
-        lineColor: '#00ff00',
-        lineWidth: 0.3,
-        fillColor: '#0000ff',
-        fillOpacity: 25
-      })
-    ).toEqual({
+  it('keeps a complete object unchanged', () => {
+    const complete = {
       lineColor: '#00ff00',
       lineWidth: 0.3,
       fillColor: '#0000ff',
-      fillOpacity: 25
-    });
+      fillOpacity: 25,
+      fillMaterial: 'grass',
+      fillTint: '#80c0ff',
+      fillPattern: 'dots',
+      fillPatternOpacity: 0,
+      fillPatternColor: '#ff0000',
+      fillPatternSpacing: 2.5,
+      fillPatternWidth: 0.4
+    };
+    expect(normaliseShapeStyle(complete)).toEqual(complete);
   });
 
   // The migration: a value persisted before the fill keys existed keeps its
@@ -56,19 +83,22 @@ describe('normaliseShapeStyle', () => {
       lineColor: '#00ff00',
       lineWidth: 0.3,
       fillColor: '#ffe600',
-      fillOpacity: 40
+      fillOpacity: 40,
+      ...NEW_FILL_DEFAULTS
     });
     expect(normaliseShapeStyle({ lineColor: '#00ff00' })).toEqual({
       lineColor: '#00ff00',
       lineWidth: 0.15,
       fillColor: '#ffe600',
-      fillOpacity: 40
+      fillOpacity: 40,
+      ...NEW_FILL_DEFAULTS
     });
     expect(normaliseShapeStyle({ lineWidth: 0.3 })).toEqual({
       lineColor: '#ffe600',
       lineWidth: 0.3,
       fillColor: '#ffe600',
-      fillOpacity: 40
+      fillOpacity: 40,
+      ...NEW_FILL_DEFAULTS
     });
   });
 
@@ -151,21 +181,19 @@ describe('normaliseShapeStyle', () => {
     expect(normaliseShapeStyle({ lineWidth: 0 }).lineWidth).toBe(0.05);
   });
 
-  it('returns exactly the four appearance keys, dropping everything else', () => {
+  it('returns exactly the appearance keys, dropping everything else', () => {
     const result = normaliseShapeStyle({
       lineColor: '#00ff00',
       lineWidth: 0.3,
       closed: true,
       selectInside: false,
       updateEvent: 'x',
+      fillAngle: 30,
+      fillOffsetAlong: 1,
+      fillOffsetAcross: -1,
       junk: 1
     });
-    expect(Object.keys(result).sort()).toEqual([
-      'fillColor',
-      'fillOpacity',
-      'lineColor',
-      'lineWidth'
-    ]);
+    expect(Object.keys(result).sort()).toEqual(ALL_STYLE_KEYS);
   });
 
   it('yields the defaults for junk input without throwing', () => {
@@ -181,6 +209,63 @@ describe('normaliseShapeStyle', () => {
     raw.lineColor = '#ff0000';
     expect(result.lineColor).toBe('#00ff00');
   });
+
+  it('normalises the fill keys: lists, clamps and zeros', () => {
+    expect(normaliseShapeStyle({ fillMaterial: 'water' }).fillMaterial).toBe(
+      'solid'
+    );
+    expect(normaliseShapeStyle({ fillMaterial: 'asphalt' }).fillMaterial).toBe(
+      'solid'
+    );
+    expect(normaliseShapeStyle({ fillPattern: 'zigzag' }).fillPattern).toBe(
+      'none'
+    );
+    expect(
+      normaliseShapeStyle({ fillMaterial: 'parking-lot' }).fillMaterial
+    ).toBe('parking-lot');
+    expect(
+      normaliseShapeStyle({ fillPatternOpacity: 0 }).fillPatternOpacity
+    ).toBe(0);
+    expect(
+      normaliseShapeStyle({ fillPatternOpacity: 170 }).fillPatternOpacity
+    ).toBe(100);
+    expect(
+      normaliseShapeStyle({ fillPatternSpacing: 0 }).fillPatternSpacing
+    ).toBe(0.05);
+    expect(normaliseShapeStyle({ fillPatternWidth: -1 }).fillPatternWidth).toBe(
+      0.01
+    );
+    expect(
+      normaliseShapeStyle({ fillPatternSpacing: 'wide' }).fillPatternSpacing
+    ).toBe(1);
+    expect(normaliseShapeStyle({ fillTint: '' }).fillTint).toBe('#ffffff');
+  });
+
+  it('keeps an older stored style and gives it the new fill defaults', () => {
+    expect(
+      normaliseShapeStyle({
+        lineColor: '#00ff00',
+        lineWidth: 0.3,
+        fillColor: '#0000ff',
+        fillOpacity: 25
+      })
+    ).toEqual({
+      lineColor: '#00ff00',
+      lineWidth: 0.3,
+      fillColor: '#0000ff',
+      fillOpacity: 25,
+      ...NEW_FILL_DEFAULTS
+    });
+  });
+
+  // Choosing a texture raises the opacity only through the panel's Material
+  // dropdown; the sticky style never derives one key from another.
+  it('never raises the opacity for a textured material', () => {
+    expect(
+      normaliseShapeStyle({ fillMaterial: 'grass', fillOpacity: 40 })
+        .fillOpacity
+    ).toBe(40);
+  });
 });
 
 describe('readStoredShapeStyle', () => {
@@ -194,7 +279,8 @@ describe('readStoredShapeStyle', () => {
       lineColor: '#00ff00',
       lineWidth: 0.3,
       fillColor: '#ffe600',
-      fillOpacity: 40
+      fillOpacity: 40,
+      ...NEW_FILL_DEFAULTS
     });
   });
 
@@ -269,26 +355,23 @@ describe('getShapeStyle / setShapeStyle', () => {
     expect(storage.getItem).toHaveBeenCalledTimes(1);
   });
 
-  it('persists the normalised four-key value and serves it back', async () => {
+  it('persists the normalised value and serves it back', async () => {
     const storage = makeStorage();
     installStorage(storage);
     const { getShapeStyle, setShapeStyle } = await import(MODULE_PATH);
     setShapeStyle({ lineColor: '#00ff00', lineWidth: '0.3' });
-    expect(getShapeStyle()).toEqual({
+    const expected = {
       lineColor: '#00ff00',
       lineWidth: 0.3,
       fillColor: '#ffe600',
-      fillOpacity: 40
-    });
-    expect(JSON.parse(storage.data[STORAGE_KEY])).toEqual({
-      lineColor: '#00ff00',
-      lineWidth: 0.3,
-      fillColor: '#ffe600',
-      fillOpacity: 40
-    });
+      fillOpacity: 40,
+      ...NEW_FILL_DEFAULTS
+    };
+    expect(getShapeStyle()).toEqual(expected);
+    expect(JSON.parse(storage.data[STORAGE_KEY])).toEqual(expected);
   });
 
-  it('writes only the four appearance keys from a raw shape data object', async () => {
+  it('writes only the appearance keys from a raw shape data object', async () => {
     const storage = makeStorage();
     installStorage(storage);
     const { setShapeStyle } = await import(MODULE_PATH);
@@ -299,14 +382,14 @@ describe('getShapeStyle / setShapeStyle', () => {
       fillOpacity: 25,
       closed: true,
       selectInside: false,
-      updateEvent: ''
+      updateEvent: '',
+      fillAngle: 30,
+      fillOffsetAlong: 1,
+      fillOffsetAcross: -1
     });
-    expect(Object.keys(JSON.parse(storage.data[STORAGE_KEY])).sort()).toEqual([
-      'fillColor',
-      'fillOpacity',
-      'lineColor',
-      'lineWidth'
-    ]);
+    expect(Object.keys(JSON.parse(storage.data[STORAGE_KEY])).sort()).toEqual(
+      ALL_STYLE_KEYS
+    );
   });
 
   it('does not touch storage when the value is unchanged', async () => {
@@ -320,18 +403,32 @@ describe('getShapeStyle / setShapeStyle', () => {
 
   // Every other write test also moves lineColor, so a guard comparing only
   // lineColor would pass them all. One key at a time here, so a guard that
-  // omits ANY of the four swallows that key's write and fails this.
+  // omits ANY of the keys swallows that key's write and fails this.
   const BASE_STYLE = {
     lineColor: '#00ff00',
     lineWidth: 0.3,
     fillColor: '#0000ff',
-    fillOpacity: 25
+    fillOpacity: 25,
+    fillMaterial: 'grass',
+    fillTint: '#80c0ff',
+    fillPattern: 'dots',
+    fillPatternOpacity: 50,
+    fillPatternColor: '#ff0000',
+    fillPatternSpacing: 2.5,
+    fillPatternWidth: 0.4
   };
   const CHANGED = {
     lineColor: '#ff0000',
     lineWidth: 0.7,
     fillColor: '#00ffff',
-    fillOpacity: 70
+    fillOpacity: 70,
+    fillMaterial: 'concrete',
+    fillTint: '#336699',
+    fillPattern: 'stripes',
+    fillPatternOpacity: 0,
+    fillPatternColor: '#00ff00',
+    fillPatternSpacing: 3,
+    fillPatternWidth: 0.2
   };
 
   for (const key of Object.keys(BASE_STYLE)) {
@@ -383,9 +480,37 @@ describe('shapeStyleSeedFromUpdate', () => {
     lineWidth: 0.4,
     fillColor: '#0000ff',
     fillOpacity: 25,
+    fillMaterial: 'grass',
+    fillTint: '#80c0ff',
+    fillPattern: 'stripes',
+    fillPatternOpacity: 60,
+    fillPatternColor: '#ff00ff',
+    fillPatternSpacing: 2.5,
+    fillPatternWidth: 0.4,
+    fillAngle: 30,
+    fillOffsetAlong: 0.37,
+    fillOffsetAcross: -1.2,
     closed: true,
     selectInside: true,
     updateEvent: ''
+  };
+
+  // The appearance values of `fullData`, i.e. what any seeding call on it must
+  // return. Spelled out rather than asserted as "not null", which would also
+  // pass against `undefined` or a partial object. Angle and Offset are not in
+  // it: they belong to each shape.
+  const fullSeed = {
+    lineColor: '#ff0000',
+    lineWidth: 0.4,
+    fillColor: '#0000ff',
+    fillOpacity: 25,
+    fillMaterial: 'grass',
+    fillTint: '#80c0ff',
+    fillPattern: 'stripes',
+    fillPatternOpacity: 60,
+    fillPatternColor: '#ff00ff',
+    fillPatternSpacing: 2.5,
+    fillPatternWidth: 0.4
   };
 
   // The headline rule: the seed is the WHOLE shape, read off the entity, not
@@ -397,52 +522,38 @@ describe('shapeStyleSeedFromUpdate', () => {
       entityWith(fullData)
     );
     expect(seed.lineColor).toBe('#ff0000');
-    expect(seed).toEqual({
-      lineColor: '#ff0000',
-      lineWidth: 0.4,
-      fillColor: '#0000ff',
-      fillOpacity: 25
-    });
+    expect(seed).toEqual(fullSeed);
   });
 
-  it('returns exactly the four appearance keys, in a fresh object', () => {
+  it('returns exactly the appearance keys, in a fresh object', () => {
     const data = { ...fullData };
     const seed = shapeStyleSeedFromUpdate(
       { component: 'shape', property: 'lineColor', value: '#ff0000' },
       entityWith(data)
     );
-    expect(Object.keys(seed).sort()).toEqual([
-      'fillColor',
-      'fillOpacity',
-      'lineColor',
-      'lineWidth'
-    ]);
+    expect(Object.keys(seed).sort()).toEqual(ALL_STYLE_KEYS);
     expect(seed).not.toBe(data);
   });
 
-  // The four appearance values of `fullData`, i.e. what any seeding call on it
-  // must return. Spelled out rather than asserted as "not null", which would
-  // also pass against `undefined` or a partial object.
-  const fullSeed = {
-    lineColor: '#ff0000',
-    lineWidth: 0.4,
-    fillColor: '#0000ff',
-    fillOpacity: 25
-  };
-
-  it('seeds on each of the four appearance properties', () => {
-    for (const property of [
-      'lineColor',
-      'lineWidth',
-      'fillColor',
-      'fillOpacity'
-    ]) {
+  it('seeds on each of the appearance properties', () => {
+    for (const property of ALL_STYLE_KEYS) {
       expect(
         shapeStyleSeedFromUpdate(
           { component: 'shape', property },
           entityWith(fullData)
         )
       ).toEqual(fullSeed);
+    }
+  });
+
+  it('seeds a pattern edit without the shape\u2019s Angle or Offset', () => {
+    const seed = shapeStyleSeedFromUpdate(
+      { component: 'shape', property: 'fillPattern', value: 'stripes' },
+      entityWith(fullData)
+    );
+    expect(seed).toEqual(fullSeed);
+    for (const key of ['fillAngle', 'fillOffsetAlong', 'fillOffsetAcross']) {
+      expect(key in seed).toBe(false);
     }
   });
 
@@ -474,7 +585,14 @@ describe('shapeStyleSeedFromUpdate', () => {
   });
 
   it('does not seed on non-appearance properties of shape', () => {
-    for (const property of ['closed', 'selectInside', 'updateEvent']) {
+    for (const property of [
+      'closed',
+      'selectInside',
+      'updateEvent',
+      'fillAngle',
+      'fillOffsetAlong',
+      'fillOffsetAcross'
+    ]) {
       expect(
         shapeStyleSeedFromUpdate(
           { component: 'shape', property },

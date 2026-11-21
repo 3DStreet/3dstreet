@@ -90,6 +90,12 @@ const REPLICATE_MODELS = {
   // ~$0.14/image at 2K, ~$0.24 at 4K (#1887).
   'nano-banana-pro': {
     name: 'Nano Banana Pro',
+    // Call the official model endpoint, not a pinned version: from 2026-11-16
+    // every version-pinned call (old and latest hash) failed upstream with
+    // "RefreshError: invalid_grant: Invalid JWT Signature" while the model
+    // endpoint kept working. `modelName` wins over `version` in replicate.js;
+    // `version` stays as the lookup key for clients that send model_version.
+    modelName: 'google/nano-banana-pro',
     version: '99256cc418d9ac41854575e2f1c8846ce2defd0c0fb6ff2d5cbc3c826be75bc8',
     inputStyle: 'nano-banana',
     resolution: '2K',

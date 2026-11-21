@@ -598,6 +598,13 @@ const generateReplicateVideo = functions
       throw new functions.https.HttpsError('invalid-argument', `Unsupported model: ${model_name}`);
     }
 
+    // Token pricing has exactly two tiers (5s and 10s), and the picker only
+    // offers those two. Reject anything else so a crafted request can't get a
+    // longer video billed at the 5s price.
+    if (duration_seconds !== 5 && duration_seconds !== 10) {
+      throw new functions.https.HttpsError('invalid-argument', `Unsupported duration: ${duration_seconds}. Use 5 or 10 seconds.`);
+    }
+
     // Per-model token costs based on duration
     const VIDEO_TOKEN_COSTS = {
       'kwaivgi/kling-v3-video': { tokenCost5s: 20, tokenCost10s: 40 },

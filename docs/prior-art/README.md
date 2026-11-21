@@ -11,6 +11,11 @@ records what the project is, its license, the exact commit we read, and which
 dependencies: nothing here is imported, and copying code from any of them
 needs a license check first (our code is AGPL-3.0).
 
+#### To add: 
+* GMNS - https://zephyr-data-specs.github.io/GMNS/spec/node/
+* OpenSidewalks - https://tcat.cs.washington.edu/opensidewalks/
+
+
 ## Index
 
 | Project | What it is | License | Read at | Feeds |

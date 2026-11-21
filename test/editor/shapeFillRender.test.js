@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   FILL_LIFT_M,
   FILL_ORDER_BASE,
+  fillAnyPainted,
+  fillLayerState,
+  fillMaterialPainted,
   fillPaintOrder,
-  fillRenderState
+  fillPatternPainted,
+  layerOpacityState,
+  wantedPatternKey,
+  wantedSurfaceId
 } from '../../src/aframe-components/shapeFillRender.js';
 import { MARKING_SURFACE_OFFSET } from '../../src/tested/street-segment-utils.js';
 
@@ -21,15 +27,15 @@ const LOWEST_WEBGL_OVERLAY = 100;
 
 const STREET = 0;
 
-describe('fillRenderState', () => {
+describe('layerOpacityState', () => {
   it('reports 0% as unpainted', () => {
-    expect(fillRenderState(0)).toEqual({ opacity: 0, painted: false });
+    expect(layerOpacityState(0)).toEqual({ opacity: 0, painted: false });
   });
 
   it('reports anything above 0 as painted', () => {
-    expect(fillRenderState(0.5)).toMatchObject({ painted: true });
-    expect(fillRenderState(99)).toEqual({ opacity: 0.99, painted: true });
-    expect(fillRenderState(100)).toEqual({ opacity: 1, painted: true });
+    expect(layerOpacityState(0.5)).toMatchObject({ painted: true });
+    expect(layerOpacityState(99)).toEqual({ opacity: 0.99, painted: true });
+    expect(layerOpacityState(100)).toEqual({ opacity: 1, painted: true });
   });
 
   it('has no `opaque` flag: 100% is not a distinct render state', () => {
@@ -37,8 +43,8 @@ describe('fillRenderState', () => {
     // is what stops two fills depth-fighting. A reader reintroducing an
     // `opaque` flag should find this red rather than a silently unused field.
     // Probed at 100%, which is the only opacity the flag ever described.
-    expect(fillRenderState(100)).not.toHaveProperty('opaque');
-    expect(Object.keys(fillRenderState(100)).sort()).toEqual([
+    expect(layerOpacityState(100)).not.toHaveProperty('opaque');
+    expect(Object.keys(layerOpacityState(100)).sort()).toEqual([
       'opacity',
       'painted'
     ]);
@@ -47,16 +53,16 @@ describe('fillRenderState', () => {
   it('clamps an out-of-range value rather than trusting the schema bounds', () => {
     // The schema min/max bind the properties panel only; setAttribute and a
     // hand-edited scene can both deliver anything.
-    expect(fillRenderState(170)).toEqual({ opacity: 1, painted: true });
-    expect(fillRenderState(-20)).toEqual({ opacity: 0, painted: false });
+    expect(layerOpacityState(170)).toEqual({ opacity: 1, painted: true });
+    expect(layerOpacityState(-20)).toEqual({ opacity: 0, painted: false });
   });
 
   it('treats a non-numeric value as unpainted', () => {
-    expect(fillRenderState(NaN)).toEqual({ opacity: 0, painted: false });
+    expect(layerOpacityState(NaN)).toEqual({ opacity: 0, painted: false });
   });
 
   it('accepts the string a hand-edited scene delivers', () => {
-    expect(fillRenderState('40')).toEqual({ opacity: 0.4, painted: true });
+    expect(layerOpacityState('40')).toEqual({ opacity: 0.4, painted: true });
   });
 });
 
@@ -220,5 +226,147 @@ describe('FILL_LIFT_M', () => {
       fillPaintOrder(0, 50) - FILL_ORDER_BASE,
       15
     );
+  });
+});
+
+// One table for both layers' paintedness, each row with its LITERAL expected
+// answer, so a rule that two forms got wrong in the same way still fails.
+const PAINTED_ROWS = [
+  { in: { fillOpacity: 40, fillPattern: 'none' }, m: true, p: false },
+  {
+    in: { fillOpacity: 0, fillPattern: 'stripes', fillPatternOpacity: 100 },
+    m: false,
+    p: true
+  },
+  {
+    in: { fillOpacity: 0, fillPattern: 'none', fillPatternOpacity: 100 },
+    m: false,
+    p: false
+  },
+  {
+    in: { fillOpacity: 0, fillPattern: 'zigzag', fillPatternOpacity: 100 },
+    m: false,
+    p: false
+  },
+  {
+    in: { fillOpacity: -5, fillPattern: 'dots', fillPatternOpacity: -5 },
+    m: false,
+    p: false
+  },
+  {
+    in: { fillOpacity: 170, fillPattern: 'dots', fillPatternOpacity: 170 },
+    m: true,
+    p: true
+  },
+  {
+    in: { fillOpacity: NaN, fillPattern: 'dots', fillPatternOpacity: NaN },
+    m: false,
+    p: false
+  },
+  {
+    in: {
+      fillOpacity: '30',
+      fillPattern: 'crosshatch',
+      fillPatternOpacity: '30'
+    },
+    m: true,
+    p: true
+  },
+  {
+    in: { fillOpacity: 0, fillPattern: 'checkerboard', fillPatternOpacity: 0 },
+    m: false,
+    p: false
+  }
+];
+
+describe('fill layer paintedness', () => {
+  it('answers every row with its literal, in every form', () => {
+    for (const row of PAINTED_ROWS) {
+      const state = fillLayerState(row.in);
+      expect(state.material.painted).toBe(row.m);
+      expect(state.pattern.painted).toBe(row.p);
+      expect(state.anyPainted).toBe(row.m || row.p);
+      expect(fillMaterialPainted(row.in)).toBe(row.m);
+      expect(fillPatternPainted(row.in)).toBe(row.p);
+      expect(fillAnyPainted(row.in)).toBe(row.m || row.p);
+      expect(typeof fillAnyPainted(row.in)).toBe('boolean');
+    }
+  });
+
+  it('gives each layer its own clamped opacity', () => {
+    const state = fillLayerState({
+      fillOpacity: 170,
+      fillPattern: 'stripes',
+      fillPatternOpacity: 25
+    });
+    expect(state.material.opacity).toBe(1);
+    expect(state.pattern.opacity).toBe(0.25);
+  });
+});
+
+describe('what each fill layer wants loaded', () => {
+  const closedGrass = { closed: true, fillMaterial: 'grass', fillOpacity: 100 };
+
+  it('wants a surface only when closed, painted and textured', () => {
+    expect(wantedSurfaceId(closedGrass)).toBe('grass-texture');
+    expect(wantedSurfaceId({ ...closedGrass, closed: false })).toBe(null);
+    expect(wantedSurfaceId({ ...closedGrass, fillOpacity: 0 })).toBe(null);
+    expect(wantedSurfaceId({ ...closedGrass, fillMaterial: 'solid' })).toBe(
+      null
+    );
+    expect(wantedSurfaceId({ ...closedGrass, fillMaterial: 'asphalt' })).toBe(
+      null
+    );
+  });
+
+  it('keys a pattern on its exact effective spacing and width', () => {
+    const base = {
+      closed: true,
+      fillPattern: 'stripes',
+      fillPatternOpacity: 100,
+      fillPatternSpacing: 1,
+      fillPatternWidth: 0.15
+    };
+    expect(wantedPatternKey(base)).toBe(wantedPatternKey({ ...base }));
+    // Same ratio, different tuple: different tiles.
+    expect(wantedPatternKey(base)).not.toBe(
+      wantedPatternKey({
+        ...base,
+        fillPatternSpacing: 2,
+        fillPatternWidth: 0.3
+      })
+    );
+    const dots = { ...base, fillPattern: 'dots' };
+    expect(wantedPatternKey(dots)).not.toBe(
+      wantedPatternKey({
+        ...dots,
+        fillPatternSpacing: 2,
+        fillPatternWidth: 0.3
+      })
+    );
+    const checker = { ...base, fillPattern: 'checkerboard' };
+    expect(wantedPatternKey(checker)).not.toBe(
+      wantedPatternKey({ ...checker, fillPatternSpacing: 2 })
+    );
+    // Checkerboard ignores width.
+    expect(wantedPatternKey(checker)).toBe(
+      wantedPatternKey({ ...checker, fillPatternWidth: 0.6 })
+    );
+    // Guarded values key as drawn.
+    expect(wantedPatternKey({ ...base, fillPatternWidth: 5 })).toBe(
+      wantedPatternKey({ ...base, fillPatternWidth: 1 })
+    );
+  });
+
+  it('wants a pattern exactly when closed and the pattern is painted', () => {
+    for (const row of PAINTED_ROWS) {
+      for (const closed of [true, false]) {
+        const data = { ...row.in, closed };
+        expect(wantedPatternKey(data) !== null).toBe(
+          closed && fillPatternPainted(data)
+        );
+        expect(wantedPatternKey(data) !== null).toBe(closed && row.p);
+      }
+    }
   });
 });

@@ -1,5 +1,6 @@
 /* global AFRAME */
 import {
+  SURFACE_ASSET_IDS,
   calculateHeight,
   calculateSlopedHeights
 } from '../tested/street-segment-utils';
@@ -738,15 +739,7 @@ AFRAME.registerComponent('street-segment', {
 
     // create a lookup table to convert UI shortname into A-Frame img id's
     const textureMaps = {
-      asphalt: 'seamless-road',
-      concrete: 'seamless-bright-road',
-      grass: 'grass-texture',
-      sidewalk: 'seamless-sidewalk',
-      gravel: 'compacted-gravel-texture',
-      sand: 'sandy-asphalt-texture',
-      'cracked-asphalt': 'asphalt-texture',
-      'parking-lot': 'parking-lot-texture',
-      water: 'water-texture',
+      ...SURFACE_ASSET_IDS,
       hatched: 'hatched-base', // deprecated alias (#1728) — kept so un-migrated `surface: hatched` still renders
       none: 'none',
       solid: ''

@@ -52,12 +52,15 @@ export class ShapeVertexRemoveCommand extends Command {
     return document.getElementById(this.el.id) ?? this.el;
   }
 
-  execute() {
+  // nextCommandCallback chains the next command of a MultiCommand (closing a
+  // shape by joining its ends removes a vertex and sets `closed` in one step).
+  execute(nextCommandCallback) {
     this._vertex().remove();
     Events.emit('shapevertexstructurechanged', this._shape());
+    nextCommandCallback?.(this._shape());
   }
 
-  undo() {
+  undo(nextCommandCallback) {
     const shapeEl = this._shape();
     const el = this._vertex();
     if (!shapeEl.contains(el)) {
@@ -65,5 +68,6 @@ export class ShapeVertexRemoveCommand extends Command {
       shapeEl.insertBefore(el, reference);
     }
     Events.emit('shapevertexstructurechanged', shapeEl);
+    nextCommandCallback?.(shapeEl);
   }
 }

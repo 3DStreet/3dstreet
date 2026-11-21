@@ -2019,22 +2019,6 @@ a.help-linkhover {
     background: variables.$darkgray-200;
   }
 
-  /* Material dropdown: texture swatch next to each option */
-  .surface-option {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-  }
-  .surface-swatch {
-    flex: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    object-fit: cover;
-    display: inline-block;
-  }
-
   /* EntityLabel inside the header (the panel-level title is hidden for
      segments): 16px/500 name with the hover rename pencil. */
   .segment-title {
@@ -2549,5 +2533,25 @@ a.help-linkhover {
         background: rgba(119, 77, 238, 0.4);
       }
     }
+  }
+}
+
+/* Dropdown option with a texture swatch next to its name: the segment
+   Material dropdown and a shape's Fill material and pattern dropdowns. */
+.segment-panel,
+.shape-style-controls {
+  .surface-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .surface-swatch {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    object-fit: cover;
+    display: inline-block;
   }
 }
