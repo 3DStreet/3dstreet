@@ -2,6 +2,8 @@ import { afterEach, describe, it, expect, vi } from 'vitest';
 import {
   evaluatePath,
   isGizmoGroundHit,
+  isLevelImportedImageHit,
+  landingTargets,
   isUserImportedMeshHit,
   owningPlacementEntity,
   placementKindOf,
@@ -123,6 +125,104 @@ describe('what the gizmo counts as ground', () => {
     // road would swallow the road's footprint.
     expect(isUserImportedMeshHit(importedImage(0))).toBe(false);
     expect(isUserImportedMeshHit(importedSplat(0))).toBe(false);
+  });
+
+  describe('an uploaded image lying flat (#2128)', () => {
+    // Column-major matrixWorld for a plane rotated about X (A-Frame `270 0 0`
+    // lays it flat) with a non-uniform scale.
+    function imagePlane(y, { tiltDeg = 270, opts = {} } = {}) {
+      const a = (tiltDeg * Math.PI) / 180;
+      const [sx, sy, sz] = opts.scale || [17, 22, 28];
+      const c = Math.cos(a);
+      const s = Math.sin(a);
+      const hit = hitOn(
+        {
+          geometry: 'primitive: plane',
+          'data-asset-id': 'a',
+          'data-asset-owner-uid': 'u'
+        },
+        y
+      );
+      const entityNode = {
+        visible: opts.entityVisible !== false,
+        parent: null
+      };
+      hit.object = {
+        el: hit.object.el,
+        parent: entityNode,
+        visible: true,
+        material: {
+          visible: true,
+          transparent: true,
+          opacity: opts.opacity ?? 1
+        },
+        matrixWorld: {
+          // columns: X axis, Y axis (rotated about X), Z axis, translation
+          elements: [
+            sx, 0, 0, 0,
+            0, sy * c, sy * s, 0,
+            0, -sz * s, sz * c, 0,
+            0, y, 0, 1
+          ] // prettier-ignore
+        }
+      };
+      return hit;
+    }
+
+    it('is support for every kind, above the tiles beneath it', () => {
+      const image = imagePlane(0.2);
+      expect(isLevelImportedImageHit(image)).toBe(true);
+      for (const kind of ['street', 'building', 'import', 'furniture']) {
+        expect(isGizmoGroundHit(image, kind)).toBe(true);
+      }
+      expect(pickSupportBelow([tiles(0), image], 5).hit).toBe(image);
+    });
+
+    it('competes with a street by height, the higher surface winning', () => {
+      const image = imagePlane(0.21);
+      expect(pickSupportBelow([segment(0.2), image], 5).hit).toBe(image);
+      const under = imagePlane(0.1);
+      expect(pickSupportBelow([segment(0.2), under], 5).hit).not.toBe(under);
+    });
+
+    it('is not a surface standing upright, hidden or under full opacity', () => {
+      expect(isLevelImportedImageHit(imagePlane(0, { tiltDeg: 0 }))).toBe(
+        false
+      );
+      expect(isLevelImportedImageHit(imagePlane(0, { tiltDeg: 300 }))).toBe(
+        false
+      );
+      expect(
+        isLevelImportedImageHit(
+          imagePlane(0, { opts: { entityVisible: false } })
+        )
+      ).toBe(false);
+      expect(
+        isLevelImportedImageHit(imagePlane(0, { opts: { opacity: 0 } }))
+      ).toBe(false);
+      expect(
+        isLevelImportedImageHit(imagePlane(0, { opts: { opacity: 0.5 } }))
+      ).toBe(false);
+    });
+
+    it('lets a 50% reference overlay fall through to the opaque plan below', () => {
+      const plan = imagePlane(0.2);
+      const overlay = imagePlane(0.4, { opts: { opacity: 0.5 } });
+      const hits = [overlay, plan, tiles(0)].filter((h) => isGizmoGroundHit(h));
+      expect(pickSupportBelow(hits, 5).hit).toBe(plan);
+    });
+
+    it('reads a plane laid flat in its geometry from the hit face', () => {
+      const hit = imagePlane(0, { tiltDeg: 0 }); // upright by its matrix
+      hit.face = { normal: { x: 0, y: 1, z: 0 } }; // but its face points up
+      expect(isLevelImportedImageHit(hit)).toBe(true);
+    });
+
+    it('excludes an image the user did not upload', () => {
+      const hit = imagePlane(0);
+      hit.object.el = hitOn({ geometry: 'primitive: plane' }, 0).object.el;
+      expect(isLevelImportedImageHit(hit)).toBe(false);
+    });
   });
 
   it('rejects a hit with no owning entity, which is how editor chrome falls out', () => {
@@ -463,5 +563,47 @@ describe('the sampler and its budget', () => {
     const result = run(band - 1e-6);
     expect(result.overBudget).toBe(false);
     expect(result.demanded).toBe(PATH_PROBE_BUDGET);
+  });
+});
+
+describe('landing targets (#2128)', () => {
+  const at = (y) => ({ y });
+  const column = { below: at(-0.2), above: at(0.01) };
+
+  it('offers only the surface cutting through the object', () => {
+    expect(landingTargets(column, -0.5, { topY: 1, restingGap: 0.02 })).toEqual(
+      { down: null, up: column.above }
+    );
+  });
+
+  it('treats a surface a hair above a thin object as cutting through it', () => {
+    expect(landingTargets(column, 0, { topY: 0, restingGap: 0.02 })).toEqual({
+      down: null,
+      up: column.above
+    });
+  });
+
+  it('keeps both under a surface clear above the object, like a deck', () => {
+    const c = { below: at(-0.2), above: at(5) };
+    expect(landingTargets(c, 0, { topY: 1.5, restingGap: 0.02 })).toEqual({
+      down: c.below,
+      up: c.above
+    });
+  });
+
+  it('never lets the tiles drape cut through an object', () => {
+    const c = { below: at(0), above: { y: 0.1, cls: 'tiles' } };
+    expect(landingTargets(c, 0, { topY: 1, restingGap: 0.02 })).toEqual({
+      down: c.below,
+      up: c.above
+    });
+  });
+
+  it('passes a column with nothing above straight through', () => {
+    const c = { below: at(-1), above: null };
+    expect(landingTargets(c, 0, { topY: 1 })).toEqual({
+      down: c.below,
+      up: null
+    });
   });
 });
