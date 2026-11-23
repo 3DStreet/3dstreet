@@ -143,8 +143,10 @@ function getElementData(entity, options = {}) {
     // (and its marker) through the move.
     return;
   }
-  // node id's that should save without child nodes
-  const skipChildrenNodes = ['environment', 'reference-layers'];
+  // node id's that should save without child nodes. #reference-layers saves
+  // its children: data layers (geo-layer entities, #2090) live there, while
+  // the map layers street-geo builds are autocreated and skipped above.
+  const skipChildrenNodes = ['environment'];
   const elementTree = getAttributes(entity, options);
   const children = entity.childNodes;
   if (children.length && !skipChildrenNodes.includes(elementTree.id)) {

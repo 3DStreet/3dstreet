@@ -1022,7 +1022,12 @@
     "shapeTool.showAngles": "Angles",
     "shapeSidebar.style": "Style",
     "shapeSidebar.resetStyle": "Reset to default",
-    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
+    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too.",
+    "geoDataLayers.title": "Data Layers",
+    "geoDataLayers.opacity": "Layer Opacity (%)",
+    "geoDataLayers.none": "No data layers cover this location yet.",
+    "geoDataLayers.outsideCoverage": "This scene's location is outside this layer's coverage.",
+    "geoDataLayers.sourceLink": "About this source"
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2047,7 +2052,12 @@
     "shapeTool.showAngles": "Angles",
     "shapeSidebar.style": "Style",
     "shapeSidebar.resetStyle": "Reset to default",
-    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
+    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too.",
+    "geoDataLayers.title": "Data Layers",
+    "geoDataLayers.opacity": "Layer Opacity (%)",
+    "geoDataLayers.none": "No data layers cover this location yet.",
+    "geoDataLayers.outsideCoverage": "This scene's location is outside this layer's coverage.",
+    "geoDataLayers.sourceLink": "About this source"
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -3072,6 +3082,11 @@
     "shapeTool.showAngles": "Angles",
     "shapeSidebar.style": "Style",
     "shapeSidebar.resetStyle": "Reset to default",
-    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
+    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too.",
+    "geoDataLayers.title": "Data Layers",
+    "geoDataLayers.opacity": "Layer Opacity (%)",
+    "geoDataLayers.none": "No data layers cover this location yet.",
+    "geoDataLayers.outsideCoverage": "This scene's location is outside this layer's coverage.",
+    "geoDataLayers.sourceLink": "About this source"
   }
 }

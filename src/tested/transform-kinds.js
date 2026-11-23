@@ -59,6 +59,18 @@ export const KINDS = Object.freeze([
     plural: 'shapes',
     component: 'shape',
     markers: Object.freeze([NO_SCALE, YAW_ONLY])
+  }),
+  // A geospatial data layer (#2090) is placed by geography under the
+  // street-geo entity: never scaled or tilted, and never moved out from
+  // under it. Its `data-no-transform` UI gate hides the gizmo, so nothing
+  // offers a yaw or a move either; no marker refuses one at the command
+  // layer yet.
+  Object.freeze({
+    id: 'geo-layer',
+    label: 'data layer',
+    plural: 'data layers',
+    component: 'geo-layer',
+    markers: Object.freeze([NO_SCALE, YAW_ONLY, NO_REPARENT])
   })
 ]);
 

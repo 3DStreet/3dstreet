@@ -16,6 +16,16 @@ clones after it (`src/tested/clone-slots.js`; doc:
 
 **Geospatial:** `street-geo`, `google-maps-aerial`, `tiled-basemap` (tiled 2D raster basemap on 3d-tiles-renderer; providers/keys via `src/tested/basemap-providers.js` + `config/.env.*`, MapTiler primary — #1962; legacy `mapbox2d` migrates to it at load), `osm-buildings` (2.5D extruded OSM buildings from the basemap provider's vector tiles — MapTiler `tiles/v3` building layer, decoded in `src/tested/vector-tile-buildings.js`; worker pipeline in `src/osm/`, load radius centered on the camera's look-at ground point; the Overpass fetch/cache modules there are no longer used by buildings but are kept for the phase-6 hydrator (#1930); worker code must never import `three`), `osm-streets` (#1930 demo path: streams decoded transportation way records near the camera, draws them as flat class-width ribbons above the ground — one merged vertex-colored mesh per tile from `src/tested/osm-street-ribbon.js`, tint/stacking in `src/tested/osm-street-style.js` — and powers **click-to-upgrade** — an empty-space editor click near a way offers "Generate Street" via `OsmUpgradeChip` (UI copy never says "upgrade", that word means the paid plan; the code keeps the LOD term) and highlights the stretch it would create, minting real `playable` managed streets: the stretch splits at junctions with other ways (`junctionsAlongStretch`/`splitStretchAtJunctions` in `src/tested/osm-street-import.js`), each piece one path-following street via the curved-street path shape (`stretchForWindow`; straight when a piece is a single chord), plus a `managed-intersection` per junction where ≥2 generated ends meet (proximity-reused by later generates; pathed streets connect to intersections as geometry-only arms) — cross-section from the way's Overpass tags when they arrive in time (`src/tested/osm-way-tags.js`: lanes/oneway/sidewalk/parking/cycleway/name exact where tagged, chip previews what it found), else class+subclass+oneway rules in `src/tested/osm-street-import.js`; roadmap: `docs/osm-street-lod.md`), `geojson`, `geo-flatten`
 
+**Data layers (#2090):** overlay Geospatial Data Sources (first: Yelamu, SF
+c. 1769) are `geo-layer` entities under `#reference-layers`, saved with the
+scene; their meshes are rebuilt from the source. Registry
+`src/tested/geo-data-sources.js` (descriptor → format adapter → kind
+renderer); every vertex goes through `src/tested/geo-reference.js` (source CRS
+→ lon/lat → the exact ellipsoid tangent frame Google 3D Tiles use, +X north,
++Z east). `#reference-layers` now saves its non-autocreated children. Read
+[docs/geo-data-layers.md](../geo-data-layers.md) before adding a source or a
+layer kind, or changing how geo entities save.
+
 **Layer opacity (#1754):** `street-geo.opacity` (percent) fans out to every
 map layer as a 0–1 fraction. Each layer keeps its stock materials, flips
 `transparent` only below 1, keeps depth writes on (a translucent layer still

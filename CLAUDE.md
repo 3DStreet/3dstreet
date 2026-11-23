@@ -84,7 +84,10 @@ terrain flattening span components, pure utilities and workers. **Read
 [streets and geospatial guidance](docs/agent-context/streets-and-geospatial.md)
 before planning, changing or reviewing those features**, including scene-load
 migrations. OSM worker code must never import `three`; never raycast a street's
-real meshes for terrain flattening.
+real meshes for terrain flattening. **Data layers** (#2090, `geo-layer`
+entities under `#reference-layers`, e.g. SF c. 1769): read
+[docs/geo-data-layers.md](docs/geo-data-layers.md) before adding a source or
+layer kind.
 
 **Environment:** `street-environment`, `viewer-mode`, `ocean`
 

@@ -57,6 +57,11 @@ export function newScene(clearMetaData = true, clearUrlHash = true) {
     'Geospatial Layers'
   );
   geoLayer.setAttribute('data-no-transform', '');
+  // Data layers (#2090) are saved children of this reused entity; the map
+  // layers street-geo builds go with the street-geo removal above.
+  for (const child of Array.from(geoLayer.children)) {
+    if (child.hasAttribute('geo-layer')) child.remove();
+  }
 
   const streetContainer = checkOrCreateEntity(
     'street-container',

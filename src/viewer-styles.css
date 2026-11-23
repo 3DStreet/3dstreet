@@ -42,6 +42,24 @@ body {
   color: #bebebe;
 }
 
+/* geo-layer data source credits, stacked above the base map's */
+#geo-layer-credits {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  max-width: min(720px, 100%);
+  font-size: 11px;
+  line-height: 14px;
+  padding: 1px 4px;
+  background-color: rgba(0, 0, 0, 0.3);
+  color: #bebebe;
+  z-index: 1;
+}
+
+#geo-layer-credits a {
+  color: #e0e0e0;
+}
+
 /* notification hack */
 .notyf__message {
   font-size: 20px !important;

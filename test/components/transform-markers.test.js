@@ -36,6 +36,7 @@ beforeAll(async () => {
   await import('../../src/aframe-components/shape.js');
   await import('../../src/aframe-components/shape-vertex.js');
   await import('../../src/aframe-components/managed-intersection.js');
+  await import('../../src/aframe-components/geo-layer.js');
   window.AFRAME.emitReady();
 });
 
@@ -89,6 +90,15 @@ const MOUNTED = {
   'managed-intersection': {
     value: '',
     markers: ['data-transform-no-scale']
+  },
+  // No source: nothing to fetch, the markers are set in init regardless.
+  'geo-layer': {
+    value: '',
+    markers: [
+      'data-transform-no-reparent',
+      'data-transform-no-scale',
+      'data-transform-yaw-only'
+    ]
   }
 };
 
