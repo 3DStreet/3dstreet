@@ -62,6 +62,8 @@ const getSelectedMixinCards = (groupedMixins, selectedOption) => {
     - or if the element is a child of a-scene
   */
 const getAncestorEl = (element) => {
+  // A selection that has left the DOM (or the scene itself) has no parentEl.
+  if (!element.parentEl) return undefined;
   if (element.className.includes('segment-parent')) {
     // a flag indicating that the preview entity is inside one of the segments (segment-parent-0, ...)
     const inSegment = true;
@@ -118,12 +120,11 @@ const createEntity = (mixinId, mixinName) => {
   };
 
   const selectedElement = ticket ? null : AFRAME.INSPECTOR.selectedEntity;
-  const [ancestorEl, inSegment] = selectedElement
-    ? getAncestorEl(selectedElement)
-    : [undefined, false];
+  const [ancestorEl, inSegment] = (selectedElement &&
+    getAncestorEl(selectedElement)) || [undefined, false];
 
   // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
-  if (selectedElement && !ancestorEl.parentEl.isScene) {
+  if (ancestorEl && !ancestorEl.parentEl.isScene) {
     // append element as a child of the entity with .custom-group class.
     let customGroupEl = ancestorEl.querySelector('.custom-group');
     let customGroupCreated = false;
@@ -223,12 +224,11 @@ const cardMouseEnter = (mixinId) => {
     const selectedElement = innermostOpenGroup()
       ? null
       : AFRAME.INSPECTOR.selectedEntity;
-    const [ancestorEl, inSegment] = selectedElement
-      ? getAncestorEl(selectedElement)
-      : [undefined, false];
+    const [ancestorEl, inSegment] = (selectedElement &&
+      getAncestorEl(selectedElement)) || [undefined, false];
 
     // avoid adding new element inside the direct ancestor of a-scene: #environment, #reference, ...
-    if (selectedElement && !ancestorEl.parentEl.isScene) {
+    if (ancestorEl && !ancestorEl.parentEl.isScene) {
       if (inSegment) {
         // get elevation position Y from attribute of segment element
         const segmentElevationPosY = getSegmentElevationPosY(ancestorEl);
