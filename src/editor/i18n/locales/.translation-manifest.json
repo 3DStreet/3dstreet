@@ -1022,7 +1022,8 @@
     "shapeTool.showAngles": "Angles",
     "shapeSidebar.style": "Style",
     "shapeSidebar.resetStyle": "Reset to default",
-    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
+    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too.",
+    "geoModal.mapLoadError": "The map couldn't load. Check your connection or content blocker, then reload the page. You can still enter coordinates below."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2047,7 +2048,8 @@
     "shapeTool.showAngles": "Angles",
     "shapeSidebar.style": "Style",
     "shapeSidebar.resetStyle": "Reset to default",
-    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
+    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too.",
+    "geoModal.mapLoadError": "The map couldn't load. Check your connection or content blocker, then reload the page. You can still enter coordinates below."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -3072,6 +3074,7 @@
     "shapeTool.showAngles": "Angles",
     "shapeSidebar.style": "Style",
     "shapeSidebar.resetStyle": "Reset to default",
-    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too."
+    "shapeSidebar.resetStyleHelp": "Sets the line and fill back to the plain default. New shapes are drawn with it too.",
+    "geoModal.mapLoadError": "The map couldn't load. Check your connection or content blocker, then reload the page. You can still enter coordinates below."
   }
 }

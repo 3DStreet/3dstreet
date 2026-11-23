@@ -463,6 +463,7 @@
   "geoModal.locationSearchNotFound": "No se pudo encontrar \"{query}\". Selecciona una sugerencia de la lista de búsqueda o haz clic en el mapa para establecer la ubicación.",
   "geoModal.locationSearchUnavailable": "La búsqueda de ubicaciones no está disponible temporalmente. Haz clic en el mapa o introduce las coordenadas directamente para establecer la ubicación.",
   "geoModal.locationSetSuccess": "¡Ubicación establecida correctamente!",
+  "geoModal.mapLoadError": "No se pudo cargar el mapa. Revisa tu conexión o tu bloqueador de contenido y vuelve a cargar la página. Aún puedes introducir las coordenadas abajo.",
   "geoModal.nearestIntersectionLabel": "Intersección más cercana:",
   "geoModal.none": "Ninguna",
   "geoModal.outOfGeoTokensTitle": "Sin geotokens",

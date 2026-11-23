@@ -10,8 +10,6 @@ import { ExportModal } from './modals/ExportModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
 import { ProfileModal } from './modals/ProfileModal';
-import { firebaseConfig } from '@shared/services/firebase.js';
-import { LoadScript } from '@react-google-maps/api';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import EditorUpgradeModal from './EditorUpgradeModal.jsx';
@@ -42,9 +40,6 @@ import { RecoveryCue } from '../lib/nav-experimental/RecoveryCue.jsx';
 import { isStreetLevelNav } from '../lib/nav-experimental/index.js';
 import { useProfileLocaleSync } from '../i18n/useProfileLocaleSync';
 import styles from './Main.module.scss';
-
-// Define the libraries array as a constant outside of the component
-const GOOGLE_MAPS_LIBRARIES = ['places'];
 
 export default function Main() {
   const [state, setState] = useState({
@@ -241,12 +236,7 @@ export default function Main() {
       <ConfirmModal />
       <AssetDeepLinkModal />
       <JobHealthModal />
-      <LoadScript
-        googleMapsApiKey={firebaseConfig.apiKey}
-        libraries={GOOGLE_MAPS_LIBRARIES}
-      >
-        <GeoModal />
-      </LoadScript>
+      <GeoModal />
       <ModalTextures
         isOpen={state.isModalTexturesOpen}
         selectedTexture={state.selectedTexture}

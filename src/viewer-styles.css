@@ -55,27 +55,6 @@ body {
   /* Resetting any specific width, if set */
 }
 
-/* editor geomodal styles - google places autocomplete input styling
- * this needs to be in global css, didn't work as part of geomodal scss
- */
-.pac-container {
-  background-color: #282828 !important;
-  color: #ffffff !important;
-}
-
-.pac-item {
-  color: #ffffff !important;
-  border-top: 1px solid #333 !important;
-}
-
-.pac-item:hover {
-  background-color: #714fe5;
-}
-
-.pac-item-query {
-  color: #ffffff !important;
-}
-
 /********* right menu css *********/
 
 .right-fixed {

@@ -9,6 +9,55 @@
     row-gap: 18px;
     width: 650px;
 
+    .placeSearch {
+      position: relative;
+    }
+
+    .placeSuggestions {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      z-index: 10;
+      margin: 0;
+      padding: 4px 0;
+      list-style: none;
+      background: #282828;
+      border: 1px solid #8965ef;
+      border-radius: 4px;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+
+      li {
+        display: flex;
+        gap: 8px;
+        align-items: baseline;
+        padding: 6px 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .activeSuggestion {
+        background: #714fe5;
+      }
+
+      .suggestionSecondary {
+        font-size: 12px;
+        opacity: 0.6;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+
+    .mapLoadError {
+      margin: 0;
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: 1px solid #b43c3c;
+      color: #ffb4b4;
+    }
+
     .header {
       position: absolute;
       top: 16px;
