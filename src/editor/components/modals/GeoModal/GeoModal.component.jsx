@@ -2,16 +2,16 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { SavingModal } from '../SavingModal';
 import styles from './GeoModal.module.scss';
-import { Magnifier20Icon } from '@shared/icons';
 import { firebaseConfig } from '@shared/services/firebase';
 import Modal from '@shared/components/Modal/Modal.jsx';
 import { Button, Input } from '../../elements/index.js';
 import {
   GoogleMap,
   useJsApiLoader,
-  Marker,
-  Autocomplete
+  OverlayViewF,
+  OVERLAY_LAYER
 } from '@react-google-maps/api';
+import { PlaceSearch } from './PlaceSearch.jsx';
 import GeoImg from '../../../../../ui_assets/geo.png';
 import { roundCoord, formatLocationString } from '../../../../../src/utils.js';
 import { setSceneLocation } from '../../../lib/utils.js';
@@ -50,18 +50,45 @@ const TooltipWrapper = ({ children, content, side = 'bottom', ...props }) => {
   );
 };
 
+// Stable across renders: the loader warns and reloads if `libraries` changes.
+const GOOGLE_MAPS_LIBRARIES = ['places'];
+
+// The only place the Google Maps JS API is loaded (#2175). It is mounted once
+// the picker first opens, so editor sessions that never open it fetch no Maps
+// scripts. It stays mounted after close; the script is cached for reopens.
+const MapsApiLoader = ({ onStatus }) => {
+  const { isLoaded, loadError } = useJsApiLoader({
+    googleMapsApiKey: firebaseConfig.apiKey,
+    libraries: GOOGLE_MAPS_LIBRARIES
+  });
+  useEffect(() => {
+    onStatus({ isLoaded, loadError });
+  }, [isLoaded, loadError, onStatus]);
+  return null;
+};
+
+// Pin anchored at its tip. Drawn as an overlay rather than google.maps.Marker,
+// which is deprecated, and AdvancedMarkerElement needs a cloud map ID.
+const pinOffset = (width, height) => ({ x: -width / 2, y: -height });
+const LocationPin = () => (
+  <svg width="27" height="43" viewBox="0 0 27 43" aria-hidden="true">
+    <path
+      d="M13.5 0C6 0 0 6 0 13.5 0 23.6 13.5 43 13.5 43S27 23.6 27 13.5C27 6 21 0 13.5 0z"
+      fill="#EA4335"
+      stroke="#A52714"
+    />
+    <circle cx="13.5" cy="13.5" r="5" fill="#A52714" />
+  </svg>
+);
+
 const GeoModal = () => {
   const intl = useIntl();
   const { currentUser, tokenProfile, refreshTokenProfile } = useAuthContext();
-  const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: firebaseConfig.apiKey
-  });
 
   const [markerPosition, setMarkerPosition] = useState({
     lat: 37.7637072, // lat: 37.76370724481858, lng: -122.41517686259827
     lng: -122.4151768
   });
-  const [autocomplete, setAutocomplete] = useState(null);
   const [isWorking, setIsWorking] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
   const [showSuccessOverlay, setShowSuccessOverlay] = useState(false);
@@ -84,6 +111,14 @@ const GeoModal = () => {
     (state) => state.returnToPreviousModal
   );
   const isOpen = useStore((state) => state.modal === 'geo');
+  const [hasOpened, setHasOpened] = useState(false);
+  const [{ isLoaded, loadError }, setMapsApi] = useState({
+    isLoaded: false,
+    loadError: undefined
+  });
+  useEffect(() => {
+    if (isOpen) setHasOpened(true);
+  }, [isOpen]);
   const startCheckout = useStore((state) => state.startCheckout);
   const geojsonImportData = useStore((state) => state.geojsonImportData);
   const setGeojsonImportData = useStore((state) => state.setGeojsonImportData);
@@ -238,10 +273,6 @@ const GeoModal = () => {
     setMarkerPositionAndElevation(newLat, newLng);
   };
 
-  const onAutocompleteLoad = useCallback((autocompleteInstance) => {
-    setAutocomplete(autocompleteInstance);
-  }, []);
-
   // Resolve a free-typed search string to coordinates. Returns
   // { status: 'ok', lat, lng }, { status: 'notFound' } when the text didn't
   // match anything, or { status: 'unavailable' } when the Geocoder itself
@@ -268,45 +299,29 @@ const GeoModal = () => {
     }
   }, []);
 
-  const onPlaceChanged = useCallback(async () => {
-    if (autocomplete !== null) {
-      const place = autocomplete.getPlace();
-      if (place && place.geometry) {
-        // A suggestion was explicitly selected — coordinates come with it.
-        pendingSearchQueryRef.current = '';
-        setMarkerPositionAndElevation(
-          place.geometry.location.lat(),
-          place.geometry.location.lng()
-        );
-      } else {
-        // Enter pressed without selecting a suggestion: the place only
-        // carries the raw text, no geometry. Geocode it so typed addresses
-        // still move the marker (#1897).
-        const query = (place?.name || pendingSearchQueryRef.current).trim();
-        if (!query) {
-          return;
-        }
-        const geocoded = await geocodeSearchQuery(query);
-        if (geocoded.status === 'ok') {
-          pendingSearchQueryRef.current = '';
-          setMarkerPositionAndElevation(geocoded.lat, geocoded.lng);
-        }
-      }
-    } else {
-      console.log('Autocomplete is not loaded yet!');
-    }
-  }, [autocomplete, geocodeSearchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onPlacePicked = useCallback((lat, lng) => {
+    pendingSearchQueryRef.current = '';
+    setMarkerPositionAndElevation(lat, lng);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onCloseCheck = (evt) => {
-    // do not close geoModal when clicking on a list with suggestions for
-    // addresses. The .pac-container is injected by Google Places only once
-    // Autocomplete mounts, so it can be absent (geojson mode, API not loaded)
-    // — treat "no container" as "no open suggestions" and allow the close.
-    const autocompleteContainer = document.querySelector('.pac-container');
-    if (!autocompleteContainer || autocompleteContainer.children.length === 0) {
-      onClose();
-    }
-  };
+  // Enter pressed without picking a suggestion: geocode the typed text so
+  // typed addresses still move the marker (#1897).
+  const onSearchSubmitted = useCallback(
+    async (query) => {
+      const geocoded = await geocodeSearchQuery(query);
+      if (geocoded.status === 'ok') {
+        pendingSearchQueryRef.current = '';
+        setMarkerPositionAndElevation(geocoded.lat, geocoded.lng);
+      }
+    },
+    [geocodeSearchQuery] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const onSearchTextChanged = useCallback((value) => {
+    // Track typed text so Set Location can geocode it if no suggestion is
+    // picked.
+    pendingSearchQueryRef.current = value;
+  }, []);
 
   const onSaveHandler = async () => {
     // Skip auth check if opened from GeoJSON import (free during beta)
@@ -477,10 +492,11 @@ const GeoModal = () => {
 
   return (
     <Tooltip.Provider>
+      {hasOpened && <MapsApiLoader onStatus={setMapsApi} />}
       <Modal
         className={styles.modalWrapper}
         isOpen={isOpen}
-        onClose={onCloseCheck}
+        onClose={onClose}
         titleElement={
           <div className="flex items-center pr-4 pt-5">
             <img
@@ -513,39 +529,41 @@ const GeoModal = () => {
                 options={{ streetViewControl: false, mapTypeId: 'satellite' }}
                 tilt={0}
               >
-                <Marker
+                <OverlayViewF
                   position={{
                     lat: markerPosition.lat,
                     lng: markerPosition.lng
                   }}
-                />
+                  mapPaneName={OVERLAY_LAYER}
+                  getPixelPositionOffset={pinOffset}
+                >
+                  <LocationPin />
+                </OverlayViewF>
               </GoogleMap>
             </>
           )}
-          {!wasOpenedFromGeojson && (
-            <Autocomplete
-              onLoad={onAutocompleteLoad}
-              onPlaceChanged={onPlaceChanged}
-            >
-              <Input
-                className={styles.compactInput}
-                leadingIcon={<Magnifier20Icon />}
-                placeholder={
-                  currentLocationString ||
-                  intl.formatMessage({
-                    id: 'geoModal.searchForLocation',
-                    defaultMessage: 'Search for a location'
-                  })
-                }
-                onChange={(value) => {
-                  // Track typed text so Set Location can geocode it if no
-                  // autocomplete suggestion gets selected. Selecting a
-                  // suggestion sets the input programmatically (no onChange)
-                  // and clears this in onPlaceChanged.
-                  pendingSearchQueryRef.current = value;
-                }}
+          {loadError && (
+            <p className={styles.mapLoadError} role="alert">
+              <FormattedMessage
+                id="geoModal.mapLoadError"
+                defaultMessage="The map couldn't load. Check your connection or content blocker, then reload the page. You can still enter coordinates below."
               />
-            </Autocomplete>
+            </p>
+          )}
+          {isOpen && isLoaded && !wasOpenedFromGeojson && (
+            <PlaceSearch
+              className={styles.compactInput}
+              placeholder={
+                currentLocationString ||
+                intl.formatMessage({
+                  id: 'geoModal.searchForLocation',
+                  defaultMessage: 'Search for a location'
+                })
+              }
+              onPick={onPlacePicked}
+              onSubmitQuery={onSearchSubmitted}
+              onQueryChange={onSearchTextChanged}
+            />
           )}
           <div className={styles.sceneGeo}>
             <div>

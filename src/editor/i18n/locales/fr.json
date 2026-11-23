@@ -463,6 +463,7 @@
   "geoModal.locationSearchNotFound": "Impossible de trouver « {query} ». Veuillez sélectionner une suggestion dans la liste de recherche ou cliquer sur la carte pour définir l'emplacement.",
   "geoModal.locationSearchUnavailable": "La recherche de lieu est temporairement indisponible. Veuillez cliquer sur la carte ou saisir directement les coordonnées pour définir l'emplacement.",
   "geoModal.locationSetSuccess": "Emplacement défini avec succès !",
+  "geoModal.mapLoadError": "Impossible de charger la carte. Vérifiez votre connexion ou votre bloqueur de contenu, puis rechargez la page. Vous pouvez toujours saisir les coordonnées ci-dessous.",
   "geoModal.nearestIntersectionLabel": "Intersection la plus proche :",
   "geoModal.none": "Aucun",
   "geoModal.outOfGeoTokensTitle": "Plus de jetons géo",

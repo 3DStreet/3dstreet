@@ -1,4 +1,4 @@
-import { bool, func, node, string } from 'prop-types';
+import { bool, func, node, object, string } from 'prop-types';
 
 import classnames from 'classnames';
 import styles from './Input.module.scss';
@@ -28,6 +28,7 @@ const id = v4();
  *  disabled?: boolean;
  *  readOnly?: boolean;
  *  hideBorderAndBackground?: boolean;
+ *  inputProps?: object; // extra attributes/handlers for the <input> itself
  * }} props
  */
 const Input = ({
@@ -47,7 +48,8 @@ const Input = ({
   disabled,
   readOnly,
   hideBorderAndBackground,
-  value
+  value,
+  inputProps
 }) => {
   const inputElement = useRef(null);
   const hideBorderAndBackgroundStyles = {
@@ -103,6 +105,7 @@ const Input = ({
           defaultValue={defaultValue}
           value={value}
           readOnly={readOnly}
+          {...inputProps}
         />
         {tailingSubtext && (
           <span className={styles.subtext}>{tailingSubtext}</span>
@@ -136,7 +139,8 @@ Input.propTypes = {
   successMessage: string,
   disabled: bool,
   readOnly: bool,
-  hideBorderAndBackground: bool
+  hideBorderAndBackground: bool,
+  inputProps: object
 };
 
 export { Input };

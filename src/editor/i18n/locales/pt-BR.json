@@ -463,6 +463,7 @@
   "geoModal.locationSearchNotFound": "Não foi possível encontrar \"{query}\". Selecione uma sugestão da lista de busca ou clique no mapa para definir a localização.",
   "geoModal.locationSearchUnavailable": "A busca de localização está temporariamente indisponível. Clique no mapa ou insira as coordenadas diretamente para definir a localização.",
   "geoModal.locationSetSuccess": "Localização Definida com Sucesso!",
+  "geoModal.mapLoadError": "Não foi possível carregar o mapa. Verifique sua conexão ou seu bloqueador de conteúdo e recarregue a página. Você ainda pode inserir as coordenadas abaixo.",
   "geoModal.nearestIntersectionLabel": "Cruzamento Mais Próximo:",
   "geoModal.none": "Nenhum",
   "geoModal.outOfGeoTokensTitle": "Sem Tokens Geo",
