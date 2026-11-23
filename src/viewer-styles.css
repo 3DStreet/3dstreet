@@ -211,6 +211,29 @@ body.aframe-inspector-opened #sceneTitle {
   font-weight: normal;
 }
 
+/* Shown in place of the loader when WebGL is unavailable (index.html). */
+.webgl-error {
+  max-width: min(560px, calc(100vw - 32px));
+  color: #283237;
+  text-align: center;
+}
+.webgl-error p {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+.webgl-error pre {
+  margin: 0;
+  padding: 8px 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  color: #283237;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+}
+
 @keyframes moveStripes {
   0% {
     background-position: 0 0;

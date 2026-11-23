@@ -58,7 +58,15 @@ export class EntityRemoveCommand extends Command {
 
     // Keep a clone not attached to DOM for undo
     this.entity.flushToDOM();
-    const clone = prepareForSerialization(this.entity);
+    // The default filter drops `autocreated` entities, which would leave
+    // nothing to restore when the removed entity is itself autocreated (undo
+    // then threw in insertBefore). Keep the root; its autocreated descendants
+    // are still dropped, and its components regenerate them on undo.
+    const root = this.entity;
+    const clone = prepareForSerialization(
+      root,
+      (el) => el === root || !el.classList.contains('autocreated')
+    );
 
     // Remove entity
     this.entity.parentNode.removeChild(this.entity);

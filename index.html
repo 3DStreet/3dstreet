@@ -122,6 +122,18 @@
   </a-scene>
 </body>
 <script>
+  // Checked here, while the document is still parsing: A-Frame 1.8 builds the
+  // renderer as soon as readyState reaches 'interactive' (before
+  // DOMContentLoaded, regardless of AFRAME_ASYNC). Without WebGL that throws,
+  // and every system after it fails (renderer/xr/toneMapping undefined),
+  // leaving a dead splash. Skip the renderer, show why, and never start the
+  // scene.
+  var webglError = getWebGLError();
+  if (webglError) {
+    document.querySelector('a-scene').setupRendererAndLoadingScreen =
+      function () {};
+  }
+
   /* loading animation script */
   document.addEventListener('DOMContentLoaded', function () {
     const scene = document.querySelector('a-scene');
@@ -138,8 +150,53 @@
     // Release A-Frame now that the DOM is parsed (pairs with AFRAME_ASYNC in
     // <head>). The 3DStreet bundle registered its own DOMContentLoaded
     // listener first, so <street-assets> is already injected at this point.
+    if (webglError) {
+      showWebGLError(webglError);
+      window.dispatchEvent(
+        new CustomEvent('webglunavailable', { detail: webglError })
+      );
+      return;
+    }
     AFRAME.emitReady();
   });
+
+  // Returns null when a WebGL2 context can be created (three.js in A-Frame 1.8
+  // requires WebGL2), otherwise the browser's reason, as close as possible to
+  // what the renderer would have reported.
+  function getWebGLError() {
+    var reason = '';
+    try {
+      var canvas = document.createElement('canvas');
+      canvas.addEventListener('webglcontextcreationerror', function (e) {
+        reason = e.statusMessage || reason;
+      });
+      var gl = canvas.getContext('webgl2');
+      if (gl) {
+        var lose = gl.getExtension('WEBGL_lose_context');
+        if (lose) lose.loseContext();
+        return null;
+      }
+    } catch (e) {
+      reason = (e && e.message) || reason;
+    }
+    return reason
+      ? 'Error creating WebGL context: ' + reason
+      : 'Error creating WebGL context.';
+  }
+
+  function showWebGLError(message) {
+    var wrapper = document.querySelector('.loader__wrapper');
+    wrapper.textContent = '';
+    var box = document.createElement('div');
+    box.className = 'webgl-error';
+    var title = document.createElement('p');
+    title.textContent = "Your browser or device can't run 3D.";
+    var detail = document.createElement('pre');
+    detail.textContent = message;
+    box.appendChild(title);
+    box.appendChild(detail);
+    wrapper.appendChild(box);
+  }
 
 </script>
 
