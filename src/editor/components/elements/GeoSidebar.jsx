@@ -5,6 +5,7 @@ import { useAuthContext } from '@/editor/contexts/index.js';
 import PropertyRow from './PropertyRow';
 import BooleanWidget from '../widgets/BooleanWidget';
 import OpacitySliderRow from '../widgets/OpacitySliderRow';
+import GeoDataLayersSection from './GeoDataLayersSection';
 import SunDial from './SunDial/SunDial';
 import Collapsible from '../Collapsible';
 import { Magnifier20Icon, SunIcon } from '@shared/icons';
@@ -959,6 +960,11 @@ const GeoSidebar = ({ entity }) => {
                     </div>
                   </Collapsible>
                 )}
+                <GeoDataLayersSection
+                  entity={entity}
+                  latitude={component.data.latitude}
+                  longitude={component.data.longitude}
+                />
               </>
             )}
 
