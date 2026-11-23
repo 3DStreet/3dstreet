@@ -24,7 +24,13 @@ if (process.env.SENTRY_DSN) {
     dsn: process.env.SENTRY_DSN,
     release: typeof VERSION !== 'undefined' ? VERSION : undefined,
     integrations: [
-      Sentry.browserTracingIntegration(),
+      Sentry.browserTracingIntegration({
+        // GLTFLoader reads embedded textures through blob: URLs, so every
+        // model load fans out into parallel blob fetches that Sentry flags as
+        // an "N+1 API Call". They never touch the network; don't span them.
+        shouldCreateSpanForRequest: (url) =>
+          !url.startsWith('blob:') && !url.startsWith('data:')
+      }),
       Sentry.replayIntegration()
     ],
     tracesSampleRate: 1.0,
