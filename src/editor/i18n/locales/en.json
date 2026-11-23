@@ -1337,6 +1337,21 @@
   "focusHotspot.tip": {
     "defaultMessage": "💡 In view mode visitors click this to fly in and read the info panel (the layer name is its title), then return to the overview. See-through hotspots pulse and hide themselves while focused."
   },
+  "geoDataLayers.none": {
+    "defaultMessage": "No data layers cover this location yet."
+  },
+  "geoDataLayers.opacity": {
+    "defaultMessage": "Layer Opacity (%)"
+  },
+  "geoDataLayers.outsideCoverage": {
+    "defaultMessage": "This scene's location is outside this layer's coverage."
+  },
+  "geoDataLayers.sourceLink": {
+    "defaultMessage": "About this source"
+  },
+  "geoDataLayers.title": {
+    "defaultMessage": "Data Layers"
+  },
   "geoModal.centerpoint": {
     "defaultMessage": "Centerpoint"
   },
