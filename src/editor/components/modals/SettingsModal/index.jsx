@@ -1,10 +1,17 @@
 /**
- * The editor's host for the shared Settings panel (src/shared/settings):
- * the store's modal and section, toasts, checkout and invitations.
+ * The editor's host for the shared Settings modal (src/shared/settings):
+ * the store's modal and section, toasts, checkout and invitations. Settings
+ * is loaded on first open (its own chunk), to keep it out of the editor's
+ * main bundle (the bundle budget, rspack.prod.config.js).
  */
-import { useCallback } from 'react';
+import { lazy, Suspense, useCallback } from 'react';
 import useStore from '@/store';
-import { SettingsModal } from '@shared/settings/SettingsModal';
+
+const SettingsModal = lazy(() =>
+  import('@shared/settings/SettingsModal').then((module) => ({
+    default: module.SettingsModal
+  }))
+);
 
 const notify = (message, type = 'info') => {
   if (type === 'error') STREET.notify.errorMessage(message);
@@ -34,15 +41,18 @@ export function EditorSettingsModal() {
     returnToPreviousModal();
   }, [returnToPreviousModal]);
 
+  if (!isOpen) return null;
   return (
-    <SettingsModal
-      isOpen={isOpen}
-      section={section}
-      onSectionChange={setSettingsSection}
-      onClose={onClose}
-      notify={notify}
-      onUpgrade={startCheckout}
-      onOpenInvitation={openInvitation}
-    />
+    <Suspense fallback={null}>
+      <SettingsModal
+        isOpen={isOpen}
+        section={section}
+        onSectionChange={setSettingsSection}
+        onClose={onClose}
+        notify={notify}
+        onUpgrade={startCheckout}
+        onOpenInvitation={openInvitation}
+      />
+    </Suspense>
   );
 }

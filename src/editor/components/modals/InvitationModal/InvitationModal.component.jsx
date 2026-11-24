@@ -26,7 +26,7 @@ import {
   orgErrorMessage,
   roleDescriptionMessages,
   roleMessages
-} from '../TeamModal/orgMessages';
+} from '@shared/settings/team/orgMessages';
 import styles from './InvitationModal.module.scss';
 
 // Drop the #invite= route from the address bar once handled, so a reload
