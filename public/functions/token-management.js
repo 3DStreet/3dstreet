@@ -5,7 +5,12 @@ const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { computeMonthlyRefill } = require('./token-packs.js');
 const { readOrgPlan, autoJoinDomainOrgs, readUserOrgs } = require('./orgs.js');
-const { resolveBillingOrg, prepareWalletCharge, spendableGenTokens } = require('./team-wallet.js');
+const {
+  resolveBillingOrg,
+  readActiveOrgId,
+  prepareWalletCharge,
+  spendableGenTokens
+} = require('./team-wallet.js');
 const {
   isPaidPlanClaim,
   toMillis,
@@ -409,8 +414,10 @@ const checkUserProStatus = functions
         // team settings.
         orgPlan,
         orgs,
-        // The team paying the user's AI generations (#1267 Phase 3), or null.
-        billingOrgId: await resolveBillingOrg(userId).catch(() => null),
+        // The user's active team (the team switcher), or null for Personal.
+        // It pays their AI generations when they hold a seat in it and it's
+        // active (the client works that out from `orgs`, as the charge does).
+        activeOrgId: await readActiveOrgId(userId).catch(() => null),
         email: userRecord.email
       };
       

@@ -7,12 +7,13 @@
  *                                       memberMonthlyCap (null = none),
  *                                       lastRefill: 'YYYY-M', updatedAt }
  *   orgWallets/{orgId}/usage/{month}  { total, members: { [uid]: tokens } }
- *   userOrgs/{uid}.billingOrgId       the team that pays the user's AI
- *                                     generations, or null (personal)
+ *   userOrgs/{uid}.activeOrgId        the user's active team (the team
+ *                                     switcher), or null (Personal)
  *
- * Who pays is checked at charge time: the billing team must still be active
- * and the user still hold a seat in it (owner, admin, member); otherwise the
- * charge falls back to the user's personal tokens. A job charged to a team
+ * The active team pays the user's AI generations. Who pays is checked at
+ * charge time: the active team must still be active and the user hold a
+ * seat in it (owner, admin, member); otherwise (Personal, a viewer, a
+ * suspended team) the charge falls back to the user's personal tokens. A job charged to a team
  * records chargedOrgId and chargedMonth, so its refund goes back to that
  * wallet and that month's usage.
  */
@@ -37,13 +38,14 @@ const usageRef = (orgId, key) => walletRef(orgId).collection('usage').doc(key);
 const userOrgsRef = (uid) => db().collection('userOrgs').doc(uid);
 
 /**
- * The team paying `uid`'s generations, or null. Reads through `tx` when
- * given (inside a charge), else directly.
+ * The team paying `uid`'s generations: their active team when they hold a
+ * seat in it and it's active, else null. Reads through `tx` when given
+ * (inside a charge), else directly.
  */
 async function resolveBillingOrg(uid, tx = null) {
   const get = (ref) => (tx ? tx.get(ref) : ref.get());
   const userOrgs = await get(userOrgsRef(uid));
-  const orgId = userOrgs.exists ? userOrgs.data().billingOrgId : null;
+  const orgId = userOrgs.exists ? userOrgs.data().activeOrgId : null;
   if (!orgId) return null;
   const [org, member] = await Promise.all([
     get(db().collection('orgs').doc(orgId)),
@@ -137,19 +139,30 @@ function refundToWallet(tx, { orgId, uid, cost, chargedMonth }) {
   }
 }
 
-/** Choose who pays the user's generations: a team they hold a seat in, or null. */
-async function setBillingOrg({ uid, orgId }) {
+/**
+ * Switch the user's active team (the team switcher): a team they belong to,
+ * in any role, or null for Personal. It sets the defaults for new work and
+ * pays for their generations when they hold a seat in it.
+ */
+async function setActiveOrg({ uid, orgId }) {
   if (orgId !== null && (typeof orgId !== 'string' || !orgId)) throw new OrgError('invalid-argument');
   if (orgId) {
     const member = await db().collection('orgs').doc(orgId).collection('members').doc(uid).get();
     if (!member.exists) throw new OrgError('not-member');
-    if (!takesSeat(member.data().role)) throw new OrgError('not-editor');
   }
   await userOrgsRef(uid).set(
-    { billingOrgId: orgId, updatedAt: FieldValue.serverTimestamp() },
+    { activeOrgId: orgId, updatedAt: FieldValue.serverTimestamp() },
     { merge: true }
   );
-  return { billingOrgId: orgId };
+  return { activeOrgId: orgId };
+}
+
+/** The user's active team if they still belong to it, else null. */
+async function readActiveOrgId(uid) {
+  const userOrgs = await userOrgsRef(uid).get();
+  const data = userOrgs.exists ? userOrgs.data() : {};
+  const orgId = data.activeOrgId || null;
+  return orgId && data.orgs && data.orgs[orgId] ? orgId : null;
 }
 
 /** Owners and admins set the per-member monthly cap (null = none). */
@@ -207,8 +220,8 @@ const requireStaff = (context) => {
   return uid;
 };
 
-const orgSetBilling = callable((data, context) =>
-  setBillingOrg({ uid: requireAuth(context), orgId: data.orgId || null })
+const orgSetActive = callable((data, context) =>
+  setActiveOrg({ uid: requireAuth(context), orgId: data.orgId || null })
 );
 
 const orgSetMemberCap = callable((data, context) =>
@@ -233,10 +246,11 @@ module.exports = {
   spendableGenTokens,
   prepareWalletCharge,
   refundToWallet,
-  setBillingOrg,
+  setActiveOrg,
+  readActiveOrgId,
   setMemberCap,
   updateWallet,
-  orgSetBilling,
+  orgSetActive,
   orgSetMemberCap,
   orgUpdateWallet
 };

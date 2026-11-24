@@ -47,7 +47,7 @@ async function setup({
   });
   await db
     .doc(`userOrgs/${uid}`)
-    .set({ orgs: { [orgId]: role }, billingOrgId: orgId });
+    .set({ orgs: { [orgId]: role }, activeOrgId: orgId });
   await db
     .doc(`tokenProfile/${uid}`)
     .set({ userId: uid, genToken: 7, geoToken: 3 });
@@ -195,19 +195,23 @@ describe('team wallets (emulator)', () => {
   });
 
   describe('who pays', () => {
-    it('lets a seat holder choose the team or personal tokens; not a viewer', async () => {
+    it('the active team pays for a seat holder; Personal or a viewer pays alone', async () => {
       const { orgId, uid } = await setup();
-      await wallet.setBillingOrg({ uid, orgId: null });
+      await wallet.setActiveOrg({ uid, orgId: null });
       expect((await charge(uid, 1)).result.chargedOrgId).toBe(null);
-      await wallet.setBillingOrg({ uid, orgId });
+      await wallet.setActiveOrg({ uid, orgId });
       expect((await charge(uid, 1)).result.chargedOrgId).toBe(orgId);
+      expect(await wallet.readActiveOrgId(uid)).toBe(orgId);
+      // A viewer can make the team active, but pays with their own tokens.
       const viewer = await setup({ role: 'viewer' });
+      await wallet.setActiveOrg({ uid: viewer.uid, orgId: viewer.orgId });
+      expect((await charge(viewer.uid, 1)).result.chargedOrgId).toBe(null);
       await expect(
-        wallet.setBillingOrg({ uid: viewer.uid, orgId: viewer.orgId })
-      ).rejects.toMatchObject({ reason: 'not-editor' });
+        wallet.setActiveOrg({ uid, orgId: viewer.orgId })
+      ).rejects.toMatchObject({ reason: 'not-member' });
     });
 
-    it('joining a team makes it pay; becoming a viewer or leaving switches back', async () => {
+    it('joining a first team makes it active; leaving it goes back to Personal', async () => {
       const owner = await admin
         .auth()
         .createUser({ email: `o-${uniq()}@example.test`, emailVerified: true });
@@ -232,29 +236,24 @@ describe('team wallets (emulator)', () => {
         uid: member.uid,
         invitationId: invite.invitationId
       });
-      const billing = async () =>
-        (await db.doc(`userOrgs/${member.uid}`).get()).data().billingOrgId;
-      expect(await billing()).toBe(orgId);
+      const active = async () =>
+        (await db.doc(`userOrgs/${member.uid}`).get()).data().activeOrgId;
+      expect(await active()).toBe(orgId);
+      // A role change keeps it active (as a viewer it pays nothing).
       await orgs.changeMemberRole({
         actorUid: owner.uid,
         orgId,
         targetUid: member.uid,
         role: 'viewer'
       });
-      expect(await billing()).toBe(null);
-      await orgs.changeMemberRole({
-        actorUid: owner.uid,
-        orgId,
-        targetUid: member.uid,
-        role: 'member'
-      });
-      expect(await billing()).toBe(orgId);
+      expect(await active()).toBe(orgId);
+      expect(await wallet.resolveBillingOrg(member.uid)).toBe(null);
       await orgs.removeMember({
         actorUid: member.uid,
         orgId,
         targetUid: member.uid
       });
-      expect(await billing()).toBe(null);
+      expect(await active()).toBe(null);
     });
   });
 

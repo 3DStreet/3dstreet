@@ -12,8 +12,9 @@
  *   orgInvitations/{id}          { orgId, orgName, email, role, status,
  *                                  invitedBy, inviterName, createdAt,
  *                                  expiresAt, lastSentAt, sendCount, ... }
- *   userOrgs/{uid}               { orgs: { [orgId]: role } } — the user's
- *                                  orgs in one read (entitlement, UI)
+ *   userOrgs/{uid}               { orgs: { [orgId]: role }, activeOrgId }
+ *                                  — the user's orgs in one read
+ *                                  (entitlement, UI) and their active team
  *
  * Every write that changes membership also updates userOrgs, in the same
  * transaction.
@@ -114,17 +115,17 @@ const toHttpsError = (error) => {
 /**
  * The userOrgs update for `uid` getting `role` in `orgId` (null = leaving).
  * `current` is their userOrgs data as read in the transaction. Also keeps
- * who pays their AI usage (#1267 Phase 3, team-wallet.js) consistent: a new
- * seat makes the team pay when the user hasn't picked one; losing the seat
- * (leaving, viewer) switches back to personal tokens if this team paid.
+ * their active team (the team switcher, team-wallet.js) consistent: joining
+ * a first team makes it active; leaving the active team goes back to
+ * Personal. A role change keeps it (a viewer's team pays nothing anyway).
  */
 const userOrgsPatch = (orgId, role, current = {}) => {
   const patch = {
     orgs: { [orgId]: role === null ? FieldValue.delete() : role },
     updatedAt: FieldValue.serverTimestamp()
   };
-  if (takesSeat(role) && !current.billingOrgId) patch.billingOrgId = orgId;
-  if (!takesSeat(role) && current.billingOrgId === orgId) patch.billingOrgId = null;
+  if (role !== null && !current.activeOrgId) patch.activeOrgId = orgId;
+  if (role === null && current.activeOrgId === orgId) patch.activeOrgId = null;
   return patch;
 };
 

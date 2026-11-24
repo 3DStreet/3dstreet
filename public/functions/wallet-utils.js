@@ -3,8 +3,8 @@
  * rules, no Firebase. The Firestore side is in team-wallet.js.
  *
  * A team's wallet (orgWallets/{orgId}) holds genTokens that its members
- * spend instead of their own when they choose the team to pay
- * (userOrgs/{uid}.billingOrgId). Each month it is topped up to the team's
+ * spend instead of their own while it's their active team and they hold a
+ * seat in it (userOrgs/{uid}.activeOrgId). Each month it is topped up to the team's
  * monthlyTokenBudget (tokens bought on top survive, like personal top-ups),
  * so the team's AI cost per month is capped by its budget. An optional
  * memberMonthlyCap limits what one member spends per month.

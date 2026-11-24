@@ -5,18 +5,17 @@ wallet, so what the team spends stays within the budget it pays for.
 
 ## Who pays
 
-- Each user chooses who pays their generations: a team where they hold a
-  seat (owner, admin, member), or their own tokens. It's
-  `userOrgs/{uid}.billingOrgId` (null = their own), set with
-  `orgSetBilling` from the profile ("AI generations paid by") or from the
-  out-of-tokens modal ("Use my own tokens instead").
-- Getting a seat makes the team pay when the user hasn't chosen one yet;
-  losing it (leaving, removed, made a viewer) switches back to their own
-  tokens if that team paid. `userOrgsPatch` in `orgs.js` does both.
-- It's re-checked at every charge (`resolveBillingOrg`): if the team isn't
-  active or the user no longer holds a seat in it, their own tokens pay.
-- Viewers never spend the team's tokens. A team seat no longer refills
-  personal tokens each month.
+- The user's **active team** pays: `userOrgs/{uid}.activeOrgId`, picked in
+  the team switcher of the profile menu (any team they belong to, or
+  Personal = null) with `orgSetActive`. The out-of-tokens modal's "Use my
+  own tokens instead" switches to Personal.
+- It's re-checked at every charge (`resolveBillingOrg`): the active team
+  pays only while it's active and the user holds a seat in it (owner,
+  admin, member). Personal, a viewer's team or a suspended team: their own
+  tokens pay.
+- Joining a first team makes it active; leaving the active team goes back
+  to Personal (`userOrgsPatch` in `orgs.js`). A role change keeps it.
+- A team seat no longer refills personal tokens each month.
 
 ## The wallet
 
@@ -69,5 +68,5 @@ modal explain team-paid tokens instead of selling packs.
 
 Only test data (teams weren't released before wallets): such a team has no
 wallet, so its budget is 0 and team charges are refused (`wallet-empty`)
-until staff set one with `orgUpdateWallet`. Its members get `billingOrgId`
-when their membership changes, or choose it in their profile.
+until staff set one with `orgUpdateWallet`. Its members pick it in the
+team switcher.
