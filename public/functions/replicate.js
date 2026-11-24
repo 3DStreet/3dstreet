@@ -22,6 +22,7 @@ const { MODAL_SECRETS, enqueueModalJob, fetchModalPrediction } = require('./moda
 // authoritative status adapter used by the poll, falJobWebhook, and the
 // reconciler. One-directional require: fal-3d.js does NOT require this module,
 // so there's no cycle.
+const { mayPostToCommunity } = require('./scene-visibility.js');
 const { saveMeshToGallery, fetchFalPrediction, sanitizeGalleryMetadata, sanitizeNotifyBatch } = require('./fal-3d.js');
 // Real-time completion email: the webhook calls this the instant a job finishes
 // so the user isn't waiting on the 10-min reconciler sweep. Shared, idempotent
@@ -1593,7 +1594,7 @@ async function saveSplatToGallery(userId, plyUrl, job) {
       updatedAt: now,
       uploadedAt: now,
       publishedAt: now,
-      visibility: 'public',
+      visibility: 'unlisted',
       tags: [],
       collections: [],
       deleted: false
@@ -1687,7 +1688,7 @@ async function saveVideoToGallery(userId, videoUrl, job) {
       updatedAt: now,
       uploadedAt: now,
       publishedAt: now,
-      visibility: 'public',
+      visibility: 'unlisted',
       tags: [],
       collections: [],
       deleted: false
@@ -1812,7 +1813,7 @@ async function saveImageToGallery(userId, imageUrl, job) {
       updatedAt: now,
       uploadedAt: now,
       publishedAt: now,
-      visibility: 'public',
+      visibility: 'unlisted',
       tags: [],
       collections: [],
       deleted: false
@@ -1998,14 +1999,15 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         // Fire-and-forget: post the durable Storage URL (the replicate.delivery
         // URL is ephemeral). Errors never fail the (already-committed) save.
         const params = job.generationParams || {};
-        postAIVideoToDiscord(
+        // Only from a public scene (docs/scene-visibility.md).
+        mayPostToCommunity(job).then((allowed) => allowed && postAIVideoToDiscord(
           userId,
           storageUrl,
           params.prompt || '',
           SUPPORTED_VIDEO_MODELS[job.model] || job.model,
           params.duration_seconds,
           params.scene_id
-        ).catch(err => console.error('Discord posting failed:', err));
+        )).catch(err => console.error('Discord posting failed:', err));
 
         return { status: 'succeeded', video_url: storageUrl, assetId };
       } catch (saveError) {
@@ -2101,14 +2103,15 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
           AI_MODEL_NAMES[params.model_version] ||
           AI_MODEL_NAMES[params.model_id] ||
           'AI Model';
-        postAIImageToDiscord(
+        // Only from a public scene (docs/scene-visibility.md).
+        mayPostToCommunity(job).then((allowed) => allowed && postAIImageToDiscord(
           userId,
           storageUrl,
           params.prompt || '',
           displayName,
           params.scene_id,
           job.source
-        ).catch(err => console.error('Discord posting failed:', err));
+        )).catch(err => console.error('Discord posting failed:', err));
 
         return { status: 'succeeded', image_url: storageUrl, assetId };
       } catch (saveError) {

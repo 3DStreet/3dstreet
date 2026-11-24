@@ -450,6 +450,51 @@ describe('organizations (emulator)', () => {
       expect((await member(orgId, first.uid)).via).toBe('domain');
     });
 
+    it('never re-adds someone who was removed or left, until they accept an invitation', async () => {
+      const domain = `d${uniq()}.test`;
+      const { orgId, owner } = await newOrg({ seats: 5, domains: [domain] });
+      const removed = await makeUser({ domain });
+      const left = await makeUser({ domain });
+      for (const user of [removed, left]) {
+        expect(await orgs.autoJoinDomainOrgs(user.uid)).toEqual([orgId]);
+      }
+      await orgs.removeMember({
+        actorUid: owner.uid,
+        orgId,
+        targetUid: removed.uid
+      });
+      await orgs.removeMember({
+        actorUid: left.uid,
+        orgId,
+        targetUid: left.uid
+      });
+      for (const user of [removed, left]) {
+        expect(await orgs.autoJoinDomainOrgs(user.uid)).toEqual([]);
+        expect(await member(orgId, user.uid)).toBeUndefined();
+        expect(await userOrgs(user.uid)).toEqual({});
+      }
+      // Also refused inside the transaction, not only by the pre-check.
+      await expectReason(
+        orgs.addMember({
+          orgId,
+          uid: removed.uid,
+          role: 'member',
+          via: 'domain'
+        }),
+        'departed'
+      );
+      // Others still join.
+      const next = await makeUser({ domain });
+      expect(await orgs.autoJoinDomainOrgs(next.uid)).toEqual([orgId]);
+
+      const { invitationId } = await invite(orgId, owner.uid, removed.email);
+      await orgs.acceptInvitation({ uid: removed.uid, invitationId });
+      expect((await member(orgId, removed.uid)).role).toBe('member');
+      expect(
+        (await db.doc(`orgs/${orgId}/departed/${removed.uid}`).get()).exists
+      ).toBe(false);
+    });
+
     it('joins as a viewer, without a seat, when the team says so', async () => {
       const domain = `d${uniq()}.test`;
       const { orgId, owner } = await newOrg({ seats: 1, domains: [domain] });

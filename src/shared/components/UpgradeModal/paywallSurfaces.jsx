@@ -156,7 +156,7 @@ const MapPinIcon = () => (
 
 export const PAYWALL_SURFACES = {
   // Private scenes (#1267) — fired from the Share modal when a non-Pro
-  // author picks "Private" (and when setSceneVisibility refuses it).
+  // author picks "Unlisted" or "Private" (and when setSceneVisibility refuses it).
   private_scene: {
     icon: <LockIcon />,
     titleId: 'surfacePrivateSceneTitle',

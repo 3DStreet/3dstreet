@@ -253,7 +253,84 @@ describe('team wallets (emulator)', () => {
         orgId,
         targetUid: member.uid
       });
+      expect(await active()).toBeUndefined();
+      expect(await wallet.readActiveOrgId(member.uid)).toBe(null);
+    });
+
+    it('picking Personal sticks through role changes and new teams', async () => {
+      const make = async () =>
+        admin.auth().createUser({
+          email: `p-${uniq()}@example.test`,
+          emailVerified: true
+        });
+      const owner = await make();
+      const user = await make();
+      const newOrg = () =>
+        orgs.createOrg({
+          name: 'Team',
+          plan: 'PRO',
+          seats: 5,
+          ownerEmail: owner.email,
+          actorUid: 'staff'
+        });
+      const add = (orgId) =>
+        orgs.addMember({ orgId, uid: user.uid, role: 'member', via: 'staff' });
+      const active = () => wallet.readActiveOrgId(user.uid);
+      const a = (await newOrg()).orgId;
+      const b = (await newOrg()).orgId;
+      const c = (await newOrg()).orgId;
+
+      await add(a);
+      expect(await active()).toBe(a);
+      await add(b); // a second team never switches
+      expect(await active()).toBe(a);
+      await wallet.setActiveOrg({ uid: user.uid, orgId: null });
+      await orgs.changeMemberRole({
+        actorUid: owner.uid,
+        orgId: a,
+        targetUid: user.uid,
+        role: 'admin'
+      });
       expect(await active()).toBe(null);
+      await add(c);
+      expect(await active()).toBe(null);
+
+      // Still Personal after leaving every team and joining again.
+      for (const orgId of [a, b, c]) {
+        await orgs.removeMember({
+          actorUid: user.uid,
+          orgId,
+          targetUid: user.uid
+        });
+      }
+      await add(a);
+      expect(await active()).toBe(null);
+    });
+
+    it('losing the active team is not picking Personal', async () => {
+      const owner = await admin.auth().createUser({
+        email: `q-${uniq()}@example.test`,
+        emailVerified: true
+      });
+      const user = await admin.auth().createUser({});
+      const { orgId } = await orgs.createOrg({
+        name: 'Team',
+        plan: 'PRO',
+        seats: 5,
+        ownerEmail: owner.email,
+        actorUid: 'staff'
+      });
+      const add = () =>
+        orgs.addMember({ orgId, uid: user.uid, role: 'member', via: 'staff' });
+      await add();
+      await orgs.removeMember({
+        actorUid: owner.uid,
+        orgId,
+        targetUid: user.uid
+      });
+      expect(await wallet.readActiveOrgId(user.uid)).toBe(null);
+      await add();
+      expect(await wallet.readActiveOrgId(user.uid)).toBe(orgId);
     });
   });
 

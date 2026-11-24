@@ -44,8 +44,9 @@ team. It sets:
 | The Assets panel's first library | the open team scene's team, else the active team's (`AssetsPanelBody`)                                       |
 | The scenes modal's first tab     | the active team's                                                                                            |
 
-Joining a first team makes it active; leaving the active team goes back to
-Personal (`userOrgsPatch`). The client reads it as `currentUser.activeOrgId`
+Joining a first team makes it active; after that only the user switches.
+Leaving the active team goes back to Personal (`userOrgsPatch`,
+[team-wallet.md](team-wallet.md#who-pays)). The client reads it as `currentUser.activeOrgId`
 and the paying team as `billingOrgOf(currentUser)`
 (`@shared/utils/teamWallet`).
 

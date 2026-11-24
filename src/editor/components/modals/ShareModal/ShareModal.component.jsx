@@ -154,7 +154,7 @@ function VisibilityPicker({ value, isPro, isSaving, onChange, teamName }) {
               <span className={styles.visibilityLabel}>
                 <AwesomeIcon icon={option.icon} size={14} />
                 <FormattedMessage {...option.label} />
-                {option.value === 'private' && !isPro && !teamName && (
+                {option.value !== 'public' && !isPro && !teamName && (
                   <span className={styles.proBadge}>PRO</span>
                 )}
               </span>
@@ -376,15 +376,21 @@ function ShareModal() {
     ? isTeamManagerRole(sceneTeam?.role)
     : isAuthor;
 
-  const openPrivateScenePaywall = () => {
-    posthog.capture('private_scene_paywall', { scene_id: sceneId });
+  const openPrivateScenePaywall = (requested) => {
+    posthog.capture('private_scene_paywall', {
+      scene_id: sceneId,
+      visibility: requested
+    });
     useStore.getState().startCheckout('private_scene');
   };
 
   const handleVisibilityChange = async (next) => {
     if (next === visibility || isSavingVisibility) return;
-    if (next === 'private' && !sceneData?.orgId && !currentUser?.isPro) {
-      openPrivateScenePaywall();
+    // Lowering a private scene to unlisted needs no Pro.
+    const isRestricting =
+      next === 'private' || (next === 'unlisted' && visibility === 'public');
+    if (isRestricting && !sceneData?.orgId && !currentUser?.isPro) {
+      openPrivateScenePaywall(next);
       return;
     }
     setIsSavingVisibility(true);
@@ -398,7 +404,7 @@ function ShareModal() {
       });
     } catch (error) {
       if (error?.details?.reason === 'pro-required') {
-        openPrivateScenePaywall();
+        openPrivateScenePaywall(next);
       } else {
         console.error('Error changing scene visibility:', error);
         STREET.notify.errorMessage(

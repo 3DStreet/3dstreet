@@ -302,4 +302,21 @@ describe('team scenes (emulator)', () => {
       expect(await visibility.readSceneAccess(data, null)).toBe(false);
     });
   });
+
+  describe('createRestrictedScene', () => {
+    it('creates an empty personal scene, restricted from the start', async () => {
+      for (const value of ['unlisted', 'private']) {
+        const { sceneId } = await visibility.createRestrictedScene({
+          uid: 'pro',
+          visibility: value,
+          isPro: async () => true
+        });
+        expect(await sceneDoc(sceneId)).toMatchObject({
+          author: 'pro',
+          orgId: null,
+          visibility: value
+        });
+      }
+    });
+  });
 });

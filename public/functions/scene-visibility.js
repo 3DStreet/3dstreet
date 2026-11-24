@@ -2,21 +2,25 @@
  * Scene visibility (#1267, docs/scene-visibility.md, docs/team-scenes.md).
  *
  *   'public'   — anyone can open it; listed in the community feed
- *   'unlisted' — anyone with the link can open it; not listed
+ *   'unlisted' — anyone with the link can open it; not listed (Pro to set
+ *                on a personal scene)
  *   'private'  — personal scene: only the author (Pro); team scene (orgId
  *                set): only the org's members
  *
- * Firestore rules let the author of a personal scene switch between public
- * and unlisted, but never to private: the Pro entitlement includes team
- * domains, which live in a secret the rules can't read. setSceneVisibility
- * is the only writer of 'private' on personal scenes, and of any change on a
+ * Firestore rules let the author of a personal scene make it less
+ * restricted, never more: the Pro entitlement includes team domains, which
+ * live in a secret the rules can't read. setSceneVisibility and
+ * createRestrictedScene are the only writers of 'unlisted' and 'private' on
+ * personal scenes, and setSceneVisibility is the only one of any change on a
  * team scene (owners and admins only; the org's plan pays for private).
  * getScene (index.js) serves private scenes to who may read them.
  */
 
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
+const { randomUUID } = require('crypto');
 const { getAuth } = require('firebase-admin/auth');
+const { FieldValue } = require('firebase-admin/firestore');
 const { assertAppCheck } = require('./app-check.js');
 const { isUserProInternal } = require('./token-management.js');
 
@@ -59,7 +63,7 @@ async function readSceneAccess(scene, uid) {
 /**
  * Whether `uid` may set `scene` to `visibility`. Returns null when allowed,
  * else a reason. `isPro` and `orgRole` are functions so their lookups only
- * run when needed (a change to private on a personal scene; a team scene).
+ * run when needed (restricting a personal scene; a team scene).
  */
 async function visibilityChangeRefusal({ scene, uid, visibility, isPro, orgRole = async () => null }) {
   if (!SCENE_VISIBILITIES.includes(visibility)) return 'invalid-visibility';
@@ -71,8 +75,54 @@ async function visibilityChangeRefusal({ scene, uid, visibility, isPro, orgRole 
     return role === 'owner' || role === 'admin' ? null : 'not-manager';
   }
   if (scene.author !== uid) return 'not-author';
-  if (visibility === 'private' && !(await isPro())) return 'pro-required';
+  // Lowering a private scene to unlisted needs no Pro: it may have lapsed.
+  const isRestricting =
+    visibility === 'private' || (visibility === 'unlisted' && sceneVisibility(scene) !== 'private');
+  if (isRestricting && visibility !== sceneVisibility(scene) && !(await isPro())) {
+    return 'pro-required';
+  }
   return null;
+}
+
+/**
+ * May this generation job's output be posted to the community Discord? Only
+ * one made from a public scene and not paid by a team. `scene` is the job's
+ * scene as read now, null when it has none or it can't be read.
+ */
+const isCommunityPostable = (job, scene) =>
+  !!scene && !job.chargedOrgId && sceneVisibility(scene) === 'public';
+
+/** isCommunityPostable with the scene looked up; a failed read is a no. */
+async function mayPostToCommunity(job) {
+  const sceneId = job.generationParams && job.generationParams.scene_id;
+  if (typeof sceneId !== 'string' || !sceneId) return false;
+  try {
+    const snapshot = await admin.firestore().collection('scenes').doc(sceneId).get();
+    return isCommunityPostable(job, snapshot.exists ? snapshot.data() : null);
+  } catch (error) {
+    console.error(`mayPostToCommunity: could not read scene ${sceneId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Create an empty personal scene that is unlisted or private from the start
+ * (the rules let clients create only public ones); its author then saves the
+ * content into it. Used to copy such a scene without publishing it.
+ */
+async function createRestrictedScene({ uid, visibility, isPro }) {
+  if (!['unlisted', 'private'].includes(visibility)) return { reason: 'invalid-visibility' };
+  if (!(await isPro())) return { reason: 'pro-required' };
+  const sceneId = randomUUID();
+  const now = FieldValue.serverTimestamp();
+  await admin.firestore().collection('scenes').doc(sceneId).set({
+    author: uid,
+    orgId: null,
+    visibility,
+    createTimestamp: now,
+    updateTimestamp: now
+  });
+  return { sceneId, visibility };
 }
 
 const REASON_TO_HTTPS = {
@@ -80,7 +130,7 @@ const REASON_TO_HTTPS = {
   'not-found': ['not-found', 'Scene not found.'],
   'not-author': ['permission-denied', 'Only the scene author can change its visibility.'],
   'not-manager': ['permission-denied', "Only the team's owners and admins can change its sharing."],
-  'pro-required': ['permission-denied', 'Private scenes are a Pro feature.']
+  'pro-required': ['permission-denied', 'Unlisted and private scenes are a Pro feature.']
 };
 
 // ALLOWED_PRO_TEAM_DOMAINS: team-domain users are Pro (isUserProInternal).
@@ -120,6 +170,27 @@ const setSceneVisibility = functions
     return { sceneId, visibility };
   });
 
+const createRestrictedSceneCallable = functions
+  .runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS'] })
+  .https
+  .onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Sign in to save a scene.');
+    }
+    assertAppCheck(context);
+    const uid = context.auth.uid;
+    const { reason, ...result } = await createRestrictedScene({
+      uid,
+      visibility: data && data.visibility,
+      isPro: () => isUserProInternal(uid)
+    });
+    if (reason) {
+      const [code, message] = REASON_TO_HTTPS[reason];
+      throw new functions.https.HttpsError(code, message, { reason });
+    }
+    return result;
+  });
+
 /**
  * The caller's uid from an `Authorization: Bearer <Firebase ID token>`
  * header, or null when absent or invalid.
@@ -142,6 +213,10 @@ module.exports = {
   readOrgRole,
   readSceneAccess,
   visibilityChangeRefusal,
+  isCommunityPostable,
+  mayPostToCommunity,
+  createRestrictedScene,
+  createRestrictedSceneCallable,
   setSceneVisibility,
   uidFromAuthorizationHeader
 };

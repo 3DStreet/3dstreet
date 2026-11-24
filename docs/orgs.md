@@ -88,7 +88,9 @@ domains join it when they sign in (`autoJoinDomainOrgs`, run by
 members while seats last, viewers (no seat) always. Owners and admins pick
 the role in Team settings when the team has domains, so a school can let
 students in as viewers. Turning auto-join off is staff removing the
-domains, since staff verify them. This replaces the
+domains, since staff verify them. Someone who left or was removed
+(`orgs/{orgId}/departed/{uid}`) is not joined again until they accept an
+invitation. This replaces the
 `ALLOWED_PRO_TEAM_DOMAINS` secret for customers moved into orgs; the secret
 still works for the others.
 
@@ -119,6 +121,7 @@ rules in `firestore.rules` only allow reads.
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
 | `orgs/{orgId}`               | name, plan, seats, status (`active`, `suspended`), domains, memberEditScope (`all`, `own`), domainJoinRole (`member`, `viewer`), createdAt, createdBy, updatedAt    | members                                             |
 | `orgs/{orgId}/members/{uid}` | uid, email, displayName, role, joinedAt, invitedBy, via (`invitation`, `domain`, `staff`)                                                                           | members                                             |
+| `orgs/{orgId}/departed/{uid}` | uid, removedBy, at: left or was removed; cleared on joining again | nobody (functions only) |
 | `orgInvitations/{id}`        | orgId, orgName, email (lowercase), role, status (`pending`, `accepted`, `declined`, `revoked`), invitedBy, inviterName, createdAt, expiresAt, lastSentAt, sendCount | the invitee (verified email) and the org's managers |
 | `userOrgs/{uid}`             | orgs: { [orgId]: role }, activeOrgId (the team switcher, null = Personal; [team-wallet.md](team-wallet.md))                                                         | the user                                            |
 

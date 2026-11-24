@@ -918,11 +918,11 @@ const SHARED_MESSAGES = {
     fr: 'Gardez vos scènes privées'
   },
   surfacePrivateSceneDesc: {
-    en: 'Work on projects before they are public. A private scene opens only for you, is never listed in the community scenes and cannot be embedded.',
-    es: 'Trabaja en tus proyectos antes de hacerlos públicos. Una escena privada solo se abre para ti, nunca aparece en las escenas de la comunidad y no se puede insertar.',
+    en: 'Work on projects before they are public. A private scene opens only for you, is never listed in the community scenes and cannot be embedded. An unlisted scene opens for anyone with its link, without being listed.',
+    es: 'Trabaja en tus proyectos antes de hacerlos públicos. Una escena privada solo se abre para ti, nunca aparece en las escenas de la comunidad y no se puede insertar. Una escena no listada se abre para quien tenga el enlace, sin aparecer en la lista.',
     'pt-BR':
-      'Trabalhe em seus projetos antes de torná-los públicos. Uma cena privada abre só para você, nunca aparece nas cenas da comunidade e não pode ser incorporada.',
-    fr: "Travaillez sur vos projets avant de les rendre publics. Une scène privée ne s'ouvre que pour vous, n'apparaît jamais dans les scènes de la communauté et ne peut pas être intégrée."
+      'Trabalhe em seus projetos antes de torná-los públicos. Uma cena privada abre só para você, nunca aparece nas cenas da comunidade e não pode ser incorporada. Uma cena não listada abre para quem tiver o link, sem aparecer na lista.',
+    fr: "Travaillez sur vos projets avant de les rendre publics. Une scène privée ne s'ouvre que pour vous, n'apparaît jamais dans les scènes de la communauté et ne peut pas être intégrée. Une scène non listée s'ouvre pour quiconque a son lien, sans être listée."
   },
   surfaceGeoTitle: {
     en: 'Geospatial',
@@ -2224,12 +2224,12 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Esta cena é privada e não pode ser incorporada.',
     fr: 'Cette scène est privée et ne peut pas être intégrée.'
   },
-  privateSceneCopyUnlisted: {
-    en: 'The copy was saved as unlisted: it could not be made private.',
-    es: 'La copia se guardó como no listada: no se pudo hacer privada.',
+  restrictedSceneCopyNeedsPro: {
+    en: 'Copying an unlisted or private scene requires Pro. Nothing was saved.',
+    es: 'Copiar una escena no listada o privada requiere Pro. No se guardó nada.',
     'pt-BR':
-      'A cópia foi salva como não listada: não foi possível torná-la privada.',
-    fr: "La copie a été enregistrée comme non listée : elle n'a pas pu être rendue privée."
+      'Copiar uma cena não listada ou privada requer o Pro. Nada foi salvo.',
+    fr: "Copier une scène non listée ou privée nécessite Pro. Rien n'a été enregistré."
   }
 };
 

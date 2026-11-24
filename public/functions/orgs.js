@@ -12,6 +12,7 @@
  *   orgInvitations/{id}          { orgId, orgName, email, role, status,
  *                                  invitedBy, inviterName, createdAt,
  *                                  expiresAt, lastSentAt, sendCount, ... }
+ *   orgs/{orgId}/departed/{uid}  { uid, removedBy, at }: left or removed
  *   userOrgs/{uid}               { orgs: { [orgId]: role }, activeOrgId }
  *                                  — the user's orgs in one read
  *                                  (entitlement, UI) and their active team
@@ -55,6 +56,7 @@ const { defaultMonthlyBudget } = require('./wallet-utils.js');
 const db = () => admin.firestore();
 const orgRef = (orgId) => db().collection('orgs').doc(orgId);
 const memberRef = (orgId, uid) => orgRef(orgId).collection('members').doc(uid);
+const departedRef = (orgId, uid) => orgRef(orgId).collection('departed').doc(uid);
 const invitationRef = (id) => db().collection('orgInvitations').doc(id);
 const userOrgsRef = (uid) => db().collection('userOrgs').doc(uid);
 
@@ -116,16 +118,21 @@ const toHttpsError = (error) => {
  * The userOrgs update for `uid` getting `role` in `orgId` (null = leaving).
  * `current` is their userOrgs data as read in the transaction. Also keeps
  * their active team (the team switcher, team-wallet.js) consistent: joining
- * a first team makes it active; leaving the active team goes back to
- * Personal. A role change keeps it (a viewer's team pays nothing anyway).
+ * a first team makes it active, unless they have picked a workspace (an
+ * `activeOrgId` key, null = they picked Personal); after that only they
+ * switch. Leaving the active team goes back to Personal. A role change keeps
+ * it (a viewer's team pays nothing anyway).
  */
 const userOrgsPatch = (orgId, role, current = {}) => {
   const patch = {
     orgs: { [orgId]: role === null ? FieldValue.delete() : role },
     updatedAt: FieldValue.serverTimestamp()
   };
-  if (role !== null && !current.activeOrgId) patch.activeOrgId = orgId;
-  if (role === null && current.activeOrgId === orgId) patch.activeOrgId = null;
+  const isFirstTeam = Object.keys(current.orgs || {}).length === 0;
+  if (role !== null && isFirstTeam && !('activeOrgId' in current)) patch.activeOrgId = orgId;
+  // Deleted, not null: the user didn't pick Personal, so a later first team
+  // can become active again.
+  if (role === null && current.activeOrgId === orgId) patch.activeOrgId = FieldValue.delete();
   return patch;
 };
 
@@ -259,13 +266,19 @@ async function updateOrg({ orgId, patch = {} }) {
   return { orgId, ...fields };
 }
 
-/** Add a member directly (staff, domain auto-join). Idempotent. */
+/**
+ * Add a member directly (staff, domain auto-join). Idempotent. A domain join
+ * never re-adds someone who left or was removed.
+ */
 async function addMember({ orgId, uid, role, via, invitedBy = null }) {
   const who = await describeUser(uid);
   await db().runTransaction(async (tx) => {
     const org = requireOrg(await tx.get(orgRef(orgId)));
     const existing = await tx.get(memberRef(orgId, uid));
     if (existing.exists) return;
+    if (via === 'domain' && (await tx.get(departedRef(orgId, uid))).exists) {
+      throw new OrgError('departed');
+    }
     const current = await readUserOrgsData(tx, uid);
     if (takesSeat(role)) {
       const state = await readSeatState(tx, orgId);
@@ -281,6 +294,7 @@ async function addMember({ orgId, uid, role, via, invitedBy = null }) {
       via
     });
     tx.set(userOrgsRef(uid), userOrgsPatch(orgId, role, current), { merge: true });
+    tx.delete(departedRef(orgId, uid));
   });
 }
 
@@ -488,6 +502,7 @@ async function acceptInvitation({ uid, invitationId }) {
       tx.set(userOrgsRef(uid), userOrgsPatch(inv.orgId, inv.role, current), {
         merge: true
       });
+      tx.delete(departedRef(inv.orgId, uid));
     }
     tx.update(invitationRef(invitationId), {
       status: 'accepted',
@@ -568,6 +583,12 @@ async function removeMember({ actorUid, orgId, targetUid }) {
     });
     if (refusal) throw new OrgError(refusal);
     tx.delete(memberRef(orgId, targetUid));
+    // Domain auto-join skips them until they accept an invitation.
+    tx.set(departedRef(orgId, targetUid), {
+      uid: targetUid,
+      removedBy: actorUid,
+      at: FieldValue.serverTimestamp()
+    });
     tx.set(userOrgsRef(targetUid), userOrgsPatch(orgId, null, current), {
       merge: true
     });
@@ -621,7 +642,7 @@ async function updateOrgSettings({ actorUid, orgId, memberEditScope, domainJoinR
 /**
  * Join the active orgs that claim the user's verified email domain, with
  * the org's domainJoinRole (member by default; a member needs a free seat,
- * a viewer takes none). Replaces the ALLOWED_PRO_TEAM_DOMAINS secret
+ * a viewer takes none), except one they left or were removed from. Replaces the ALLOWED_PRO_TEAM_DOMAINS secret
  * for the customers moved into orgs. Returns the orgIds joined.
  */
 async function autoJoinDomainOrgs(uid) {
@@ -635,7 +656,11 @@ async function autoJoinDomainOrgs(uid) {
     .get();
   const joined = [];
   for (const doc of orgs.docs) {
-    if ((await memberRef(doc.id, uid).get()).exists) continue;
+    const [existing, departed] = await Promise.all([
+      memberRef(doc.id, uid).get(),
+      departedRef(doc.id, uid).get()
+    ]);
+    if (existing.exists || departed.exists) continue;
     try {
       await addMember({ orgId: doc.id, uid, role: domainJoinRoleOf(doc.data()), via: 'domain' });
       joined.push(doc.id);

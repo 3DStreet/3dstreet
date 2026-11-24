@@ -3,7 +3,6 @@ import useStore from '@/store.js';
 import { resolveSavedCameraStates } from '@/tested/scene-camera-pose.js';
 import {
   createScene,
-  setSceneVisibility,
   updateScene,
   uploadThumbnailImage
 } from '@/editor/api/scene';
@@ -415,32 +414,28 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
       return sceneId;
     }
     // A copy of your own scene keeps its visibility (#1267); a copy of
-    // someone else's scene, or a new one, is public. The rules refuse
-    // 'private' on create, so a private copy starts unlisted (never listed)
-    // and is made private through the callable right after.
-    const sourceVisibility = isOwnScene ? store.sceneVisibility : 'public';
-    sceneId = await createScene(
-      currentUser.uid,
-      filteredData.data,
-      title,
-      filteredData.version,
-      filteredData.memory,
-      false,
-      sourceVisibility === 'public' ? 'public' : 'unlisted'
-    );
-    store.setSceneTeam(null);
-    let visibility = sourceVisibility === 'public' ? 'public' : 'unlisted';
-    if (sourceVisibility === 'private') {
-      try {
-        visibility = await setSceneVisibility(sceneId, 'private');
-      } catch (error) {
-        // e.g. no longer Pro: the copy stays unlisted.
-        console.error('Could not make the scene copy private:', error);
-        STREET.notify.errorMessage(
-          formatSharedMessage('privateSceneCopyUnlisted')
-        );
-      }
+    // someone else's scene, or a new one, is public. Without Pro (it lapsed)
+    // an unlisted or private scene can't be copied: the copy would be public.
+    const visibility = isOwnScene ? store.sceneVisibility : 'public';
+    try {
+      sceneId = await createScene(
+        currentUser.uid,
+        filteredData.data,
+        title,
+        filteredData.version,
+        filteredData.memory,
+        false,
+        visibility
+      );
+    } catch (error) {
+      if (error?.details?.reason !== 'pro-required') throw error;
+      store.setSceneTitle(sceneTitle);
+      STREET.notify.warningMessage(
+        formatSharedMessage('restrictedSceneCopyNeedsPro')
+      );
+      return;
     }
+    store.setSceneTeam(null);
     useStore.getState().setSceneVisibility(visibility);
   } else {
     const isTeamScene = !!store.sceneOrgId;

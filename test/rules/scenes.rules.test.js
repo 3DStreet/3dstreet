@@ -142,7 +142,7 @@ describe('firestore.rules — scenes visibility', () => {
   });
 
   describe('create', () => {
-    it('a signed-in user creates a public or unlisted scene as its author', async () => {
+    it('a signed-in user creates a public scene as its author', async () => {
       await assertSucceeds(
         setDoc(sceneRef(otherDb(), 'n1'), { author: OTHER })
       );
@@ -152,7 +152,10 @@ describe('firestore.rules — scenes visibility', () => {
           visibility: 'public'
         })
       );
-      await assertSucceeds(
+    });
+
+    it('cannot create an unlisted scene directly (Pro, through the callable)', async () => {
+      await assertFails(
         setDoc(sceneRef(otherDb(), 'n3'), {
           author: OTHER,
           visibility: 'unlisted'
@@ -200,6 +203,23 @@ describe('firestore.rules — scenes visibility', () => {
       );
       await assertSucceeds(
         updateDoc(sceneRef(authorDb(), 'unlisted'), { visibility: 'public' })
+      );
+    });
+
+    it('the author cannot make a public scene unlisted directly', async () => {
+      for (const id of ['public', 'legacy']) {
+        await assertFails(
+          updateDoc(sceneRef(authorDb(), id), { visibility: 'unlisted' })
+        );
+      }
+    });
+
+    it('the author saves an unlisted scene, also after Pro ended', async () => {
+      await assertSucceeds(
+        updateDoc(sceneRef(authorDb(), 'unlisted'), { title: 'Renamed' })
+      );
+      await assertFails(
+        updateDoc(sceneRef(authorDb(), 'unlisted'), { visibility: 'private' })
       );
     });
 

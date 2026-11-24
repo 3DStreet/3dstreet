@@ -48,6 +48,14 @@ const generateSceneId = async (authorId, isFirstScene = false) => {
   return newSceneId;
 };
 
+const captureSceneCreated = (sceneId, authorId, title, isFirstScene) =>
+  posthog.capture('scene_created', {
+    scene_id: sceneId,
+    author_id: authorId,
+    scene_title: title,
+    is_first: isFirstScene
+  });
+
 const createScene = async (
   authorId,
   sceneData,
@@ -55,14 +63,34 @@ const createScene = async (
   version,
   memory,
   isFirstScene = false,
-  // Personal scene: 'public' or 'unlisted' (#1267); the rules refuse
-  // 'private' on create, so a private copy is created unlisted, then made
-  // private through setSceneVisibility. Team scene: any visibility.
+  // Personal scene: the rules let clients create only public ones; an
+  // unlisted or private one (Pro) goes through the createRestrictedScene
+  // callable, which refuses with details.reason 'pro-required'. Team scene:
+  // any visibility.
   visibility = 'public',
   // A team scene (#1267 Phase 2): { orgId, projectId, lockName }. The
   // creator holds its edit lock (src/editor/lib/editLock.js).
   team = null
 ) => {
+  const content = { data: sceneData, title, version, memory };
+  if (!team && visibility !== 'public') {
+    const callable = httpsCallable(getFunctions(), 'createRestrictedScene');
+    const { sceneId } = (await callable({ visibility })).data;
+    const restrictedRef = doc(sceneRef, sceneId);
+    try {
+      await updateDoc(restrictedRef, {
+        ...content,
+        updateTimestamp: serverTimestamp()
+      });
+    } catch (error) {
+      // Don't leave an empty scene behind.
+      await deleteDoc(restrictedRef).catch(() => {});
+      throw error;
+    }
+    captureSceneCreated(sceneId, authorId, title, isFirstScene);
+    return sceneId;
+  }
+
   // Generate a new UUID
   const newSceneId = uuidv4();
   const newSceneDocRef = doc(sceneRef, newSceneId);
@@ -82,18 +110,10 @@ const createScene = async (
         expiresAt: Timestamp.fromMillis(Date.now() + 2 * 60 * 1000)
       }
     }),
-    data: sceneData,
-    title: title,
-    version: version,
-    memory: memory
+    ...content
   });
 
-  posthog.capture('scene_created', {
-    scene_id: newSceneId,
-    author_id: authorId,
-    scene_title: title,
-    is_first: isFirstScene
-  });
+  captureSceneCreated(newSceneId, authorId, title, isFirstScene);
 
   return newSceneId;
 };
@@ -397,8 +417,8 @@ const uploadThumbnailImage = async (sceneDocId) => {
 };
 
 // Change a scene's visibility (#1267). Goes through the setSceneVisibility
-// callable: it is the only path allowed to make a scene private (a Pro
-// feature checked server-side). Throws the callable's error, whose
+// callable: the only path allowed to make a scene unlisted or private (Pro
+// features checked server-side). Throws the callable's error, whose
 // details.reason is 'pro-required' | 'not-author' | 'not-found' |
 // 'invalid-visibility'.
 const setSceneVisibility = async (sceneId, visibility) => {

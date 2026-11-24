@@ -148,7 +148,7 @@ async function saveMeshToGallery(userId, glbUrl, job) {
       updatedAt: now,
       uploadedAt: now,
       publishedAt: now,
-      visibility: 'public',
+      visibility: 'unlisted',
       tags: [],
       collections: [],
       deleted: false

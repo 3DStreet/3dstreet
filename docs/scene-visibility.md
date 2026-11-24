@@ -14,7 +14,8 @@ everywhere: the rules, `getScene` and the client all read a missing field as
 match a missing field; `scripts/backfill-scene-visibility.js` sets it on old
 scenes (see Deploying).
 
-Private is a Pro feature. Everyone can switch between public and unlisted.
+Unlisted and private are Pro features. An author can always make a scene less
+restricted, so one whose Pro ended keeps what they have and can lower it.
 
 ## Where it is enforced
 
@@ -24,16 +25,25 @@ Private is a Pro feature. Everyone can switch between public and unlisted.
     (`where('visibility', '==', 'public')`, the community feed) or to the
     caller's own (`where('author', '==', uid)`, My scenes); anything else is
     refused.
-  - `create`: the author must be the caller; visibility `public` or
-    `unlisted` only.
-  - `update`: author only, `author` immutable, visibility unchanged or set
-    to `public`/`unlisted`.
-  - Clients can never write `private`: the Pro entitlement includes team
+  - `create`: the author must be the caller; visibility `public` only.
+  - `update`: author only, `author` immutable, visibility unchanged or less
+    restricted.
+  - Clients can never raise the visibility: the Pro entitlement includes team
     domains (a secret the rules can't read).
 - **`setSceneVisibility` callable** (`public/functions/scene-visibility.js`):
-  the only writer of `private`. It checks authorship and, for `private`, the
-  full Pro rule (`isUserProInternal`: plan claim, team domain, Project Pass).
+  checks authorship and, to restrict a scene, the full Pro rule (`isUserProInternal`: plan claim, team domain, Project Pass).
   It never touches `updateTimestamp`, the feed's sort key.
+- **`createRestrictedScene` callable**: creates an empty scene that is
+  unlisted or private from the start (Pro), for copying one without it ever
+  being public; the client then saves the content into it.
+- **AI outputs** (`mayPostToCommunity`): posted to the community Discord only
+  when made from a scene that is public at that moment, and never when a team
+  paid. Without a scene (generator, unsaved) or when it can't be read: not
+  posted.
+- **Personal assets** (uploads and AI outputs): created `unlisted`, and the
+  rules let only their owner list them. Anyone else needs the asset's id,
+  which the scenes using it carry, so a private scene's assets can't be
+  discovered while a public scene's keep working.
 - **`getScene`** (`/scenes/UUID.json`): serves a private scene only with an
   `Authorization: Bearer <Firebase ID token>` header of its author, with
   `Cache-Control: private, no-store`; otherwise `403 { reason: 'private' }`.
@@ -53,14 +63,14 @@ Private is a Pro feature. Everyone can switch between public and unlisted.
   when the user signs in.
   A signed-in non-author, or any embed (`?embed=true`), gets an error dialog.
 - Share modal: a "Who can open this scene" picker for the author. Picking
-  Private without Pro opens the upgrade modal (`private_scene` paywall
-  surface). Posting to Discord is limited to public scenes. The Share button's
+  Unlisted or Private without Pro opens the upgrade modal (`private_scene` paywall
+  surface). The Share button's
   padlock is closed for a private scene.
-- Save As of your own scene keeps its visibility. A private copy is created
-  `unlisted` (never listed), then made private through the callable; if that
-  fails (no longer Pro) it stays unlisted and the user is told. A copy of
+- Save As of your own scene keeps its visibility (an unlisted or private
+  copy goes through `createRestrictedScene`); without Pro nothing is saved and
+  the user is told. A copy of
   someone else's scene is public.
-- A private scene stays private if its author's Pro ends; they can still open,
+- A private or unlisted scene stays so if its author's Pro ends; they can still open,
   edit and lower it.
 
 ## Deploying

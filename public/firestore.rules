@@ -50,9 +50,10 @@ service cloud.firestore {
     // (scripts/backfill-scene-visibility.js writes both fields; list queries
     // need them).
     //
-    // On a personal scene, 'private' is a Pro feature whose entitlement the
-    // rules can't check (team domains live in a secret): only the
-    // setSceneVisibility callable writes it. On a team scene the org's plan
+    // On a personal scene, 'unlisted' and 'private' are Pro features whose
+    // entitlement the rules can't check (team domains live in a secret): only
+    // the setSceneVisibility and createRestrictedScene callables write them.
+    // The author may always make a scene less restricted. On a team scene the org's plan
     // pays for it: org editors may create it private, and only managers
     // change sharing (through the callable).
     function sceneVisibility(data) {
@@ -67,8 +68,11 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == data.author;
     }
 
-    function isClientSettableVisibility(data) {
-      return !('visibility' in data) || data.visibility in ['public', 'unlisted'];
+    // Unchanged, or less restricted.
+    function isAllowedVisibilityChange(before, after) {
+      return sceneVisibility(after) == sceneVisibility(before)
+        || sceneVisibility(after) == 'public'
+        || (sceneVisibility(before) == 'private' && sceneVisibility(after) == 'unlisted');
     }
 
     function canReadScene(data) {
@@ -113,14 +117,14 @@ service cloud.firestore {
         || (resource.data.orgId == null && isSceneAuthor(resource.data))
         || (resource.data.orgId != null && isOrgMember(resource.data.orgId));
 
-      // Personal: in the caller's name, public or unlisted.
+      // Personal: in the caller's name, public.
       // Team: in the caller's name by an org editor, any visibility, in an
       // existing project of that org (or none), optionally holding the lock.
       allow create: if request.auth != null
         && request.resource.data.author == request.auth.uid
         && (
           (sceneOrgId(request.resource.data) == null
-            && isClientSettableVisibility(request.resource.data))
+            && sceneVisibility(request.resource.data) == 'public')
           || (sceneOrgId(request.resource.data) != null
             && isOrgEditor(request.resource.data.orgId)
             && sceneVisibility(request.resource.data) in ['public', 'unlisted', 'private']
@@ -131,7 +135,7 @@ service cloud.firestore {
         );
 
       // Personal: the author keeps the scene, can lower its visibility or
-      // leave it untouched, never make it private, never give it to an org
+      // leave it untouched, never raise it, never give it to an org
       // (moving into a team is the orgMoveScene callable).
       // Team: editors take, renew or release the lock (managers can take it
       // over), and save content while holding it; the org, project, author
@@ -141,8 +145,7 @@ service cloud.firestore {
           && isSceneAuthor(resource.data)
           && request.resource.data.author == resource.data.author
           && sceneOrgId(request.resource.data) == null
-          && (sceneVisibility(request.resource.data) == sceneVisibility(resource.data)
-              || isClientSettableVisibility(request.resource.data)))
+          && isAllowedVisibilityChange(resource.data, request.resource.data))
         || (sceneOrgId(resource.data) != null
           && isOrgEditor(resource.data.orgId)
           && !changedKeys().hasAny(['author', 'orgId', 'projectId', 'visibility'])
@@ -309,18 +312,21 @@ service cloud.firestore {
     // Structure: users/{userId}/assets/{assetId}
     //
     // Visibility model (forward-compatible enum, not a boolean):
-    //   'public'   — readable by anyone; appears in listing/search queries
-    //   'unlisted' — readable by anyone with the assetId; hidden from listings
+    //   'public'   — readable by anyone with the assetId
+    //   'unlisted' — readable by anyone with the assetId
     //   'private'  — readable by owner only
-    // Today every new asset is created 'public'. The privacy toggle UI will
+    // Only the owner lists assets: anyone else needs the assetId, which a
+    // scene using the asset carries, so assets of a private scene aren't
+    // discoverable. New assets are created 'unlisted'. The privacy toggle UI will
     // ship later; this rule shape is in place so flipping the field is the
     // only change required at that point.
     //
     // Legacy docs without a visibility field default to 'public' via .get()
     // so the rule remains backwards-compatible during rollout.
     match /users/{userId}/assets/{assetId} {
-      // Read: owner always, or anyone if the asset is public/unlisted.
-      allow read: if (request.auth != null && request.auth.uid == userId)
+      // Get: owner always, or anyone with the id if public/unlisted.
+      allow list: if request.auth != null && request.auth.uid == userId;
+      allow get: if (request.auth != null && request.auth.uid == userId)
         || resource.data.get('visibility', 'public') in ['public', 'unlisted'];
 
       // Users can create assets with proper userId field and required fields validated.

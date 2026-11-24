@@ -21,7 +21,7 @@ const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./sch
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
 const { onSplatAssetCreated, onTeamSplatAssetCreated } = require('./rad-dispatch.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
-const { setSceneVisibility, canReadScene, readSceneAccess, uidFromAuthorizationHeader } = require('./scene-visibility.js');
+const { setSceneVisibility, createRestrictedSceneCallable, canReadScene, readSceneAccess, uidFromAuthorizationHeader } = require('./scene-visibility.js');
 const {
   orgCreate,
   orgUpdate,
@@ -127,6 +127,7 @@ exports.generateEditorChat = generateEditorChat;
 
 // Scene visibility (#1267): the only writer of visibility 'private'.
 exports.setSceneVisibility = setSceneVisibility;
+exports.createRestrictedScene = createRestrictedSceneCallable;
 
 // Organizations (#1267 Phase 1, docs/orgs.md). orgCreate / orgUpdate are
 // staff-only (admin claim); the rest check the caller's org role.

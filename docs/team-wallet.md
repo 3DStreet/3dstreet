@@ -13,8 +13,10 @@ wallet, so what the team spends stays within the budget it pays for.
   pays only while it's active and the user holds a seat in it (owner,
   admin, member). Personal, a viewer's team or a suspended team: their own
   tokens pay.
-- Joining a first team makes it active; leaving the active team goes back
-  to Personal (`userOrgsPatch` in `orgs.js`). A role change keeps it.
+- Joining a first team makes it active, unless the user already picked a
+  workspace; after that only they switch. Leaving the active team goes back
+  to Personal (`userOrgsPatch` in `orgs.js`): the `activeOrgId` key is
+  removed, while picking Personal stores null. A role change keeps it.
 - A team seat no longer refills personal tokens each month.
 
 ## The wallet

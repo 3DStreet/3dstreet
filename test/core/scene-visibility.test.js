@@ -10,7 +10,10 @@ const assert = require('assert');
 const {
   sceneVisibility,
   canReadScene,
-  visibilityChangeRefusal
+  visibilityChangeRefusal,
+  isCommunityPostable,
+  mayPostToCommunity,
+  createRestrictedScene
 } = require('../../public/functions/scene-visibility.js');
 
 const AUTHOR = 'author-uid';
@@ -64,23 +67,102 @@ describe('scene visibility', () => {
     });
   });
 
+  describe('community posts of AI outputs', () => {
+    it('only from a public scene, not paid by a team', () => {
+      const pub = { visibility: 'public' };
+      assert.strictEqual(isCommunityPostable({}, pub), true);
+      assert.strictEqual(isCommunityPostable({}, {}), true); // legacy
+      assert.strictEqual(
+        isCommunityPostable({ chargedOrgId: 'o' }, pub),
+        false
+      );
+      for (const visibility of ['unlisted', 'private']) {
+        assert.strictEqual(isCommunityPostable({}, { visibility }), false);
+      }
+      assert.strictEqual(isCommunityPostable({}, null), false);
+    });
+
+    it('never without a scene, or when it cannot be read', async () => {
+      for (const generationParams of [
+        undefined,
+        {},
+        { scene_id: null },
+        { scene_id: { a: 1 } },
+        { scene_id: 'unreadable/path' }
+      ]) {
+        assert.strictEqual(
+          await mayPostToCommunity({ generationParams }),
+          false
+        );
+      }
+    });
+  });
+
+  describe('createRestrictedScene', () => {
+    it('refuses public, unknown values and non-Pro users', async () => {
+      const isPro = async () => false;
+      const create = (visibility) =>
+        createRestrictedScene({ uid: AUTHOR, visibility, isPro });
+      assert.deepStrictEqual(await create('public'), {
+        reason: 'invalid-visibility'
+      });
+      assert.deepStrictEqual(await create(undefined), {
+        reason: 'invalid-visibility'
+      });
+      assert.deepStrictEqual(await create('private'), {
+        reason: 'pro-required'
+      });
+      assert.deepStrictEqual(await create('unlisted'), {
+        reason: 'pro-required'
+      });
+    });
+  });
+
   describe('visibilityChangeRefusal', () => {
     const scene = { author: AUTHOR, visibility: 'public' };
     const notCalled = () => {
       throw new Error('isPro must not be looked up');
     };
 
-    it('lets the author set public or unlisted without a Pro lookup', async () => {
-      for (const visibility of ['public', 'unlisted']) {
+    it('lets the author make a scene less restricted without a Pro lookup', async () => {
+      for (const [from, visibility] of [
+        ['public', 'public'],
+        ['unlisted', 'unlisted'],
+        ['unlisted', 'public'],
+        ['private', 'unlisted'],
+        ['private', 'public']
+      ]) {
         assert.strictEqual(
           await visibilityChangeRefusal({
-            scene,
+            scene: { author: AUTHOR, visibility: from },
             uid: AUTHOR,
             visibility,
             isPro: notCalled
           }),
-          null
+          null,
+          `${from} -> ${visibility}`
         );
+      }
+    });
+
+    it('requires Pro to make a scene unlisted or more restricted', async () => {
+      for (const [from, visibility] of [
+        ['public', 'unlisted'],
+        ['public', 'private'],
+        ['unlisted', 'private']
+      ]) {
+        for (const isPro of [true, false]) {
+          assert.strictEqual(
+            await visibilityChangeRefusal({
+              scene: { author: AUTHOR, visibility: from },
+              uid: AUTHOR,
+              visibility,
+              isPro: async () => isPro
+            }),
+            isPro ? null : 'pro-required',
+            `${from} -> ${visibility}`
+          );
+        }
       }
     });
 
