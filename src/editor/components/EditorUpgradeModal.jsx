@@ -12,7 +12,7 @@ import { auth } from '@shared/services/firebase';
 import useStore from '@/store';
 
 // Maps a payment deep-link hash to a tier + billing cycle. e.g.
-// #payment-max-annual → { initialTier: 'max', initialCycle: 'yearly' }.
+// #payment-pro-annual → { initialTier: 'pro', initialCycle: 'yearly' }.
 // Only payment hashes are parsed; any other hash (scene ids, etc.) yields the
 // neutral default, so in-app paywall triggers open the normal selection flow.
 const parsePaymentHash = (hash = '') => {
