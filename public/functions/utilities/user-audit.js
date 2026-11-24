@@ -38,6 +38,7 @@ const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('../app-check.js');
 const { isPaidPlanClaim } = require('../pro-pass.js');
+const { priceIdFromEnv } = require('../price-env.js');
 const { setPlanClaim } = require('../plan-claims.js');
 
 /**
@@ -72,8 +73,8 @@ function isDomainBasedPro(email) {
 // Keep in sync with SUBSCRIPTION_PLANS in subscription-plans.js.
 function getMaxPriceIds() {
   return [
-    process.env.STRIPE_MAX_YEARLY_PRICE_ID,
-    process.env.STRIPE_MAX_MONTHLY_PRICE_ID
+    priceIdFromEnv('STRIPE_MAX_YEARLY_PRICE_ID'),
+    priceIdFromEnv('STRIPE_MAX_MONTHLY_PRICE_ID')
   ].filter(Boolean);
 }
 

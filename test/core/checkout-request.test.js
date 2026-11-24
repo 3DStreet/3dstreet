@@ -84,6 +84,18 @@ describe('checkout request', () => {
     }
   });
 
+  it('matches prices whose secret ends with a newline', () => {
+    for (const [key, value] of Object.entries(ENV)) {
+      process.env[key] = `${value}\n`;
+      const request = parseCheckoutRequest(ask(value));
+      assert.strictEqual(request?.priceId, value, key);
+      process.env[key] = '\n';
+      assert.strictEqual(parseCheckoutRequest(ask('')), null);
+      assert.strictEqual(parseCheckoutRequest(ask(value)), null);
+      process.env[key] = value;
+    }
+  });
+
   it('never matches an unset price', () => {
     delete process.env.STRIPE_MAX_YEARLY_PRICE_ID;
     assert.strictEqual(findSubscriptionPlan([undefined]), null);

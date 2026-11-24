@@ -25,6 +25,8 @@
  * directly under mocha.
  */
 
+const { priceIdFromEnv } = require('./price-env.js');
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // `priceUsd` is informational (audit/log context); the amount charged is
@@ -61,7 +63,7 @@ const findProPassByPriceId = (priceId) => {
   if (!priceId) return null;
   return (
     PRO_PASSES.find((pass) => {
-      const configuredId = process.env[pass.priceIdEnv];
+      const configuredId = priceIdFromEnv(pass.priceIdEnv);
       return configuredId && configuredId === priceId;
     }) || null
   );

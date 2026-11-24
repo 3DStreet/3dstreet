@@ -11,6 +11,8 @@
  * directly under mocha.
  */
 
+const { priceIdFromEnv } = require('./price-env.js');
+
 const SUBSCRIPTION_PLANS = [
   { tier: 'MAX', cycle: 'annual', priceIdEnv: 'STRIPE_MAX_YEARLY_PRICE_ID', tokens: 500 },
   { tier: 'MAX', cycle: 'monthly', priceIdEnv: 'STRIPE_MAX_MONTHLY_PRICE_ID', tokens: 500 },
@@ -25,7 +27,7 @@ const SUBSCRIPTION_PRICE_SECRETS = SUBSCRIPTION_PLANS.map((plan) => plan.priceId
 // require); an unset secret never matches.
 const findSubscriptionPlan = (priceIds) =>
   SUBSCRIPTION_PLANS.find((plan) => {
-    const configuredId = process.env[plan.priceIdEnv];
+    const configuredId = priceIdFromEnv(plan.priceIdEnv);
     return configuredId && priceIds.includes(configuredId);
   }) || null;
 
