@@ -28,6 +28,19 @@ export const canEditTeamScene = (currentUser, orgId, authorId) =>
   );
 
 /**
+ * Where a brand-new scene goes when nothing else says (the team switcher,
+ * docs/settings.md): the user's active team, in no project, when they can
+ * edit there; else null (a personal scene).
+ */
+export const activeTeamTarget = (currentUser) => {
+  const orgId = currentUser?.activeOrgId;
+  const org = (currentUser?.orgs || []).find((o) => o.orgId === orgId);
+  return org && org.status === 'active' && isTeamEditorRole(org.role)
+    ? { orgId, projectId: null }
+    : null;
+};
+
+/**
  * 'new'         no cloud scene yet: the first save creates one
  * 'own'         a personal scene the user wrote: saves in place
  * 'team'        a team scene, and this tab holds the edit lock: saves in place

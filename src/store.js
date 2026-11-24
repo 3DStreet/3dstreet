@@ -14,6 +14,7 @@ import {
   persistShapeToolSettings
 } from './editor/lib/shapeToolPrefs.js';
 import { isInviteHash, getInviteId } from './tested/org-invite-link.js';
+import { parseSettingsHash } from './tested/settings-hash.js';
 
 const firstModal = () => {
   const hash = window.location.hash;
@@ -32,8 +33,9 @@ const firstModal = () => {
         ? 'invitation'
         : hash.includes('payment')
           ? 'payment'
-          : hash.includes('profile') || hash.includes('/modal/profile')
-            ? 'profile'
+          : // Settings (#/modal/settings/..., or the old #/modal/profile).
+            parseSettingsHash(hash)
+            ? 'settings'
             : !hash.length && !isSceneDeepLink
               ? 'new'
               : null;
@@ -192,14 +194,21 @@ const useStore = create(
             modal: 'invitation',
             previousModal: state.modal
           })),
-        // The organization the team settings modal shows (#1267).
-        teamModalOrgId: null,
-        openTeamModal: (orgId) =>
+        // The Settings panel's section ({ id, orgId? }, src/shared/settings):
+        // from a #/modal/settings/... link at startup, or opened in the app.
+        settingsSection: parseSettingsHash(window.location.hash) || {
+          id: 'profile'
+        },
+        openSettings: (section = { id: 'profile' }) =>
           set((state) => ({
-            teamModalOrgId: orgId,
-            modal: 'team',
-            previousModal: state.modal
+            settingsSection: section,
+            modal: 'settings',
+            previousModal: state.modal === 'settings' ? null : state.modal
           })),
+        setSettingsSection: (settingsSection) => set({ settingsSection }),
+        // A team's section of Settings (#1267).
+        openTeamModal: (orgId) =>
+          useStore.getState().openSettings({ id: 'team', orgId }),
         // True while the URL's scene is private and couldn't be opened
         // (signed out, or not its author): the sign-in modal then says the
         // scene is private, and the loader retries with the new account.

@@ -7,6 +7,22 @@
  * refill to show the right balance before that.
  */
 
+const SEAT_ROLES = ['owner', 'admin', 'member'];
+
+/**
+ * The team paying the user's AI generations, or null for their own tokens:
+ * their active team (currentUser.activeOrgId) when it's active and they
+ * hold a seat in it. Mirrors resolveBillingOrg in team-wallet.js, which
+ * checks the same at every charge.
+ */
+export const billingOrgOf = (currentUser) => {
+  const orgId = currentUser?.activeOrgId;
+  const org = orgId && (currentUser.orgs || []).find((o) => o.orgId === orgId);
+  return org && org.status === 'active' && SEAT_ROLES.includes(org.role)
+    ? orgId
+    : null;
+};
+
 /** 'YYYY-M' (month 0-based), as the server keys months. */
 export const monthKey = (date = new Date()) =>
   `${date.getFullYear()}-${date.getMonth()}`;

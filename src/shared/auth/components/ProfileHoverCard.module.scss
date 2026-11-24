@@ -199,7 +199,7 @@
 
 // Collapsed "Language" row: label on the left, current language + chevron on
 // the right. Clicking toggles the options list (mirrors the editor's
-// Help → Language submenu; options aren't shown at all times).
+// options aren't shown at all times).
 .languageTrigger {
   width: 100%;
   padding: 8px 12px;
@@ -358,5 +358,178 @@
     svg {
       color: #b7a5f5;
     }
+  }
+}
+
+// Team switcher ("Working in"): Personal and each team, the active one
+// checked (docs/settings.md).
+.workspaceLabel {
+  margin-bottom: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #999;
+}
+
+.workspaceList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workspaceOption {
+  width: 100%;
+  outline: none;
+  padding: 6px 12px;
+  background: transparent;
+  color: #1a1a1a;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+
+  &:hover:not(:disabled) {
+    background: #f3f4f6;
+  }
+
+  &:disabled {
+    cursor: progress;
+  }
+
+  svg {
+    flex-shrink: 0;
+    color: #6d51e5;
+  }
+}
+
+.workspaceSelected {
+  background: #f1edfd;
+
+  &:hover:not(:disabled) {
+    background: #ebe5fc;
+  }
+}
+
+.workspaceText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.workspaceName {
+  color: #1a1a1a;
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspaceMeta {
+  font-size: 12px;
+  color: #777;
+}
+
+.workspaceError {
+  margin-top: 4px;
+  padding: 0 12px;
+  font-size: 12px;
+  color: #b91c1c;
+}
+
+// Settings links: plain rows, like the language trigger.
+.menuLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.menuLink {
+  width: 100%;
+  outline: none;
+  padding: 8px 12px;
+  background: transparent;
+  color: #1a1a1a;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  text-align: left;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+}
+
+// Dark mode for the switcher and the Settings links (the menu above has
+// its own dark block).
+@media (prefers-color-scheme: dark) {
+  .workspaceLabel {
+    color: #777;
+  }
+
+  .workspaceOption:hover:not(:disabled) {
+    background: #2a2a2a;
+  }
+
+  .workspaceSelected {
+    background: #2b2540;
+
+    &:hover:not(:disabled) {
+      background: #342c4f;
+    }
+  }
+
+  .workspaceOption svg {
+    color: #b7a5f5;
+  }
+
+  .workspaceName {
+    color: #f0f0f0;
+  }
+
+  .workspaceMeta {
+    color: #999;
+  }
+
+  .workspaceError {
+    color: #fca5a5;
+  }
+
+  .menuLink {
+    color: #f0f0f0;
+
+    &:hover {
+      background: #2a2a2a;
+    }
+  }
+}
+
+// The menu focuses its first row when it opens: no focus ring (the
+// generator's global `button:focus` outline, hence the extra specificity);
+// keyboard focus gets the hover highlight.
+.hoverCardContent button:focus {
+  outline: none;
+}
+
+.workspaceOption:focus-visible,
+.menuLink:focus-visible {
+  background: #f3f4f6;
+}
+
+@media (prefers-color-scheme: dark) {
+  .workspaceOption:focus-visible,
+  .menuLink:focus-visible {
+    background: #2a2a2a;
   }
 }

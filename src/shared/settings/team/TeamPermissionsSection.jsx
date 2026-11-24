@@ -8,12 +8,14 @@ import { useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import posthog from 'posthog-js';
 import { memberEditScopeOf } from '@shared/utils/teamPermissions';
-import { orgErrorReason, updateOrgSettings } from '../../../api/orgs';
+import { orgErrorReason, updateOrgSettings } from '@shared/api/orgs';
 import { orgErrorMessage, roleMessages } from './orgMessages';
-import styles from './TeamModal.module.scss';
+import { useSettingsHost } from '../SettingsHost';
+import styles from './TeamSection.module.scss';
 
 export function TeamPermissionsSection({ org, canManage, onChanged }) {
   const intl = useIntl();
+  const { notify } = useSettingsHost();
   const [busy, setBusy] = useState(false);
   const scope = memberEditScopeOf(org);
   const joinRole = org.domainJoinRole === 'viewer' ? 'viewer' : 'member';
@@ -30,7 +32,7 @@ export function TeamPermissionsSection({ org, canManage, onChanged }) {
       await onChanged();
     } catch (error) {
       console.error('Error saving team settings:', error);
-      STREET.notify.errorMessage(orgErrorMessage(intl, orgErrorReason(error)));
+      notify(orgErrorMessage(intl, orgErrorReason(error)), 'error');
     } finally {
       setBusy(false);
     }

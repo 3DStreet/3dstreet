@@ -43,7 +43,13 @@
   color: variables.$white;
   background-color: rgba(50, 50, 50, 0.8);
   transition: background-color 0.2s ease;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  // "PRO · UO Urban Design 410": a long team name is cut, not wrapped.
+  min-width: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
   &:hover {
     background-color: variables.$black-400;

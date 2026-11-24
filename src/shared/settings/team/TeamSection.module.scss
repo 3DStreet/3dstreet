@@ -1,21 +1,10 @@
-@use '../../../../shared/styles/select';
-.modalWrapper {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(720px, calc(100vw - 32px));
-  max-height: 85vh;
-  overflow-y: auto;
-}
-
+@use '../../styles/select';
 .wrapper {
   display: flex;
   flex-direction: column;
   gap: 12px;
   box-sizing: border-box;
   width: 100%;
-  padding: 8px 24px 24px;
   color: white;
 }
 

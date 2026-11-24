@@ -38,3 +38,20 @@ describe('team wallet client/server sync', () => {
     }
   });
 });
+
+describe('billingOrgOf', () => {
+  it('is the active team only when it is active and the user holds a seat', async () => {
+    const { billingOrgOf } = await import('@shared/utils/teamWallet.js');
+    const user = (role, status = 'active', activeOrgId = 'o1') => ({
+      activeOrgId,
+      orgs: [{ orgId: 'o1', role, status }]
+    });
+    expect(billingOrgOf(user('member'))).toBe('o1');
+    expect(billingOrgOf(user('owner'))).toBe('o1');
+    expect(billingOrgOf(user('viewer'))).toBe(null);
+    expect(billingOrgOf(user('member', 'suspended'))).toBe(null);
+    expect(billingOrgOf(user('member', 'active', null))).toBe(null);
+    expect(billingOrgOf(user('member', 'active', 'gone'))).toBe(null);
+    expect(billingOrgOf(null)).toBe(null);
+  });
+});

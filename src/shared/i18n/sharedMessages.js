@@ -48,6 +48,56 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Gerenciar conta',
     fr: 'Gérer le compte'
   },
+  // Profile menu: the team switcher and its links (docs/settings.md)
+  menuSettings: {
+    en: 'Settings',
+    es: 'Configuración',
+    'pt-BR': 'Configurações',
+    fr: 'Paramètres'
+  },
+  menuWorkspace: {
+    en: 'Working in',
+    es: 'Trabajando en',
+    'pt-BR': 'Trabalhando em',
+    fr: 'Travailler dans'
+  },
+  menuPersonal: {
+    en: 'Personal',
+    es: 'Personal',
+    'pt-BR': 'Pessoal',
+    fr: 'Personnel'
+  },
+  menuSwitchError: {
+    en: 'Could not switch teams. Try again.',
+    es: 'No se pudo cambiar de equipo. Inténtalo de nuevo.',
+    'pt-BR': 'Não foi possível trocar de equipe. Tente novamente.',
+    fr: "Impossible de changer d'équipe. Réessayez."
+  },
+  menuPlanFree: { en: 'Free', es: 'Gratis', 'pt-BR': 'Grátis', fr: 'Gratuit' },
+  menuRoleOwner: {
+    en: 'Owner',
+    es: 'Propietario',
+    'pt-BR': 'Proprietário',
+    fr: 'Propriétaire'
+  },
+  menuRoleAdmin: {
+    en: 'Admin',
+    es: 'Administrador',
+    'pt-BR': 'Administrador',
+    fr: 'Administrateur'
+  },
+  menuRoleMember: {
+    en: 'Member',
+    es: 'Miembro',
+    'pt-BR': 'Membro',
+    fr: 'Membre'
+  },
+  menuRoleViewer: {
+    en: 'Viewer',
+    es: 'Lector',
+    'pt-BR': 'Leitor',
+    fr: 'Lecteur'
+  },
   logOut: {
     en: 'Log Out',
     es: 'Cerrar sesión',
@@ -2119,17 +2169,17 @@ const SHARED_MESSAGES = {
     fr: "Demandez-en davantage aux propriétaires ou aux administrateurs de l'équipe, ou utilisez vos propres jetons."
   },
   teamTokensUseMine: {
-    en: 'Use my own tokens instead',
-    es: 'Usar mis propios tokens',
-    'pt-BR': 'Usar meus próprios tokens',
-    fr: 'Utiliser mes propres jetons'
+    en: 'Switch to Personal (my own tokens)',
+    es: 'Cambiar a Personal (mis propios tokens)',
+    'pt-BR': 'Mudar para Pessoal (meus próprios tokens)',
+    fr: 'Passer en Personnel (mes propres jetons)'
   },
   teamTokensHint: {
-    en: "Your team pays your AI generations. For more tokens, ask your team's owners or admins, or switch to your own tokens in your profile.",
-    es: 'Tu equipo paga tus generaciones con IA. Para obtener más tokens, pide a los propietarios o administradores de tu equipo, o cambia a tus propios tokens en tu perfil.',
+    en: "Your active team pays your AI generations. For more tokens, ask your team's owners or admins, or switch to Personal in the profile menu to use your own.",
+    es: 'Tu equipo activo paga tus generaciones con IA. Para obtener más tokens, pide a los propietarios o administradores de tu equipo, o cambia a Personal en el menú del perfil para usar los tuyos.',
     'pt-BR':
-      'Sua equipe paga suas gerações com IA. Para obter mais tokens, peça aos proprietários ou administradores da equipe, ou passe a usar seus próprios tokens no seu perfil.',
-    fr: 'Votre équipe paie vos générations IA. Pour plus de jetons, demandez aux propriétaires ou aux administrateurs de votre équipe, ou passez à vos propres jetons dans votre profil.'
+      'Sua equipe ativa paga suas gerações com IA. Para obter mais tokens, peça aos proprietários ou administradores da equipe, ou mude para Pessoal no menu do perfil para usar os seus.',
+    fr: 'Votre équipe active paie vos générations IA. Pour plus de jetons, demandez aux propriétaires ou aux administrateurs de votre équipe, ou passez en Personnel dans le menu du profil pour utiliser les vôtres.'
   },
 
   // Team scenes (#1267 Phase 2), shown by saveScene (editor/lib/SceneUtils.js).

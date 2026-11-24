@@ -105,7 +105,12 @@ const AssetsPanelBody = ({
   // Which library: the user's own assets (null) or a team's (orgId).
   const teams = libraryTeams(currentUser?.orgs);
   const [chosenLibrary, setChosenLibrary] = useState(undefined);
-  const wanted = chosenLibrary === undefined ? defaultLibrary : chosenLibrary;
+  // First shown: the given library (a team scene's), else the user's active
+  // team's (the team switcher, docs/settings.md), else their own.
+  const wanted =
+    chosenLibrary === undefined
+      ? (defaultLibrary ?? currentUser?.activeOrgId ?? null)
+      : chosenLibrary;
   const library = teams.some((org) => org.orgId === wanted) ? wanted : null;
   const teamState = useTeamAssets(library);
   const isTeamLibrary = !!library;

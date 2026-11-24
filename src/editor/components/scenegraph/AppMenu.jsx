@@ -29,7 +29,6 @@ import {
 } from '../../lib/entity.jsx';
 import { editShortcuts } from '../../lib/editShortcuts.js';
 import { commonMessages } from '@/editor/i18n/commonMessages';
-import { SUPPORTED_LOCALES } from '@/editor/i18n/config';
 import {
   getNavScheme,
   applyNavScheme
@@ -84,9 +83,7 @@ const AppMenu = ({ currentUser }) => {
     setPanelsVisible,
     saveScene,
     setGeojsonImportData,
-    setRightPanelTab,
-    locale,
-    setLocale
+    setRightPanelTab
   } = useStore();
   const [undoDisabled, setUndoDisabled] = useState(
     !AFRAME.INSPECTOR?.history || AFRAME.INSPECTOR.history.undos.length === 0
@@ -791,41 +788,6 @@ const AppMenu = ({ currentUser }) => {
             sideOffset={5}
             alignOffset={-3}
           >
-            <Menubar.Sub>
-              <Menubar.SubTrigger className="MenubarItem">
-                <FormattedMessage
-                  id="appMenu.help.language"
-                  defaultMessage="Language"
-                />
-                <div className="RightSlot">
-                  <AwesomeIcon icon={faChevronRight} size={12} />
-                </div>
-              </Menubar.SubTrigger>
-              <Menubar.Portal>
-                <Menubar.SubContent className="MenubarContent">
-                  <Menubar.RadioGroup
-                    value={locale}
-                    onValueChange={(code) => setLocale(code)}
-                  >
-                    {SUPPORTED_LOCALES.map(({ code, label }) => (
-                      <Menubar.RadioItem
-                        key={code}
-                        className="MenubarRadioItem"
-                        value={code}
-                      >
-                        <Menubar.ItemIndicator className="MenubarItemIndicator">
-                          <AwesomeIcon icon={faCircle} size={8} />
-                        </Menubar.ItemIndicator>
-                        {/* Language names are shown as endonyms (in their own
-                          language), so they are intentionally not translated. */}
-                        {label}
-                      </Menubar.RadioItem>
-                    ))}
-                  </Menubar.RadioGroup>
-                </Menubar.SubContent>
-              </Menubar.Portal>
-            </Menubar.Sub>
-            <Menubar.Separator className="MenubarSeparator" />
             <Menubar.Item
               className="MenubarItem"
               onClick={() =>

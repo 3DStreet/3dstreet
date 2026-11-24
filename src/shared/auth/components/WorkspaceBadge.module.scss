@@ -1,0 +1,26 @@
+// Same look as the editor's plan badge (RightPanel.module.scss .planBadge).
+.badge {
+  min-width: 0;
+  max-width: 220px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 12px;
+  background-color: rgba(50, 50, 50, 0.8);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: #111;
+  }
+
+  // The generator's global button:focus outline.
+  &:focus {
+    outline: none;
+  }
+}

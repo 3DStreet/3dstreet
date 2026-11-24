@@ -116,6 +116,22 @@ export const invitationState = (invitation, nowMs = Date.now()) => {
 export const invitationExpiresAtMs = (invitation) =>
   toMillis(invitation?.expiresAt);
 
+export const MEMBERSHIP_CHANGED_EVENT = '3dstreet-membership-changed';
+
+/** The currentUser fields that come from the user's Pro status. */
+export const membershipFields = (status) => ({
+  isPro: status.isPro,
+  isProTeam: status.isProTeam,
+  teamDomain: status.teamDomain,
+  teamName: status.teamName ?? null,
+  plan: status.plan ?? null,
+  orgPlan: status.orgPlan ?? null,
+  orgs: status.orgs ?? [],
+  activeOrgId: status.activeOrgId ?? null,
+  isProPass: !!status.isProPass,
+  proUntil: status.proUntil ?? null
+});
+
 /**
  * Re-read the user's Pro status (plan, orgs) into the auth context after a
  * membership change, so the plan badge and every Pro gate update without a
@@ -125,27 +141,25 @@ export const refreshMembershipStatus = async (setCurrentUser) => {
   const firebaseUser = auth.currentUser;
   if (!firebaseUser) return null;
   const status = await isUserPro(firebaseUser);
-  setCurrentUser((prev) => ({
-    ...prev,
-    isPro: status.isPro,
-    isProTeam: status.isProTeam,
-    teamDomain: status.teamDomain,
-    teamName: status.teamName ?? null,
-    plan: status.plan ?? null,
-    orgPlan: status.orgPlan ?? null,
-    orgs: status.orgs ?? [],
-    billingOrgId: status.billingOrgId ?? null,
-    isProPass: !!status.isProPass,
-    proUntil: status.proUntil ?? null
-  }));
+  setCurrentUser((prev) => ({ ...prev, ...membershipFields(status) }));
+  // Other auth contexts on the page (the generator's token counter is its
+  // own React root) apply it too: see AuthProvider.
+  window.dispatchEvent(
+    new CustomEvent(MEMBERSHIP_CHANGED_EVENT, {
+      detail: { uid: firebaseUser.uid, status }
+    })
+  );
   window.dispatchEvent(new Event('planChanged'));
   window.dispatchEvent(new Event('tokenCountChanged'));
   return status;
 };
 
 // Team AI token wallets (#1267 Phase 3, docs/team-wallet.md).
-/** Who pays the user's AI generations: a team (orgId) or their own (null). */
-export const setBillingOrg = (orgId) => call('orgSetBilling', { orgId });
+/**
+ * Switch the user's active team (orgId) or to Personal (null). The active
+ * team pays their AI generations when they hold a seat in it.
+ */
+export const setActiveOrg = (orgId) => call('orgSetActive', { orgId });
 /** Owners and admins: per-member monthly cap (null = none). */
 export const setMemberMonthlyCap = (orgId, memberMonthlyCap) =>
   call('orgSetMemberCap', { orgId, memberMonthlyCap });

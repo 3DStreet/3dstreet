@@ -10,6 +10,7 @@ import {
 import { createUniqueId } from '@/editor/lib/entity.jsx';
 import { formatSharedMessage } from '@shared/i18n/sharedMessages';
 import {
+  activeTeamTarget,
   isTeamEditorRole,
   sceneSaveMode,
   teamRoleOf
@@ -382,11 +383,12 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
       title = newTitle;
     }
     // Where the new scene goes (#1267, docs/team-scenes.md): a new scene
-    // started from a team project goes there; a copy made by one of the
-    // team's editors stays in the team and project; anything else is a
-    // personal scene.
+    // started from a team project goes there, else into the user's active
+    // team when they can edit there (the team switcher); a copy made by one
+    // of the team's editors stays in the team and project; anything else is
+    // a personal scene.
     const team = !sceneId
-      ? store.newSceneTarget
+      ? store.newSceneTarget || activeTeamTarget(currentUser)
       : store.sceneOrgId &&
           isTeamEditorRole(teamRoleOf(currentUser, store.sceneOrgId))
         ? { orgId: store.sceneOrgId, projectId: store.sceneProjectId }

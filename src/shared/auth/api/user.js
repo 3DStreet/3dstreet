@@ -13,8 +13,10 @@
  * plan, status }]) and `orgPlan` is the plan their org seats give ('PRO' |
  * 'MAX' | null). `plan` stays the user's own subscription (billing UI keys
  * off it); `isProTeam` and `teamName` cover Pro from an org, for labels.
- * `billingOrgId` is the team paying the user's AI generations (Phase 3), or
- * null for their own tokens.
+ * `activeOrgId` is the user's active team (the team switcher), or null for
+ * Personal. It pays their AI generations when they hold a seat in it and
+ * it's active (`billingOrgOf` in @shared/utils/teamWallet); otherwise their
+ * own tokens do.
  */
 
 const FREE_USER = {
@@ -25,7 +27,7 @@ const FREE_USER = {
   plan: null,
   orgPlan: null,
   orgs: [],
-  billingOrgId: null,
+  activeOrgId: null,
   isProPass: false,
   proUntil: null
 };
@@ -61,7 +63,7 @@ const isUserPro = async (user) => {
       proUntil,
       orgPlan = null,
       orgs = [],
-      billingOrgId = null
+      activeOrgId = null
     } = result.data;
     const teamOrg = orgPlan ? orgGivingPlan(orgs, orgPlan) : null;
 
@@ -78,13 +80,18 @@ const isUserPro = async (user) => {
         plan: plan || null,
         orgPlan,
         orgs,
-        billingOrgId,
+        activeOrgId,
         isProPass: !!isProPass,
         proUntil: proUntil || null
       };
     }
     console.log('FREE PLAN USER');
-    return { ...FREE_USER, orgs, billingOrgId, proUntil: proUntil || null };
+    return {
+      ...FREE_USER,
+      orgs,
+      activeOrgId,
+      proUntil: proUntil || null
+    };
   } catch (error) {
     console.error('Error checking PRO plan:', error);
 

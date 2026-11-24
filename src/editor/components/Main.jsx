@@ -9,8 +9,7 @@ import { ShareModal } from './modals/ShareModal';
 import { ExportModal } from './modals/ExportModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
-import { ProfileModal } from './modals/ProfileModal';
-import { TeamModal } from './modals/TeamModal';
+import { EditorSettingsModal } from './modals/SettingsModal';
 import { InvitationModal } from './modals/InvitationModal';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
@@ -229,14 +228,13 @@ export default function Main() {
       <ShareModal />
       <ExportModal />
       <SignInModal />
-      <TeamModal />
       <InvitationModal />
       <EditorUpgradeModal />
       <EditorBuyTokensModal />
       <EditorProjectPassModal />
       <EditorRedeemPassModal />
       <ScenesModal />
-      <ProfileModal />
+      <EditorSettingsModal />
       <NewModal />
       <LoadingSceneModal />
       <ExportingSceneModal />

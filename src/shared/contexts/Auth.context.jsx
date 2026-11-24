@@ -3,10 +3,12 @@ import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { auth, db } from '@shared/services/firebase';
 import PropTypes from 'prop-types';
 import { isUserPro } from '@shared/auth/api/user';
+import { MEMBERSHIP_CHANGED_EVENT, membershipFields } from '@shared/api/orgs';
 import { getTokenProfile, checkAndRefillProTokens } from '@shared/utils/tokens';
 import { detectBrowserLocale } from '@shared/i18n/locales';
 import posthog from 'posthog-js';
 import {
+  billingOrgOf,
   memberAvailable,
   monthKey,
   refillWallet
@@ -154,7 +156,7 @@ const AuthProvider = ({ children }) => {
         teamName: cachedProStatus?.teamName ?? null,
         orgPlan: cachedProStatus?.orgPlan ?? null,
         orgs: cachedProStatus?.orgs ?? [],
-        billingOrgId: cachedProStatus?.billingOrgId ?? null,
+        activeOrgId: cachedProStatus?.activeOrgId ?? null,
         // One-time pass (#1922). The server re-evaluates expiry in Phase 2;
         // a cached pass that has since lapsed is dropped here already.
         isProPass: cachedPassActive,
@@ -191,7 +193,7 @@ const AuthProvider = ({ children }) => {
               plan: null,
               orgPlan: null,
               orgs: [],
-              billingOrgId: null,
+              activeOrgId: null,
               isProPass: false,
               proUntil: null
             };
@@ -211,7 +213,7 @@ const AuthProvider = ({ children }) => {
         teamName: proStatus.teamName ?? null,
         orgPlan: proStatus.orgPlan ?? null,
         orgs: proStatus.orgs ?? [],
-        billingOrgId: proStatus.billingOrgId ?? null,
+        activeOrgId: proStatus.activeOrgId ?? null,
         isProPass: !!proStatus.isProPass,
         proUntil: proStatus.proUntil ?? null
       };
@@ -263,7 +265,9 @@ const AuthProvider = ({ children }) => {
 
   // Team AI token wallet (#1267 Phase 3): while a team pays the user's
   // generations, follow its wallet and this month's usage.
-  const billingOrgId = currentUser?.billingOrgId || null;
+  // The team paying the user's generations: their active team, when they
+  // hold a seat in it and it's active (the server checks the same).
+  const billingOrgId = billingOrgOf(currentUser);
   const uid = currentUser?.uid || null;
   const [teamWallet, setTeamWallet] = useState(null);
   useEffect(() => {
@@ -321,6 +325,25 @@ const AuthProvider = ({ children }) => {
       }
     };
   }, [teamWallet, tokenProfile, billingOrgId, uid, currentUser?.orgs]);
+
+  // A membership change made in another auth context on the page (the
+  // team switcher in the profile menu, while the generator's token counter
+  // is its own React root): apply it here too, and keep the cache current
+  // so a reload doesn't show the previous team first.
+  useEffect(() => {
+    const apply = (event) => {
+      const { uid: changedUid, status } = event.detail || {};
+      if (!status || !changedUid) return;
+      setCachedProStatus(changedUid, status);
+      setCurrentUser((prev) =>
+        prev?.uid === changedUid
+          ? { ...prev, ...membershipFields(status) }
+          : prev
+      );
+    };
+    window.addEventListener(MEMBERSHIP_CHANGED_EVENT, apply);
+    return () => window.removeEventListener(MEMBERSHIP_CHANGED_EVENT, apply);
+  }, []);
 
   // Listen for token count changes (e.g., after image generation)
   useEffect(() => {

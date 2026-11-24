@@ -616,9 +616,16 @@ function Toolbar() {
             isLoading={isAuthLoading}
             onClick={() => {
               if (isAuthLoading) return;
-              setModal(currentUser ? 'profile' : 'signin');
+              posthog.capture('profile_button_clicked', {
+                is_logged_in: !!currentUser
+              });
             }}
             tooltipSide="bottom"
+            showHoverCard
+            onSignIn={() => setModal('signin')}
+            onOpenSettings={(section) =>
+              useStore.getState().openSettings(section)
+            }
           />
         )}
       </div>

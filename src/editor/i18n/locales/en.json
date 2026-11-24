@@ -335,9 +335,6 @@
   "appMenu.help.aiSceneAssistant": {
     "defaultMessage": "AI Scene Assistant"
   },
-  "appMenu.help.language": {
-    "defaultMessage": "Language"
-  },
   "appMenu.help.mouseTouchControls": {
     "defaultMessage": "Mouse and Touch Controls"
   },
@@ -2180,12 +2177,6 @@
   "profileModal.accountInformation": {
     "defaultMessage": "Account Information"
   },
-  "profileModal.aiPaidBy": {
-    "defaultMessage": "AI generations paid by"
-  },
-  "profileModal.aiPaidByMe": {
-    "defaultMessage": "My own tokens"
-  },
   "profileModal.invitedAs": {
     "defaultMessage": "Invitation as {role}"
   },
@@ -2203,9 +2194,6 @@
   },
   "profileModal.nextMonthlyRefill": {
     "defaultMessage": "Next monthly refill: {date}"
-  },
-  "profileModal.openTeam": {
-    "defaultMessage": "Open"
   },
   "profileModal.planFree": {
     "defaultMessage": "Plan: Free"
@@ -2227,18 +2215,6 @@
   },
   "profileModal.signedInWith": {
     "defaultMessage": "Signed in with {provider}"
-  },
-  "profileModal.subscription": {
-    "defaultMessage": "Subscription"
-  },
-  "profileModal.teams": {
-    "defaultMessage": "Teams"
-  },
-  "profileModal.title": {
-    "defaultMessage": "3DStreet Account"
-  },
-  "profileModal.tokensPaidByTeam": {
-    "defaultMessage": "Paid by {team}. Your own tokens: {count}."
   },
   "profileModal.unlimitedGeoTokens": {
     "defaultMessage": "Unlimited Geo Tokens"
@@ -2653,6 +2629,57 @@
   },
   "segmentSidebar.width": {
     "defaultMessage": "Width"
+  },
+  "settings.activeTeamPays": {
+    "defaultMessage": "While {team} is your active team, it pays your AI generations."
+  },
+  "settings.billingPortalError": {
+    "defaultMessage": "Could not open the subscription page. Try again."
+  },
+  "settings.cancel": {
+    "defaultMessage": "Cancel"
+  },
+  "settings.invitations": {
+    "defaultMessage": "Team invitations"
+  },
+  "settings.nav.billingOf": {
+    "defaultMessage": "Usage and billing · {name}"
+  },
+  "settings.nav.label": {
+    "defaultMessage": "Settings sections"
+  },
+  "settings.nav.manageTeam": {
+    "defaultMessage": "Manage {team}"
+  },
+  "settings.nav.profile": {
+    "defaultMessage": "Profile"
+  },
+  "settings.nav.teams": {
+    "defaultMessage": "Teams"
+  },
+  "settings.personal": {
+    "defaultMessage": "Personal"
+  },
+  "settings.rename": {
+    "defaultMessage": "Rename"
+  },
+  "settings.teamPlan": {
+    "defaultMessage": "Plan: {plan} · {team}"
+  },
+  "settings.teamPlanHint": {
+    "defaultMessage": "Your team's plan. Its owners and admins manage it with 3DStreet."
+  },
+  "settings.title": {
+    "defaultMessage": "Settings"
+  },
+  "settings.tokens": {
+    "defaultMessage": "Tokens"
+  },
+  "settings.upgradeToPro": {
+    "defaultMessage": "Upgrade to Pro"
+  },
+  "settings.viewerOwnPlan": {
+    "defaultMessage": "As a viewer of {team}, you work with your own plan."
   },
   "shapeDraw.addPoints": {
     "defaultMessage": "Click to add points"
@@ -3193,9 +3220,6 @@
   },
   "teamModal.suspended": {
     "defaultMessage": "Suspended"
-  },
-  "teamModal.title": {
-    "defaultMessage": "Team"
   },
   "teamModal.you": {
     "defaultMessage": "(you)"

@@ -74,7 +74,7 @@ seats free up. Only managers see the count (members can't read invitations).
   sign in first and come back to it.
 - Accepting requires signing in with the invited email, verified. Invitations
   expire after 7 days; an expired one can be resent (new expiry, and a seat
-  again). Invitees also find their pending invitations in the profile.
+  again). Invitees also find their pending invitations in Settings > Teams.
 
 ## Domain auto-join
 
@@ -120,7 +120,7 @@ rules in `firestore.rules` only allow reads.
 | `orgs/{orgId}`               | name, plan, seats, status (`active`, `suspended`), domains, memberEditScope (`all`, `own`), domainJoinRole (`member`, `viewer`), createdAt, createdBy, updatedAt    | members                                             |
 | `orgs/{orgId}/members/{uid}` | uid, email, displayName, role, joinedAt, invitedBy, via (`invitation`, `domain`, `staff`)                                                                           | members                                             |
 | `orgInvitations/{id}`        | orgId, orgName, email (lowercase), role, status (`pending`, `accepted`, `declined`, `revoked`), invitedBy, inviterName, createdAt, expiresAt, lastSentAt, sendCount | the invitee (verified email) and the org's managers |
-| `userOrgs/{uid}`             | orgs: { [orgId]: role }                                                                                                                                             | the user                                            |
+| `userOrgs/{uid}`             | orgs: { [orgId]: role }, activeOrgId (the team switcher, null = Personal; [team-wallet.md](team-wallet.md))                                                         | the user                                            |
 
 Every membership change updates `userOrgs` in the same transaction.
 
@@ -141,7 +141,7 @@ Every membership change updates `userOrgs` in the same transaction.
 Refusals are `HttpsError`s with `details.reason` (`not-manager`,
 `owner-only`, `last-owner`, `no-seat-left`, `wrong-account`,
 `invitation-expired`, ...), mapped to messages in
-`src/editor/components/modals/TeamModal/orgMessages.js`.
+`src/shared/settings/team/orgMessages.js`.
 
 Staff create and update orgs from the browser console while signed in with an
 admin account: `adminTools.createOrg({ name, plan, seats, ownerEmail,
@@ -150,12 +150,14 @@ domains })` and `adminTools.updateOrg(orgId, patch)`
 
 ## UI
 
-- Profile → Teams: the user's orgs (Open → `TeamModal`) and pending
-  invitations (View invitation → `InvitationModal`).
-- `TeamModal`: members and roles, what members can edit
-  (`TeamPermissionsSection`), pending invitations (resend, revoke), invite
-  form, rename, leave. Managers see the seats.
-- The plan badge and the profile show Max for a Max org and the team name.
+- Settings ([settings.md](settings.md)): Profile lists pending invitations
+  (View invitation → `InvitationModal`); each team has "Usage and billing ·
+  {team}" (plan, storage, AI tokens) and "Manage {team}" (`TeamSection`):
+  members and roles, what members can edit (`TeamPermissionsSection`),
+  pending invitations (resend, revoke), invite form, rename, leave.
+  Managers see the seats.
+- The profile menu's team switcher picks the active team.
+- The plan badge and Settings show Max for a Max org and the team name.
 
 ## Tests
 

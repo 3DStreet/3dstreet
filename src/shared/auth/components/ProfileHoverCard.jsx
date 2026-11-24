@@ -5,7 +5,9 @@
  * the profile icon while the menu is open closes it, instead of the old
  * HoverCard behaviour where a hover re-open fought the click and re-faded the
  * card back in. Renders for BOTH signed-in and signed-out users:
- *   - signed in: profile summary + Manage Account + Log Out + language picker
+ *   - signed in: profile summary, the team switcher ("Working in":
+ *     Personal or a team with its plan, docs/settings.md), Settings,
+ *     Log Out, language picker
  *   - signed out: a sign-in / create-account action + language picker
  * so language can be changed from any app without an account. All copy is
  * localized via the framework-free shared message table (this menu renders in
@@ -18,6 +20,8 @@ import { auth } from '../../services/firebase';
 import { useAuthContext } from '../../contexts';
 import { getUserProfile } from '../../utils/username';
 import { useSharedMessages } from '../../i18n/sharedMessages';
+import { refreshMembershipStatus, setActiveOrg } from '../../api/orgs';
+import { personalPlanOf } from '../../utils/workspace';
 import LanguageSelector from './LanguageSelector';
 import posthog from 'posthog-js';
 import styles from './ProfileHoverCard.module.scss';
@@ -56,10 +60,40 @@ const ExternalLinkIcon = () => (
   </svg>
 );
 
+const ROLE_KEYS = {
+  owner: 'menuRoleOwner',
+  admin: 'menuRoleAdmin',
+  member: 'menuRoleMember',
+  viewer: 'menuRoleViewer'
+};
+
+const CheckIcon = () => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    aria-hidden="true"
+  >
+    <path
+      d="M5 12.5 10 17.5 19 7"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const ProfileHoverCard = ({
   children,
   showDetails = true, // When false, render the trigger with no menu at all.
-  onSignIn = null // Called when a signed-out user chooses to sign in.
+  onSignIn = null, // Called when a signed-out user chooses to sign in.
+  // Opens a Settings section ({ id, orgId? }) in the app. Without it (an
+  // app with no Settings panel), Settings opens in the editor, in a new tab.
+  onOpenSettings = null,
+  // Told when the user switches team (or Personal: null), after it's saved.
+  onActiveTeamChange = null
 }) => {
   const { currentUser, setCurrentUser } = useAuthContext();
   const t = useSharedMessages();
@@ -98,6 +132,32 @@ const ProfileHoverCard = ({
     };
   }, [currentUid, showDetails, isOpen]);
 
+  // The team switcher: the active team sets the defaults for new work and
+  // pays the user's AI generations (docs/team-wallet.md).
+  const [switchingTo, setSwitchingTo] = useState(undefined);
+  const [switchFailed, setSwitchFailed] = useState(false);
+  const switchTeam = async (orgId) => {
+    if (orgId === (currentUser?.activeOrgId || null)) return;
+    setSwitchingTo(orgId);
+    setSwitchFailed(false);
+    const previous = currentUser?.activeOrgId || null;
+    setCurrentUser((prev) => ({ ...prev, activeOrgId: orgId }));
+    try {
+      await setActiveOrg(orgId);
+      posthog.capture('active_team_switched', {
+        to: orgId ? 'team' : 'personal'
+      });
+      await refreshMembershipStatus(setCurrentUser);
+      onActiveTeamChange?.(orgId);
+    } catch (error) {
+      console.error('Error switching team:', error);
+      setCurrentUser((prev) => ({ ...prev, activeOrgId: previous }));
+      setSwitchFailed(true);
+    } finally {
+      setSwitchingTo(undefined);
+    }
+  };
+
   // If the menu is disabled, just render the trigger untouched.
   if (!showDetails) {
     return children;
@@ -113,13 +173,23 @@ const ProfileHoverCard = ({
     setIsOpen(false);
   };
 
-  // Open full profile in the 3DStreet editor
-  const handleOpenFullProfile = (e) => {
+  // Open a Settings section here, or in the editor when this app has none.
+  const openSettings = (section) => (e) => {
     e.stopPropagation();
-    posthog.capture('open_full_profile_from_hover_card');
-    const editorUrl = `${window.location.origin}/#/modal/profile`;
-    window.open(editorUrl, '_blank');
+    posthog.capture('open_settings_from_profile_menu', { section: section.id });
     setIsOpen(false);
+    if (onOpenSettings) {
+      onOpenSettings(section);
+    } else {
+      const path =
+        section.id === 'team'
+          ? `team/${encodeURIComponent(section.orgId)}`
+          : section.id;
+      window.open(
+        `${window.location.origin}/#/modal/settings/${path}`,
+        '_blank'
+      );
+    }
   };
 
   // Sign in / create account (signed-out state)
@@ -136,12 +206,9 @@ const ProfileHoverCard = ({
   const userPhotoURL = currentUser?.photoURL || null;
   // Entitlement comes from checkUserProStatus (subscription, team or a
   // one-time pass, #1922) via the auth context — tokenProfile has no plan.
-  const isPro = !!currentUser?.isPro;
-  // A Max org seat (#1267) is Max too.
-  const planBadgeLabel =
-    currentUser?.plan === 'MAX' || currentUser?.orgPlan === 'MAX'
-      ? 'MAX'
-      : 'PRO';
+  const teams = (currentUser?.orgs || []).filter(
+    (org) => org.status === 'active'
+  );
 
   return (
     <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
@@ -183,25 +250,73 @@ const ProfileHoverCard = ({
                     )}
                   </div>
                 </div>
-
-                {isPro && (
-                  <div className={styles.planBadge}>
-                    <span className={styles.proBadge}>{planBadgeLabel}</span>
-                  </div>
-                )}
               </div>
+
+              {teams.length > 0 && (
+                <>
+                  <div className={styles.divider} />
+                  <div className={styles.workspaceLabel}>
+                    {t('menuWorkspace')}
+                  </div>
+                  <div className={styles.workspaceList} role="radiogroup">
+                    {[null, ...teams].map((org) => {
+                      const orgId = org ? org.orgId : null;
+                      const selected =
+                        (currentUser?.activeOrgId || null) === orgId;
+                      const plan = org ? org.plan : personalPlanOf(currentUser);
+                      return (
+                        <button
+                          key={orgId || 'personal'}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          className={`${styles.workspaceOption} ${selected ? styles.workspaceSelected : ''}`}
+                          disabled={switchingTo !== undefined}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            switchTeam(orgId);
+                          }}
+                        >
+                          <span className={styles.workspaceText}>
+                            <span className={styles.workspaceName}>
+                              {org ? org.name : t('menuPersonal')}
+                            </span>
+                            <span className={styles.workspaceMeta}>
+                              {[
+                                plan || t('menuPlanFree'),
+                                org && t(ROLE_KEYS[org.role])
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </span>
+                          </span>
+                          {selected && <CheckIcon />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {switchFailed && (
+                    <div className={styles.workspaceError} role="alert">
+                      {t('menuSwitchError')}
+                    </div>
+                  )}
+                </>
+              )}
 
               <div className={styles.divider} />
 
-              <div className={styles.actionsSection}>
+              <div className={styles.menuLinks}>
                 <button
-                  className={`${styles.actionButton} ${styles.editProfileButton}`}
-                  onClick={handleOpenFullProfile}
+                  type="button"
+                  className={styles.menuLink}
+                  onClick={openSettings({ id: 'profile' })}
                 >
-                  {t('manageAccount')}
-                  <ExternalLinkIcon />
+                  {t('menuSettings')}
+                  {!onOpenSettings && <ExternalLinkIcon />}
                 </button>
+              </div>
 
+              <div className={styles.actionsSection}>
                 <button
                   className={`${styles.actionButton} ${styles.logoutButton}`}
                   onClick={handleLogout}

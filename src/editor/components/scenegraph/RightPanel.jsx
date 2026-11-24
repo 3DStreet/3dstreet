@@ -13,6 +13,7 @@ import { Button, Tabs } from '../elements';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import AIChatPanel from './AIChatPanel';
 import styles from './RightPanel.module.scss';
+import { workspaceLabel, workspaceOf } from '@shared/utils/workspace';
 import { formatDate } from '@shared/utils/format';
 
 const TooltipWrapper = ({ children, content, side = 'bottom' }) => (
@@ -43,51 +44,54 @@ export default function RightPanel({ entity }) {
   const intl = useIntl();
   const { currentUser: authUser, isLoading } = useContext(AuthContext) || {};
   const setModal = useStore((s) => s.setModal);
+  const openSettings = useStore((s) => s.openSettings);
   const activeTab = useStore((s) => s.rightPanelTab);
   const setActiveTab = useStore((s) => s.setRightPanelTab);
   const panelsVisible = useStore((s) => s.panelsVisible);
 
-  // Tier ('MAX' | 'PRO' | null) takes precedence over the team label. A Max
-  // org seat (#1267) is Max too; domain teams are always Pro-level.
-  const isMax = authUser?.plan === 'MAX' || authUser?.orgPlan === 'MAX';
-  const planLabel = !authUser?.isPro
-    ? 'FREE'
-    : isMax
-      ? 'MAX'
-      : authUser?.isProTeam
-        ? 'PRO TEAM'
-        : 'PRO';
-  const planTooltip = !authUser?.isPro
-    ? intl.formatMessage({
-        id: 'rightPanel.planTooltipFree',
-        defaultMessage: '3DStreet Free Community Edition'
-      })
-    : isMax
+  // The plan of the workspace the user works in (the team switcher,
+  // docs/settings.md): the active team's plan and name, or their own plan
+  // under Personal. Clicking it opens that team's settings, or billing.
+  const { team: activeTeam, plan: workspacePlan } = workspaceOf(authUser);
+  const planLabel = workspaceLabel(authUser);
+  const planTooltip = activeTeam
+    ? intl.formatMessage(
+        {
+          id: 'rightPanel.planTooltipTeam',
+          defaultMessage: '3DStreet Team Plan ({teamDomain})'
+        },
+        { teamDomain: activeTeam.name }
+      )
+    : !workspacePlan
       ? intl.formatMessage({
-          id: 'rightPanel.planTooltipMax',
-          defaultMessage: '3DStreet Max Plan'
+          id: 'rightPanel.planTooltipFree',
+          defaultMessage: '3DStreet Free Community Edition'
         })
-      : authUser?.isProTeam
-        ? intl.formatMessage(
-            {
-              id: 'rightPanel.planTooltipTeam',
-              defaultMessage: '3DStreet Team Plan ({teamDomain})'
-            },
-            // The org's name for an org seat (#1267), else the email domain.
-            { teamDomain: authUser?.teamName ?? authUser?.teamDomain }
-          )
-        : authUser?.isProPass && !authUser?.plan
+      : workspacePlan === 'MAX'
+        ? intl.formatMessage({
+            id: 'rightPanel.planTooltipMax',
+            defaultMessage: '3DStreet Max Plan'
+          })
+        : workspacePlan === 'PRO TEAM'
           ? intl.formatMessage(
               {
-                id: 'rightPanel.planTooltipPass',
-                defaultMessage: '3DStreet Pro (Project Pass) until {date}'
+                id: 'rightPanel.planTooltipTeam',
+                defaultMessage: '3DStreet Team Plan ({teamDomain})'
               },
-              { date: formatDate(authUser?.proUntil) }
+              { teamDomain: authUser?.teamDomain }
             )
-          : intl.formatMessage({
-              id: 'rightPanel.planTooltipPro',
-              defaultMessage: '3DStreet Pro Plan'
-            });
+          : authUser?.isProPass && !authUser?.plan
+            ? intl.formatMessage(
+                {
+                  id: 'rightPanel.planTooltipPass',
+                  defaultMessage: '3DStreet Pro (Project Pass) until {date}'
+                },
+                { date: formatDate(authUser?.proUntil) }
+              )
+            : intl.formatMessage({
+                id: 'rightPanel.planTooltipPro',
+                defaultMessage: '3DStreet Pro Plan'
+              });
 
   // Closed padlock for a private scene (#1267).
   const sceneVisibility = useStore((state) => state.sceneVisibility);
@@ -118,9 +122,11 @@ export default function RightPanel({ entity }) {
               posthog.capture('profile_button_clicked', {
                 is_logged_in: !!authUser
               });
-              setModal(authUser ? 'profile' : 'signin');
             }}
             tooltipSide="bottom"
+            showHoverCard
+            onSignIn={() => setModal('signin')}
+            onOpenSettings={openSettings}
           />
         </div>
       )}
@@ -158,7 +164,13 @@ export default function RightPanel({ entity }) {
             <TooltipWrapper content={planTooltip}>
               <div
                 className={styles.planBadge}
-                onClick={() => setModal(authUser ? 'profile' : 'signin')}
+                onClick={() =>
+                  !authUser
+                    ? setModal('signin')
+                    : activeTeam
+                      ? openSettings({ id: 'billing', orgId: activeTeam.orgId })
+                      : openSettings({ id: 'billing' })
+                }
               >
                 {planLabel}
               </div>
@@ -171,9 +183,11 @@ export default function RightPanel({ entity }) {
                 posthog.capture('profile_button_clicked', {
                   is_logged_in: !!authUser
                 });
-                setModal(authUser ? 'profile' : 'signin');
               }}
               tooltipSide="bottom"
+              showHoverCard
+              onSignIn={() => setModal('signin')}
+              onOpenSettings={openSettings}
             />
           </div>
         </div>

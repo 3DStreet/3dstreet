@@ -17,7 +17,7 @@ import {
   orgErrorReason,
   refreshMembershipStatus
 } from '../../../api/orgs';
-import { orgErrorMessage } from '../TeamModal/orgMessages';
+import { orgErrorMessage } from '@shared/settings/team/orgMessages';
 import { canEditTeamScene, isTeamEditorRole } from '@/editor/lib/sceneAccess';
 import { useAuthContext } from '../../../contexts';
 import styles from './ShareModal.module.scss';

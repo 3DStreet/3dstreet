@@ -505,7 +505,9 @@ function ShareModal() {
                     <div
                       className={`${styles.authorInfo} ${!authorUsername ? styles.placeholder : ''}`}
                       onClick={() =>
-                        authorUsername ? setModal('profile') : null
+                        authorUsername
+                          ? useStore.getState().openSettings({ id: 'profile' })
+                          : null
                       }
                       style={{ cursor: authorUsername ? 'pointer' : 'default' }}
                     >

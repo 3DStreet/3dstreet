@@ -2,11 +2,11 @@
  * LanguageSelector - collapsible language picker for the shared profile menu.
  *
  * Renders a single "Language" row showing the current language; clicking it
- * expands the supported locales as a radio-style list (mirrors the editor's
- * Help → Language submenu, so the options aren't shown at all times). Switches
+ * expands the supported locales as a radio-style list (the options aren't
+ * shown at all times). Switches
  * language through the framework-free `changeLocale` helper (localStorage +
- * broadcast + profile mirror). Used inside ProfileHoverCard in the generator
- * and Bollard Buddy, which don't mount react-intl; the surrounding shared
+ * broadcast + profile mirror; the editor's LocaleProvider follows the
+ * broadcast). Used inside ProfileHoverCard in every app; the surrounding shared
  * strings re-render live via useSharedMessages when the selection changes, and
  * the trigger value reflects the new language immediately.
  */

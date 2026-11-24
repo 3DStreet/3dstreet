@@ -161,8 +161,9 @@ const BuyTokensModal = ({
 
   const useOwnTokens = async () => {
     try {
-      await httpsCallable(functions, 'orgSetBilling')({ orgId: null });
-      setCurrentUser((prev) => ({ ...prev, billingOrgId: null }));
+      // Personal becomes the active team: the user's own tokens pay.
+      await httpsCallable(functions, 'orgSetActive')({ orgId: null });
+      setCurrentUser((prev) => ({ ...prev, activeOrgId: null }));
       posthog.capture('team_billing_switched_to_personal', { source });
     } catch (error) {
       console.error('Error switching to own tokens:', error);

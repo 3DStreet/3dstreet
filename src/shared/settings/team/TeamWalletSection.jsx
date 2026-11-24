@@ -7,18 +7,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import posthog from 'posthog-js';
-import { Button } from '../../elements';
+import { Button } from '@shared/components/Button';
 import {
   getTeamWallet,
   orgErrorReason,
   setMemberMonthlyCap
-} from '../../../api/orgs';
+} from '@shared/api/orgs';
 import { monthKey, refillWallet } from '@shared/utils/teamWallet';
 import { orgErrorMessage } from './orgMessages';
-import styles from './TeamModal.module.scss';
+import { useSettingsHost } from '../SettingsHost';
+import styles from './TeamSection.module.scss';
 
 export function TeamWalletSection({ orgId, members, canManage }) {
   const intl = useIntl();
+  const { notify } = useSettingsHost();
   const [data, setData] = useState(null);
   const [capText, setCapText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -66,7 +68,7 @@ export function TeamWalletSection({ orgId, members, canManage }) {
       posthog.capture('org_member_cap_set', { org_id: orgId, cap: parsedCap });
       await load();
     } catch (error) {
-      STREET.notify.errorMessage(orgErrorMessage(intl, orgErrorReason(error)));
+      notify(orgErrorMessage(intl, orgErrorReason(error)), 'error');
     } finally {
       setBusy(false);
     }

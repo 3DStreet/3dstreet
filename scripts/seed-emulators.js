@@ -294,12 +294,15 @@ async function main() {
     await seedTeam(team, userOrgs);
     console.log(`  team ${team.name}: ${JSON.stringify(team.members)}`);
   }
-  // Each user's teams in one doc (docs/orgs.md); users in no team get none.
+  // Each user's teams in one doc (docs/orgs.md), with their first team
+  // active as joining it would make it (the team switcher); users in no
+  // team get none and work in Personal.
   for (const { uid } of USERS) {
+    const orgs = userOrgs[uid] || {};
     await admin
       .firestore()
       .doc(`userOrgs/${uid}`)
-      .set({ orgs: userOrgs[uid] || {} });
+      .set({ orgs, activeOrgId: Object.keys(orgs)[0] || null });
   }
   for (const scene of SCENES) {
     await seedScene(scene);

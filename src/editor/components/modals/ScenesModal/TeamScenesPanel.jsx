@@ -14,7 +14,7 @@ import { Loader } from '@shared/icons';
 import { Button, SceneCard } from '../../elements';
 import { getTeamScenes } from '../../../api/scene';
 import { createProject, listProjects, orgErrorReason } from '../../../api/orgs';
-import { orgErrorMessage } from '../TeamModal/orgMessages';
+import { orgErrorMessage } from '@shared/settings/team/orgMessages';
 import { isTeamEditorRole, isTeamManagerRole } from '../../../lib/sceneAccess';
 import styles from './ScenesModal.module.scss';
 

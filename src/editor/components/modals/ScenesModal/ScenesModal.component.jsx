@@ -50,6 +50,16 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
   const teams = (currentUser?.orgs || []).filter(
     (org) => org.status === 'active'
   );
+  // Opening it shows the active team's scenes first (the team switcher,
+  // docs/settings.md), or My scenes under Personal.
+  const activeTeamId = teams.some(
+    (org) => org.orgId === currentUser?.activeOrgId
+  )
+    ? currentUser.activeOrgId
+    : null;
+  useEffect(() => {
+    if (isOpen) setSelectedTab(activeTeamId ? `team:${activeTeamId}` : 'owner');
+  }, [isOpen, activeTeamId]);
   const selectedTeam = selectedTab.startsWith('team:')
     ? teams.find((org) => `team:${org.orgId}` === selectedTab) || null
     : null;
