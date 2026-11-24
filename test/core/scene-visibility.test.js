@@ -11,8 +11,9 @@ const {
   sceneVisibility,
   canReadScene,
   visibilityChangeRefusal,
-  isCommunityPostable,
-  mayPostToCommunity,
+  communityPostLevel,
+  readCommunityPostLevel,
+  minimalCommunityMessage,
   createRestrictedScene
 } = require('../../public/functions/scene-visibility.js');
 
@@ -68,33 +69,89 @@ describe('scene visibility', () => {
   });
 
   describe('community posts of AI outputs', () => {
-    it('only from a public scene, not paid by a team', () => {
-      const pub = { visibility: 'public' };
-      assert.strictEqual(isCommunityPostable({}, pub), true);
-      assert.strictEqual(isCommunityPostable({}, {}), true); // legacy
-      assert.strictEqual(
-        isCommunityPostable({ chargedOrgId: 'o' }, pub),
-        false
-      );
-      for (const visibility of ['unlisted', 'private']) {
-        assert.strictEqual(isCommunityPostable({}, { visibility }), false);
+    const job = (extra = {}) => ({
+      source: 'editor',
+      generationParams: { scene_id: 's1' },
+      ...extra
+    });
+    const noScene = { generationParams: { scene_id: null } };
+
+    it('shows everything from a public scene paid personally', () => {
+      for (const scene of [{ visibility: 'public' }, {}]) {
+        assert.strictEqual(communityPostLevel(job(), scene), 'full');
       }
-      assert.strictEqual(isCommunityPostable({}, null), false);
     });
 
-    it('never without a scene, or when it cannot be read', async () => {
-      for (const generationParams of [
-        undefined,
-        {},
-        { scene_id: null },
-        { scene_id: { a: 1 } },
-        { scene_id: 'unreadable/path' }
+    it('shows the minimum from any other scene, or one that cannot be read', () => {
+      for (const scene of [
+        { visibility: 'unlisted' },
+        { visibility: 'private' },
+        null
       ]) {
+        assert.strictEqual(communityPostLevel(job(), scene), 'minimal');
         assert.strictEqual(
-          await mayPostToCommunity({ generationParams }),
-          false
+          communityPostLevel(job({ source: 'generator' }), scene),
+          'minimal'
         );
       }
+    });
+
+    it('without a scene: full in the generator, minimal in the editor', () => {
+      assert.strictEqual(
+        communityPostLevel(job({ ...noScene, source: 'generator' }), null),
+        'full'
+      );
+      assert.strictEqual(communityPostLevel(job(noScene), null), 'minimal');
+      assert.strictEqual(communityPostLevel({}, null), 'minimal');
+    });
+
+    it('shows the minimum whenever a team paid', () => {
+      const team = { chargedOrgId: 'org1' };
+      assert.strictEqual(
+        communityPostLevel(job(team), { visibility: 'public' }),
+        'minimal'
+      );
+      assert.strictEqual(
+        communityPostLevel(
+          job({ ...team, ...noScene, source: 'generator' }),
+          null
+        ),
+        'minimal'
+      );
+    });
+
+    it('a failed scene read is minimal', async () => {
+      for (const sceneId of ['unreadable/path', { a: 1 }]) {
+        assert.strictEqual(
+          await readCommunityPostLevel(
+            job({ generationParams: { scene_id: sceneId } })
+          ),
+          'minimal'
+        );
+      }
+    });
+
+    it('the minimal message holds only model, app and time', () => {
+      assert.deepStrictEqual(
+        minimalCommunityMessage({
+          kind: 'image',
+          modelName: 'Model X',
+          source: 'generator',
+          at: new Date(0)
+        }),
+        {
+          embeds: [
+            {
+              title: 'Private AI image generated',
+              fields: [
+                { name: 'Model', value: 'Model X', inline: true },
+                { name: 'App', value: 'Generator', inline: true }
+              ],
+              timestamp: '1970-01-01T00:00:00.000Z'
+            }
+          ]
+        }
+      );
     });
   });
 

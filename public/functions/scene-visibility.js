@@ -85,25 +85,48 @@ async function visibilityChangeRefusal({ scene, uid, visibility, isPro, orgRole 
 }
 
 /**
- * May this generation job's output be posted to the community Discord? Only
- * one made from a public scene and not paid by a team. `scene` is the job's
- * scene as read now, null when it has none or it can't be read.
+ * What the community Discord may show of a finished generation job:
+ * 'full' (output, prompt, username, scene link) or 'minimal' (model, time
+ * and app only). The payer decides first: paid by a team is minimal. Paid
+ * personally is full from a public scene or, in the generator, with no
+ * scene; a scene that isn't public (or can't be read), or an unsaved one in
+ * the editor, is minimal. `scene` is the job's scene as read now, or null.
  */
-const isCommunityPostable = (job, scene) =>
-  !!scene && !job.chargedOrgId && sceneVisibility(scene) === 'public';
-
-/** isCommunityPostable with the scene looked up; a failed read is a no. */
-async function mayPostToCommunity(job) {
+const communityPostLevel = (job, scene) => {
+  if (job.chargedOrgId) return 'minimal';
   const sceneId = job.generationParams && job.generationParams.scene_id;
-  if (typeof sceneId !== 'string' || !sceneId) return false;
+  if (!sceneId) return job.source === 'generator' ? 'full' : 'minimal';
+  return scene && sceneVisibility(scene) === 'public' ? 'full' : 'minimal';
+};
+
+/** communityPostLevel with the scene looked up; a failed read is minimal. */
+async function readCommunityPostLevel(job) {
+  const sceneId = job.generationParams && job.generationParams.scene_id;
+  if (job.chargedOrgId || typeof sceneId !== 'string' || !sceneId) {
+    return communityPostLevel(job, null);
+  }
   try {
     const snapshot = await admin.firestore().collection('scenes').doc(sceneId).get();
-    return isCommunityPostable(job, snapshot.exists ? snapshot.data() : null);
+    return communityPostLevel(job, snapshot.exists ? snapshot.data() : null);
   } catch (error) {
-    console.error(`mayPostToCommunity: could not read scene ${sceneId}:`, error);
-    return false;
+    console.error(`readCommunityPostLevel: could not read scene ${sceneId}:`, error);
+    return 'minimal';
   }
 }
+
+/** The Discord message for a 'minimal' post: nothing about who or what. */
+const minimalCommunityMessage = ({ kind, modelName, source, at = new Date() }) => ({
+  embeds: [
+    {
+      title: kind === 'video' ? 'Private AI video generated' : 'Private AI image generated',
+      fields: [
+        { name: 'Model', value: modelName || 'AI Model', inline: true },
+        { name: 'App', value: source === 'generator' ? 'Generator' : 'Editor', inline: true }
+      ],
+      timestamp: at.toISOString()
+    }
+  ]
+});
 
 /**
  * Create an empty personal scene that is unlisted or private from the start
@@ -213,8 +236,9 @@ module.exports = {
   readOrgRole,
   readSceneAccess,
   visibilityChangeRefusal,
-  isCommunityPostable,
-  mayPostToCommunity,
+  communityPostLevel,
+  readCommunityPostLevel,
+  minimalCommunityMessage,
   createRestrictedScene,
   createRestrictedSceneCallable,
   setSceneVisibility,

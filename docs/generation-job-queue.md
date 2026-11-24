@@ -244,7 +244,7 @@ stream), so the fix is the same create-and-return pattern as splat.
   gallery save previously ran in the browser (`video.js:saveToGallery`) and
   died with a closed tab — moving it into the terminal processor is the core
   browser-independence win.
-- **Discord post** (only from a public scene, see [scene-visibility.md](scene-visibility.md)) moved from the submit callable into the terminal processor's
+- **Discord post** (full or minimal, see [scene-visibility.md](scene-visibility.md)) moved from the submit callable into the terminal processor's
   claimed success branch — fires on real completion, exactly once (the
   `saving` claim serializes webhook/poll/reconciler), with the durable Storage
   URL instead of the ephemeral provider URL.

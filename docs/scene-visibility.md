@@ -36,10 +36,11 @@ restricted, so one whose Pro ended keeps what they have and can lower it.
 - **`createRestrictedScene` callable**: creates an empty scene that is
   unlisted or private from the start (Pro), for copying one without it ever
   being public; the client then saves the content into it.
-- **AI outputs** (`mayPostToCommunity`): posted to the community Discord only
-  when made from a scene that is public at that moment, and never when a team
-  paid. Without a scene (generator, unsaved) or when it can't be read: not
-  posted.
+- **AI outputs on the community Discord** (`communityPostLevel`): paid by a
+  team, always minimal (model, app, time; no output, prompt, user or scene).
+  Paid personally: full from a scene that is public at that moment, or from
+  the generator with no scene; minimal from any other scene, one that can't
+  be read, or an unsaved scene in the editor.
 - **Personal assets** (uploads and AI outputs): created `unlisted`, and the
   rules let only their owner list them. Anyone else needs the asset's id,
   which the scenes using it carry, so a private scene's assets can't be

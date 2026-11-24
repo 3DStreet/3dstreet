@@ -22,7 +22,7 @@ const { MODAL_SECRETS, enqueueModalJob, fetchModalPrediction } = require('./moda
 // authoritative status adapter used by the poll, falJobWebhook, and the
 // reconciler. One-directional require: fal-3d.js does NOT require this module,
 // so there's no cycle.
-const { mayPostToCommunity } = require('./scene-visibility.js');
+const { readCommunityPostLevel, minimalCommunityMessage } = require('./scene-visibility.js');
 const { saveMeshToGallery, fetchFalPrediction, sanitizeGalleryMetadata, sanitizeNotifyBatch } = require('./fal-3d.js');
 // Real-time completion email: the webhook calls this the instant a job finishes
 // so the user isn't waiting on the 10-min reconciler sweep. Shared, idempotent
@@ -155,6 +155,27 @@ async function postAIVideoToDiscord(userId, videoUrl, prompt, modelName, duratio
   } catch (error) {
     // Don't throw error - we don't want Discord posting to fail the video generation
     console.error('Error posting AI video to Discord:', error);
+  }
+}
+
+// What the community Discord shows depends on who paid and the scene
+// (docs/scene-visibility.md): everything (`postFull`), or only that a
+// generation happened. Never throws.
+async function postToCommunity(job, { kind, modelName, postFull }) {
+  if (!process.env.DISCORD_WEBHOOK_URL) return;
+  try {
+    if ((await readCommunityPostLevel(job)) === 'full') {
+      await postFull();
+      return;
+    }
+    const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(minimalCommunityMessage({ kind, modelName, source: job.source }))
+    });
+    if (!response.ok) console.error(`Discord API error: ${response.status}`);
+  } catch (error) {
+    console.error('Discord posting failed:', error);
   }
 }
 
@@ -1999,15 +2020,19 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         // Fire-and-forget: post the durable Storage URL (the replicate.delivery
         // URL is ephemeral). Errors never fail the (already-committed) save.
         const params = job.generationParams || {};
-        // Only from a public scene (docs/scene-visibility.md).
-        mayPostToCommunity(job).then((allowed) => allowed && postAIVideoToDiscord(
-          userId,
-          storageUrl,
-          params.prompt || '',
-          SUPPORTED_VIDEO_MODELS[job.model] || job.model,
-          params.duration_seconds,
-          params.scene_id
-        )).catch(err => console.error('Discord posting failed:', err));
+        const modelName = SUPPORTED_VIDEO_MODELS[job.model] || job.model;
+        postToCommunity(job, {
+          kind: 'video',
+          modelName,
+          postFull: () => postAIVideoToDiscord(
+            userId,
+            storageUrl,
+            params.prompt || '',
+            modelName,
+            params.duration_seconds,
+            params.scene_id
+          )
+        });
 
         return { status: 'succeeded', video_url: storageUrl, assetId };
       } catch (saveError) {
@@ -2103,15 +2128,18 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
           AI_MODEL_NAMES[params.model_version] ||
           AI_MODEL_NAMES[params.model_id] ||
           'AI Model';
-        // Only from a public scene (docs/scene-visibility.md).
-        mayPostToCommunity(job).then((allowed) => allowed && postAIImageToDiscord(
-          userId,
-          storageUrl,
-          params.prompt || '',
-          displayName,
-          params.scene_id,
-          job.source
-        )).catch(err => console.error('Discord posting failed:', err));
+        postToCommunity(job, {
+          kind: 'image',
+          modelName: displayName,
+          postFull: () => postAIImageToDiscord(
+            userId,
+            storageUrl,
+            params.prompt || '',
+            displayName,
+            params.scene_id,
+            job.source
+          )
+        });
 
         return { status: 'succeeded', image_url: storageUrl, assetId };
       } catch (saveError) {
