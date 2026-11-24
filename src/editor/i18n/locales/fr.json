@@ -886,6 +886,7 @@
   "settings.nav.profile": "Profil",
   "settings.nav.teams": "Équipes",
   "settings.personal": "Personnel",
+  "settings.planNotInStripe": "Votre forfait n'est pas facturé via Stripe. Contactez 3DStreet pour le modifier.",
   "settings.rename": "Renommer",
   "settings.teamPlan": "Forfait : {plan} · {team}",
   "settings.teamPlanHint": "Le forfait de votre équipe. Ses propriétaires et administrateurs le gèrent avec 3DStreet.",

@@ -1169,7 +1169,8 @@
     "settings.nav.manageTeam": "Manage {team}",
     "settings.nav.profile": "Profile",
     "settings.nav.teams": "Teams",
-    "settings.title": "Settings"
+    "settings.title": "Settings",
+    "settings.planNotInStripe": "Your plan isn't billed through Stripe. Contact 3DStreet to change it."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -2341,7 +2342,8 @@
     "settings.nav.manageTeam": "Manage {team}",
     "settings.nav.profile": "Profile",
     "settings.nav.teams": "Teams",
-    "settings.title": "Settings"
+    "settings.title": "Settings",
+    "settings.planNotInStripe": "Your plan isn't billed through Stripe. Contact 3DStreet to change it."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -3513,6 +3515,7 @@
     "settings.nav.manageTeam": "Manage {team}",
     "settings.nav.profile": "Profile",
     "settings.nav.teams": "Teams",
-    "settings.title": "Settings"
+    "settings.title": "Settings",
+    "settings.planNotInStripe": "Your plan isn't billed through Stripe. Contact 3DStreet to change it."
   }
 }

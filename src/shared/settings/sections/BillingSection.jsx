@@ -93,10 +93,16 @@ function PersonalBilling() {
     } catch (error) {
       console.error('Error opening the billing portal:', error);
       notify(
-        intl.formatMessage({
-          id: 'settings.billingPortalError',
-          defaultMessage: 'Could not open the subscription page. Try again.'
-        }),
+        error?.details?.reason === 'no-stripe-customer'
+          ? intl.formatMessage({
+              id: 'settings.planNotInStripe',
+              defaultMessage:
+                "Your plan isn't billed through Stripe. Contact 3DStreet to change it."
+            })
+          : intl.formatMessage({
+              id: 'settings.billingPortalError',
+              defaultMessage: 'Could not open the subscription page. Try again.'
+            }),
         'error'
       );
       setIsOpeningPortal(false);

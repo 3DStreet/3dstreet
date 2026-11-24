@@ -886,6 +886,7 @@
   "settings.nav.profile": "Perfil",
   "settings.nav.teams": "Equipes",
   "settings.personal": "Pessoal",
+  "settings.planNotInStripe": "Seu plano não é cobrado pelo Stripe. Fale com a 3DStreet para alterá-lo.",
   "settings.rename": "Renomear",
   "settings.teamPlan": "Plano: {plan} · {team}",
   "settings.teamPlanHint": "O plano da sua equipe. Os proprietários e administradores o gerenciam com a 3DStreet.",

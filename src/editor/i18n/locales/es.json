@@ -886,6 +886,7 @@
   "settings.nav.profile": "Perfil",
   "settings.nav.teams": "Equipos",
   "settings.personal": "Personal",
+  "settings.planNotInStripe": "Tu plan no se factura a través de Stripe. Contacta con 3DStreet para cambiarlo.",
   "settings.rename": "Renombrar",
   "settings.teamPlan": "Plan: {plan} · {team}",
   "settings.teamPlanHint": "El plan de tu equipo. Sus propietarios y administradores lo gestionan con 3DStreet.",

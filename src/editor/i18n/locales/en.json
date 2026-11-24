@@ -2660,6 +2660,9 @@
   "settings.personal": {
     "defaultMessage": "Personal"
   },
+  "settings.planNotInStripe": {
+    "defaultMessage": "Your plan isn't billed through Stripe. Contact 3DStreet to change it."
+  },
   "settings.rename": {
     "defaultMessage": "Rename"
   },
