@@ -1,8 +1,8 @@
 /**
  * Single source of truth for plan amounts shown in UpgradeModal +
  * paywallSurfaces feature lists. Keep these in sync with the server-side
- * allotments in public/functions/index.js (the PRICE_CONFIG token map in the
- * Stripe webhook) and the monthly refill allowances in
+ * allotments in public/functions/subscription-plans.js (SUBSCRIPTION_PLANS,
+ * used by the Stripe webhook) and the monthly refill allowances in
  * public/functions/token-management.js — those run in a separate Firebase
  * Functions deployment and can't share imports, so any change here means a
  * matching change there.

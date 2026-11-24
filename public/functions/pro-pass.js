@@ -4,9 +4,8 @@
  * A pass is a one-time Stripe payment (no subscription object, no renewal)
  * that grants Pro-tier access for a fixed number of days plus an up-front
  * gen-token lump sum. The only new account state is `proUntil`, stored on
- * tokenProfile/{uid} (NOT in auth custom claims — the Stripe webhooks call
- * setCustomUserClaims({ plan }), which replaces the whole claims object and
- * would wipe it; and NOT on userProfile, which owners can update from the
+ * tokenProfile/{uid} (NOT in auth custom claims, which hold only the
+ * subscription plan and staff flags; and NOT on userProfile, which owners can update from the
  * client). Firestore rules deny every client update to tokenProfile and
  * forbid a client-created profile from carrying `proUntil`.
  *

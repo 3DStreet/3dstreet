@@ -33,8 +33,8 @@ is read — there is no scheduled job, and nothing is touched when a pass
 lapses: scenes, assets and already-granted tokens all stay.
 
 `proUntil` is stored on **`tokenProfile/{uid}`** (a Firestore Timestamp),
-not in auth custom claims: the Stripe webhooks call
-`setCustomUserClaims({ plan })`, which replaces the whole claims object.
+not in auth custom claims, which hold only the subscription plan and staff
+flags (written through `setPlanClaim`, which keeps the other claims).
 Clients can't write it — `tokenProfile` updates are denied, and the create
 rule only allows the six default fields.
 
@@ -63,8 +63,9 @@ claim nor a subscription — so it neither reports nor "fixes" them.
    `mode: 'payment'`, skips the duplicate-subscription block (subscribers may
    buy a pass), sets `customer_creation: 'always'` for first-time customers,
    and tags `metadata.product = 'pro-pass-project'` (+ the client `source`).
-   An unknown price with `mode: 'payment'` is still rejected, and token packs
-   still require Pro.
+   The client only names a product by its price ID: the session is built from
+   scratch (`checkout-request.js`), any price we don't sell is refused, and
+   token packs still require Pro.
 3. `checkout.session.completed` → the payment branch matches the pass
    **before** token packs, backfills `userProfile.stripeCustomerId`, and calls
    `grantPass` with the checkout session id as the idempotency key. Any

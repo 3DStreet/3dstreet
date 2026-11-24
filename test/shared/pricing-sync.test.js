@@ -4,7 +4,7 @@
  * The tier/cycle/token mapping is duplicated across the frontend bundle and the
  * Cloud Functions deployment, which can't share imports:
  *   - PRICING                (src/shared/components/UpgradeModal/pricing.js) — UI
- *   - PRICE_CONFIG           (public/functions/stripe.js)       — Stripe webhook grant
+ *   - SUBSCRIPTION_PLANS     (public/functions/subscription-plans.js)— Stripe webhook grant
  *   - *_MONTHLY_ALLOWANCE    (public/functions/token-management.js) — monthly refill
  *
  * Nothing fails at build time if one drifts from the others; the user just sees
@@ -44,9 +44,9 @@ describe('plan token amounts stay in sync across deployments', () => {
     expect(max).toBe(PRICING.max.monthly.tokens);
   });
 
-  it('Stripe webhook PRICE_CONFIG grants match PRICING for every tier', () => {
-    const src = read('public/functions/stripe.js');
-    // Pull each { tier: 'PRO'|'MAX', ... tokens: N } entry from PRICE_CONFIG.
+  it('Stripe webhook SUBSCRIPTION_PLANS grants match PRICING for every tier', () => {
+    const src = read('public/functions/subscription-plans.js');
+    // Pull each { tier: 'PRO'|'MAX', ... tokens: N } entry from SUBSCRIPTION_PLANS.
     const entries = [
       ...src.matchAll(/tier:\s*'(PRO|MAX)'[^}]*?tokens:\s*(\d+)/g)
     ].map((m) => ({ tier: m[1], tokens: Number(m[2]) }));
