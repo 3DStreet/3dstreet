@@ -1,6 +1,6 @@
 /**
  * Team settings (#1267 Phase 1, docs/orgs.md): an organization's members,
- * roles, seats and pending invitations. Everyone in the team sees the
+ * roles, seats and pending invitations, and what members can edit. Everyone in the team sees the
  * members; owners and admins also manage them and invite people. Opened from
  * the profile's Teams section with the org in store.teamModalOrgId.
  */
@@ -37,6 +37,7 @@ import {
 import styles from './TeamModal.module.scss';
 import { TeamWalletSection } from './TeamWalletSection.jsx';
 import { TeamLibraryUsage } from './TeamLibraryUsage.jsx';
+import { TeamPermissionsSection } from './TeamPermissionsSection.jsx';
 
 const ROLES = ['owner', 'admin', 'member', 'viewer'];
 const SEAT_ROLES = ['owner', 'admin', 'member'];
@@ -422,6 +423,15 @@ function TeamModal() {
                   );
                 })}
             </ul>
+
+            <TeamPermissionsSection
+              org={org}
+              canManage={canManage}
+              onChanged={async () => {
+                await load();
+                await refreshMembershipStatus(setCurrentUser);
+              }}
+            />
 
             <TeamWalletSection
               orgId={orgId}

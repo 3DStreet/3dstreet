@@ -13,7 +13,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import posthog from 'posthog-js';
 import useStore from '@/store';
-import { isTeamEditorRole, teamRoleOf } from '@/editor/lib/sceneAccess';
+import { canEditTeamScene } from '@/editor/lib/sceneAccess';
 import { useAuthContext } from '@/editor/contexts';
 import { useHasPlayable, useHasBuildArea } from '@/editor/hooks';
 import { openSceneInNewEditor } from '@/editor/lib/sceneHandoff';
@@ -247,7 +247,7 @@ function Toolbar() {
   // place, one at a time (EditLockBanner), rather than on a copy.
   const sceneOrgId = useStore((state) => state.sceneOrgId);
   const isTeamEditor =
-    !!sceneOrgId && isTeamEditorRole(teamRoleOf(currentUser, sceneOrgId));
+    !!sceneOrgId && canEditTeamScene(currentUser, sceneOrgId, authorId);
   const isAuthor =
     !authorId || (currentUser && currentUser.uid === authorId) || isTeamEditor;
   // While Firebase is still restoring the session on a cloud scene we
@@ -285,7 +285,8 @@ function Toolbar() {
     const freshIsAuthor =
       !freshAuthorId ||
       (currentUser && currentUser.uid === freshAuthorId) ||
-      (!!freshOrgId && isTeamEditorRole(teamRoleOf(currentUser, freshOrgId)));
+      (!!freshOrgId &&
+        canEditTeamScene(currentUser, freshOrgId, freshAuthorId));
     if (!freshIsAuthor && !useStore.getState().isSavingScene) {
       STREET.notify.warningMessage(
         intl.formatMessage({

@@ -83,6 +83,14 @@ export const removeMember = (orgId, uid) =>
   call('orgRemoveMember', { orgId, uid });
 export const renameOrg = (orgId, name) => call('orgRename', { orgId, name });
 
+/**
+ * Owners and admins: what members may edit (`memberEditScope`: 'all' |
+ * 'own') and the role a domain auto-join gives (`domainJoinRole`: 'member'
+ * | 'viewer'). Pass only the settings to change.
+ */
+export const updateOrgSettings = (orgId, settings) =>
+  call('orgUpdateSettings', { orgId, ...settings });
+
 // Projects and team scenes (#1267 Phase 2, docs/team-scenes.md).
 export const listProjects = async (orgId) =>
   (await getDocs(collection(db, 'orgs', orgId, 'projects'))).docs

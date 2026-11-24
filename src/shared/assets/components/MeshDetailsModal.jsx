@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import TeamLibraryActions from './TeamLibraryActions.jsx';
 import { useAuthContext } from '@shared/contexts';
 import { teamIdOfOwner } from '../assetOwner.js';
+import { canEditTeamItem } from '@shared/utils/teamPermissions.js';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -267,8 +268,9 @@ const MeshDetailsModal = ({
   // Best-effort, at most once per asset (assetUpdated then refreshes the card).
   // The user's teams (#1267 Phase 4): to name a team asset's library, and
   // because a seat in that team may rename it, edit its attribution and add
-  // its thumbnail (firestore.rules orgs/{orgId}/assets). Reoptimize and
-  // delete stay with personal owners; removal is TeamLibraryActions'.
+  // its thumbnail (firestore.rules orgs/{orgId}/assets), unless the team lets
+  // members edit only the assets they added. Reoptimize and delete stay with
+  // personal owners; removal is TeamLibraryActions'.
   const { currentUser } = useAuthContext();
   const assetTeam = (currentUser?.orgs || []).find(
     (org) => org.orgId === teamIdOfOwner(ownerUid)
@@ -277,7 +279,7 @@ const MeshDetailsModal = ({
     (!!auth.currentUser && auth.currentUser.uid === ownerUid) ||
     (!!assetTeam &&
       assetTeam.status === 'active' &&
-      ['owner', 'admin', 'member'].includes(assetTeam.role));
+      canEditTeamItem(assetTeam, data?.addedBy, currentUser?.uid));
   const thumbUploadedRef = useRef(null);
   useEffect(() => {
     if (!data || !canEditDetails) return;

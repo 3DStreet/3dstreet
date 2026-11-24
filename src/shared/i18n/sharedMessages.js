@@ -2011,6 +2011,13 @@ const SHARED_MESSAGES = {
       'Somente proprietários, administradores e membros da equipe podem fazer isso.',
     fr: "Seuls les propriétaires, administrateurs et membres de l'équipe peuvent faire cela."
   },
+  teamLibraryOwnOnly: {
+    en: 'In this team, members can only change the assets they added.',
+    es: 'En este equipo, los miembros solo pueden cambiar los recursos que añadieron.',
+    'pt-BR':
+      'Nesta equipe, os membros só podem alterar os recursos que adicionaram.',
+    fr: "Dans cette équipe, les membres ne peuvent modifier que les ressources qu'ils ont ajoutées."
+  },
   teamLibraryNotManager: {
     en: 'Only owners and admins, or the member who added it, can remove this asset.',
     es: 'Solo los propietarios y administradores, o el miembro que lo añadió, pueden quitar este recurso.',

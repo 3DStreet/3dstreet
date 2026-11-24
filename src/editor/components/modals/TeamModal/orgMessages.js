@@ -83,6 +83,14 @@ export const orgErrorMessages = defineMessages({
     id: 'orgs.error.notEditor',
     defaultMessage: 'Only owners, admins and members can do this.'
   },
+  'own-only': {
+    id: 'orgs.error.ownOnly',
+    defaultMessage: 'In this team, members can only change what they created.'
+  },
+  'invalid-setting': {
+    id: 'orgs.error.invalidSetting',
+    defaultMessage: 'This team setting is not valid.'
+  },
   'not-author': {
     id: 'orgs.error.notAuthor',
     defaultMessage: 'Only the author of a personal scene can move it.'

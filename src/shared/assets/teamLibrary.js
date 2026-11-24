@@ -45,6 +45,7 @@ export const teamLibraryErrorKey = (error) => {
     {
       'not-editor': 'teamLibraryNotEditor',
       'not-manager': 'teamLibraryNotManager',
+      'own-only': 'teamLibraryOwnOnly',
       'asset-not-found': 'teamLibraryAssetNotFound',
       'asset-converting': 'teamLibraryConverting',
       'asset-type-mismatch': 'teamLibraryTypeMismatch',

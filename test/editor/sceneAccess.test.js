@@ -8,7 +8,9 @@ import useStore from '@/store';
 import { canSaveInPlace, sceneSaveMode } from '@/editor/lib/sceneAccess';
 
 const user = (orgs = []) => ({ uid: 'me', orgs });
-const team = (role) => [{ orgId: 'org1', role, status: 'active' }];
+const team = (role, memberEditScope) => [
+  { orgId: 'org1', role, status: 'active', memberEditScope }
+];
 
 function openScene({
   sceneId = 'scene-1',
@@ -56,5 +58,15 @@ describe('sceneSaveMode', () => {
   it('treats a team scene of a team you are not in as someone else’s, even as its author', () => {
     openScene({ authorId: 'me', orgId: 'org1', lock: 'mine' });
     expect(sceneSaveMode(user())).toBe('copy');
+  });
+
+  it('copies another member’s scene when the team lets members edit only their own', () => {
+    openScene({ authorId: 'other', orgId: 'org1', lock: 'none' });
+    expect(sceneSaveMode(user(team('member', 'own')))).toBe('copy');
+    expect(canSaveInPlace(user(team('member', 'own')))).toBe(false);
+    // Owners and admins still edit it; a member edits their own.
+    expect(sceneSaveMode(user(team('admin', 'own')))).toBe('team-locked');
+    openScene({ authorId: 'me', orgId: 'org1', lock: 'mine' });
+    expect(sceneSaveMode(user(team('member', 'own')))).toBe('team');
   });
 });

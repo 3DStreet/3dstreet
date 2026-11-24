@@ -9,10 +9,7 @@ import posthog from 'posthog-js';
 import useStore from '@/store';
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '@shared/services/firebase';
-import {
-  shareSceneToDiscord,
-  setSceneVisibility as saveSceneVisibility
-} from '../../../api/scene';
+import { setSceneVisibility as saveSceneVisibility } from '../../../api/scene';
 import { faGlobe, faLink, faLock } from '@fortawesome/free-solid-svg-icons';
 import { AwesomeIcon } from '../../elements/AwesomeIcon';
 import { isTeamManagerRole } from '@/editor/lib/sceneAccess';
@@ -366,61 +363,6 @@ function ShareModal() {
     }
   };
 
-  const handleDiscordShare = async () => {
-    const sceneTitle =
-      sceneData?.title ||
-      intl.formatMessage({
-        id: 'shareModal.untitledScene',
-        defaultMessage: 'Untitled Scene'
-      });
-    const authorName =
-      authorUsername ||
-      intl.formatMessage({
-        id: 'shareModal.anonymous',
-        defaultMessage: 'anonymous'
-      });
-    const location = locationString || '';
-    const sceneId = STREET.utils.getCurrentSceneId();
-    const imageUrl = sceneData?.imagePath || null;
-
-    try {
-      const result = await shareSceneToDiscord({
-        title: sceneTitle,
-        location: location,
-        username: authorName,
-        sceneUrl: shareUrl,
-        imageUrl: imageUrl
-      });
-
-      STREET.notify.successMessage(
-        result.message ||
-          intl.formatMessage({
-            id: 'shareModal.discordSuccess',
-            defaultMessage: 'Scene shared to Discord successfully!'
-          })
-      );
-
-      posthog.capture('share_via_discord_server', {
-        scene_id: sceneId,
-        success: true
-      });
-    } catch (error) {
-      console.error('Discord share error:', error);
-      STREET.notify.errorMessage(
-        intl.formatMessage({
-          id: 'shareModal.discordError',
-          defaultMessage: 'Failed to share scene to Discord. Please try again.'
-        })
-      );
-
-      posthog.capture('share_via_discord_server', {
-        scene_id: sceneId,
-        success: false,
-        error: error.message
-      });
-    }
-  };
-
   const sceneId = STREET.utils.getCurrentSceneId();
   const shareUrl = getShareUrl();
   const canShare = currentUser && sceneId;
@@ -639,32 +581,6 @@ function ShareModal() {
                     className={styles.shareButton}
                   >
                     📤 <FormattedMessage {...commonMessages.share} />
-                  </Button>
-                </TooltipWrapper>
-                <TooltipWrapper
-                  content={
-                    visibility === 'public'
-                      ? intl.formatMessage({
-                          id: 'shareModal.discordTooltip',
-                          defaultMessage:
-                            'Post this scene to the 3DStreet Discord server to share with other creators'
-                        })
-                      : intl.formatMessage({
-                          id: 'shareModal.discordPublicOnly',
-                          defaultMessage:
-                            'Only public scenes can be posted to the 3DStreet Discord server'
-                        })
-                  }
-                  side="top"
-                >
-                  <Button
-                    onClick={handleDiscordShare}
-                    variant="toolbtn"
-                    className={styles.shareButton}
-                    // Posting to the community server is for public scenes.
-                    disabled={visibility !== 'public'}
-                  >
-                    💬 <FormattedMessage {...commonMessages.discord} />
                   </Button>
                 </TooltipWrapper>
               </div>

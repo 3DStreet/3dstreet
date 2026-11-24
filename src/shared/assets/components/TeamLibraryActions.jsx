@@ -6,8 +6,9 @@
  *     they hold a seat);
  *   - on a team asset: which team and who added it, "Replace file" (with
  *     one of the user's assets of the same type, which reaches every scene
- *     using it) and "Remove from library" (owners, admins, or the member
- *     who added it).
+ *     using it; members only on the assets they added when the team lets
+ *     members edit only their own) and "Remove from library" (owners,
+ *     admins, or the member who added it).
  */
 import { useState } from 'react';
 import PropTypes from 'prop-types';
@@ -15,6 +16,7 @@ import posthog from 'posthog-js';
 import { useAuthContext } from '@shared/contexts';
 import { useSharedMessages } from '@shared/i18n/sharedMessages';
 import { teamIdOfOwner } from '../assetOwner.js';
+import { canEditTeamItem } from '@shared/utils/teamPermissions.js';
 import {
   addAssetToTeam,
   replaceTeamAssetFile,
@@ -27,7 +29,6 @@ import AssetPickerModal from './AssetPickerModal.jsx';
 import styles from './TeamLibraryActions.module.scss';
 
 const LIBRARY_TYPES = ['mesh', 'splat', 'image'];
-const SEAT_ROLES = ['owner', 'admin', 'member'];
 
 const TeamLibraryActions = ({
   assetId,
@@ -94,7 +95,8 @@ const TeamLibraryActions = ({
   // A team asset: where it is, replace its file, remove it.
   if (teamOrgId) {
     const org = orgs.find((o) => o.orgId === teamOrgId);
-    const canReplace = !!org && SEAT_ROLES.includes(org.role);
+    // Members replace only the assets they added when the team says so.
+    const canReplace = canEditTeamItem(org, addedBy, uid);
     const canRemove = canRemoveTeamAsset(org, { addedBy }, uid);
     return (
       <div className={styles.block}>

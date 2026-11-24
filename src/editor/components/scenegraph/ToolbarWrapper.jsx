@@ -1,7 +1,7 @@
 /* global STREET */
 import { useEffect, useState } from 'react';
 import useStore from '@/store';
-import { isTeamEditorRole, teamRoleOf } from '@/editor/lib/sceneAccess';
+import { canEditTeamScene } from '@/editor/lib/sceneAccess';
 import { useAuthContext } from '@/editor/contexts';
 import Toolbar from './Toolbar';
 
@@ -50,7 +50,8 @@ function useViewerFirstEntry() {
     const { sceneOrgId } = useStore.getState();
     const isAuthor =
       (currentUser && currentUser.uid === pendingAuthorId) ||
-      (!!sceneOrgId && isTeamEditorRole(teamRoleOf(currentUser, sceneOrgId)));
+      (!!sceneOrgId &&
+        canEditTeamScene(currentUser, sceneOrgId, pendingAuthorId));
     const { isInspectorEnabled, enterViewerMode } = useStore.getState();
     // No camera vantage handling needed here: view and edit share the
     // editor camera (#1848), and the newScene camera animation already

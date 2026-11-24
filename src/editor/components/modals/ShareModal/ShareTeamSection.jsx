@@ -18,7 +18,7 @@ import {
   refreshMembershipStatus
 } from '../../../api/orgs';
 import { orgErrorMessage } from '../TeamModal/orgMessages';
-import { isTeamEditorRole } from '@/editor/lib/sceneAccess';
+import { canEditTeamScene, isTeamEditorRole } from '@/editor/lib/sceneAccess';
 import { useAuthContext } from '../../../contexts';
 import styles from './ShareModal.module.scss';
 
@@ -58,7 +58,11 @@ export function ShareTeamSection({ sceneId, sceneData, currentUser, onMoved }) {
   }, [orgId]);
 
   if (!sceneData) return null;
-  const canEditTeamScene = !!sceneTeam && isTeamEditorRole(sceneTeam.role);
+  // Moving between projects: the team's editors (only of their own scenes
+  // when the team says so; the server checks too).
+  const canMoveTeamScene =
+    !!sceneTeam &&
+    canEditTeamScene(currentUser, sceneData.orgId, sceneData.author);
   const canMoveIn = !sceneData.orgId && isAuthor && teams.length > 0;
   if (!sceneTeam && !canMoveIn) return null;
 
@@ -137,7 +141,7 @@ export function ShareTeamSection({ sceneId, sceneData, currentUser, onMoved }) {
         {projectSelect((next) => {
           setProjectId(next);
           move(sceneData.orgId, next);
-        }, busy || !canEditTeamScene)}
+        }, busy || !canMoveTeamScene)}
       </div>
     );
   }

@@ -1139,6 +1139,9 @@
   "editLock.otherEditing": {
     "defaultMessage": "{name} is editing this scene. Changes you make here are not saved. You can edit as soon as they are done."
   },
+  "editLock.ownOnly": {
+    "defaultMessage": "In this team, members edit only the scenes they created. Saving makes your own copy of this scene in the team."
+  },
   "editLock.retry": {
     "defaultMessage": "Try again"
   },
@@ -2048,6 +2051,9 @@
   "orgs.error.invalidName": {
     "defaultMessage": "Enter a team name of 80 characters or fewer."
   },
+  "orgs.error.invalidSetting": {
+    "defaultMessage": "This team setting is not valid."
+  },
   "orgs.error.invitationClosed": {
     "defaultMessage": "This invitation is no longer valid."
   },
@@ -2074,6 +2080,9 @@
   },
   "orgs.error.orgSuspended": {
     "defaultMessage": "This team is suspended."
+  },
+  "orgs.error.ownOnly": {
+    "defaultMessage": "In this team, members can only change what they created."
   },
   "orgs.error.ownerOnly": {
     "defaultMessage": "Only owners can do this."
@@ -2921,18 +2930,6 @@
   "shareModal.copyUrl": {
     "defaultMessage": "Copy URL"
   },
-  "shareModal.discordError": {
-    "defaultMessage": "Failed to share scene to Discord. Please try again."
-  },
-  "shareModal.discordPublicOnly": {
-    "defaultMessage": "Only public scenes can be posted to the 3DStreet Discord server"
-  },
-  "shareModal.discordSuccess": {
-    "defaultMessage": "Scene shared to Discord successfully!"
-  },
-  "shareModal.discordTooltip": {
-    "defaultMessage": "Post this scene to the 3DStreet Discord server to share with other creators"
-  },
   "shareModal.emailBody": {
     "defaultMessage": "I wanted to share this 3DStreet scene with you: Title: {sceneTitle} Created by: @{authorName} Location: {location} View scene: {shareUrl}"
   },
@@ -3202,6 +3199,24 @@
   },
   "teamModal.you": {
     "defaultMessage": "(you)"
+  },
+  "teamPermissions.domainJoinRole": {
+    "defaultMessage": "People who join with an email on {domains} join as"
+  },
+  "teamPermissions.scopeAll": {
+    "defaultMessage": "All team scenes and library assets"
+  },
+  "teamPermissions.scopeAllHint": {
+    "defaultMessage": "Members edit every team scene, one person at a time. Viewers only view."
+  },
+  "teamPermissions.scopeOwn": {
+    "defaultMessage": "Only the scenes and assets they created"
+  },
+  "teamPermissions.scopeOwnHint": {
+    "defaultMessage": "Members open and view every team scene, and save a copy of the others' scenes. Owners and admins edit everything."
+  },
+  "teamPermissions.title": {
+    "defaultMessage": "What members can edit"
   },
   "teamScenes.allProjects": {
     "defaultMessage": "All projects"

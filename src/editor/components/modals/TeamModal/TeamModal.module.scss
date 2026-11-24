@@ -179,3 +179,17 @@
   color: white;
   font-size: 13px;
 }
+
+// What members can edit (TeamPermissionsSection): wraps, and its select
+// never runs past the modal at phone width.
+.settingLabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+
+  select {
+    max-width: 100%;
+  }
+}

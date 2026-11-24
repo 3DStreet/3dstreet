@@ -407,20 +407,6 @@ const setSceneVisibility = async (sceneId, visibility) => {
   return result.data.visibility;
 };
 
-// Share scene to Discord
-const shareSceneToDiscord = async (sceneData) => {
-  try {
-    const functions = getFunctions();
-    const shareToDiscord = httpsCallable(functions, 'shareToDiscord');
-
-    const result = await shareToDiscord(sceneData);
-    return result.data;
-  } catch (error) {
-    console.error('Error sharing to Discord:', error);
-    throw error;
-  }
-};
-
 export {
   checkIfImagePathIsEmpty,
   createScene,
@@ -434,6 +420,5 @@ export {
   updateSceneIdAndTitle,
   uploadThumbnailImage,
   saveScreenshot,
-  takeScreenshotWithOptions,
-  shareSceneToDiscord
+  takeScreenshotWithOptions
 };
