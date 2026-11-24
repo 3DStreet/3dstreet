@@ -20,6 +20,9 @@ const {
   planFromMemberships,
   higherPlan,
   invitationExpiry,
+  memberEditScopeOf,
+  domainJoinRoleOf,
+  canEditTeamItem,
   INVITATION_TTL_DAYS
 } = require('../../public/functions/org-utils.js');
 
@@ -326,6 +329,35 @@ describe('org-utils', () => {
         null
       );
       assert.strictEqual(planFromMemberships([]), null);
+    });
+  });
+
+  describe('team settings', () => {
+    it('defaults to members editing everything and joining as members', () => {
+      assert.strictEqual(memberEditScopeOf({}), 'all');
+      assert.strictEqual(memberEditScopeOf({ memberEditScope: 'own' }), 'own');
+      assert.strictEqual(memberEditScopeOf({ memberEditScope: 'x' }), 'all');
+      assert.strictEqual(domainJoinRoleOf(null), 'member');
+      assert.strictEqual(
+        domainJoinRoleOf({ domainJoinRole: 'viewer' }),
+        'viewer'
+      );
+      assert.strictEqual(
+        domainJoinRoleOf({ domainJoinRole: 'owner' }),
+        'member'
+      );
+    });
+
+    it('lets members edit only their own under "own"; managers everything', () => {
+      const org = { memberEditScope: 'own' };
+      const can = (role, creatorUid, o = org) =>
+        canEditTeamItem({ role, org: o, creatorUid, uid: 'u1' });
+      assert.strictEqual(can('member', 'u1'), true);
+      assert.strictEqual(can('member', 'u2'), false);
+      assert.strictEqual(can('member', 'u2', {}), true);
+      assert.strictEqual(can('owner', 'u2'), true);
+      assert.strictEqual(can('admin', 'u2'), true);
+      assert.strictEqual(can('viewer', 'u1'), false);
     });
   });
 

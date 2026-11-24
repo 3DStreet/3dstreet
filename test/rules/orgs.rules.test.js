@@ -250,6 +250,39 @@ describe('firestore.rules — organizations', () => {
     );
   });
 
+  it('members rename only the assets they added when the team says so', async () => {
+    const MEMBER2 = 'member2-uid';
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await setDoc(doc(db, 'orgs/org1/members', MEMBER2), {
+        uid: MEMBER2,
+        role: 'member'
+      });
+      await setDoc(doc(db, 'orgs/org1/assets/a1'), {
+        name: 'Bench',
+        addedBy: MEMBER,
+        deleted: false
+      });
+    });
+    const ref = (uid) => doc(as(uid), 'orgs/org1/assets/a1');
+    // Default: every seat renames.
+    await assertSucceeds(updateDoc(ref(MEMBER2), { name: 'Their bench' }));
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await updateDoc(doc(ctx.firestore(), 'orgs/org1'), {
+        memberEditScope: 'own'
+      });
+    });
+    await assertFails(updateDoc(ref(MEMBER2), { name: 'Not theirs' }));
+    await assertSucceeds(updateDoc(ref(MEMBER), { name: 'My bench' }));
+    await assertSucceeds(updateDoc(ref(OWNER), { name: 'Park bench' }));
+  });
+
+  it('nobody writes the team settings from a client', async () => {
+    await assertFails(
+      updateDoc(doc(as(OWNER), 'orgs/org1'), { memberEditScope: 'own' })
+    );
+  });
+
   it("members read their team's wallet and usage; nobody writes them", async () => {
     await testEnv.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'orgWallets/org1'), { genToken: 10 });

@@ -87,6 +87,21 @@ describe('team-assets-utils', () => {
     );
   });
 
+  it('lets members replace only their own assets when the team says so', () => {
+    const own = { memberEditScope: 'own' };
+    const replace = (role, addedBy, org) =>
+      teamAssetRefusal({ role, action: 'replace', addedBy, uid: 'u1', org });
+    assert.strictEqual(replace('member', 'u2', null), null);
+    assert.strictEqual(
+      replace('member', 'u2', { memberEditScope: 'all' }),
+      null
+    );
+    assert.strictEqual(replace('member', 'u2', own), 'own-only');
+    assert.strictEqual(replace('member', 'u1', own), null);
+    assert.strictEqual(replace('admin', 'u2', own), null);
+    assert.strictEqual(replace('viewer', 'u1', own), 'not-editor');
+  });
+
   it('lets seats add; managers remove any, members their own', () => {
     assert.strictEqual(
       teamAssetRefusal({ role: 'viewer', action: 'add' }),

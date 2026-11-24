@@ -25,6 +25,16 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/orgs/$(orgId)).data.status == 'active';
     }
 
+    // On top of isOrgEditor: can the caller edit a team scene or library
+    // asset that creatorUid created or added? Owners and admins edit
+    // everything; members everything, or only their own when the org's
+    // memberEditScope is 'own' (docs/orgs.md). Viewers fail isOrgEditor.
+    function canEditTeamItem(orgId, creatorUid) {
+      return isOrgManager(orgId)
+        || get(/databases/$(database)/documents/orgs/$(orgId)).data.get('memberEditScope', 'all') != 'own'
+        || creatorUid == request.auth.uid;
+    }
+
     // Scenes (#1267, docs/scene-visibility.md, docs/team-scenes.md).
     //
     // A personal scene has orgId null and belongs to its author. A team
@@ -137,18 +147,22 @@ service cloud.firestore {
           && isOrgEditor(resource.data.orgId)
           && !changedKeys().hasAny(['author', 'orgId', 'projectId', 'visibility'])
           && (
-            // Take or renew the lock.
+            // Take or renew the lock (not on another member's scene when
+            // members edit only their own).
             (changedKeys().hasOnly(['editLock'])
               && request.resource.data.editLock != null
               && isValidNewLock(request.resource.data.editLock)
+              && canEditTeamItem(resource.data.orgId, resource.data.author)
               && (lockIsFree(resource.data) || lockIsMine(resource.data)
                   || isOrgManager(resource.data.orgId)))
             // Release it.
             || (changedKeys().hasOnly(['editLock'])
               && request.resource.data.editLock == null
               && lockIsMine(resource.data))
-            // Save while holding it.
-            || (!changedKeys().hasAny(['editLock']) && lockIsMine(resource.data))
+            // Save while holding it (checked again: the setting may have
+            // changed since the lock was taken).
+            || (!changedKeys().hasAny(['editLock']) && lockIsMine(resource.data)
+              && canEditTeamItem(resource.data.orgId, resource.data.author))
           ));
 
       allow delete: if
@@ -192,10 +206,12 @@ service cloud.firestore {
           'userId', 'addedFrom', 'deletedAt', 'deletedBy', 'replacedBy', 'replacedFrom'
         ]);
 
-      // Seats rename an asset, edit its attribution and add its thumbnail.
+      // Seats rename an asset, edit its attribution and add its thumbnail
+      // (members only the assets they added when the team says so).
       // Everything else (file replacement, removal) goes through the
       // team-assets callables, which check who may.
       allow update: if isOrgEditor(orgId)
+        && canEditTeamItem(orgId, resource.data.addedBy)
         && resource.data.deleted == false
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['name', 'attribution', 'thumbnailPath', 'thumbnailUrl', 'updatedAt'])

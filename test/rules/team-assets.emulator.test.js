@@ -217,6 +217,35 @@ describe('team asset library (emulator)', () => {
     ).rejects.toMatchObject({ reason: 'asset-type-mismatch' });
   });
 
+  it('members replace only what they added when the team says so', async () => {
+    const { orgId, uid } = await setup();
+    const { assetId } = await teamAssets.addAssetToTeam({
+      uid,
+      orgId,
+      assetId: await personalAsset(uid)
+    });
+    await db.doc(`orgs/${orgId}`).update({ memberEditScope: 'own' });
+    const other = `user-${uniq()}`;
+    await db
+      .doc(`orgs/${orgId}/members/${other}`)
+      .set({ uid: other, role: 'member' });
+    await expect(
+      teamAssets.replaceTeamAssetFile({
+        uid: other,
+        orgId,
+        assetId,
+        sourceAssetId: await personalAsset(other)
+      })
+    ).rejects.toMatchObject({ reason: 'own-only' });
+    await teamAssets.replaceTeamAssetFile({
+      uid,
+      orgId,
+      assetId,
+      sourceAssetId: await personalAsset(uid)
+    });
+    expect((await teamAsset(orgId, assetId)).replacedBy).toBe(uid);
+  });
+
   it('members remove what they added; managers remove anything', async () => {
     const { orgId, uid } = await setup();
     const { assetId } = await teamAssets.addAssetToTeam({

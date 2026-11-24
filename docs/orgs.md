@@ -20,6 +20,35 @@ gives; team-owned scenes, projects and the edit lock are in
   owner.
 - A viewer moving to a seat role needs a free seat.
 
+## What members can edit
+
+`orgs/{orgId}.memberEditScope` (missing = `all`), set by owners and admins in
+Team settings ("What members can edit", `orgUpdateSettings`):
+
+- `all`: members edit every team scene (one at a time, with the edit lock)
+  and rename or replace every library asset. Fits a city department.
+- `own`: members open and view every team scene but edit only the scenes
+  they created, and rename or replace only the assets they added. Saving
+  another member's scene makes their own copy in the team. Fits a class.
+
+Owners and admins edit everything either way; viewers nothing. Removing a
+library asset was already limited to managers and the member who added it.
+
+Enforced in three places that must agree: the Firestore rules
+(`canEditTeamItem`: taking the edit lock and saving a scene, updating a
+library asset), the callables (`canEditTeamItem` in `org-utils.js`: moving a
+scene between projects, replacing an asset's file) and the client
+(`src/shared/utils/teamPermissions.js`, drift test
+`test/shared/teamPermissions-sync.test.js`; `canEditTeamScene` in
+`src/editor/lib/sceneAccess.js`). The client reads the setting from
+`currentUser.orgs` (`readUserOrgs`), so a member's open tab sees a change
+after a reload; the rules apply it at once (a lock taken before no longer
+saves).
+
+Known gap: Storage rules can read only two Firestore documents per check,
+and a scene's files already use both (scene, membership). A member can
+still overwrite another member's scene thumbnail or screenshot under `own`.
+
 ## Seats
 
 Seats used = members in a seat role + pending, unexpired invitations for a
@@ -54,8 +83,12 @@ index on `orgs` in `public/firestore.indexes.json`; the emulator doesn't
 enforce indexes, so the tests can't catch a missing one.
 
 An org's `domains` (set by staff) make users with a verified email on those
-domains join it as members when they sign in (`autoJoinDomainOrgs`, run by
-`checkUserProStatus`), while seats last. This replaces the
+domains join it when they sign in (`autoJoinDomainOrgs`, run by
+`checkUserProStatus`), with the org's `domainJoinRole` (missing = `member`):
+members while seats last, viewers (no seat) always. Owners and admins pick
+the role in Team settings when the team has domains, so a school can let
+students in as viewers. Turning auto-join off is staff removing the
+domains, since staff verify them. This replaces the
 `ALLOWED_PRO_TEAM_DOMAINS` secret for customers moved into orgs; the secret
 still works for the others.
 
@@ -84,7 +117,7 @@ rules in `firestore.rules` only allow reads.
 
 | Document                     | Fields                                                                                                                                                              | Readable by                                         |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `orgs/{orgId}`               | name, plan, seats, status (`active`, `suspended`), domains, createdAt, createdBy, updatedAt                                                                         | members                                             |
+| `orgs/{orgId}`               | name, plan, seats, status (`active`, `suspended`), domains, memberEditScope (`all`, `own`), domainJoinRole (`member`, `viewer`), createdAt, createdBy, updatedAt    | members                                             |
 | `orgs/{orgId}/members/{uid}` | uid, email, displayName, role, joinedAt, invitedBy, via (`invitation`, `domain`, `staff`)                                                                           | members                                             |
 | `orgInvitations/{id}`        | orgId, orgName, email (lowercase), role, status (`pending`, `accepted`, `declined`, `revoked`), invitedBy, inviterName, createdAt, expiresAt, lastSentAt, sendCount | the invitee (verified email) and the org's managers |
 | `userOrgs/{uid}`             | orgs: { [orgId]: role }                                                                                                                                             | the user                                            |
@@ -98,6 +131,7 @@ Every membership change updates `userOrgs` in the same transaction.
 | `orgCreate`                                   | staff (admin claim)                 | create an org; the owner is added, or invited when they have no account |
 | `orgUpdate`                                   | staff                               | name, plan, seats, status, domains                                      |
 | `orgRename`                                   | owner, admin                        | rename                                                                  |
+| `orgUpdateSettings`                           | owner, admin                        | memberEditScope, domainJoinRole                                         |
 | `orgInvite`                                   | owner, admin                        | invite emails with a role                                               |
 | `orgResendInvitation`, `orgRevokeInvitation`  | owner, admin                        |                                                                         |
 | `orgAcceptInvitation`, `orgDeclineInvitation` | the invitee                         |                                                                         |
@@ -118,8 +152,9 @@ domains })` and `adminTools.updateOrg(orgId, patch)`
 
 - Profile → Teams: the user's orgs (Open → `TeamModal`) and pending
   invitations (View invitation → `InvitationModal`).
-- `TeamModal`: members and roles, pending invitations (resend, revoke),
-  invite form, rename, leave. Managers see the seats.
+- `TeamModal`: members and roles, what members can edit
+  (`TeamPermissionsSection`), pending invitations (resend, revoke), invite
+  form, rename, leave. Managers see the seats.
 - The plan badge and the profile show Max for a Max org and the team name.
 
 ## Tests

@@ -5,14 +5,19 @@ A scene with an `orgId` belongs to that team ([orgs.md](orgs.md)); one with
 
 ## Who does what
 
-|                                  | Owner, admin       | Member             | Viewer             | Not in the team              |
-| -------------------------------- | ------------------ | ------------------ | ------------------ | ---------------------------- |
-| Open a team-only scene           | yes                | yes                | yes (viewer first) | no                           |
-| Edit and save it                 | yes, with the lock | yes, with the lock | no                 | copy only if public/unlisted |
-| Change who can open it           | yes                | no                 | no                 | no                           |
-| Delete it                        | yes                | no                 | no                 | no                           |
-| Create projects, new team scenes | yes                | yes                | no                 | no                           |
-| Move a scene between projects    | yes                | yes                | no                 | no                           |
+|                                  | Owner, admin       | Member              | Viewer             | Not in the team              |
+| -------------------------------- | ------------------ | ------------------- | ------------------ | ---------------------------- |
+| Open a team-only scene           | yes                | yes                 | yes (viewer first) | no                           |
+| Edit and save it                 | yes, with the lock | yes, with the lock¹ | no                 | copy only if public/unlisted |
+| Change who can open it           | yes                | no                  | no                 | no                           |
+| Delete it                        | yes                | no                  | no                 | no                           |
+| Create projects, new team scenes | yes                | yes                 | no                 | no                           |
+| Move a scene between projects    | yes                | yes¹                | no                 | no                           |
+
+¹ Only the scenes they created when the team's `memberEditScope` is `own`
+([orgs.md](orgs.md#what-members-can-edit)). On another member's scene they
+get a banner, no lock, and saving makes their own copy in the team
+(`sceneSaveMode` answers `copy`).
 
 - On a team scene, `visibility: 'private'` means **team-only**: the team's
   members open it. The team's plan pays for it (no Pro check), and new team

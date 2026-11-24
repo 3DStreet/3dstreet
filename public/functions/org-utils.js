@@ -18,6 +18,15 @@ const MANAGER_ROLES = ['owner', 'admin'];
 const SEAT_ROLES = ['owner', 'admin', 'member'];
 const ORG_PLANS = ['PRO', 'MAX'];
 
+// What members (not owners or admins) may edit (Kieran's review, docs/orgs.md):
+// 'all' team scenes and library assets, or only the 'own' ones they created
+// or added. Missing on an org = 'all'.
+const MEMBER_EDIT_SCOPES = ['all', 'own'];
+const DEFAULT_MEMBER_EDIT_SCOPE = 'all';
+// The role a domain auto-join gives. Missing on an org = 'member'.
+const DOMAIN_JOIN_ROLES = ['member', 'viewer'];
+const DEFAULT_DOMAIN_JOIN_ROLE = 'member';
+
 const INVITATION_TTL_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_ORG_NAME_LENGTH = 80;
@@ -26,6 +35,26 @@ const MAX_INVITES_PER_CALL = 50;
 const isRole = (role) => ROLES.includes(role);
 const canManageOrg = (role) => MANAGER_ROLES.includes(role);
 const takesSeat = (role) => SEAT_ROLES.includes(role);
+
+const memberEditScopeOf = (org) =>
+  MEMBER_EDIT_SCOPES.includes(org?.memberEditScope)
+    ? org.memberEditScope
+    : DEFAULT_MEMBER_EDIT_SCOPE;
+
+const domainJoinRoleOf = (org) =>
+  DOMAIN_JOIN_ROLES.includes(org?.domainJoinRole)
+    ? org.domainJoinRole
+    : DEFAULT_DOMAIN_JOIN_ROLE;
+
+/**
+ * Can `role` edit a team scene or library asset that `creatorUid` created
+ * (or added), in an org whose settings are `org`? Owners and admins edit
+ * everything; members everything or only their own; viewers nothing.
+ */
+const canEditTeamItem = ({ role, org, creatorUid, uid }) =>
+  canManageOrg(role) ||
+  (role === 'member' &&
+    (memberEditScopeOf(org) === 'all' || (!!uid && creatorUid === uid)));
 
 const normalizeEmail = (email) =>
   typeof email === 'string' ? email.trim().toLowerCase() : '';
@@ -144,12 +173,17 @@ module.exports = {
   MANAGER_ROLES,
   SEAT_ROLES,
   ORG_PLANS,
+  MEMBER_EDIT_SCOPES,
+  DOMAIN_JOIN_ROLES,
   INVITATION_TTL_DAYS,
   MAX_ORG_NAME_LENGTH,
   MAX_INVITES_PER_CALL,
   isRole,
   canManageOrg,
   takesSeat,
+  memberEditScopeOf,
+  domainJoinRoleOf,
+  canEditTeamItem,
   normalizeEmail,
   isPlausibleEmail,
   emailDomain,

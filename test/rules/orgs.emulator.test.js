@@ -391,6 +391,47 @@ describe('organizations (emulator)', () => {
     });
   });
 
+  describe('team settings', () => {
+    it('managers set what members edit and the domain join role', async () => {
+      const { orgId, owner } = await newOrg();
+      const user = await makeUser();
+      const { invitationId } = await invite(orgId, owner.uid, user.email);
+      await orgs.acceptInvitation({ uid: user.uid, invitationId });
+      await expectReason(
+        orgs.updateOrgSettings({
+          actorUid: user.uid,
+          orgId,
+          memberEditScope: 'own'
+        }),
+        'not-manager'
+      );
+      await expectReason(
+        orgs.updateOrgSettings({
+          actorUid: owner.uid,
+          orgId,
+          memberEditScope: 'mine'
+        }),
+        'invalid-setting'
+      );
+      await expectReason(
+        orgs.updateOrgSettings({ actorUid: owner.uid, orgId }),
+        'invalid-argument'
+      );
+      await orgs.updateOrgSettings({
+        actorUid: owner.uid,
+        orgId,
+        memberEditScope: 'own',
+        domainJoinRole: 'viewer'
+      });
+      const data = (await db.doc(`orgs/${orgId}`).get()).data();
+      expect(data.memberEditScope).toBe('own');
+      expect(data.domainJoinRole).toBe('viewer');
+      // The client learns the setting with the user's orgs.
+      const [entry] = await orgs.readUserOrgs(user.uid);
+      expect(entry.memberEditScope).toBe('own');
+    });
+  });
+
   describe('domain auto-join and plan', () => {
     it('joins orgs claiming the verified email domain while seats last', async () => {
       const domain = `d${uniq()}.test`;
@@ -407,6 +448,20 @@ describe('organizations (emulator)', () => {
       expect(await orgs.autoJoinDomainOrgs(second.uid)).toEqual([]); // owner + first fill 2 seats
       expect(await orgs.autoJoinDomainOrgs(unverified.uid)).toEqual([]);
       expect((await member(orgId, first.uid)).via).toBe('domain');
+    });
+
+    it('joins as a viewer, without a seat, when the team says so', async () => {
+      const domain = `d${uniq()}.test`;
+      const { orgId, owner } = await newOrg({ seats: 1, domains: [domain] });
+      await orgs.updateOrgSettings({
+        actorUid: owner.uid,
+        orgId,
+        domainJoinRole: 'viewer'
+      });
+      const student = await makeUser({ domain });
+      // The owner fills the only seat; a viewer needs none.
+      expect(await orgs.autoJoinDomainOrgs(student.uid)).toEqual([orgId]);
+      expect((await member(orgId, student.uid)).role).toBe('viewer');
     });
 
     it('gives seat roles the org plan, but not viewers or suspended orgs', async () => {

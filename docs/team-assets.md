@@ -11,9 +11,12 @@ leaving never takes an asset away from the team's scenes.
 | See and place library assets | yes          | yes                 | yes    |
 | Upload into the library      | yes          | yes                 | no     |
 | Add one of their own assets  | yes          | yes                 | no     |
-| Rename, edit attribution     | yes          | yes                 | no     |
-| Replace an asset's file      | yes          | yes                 | no     |
+| Rename, edit attribution     | yes          | yes¹                | no     |
+| Replace an asset's file      | yes          | yes¹                | no     |
 | Remove an asset              | yes          | the ones they added | no     |
+
+¹ Only the ones they added when the team's `memberEditScope` is `own`
+([orgs.md](orgs.md#what-members-can-edit)).
 
 - **Uploading** (the Assets panel's Upload with the team's library shown,
   or dropping a file in a team scene): the client writes the files to

@@ -4,6 +4,8 @@
  *
  * Data (Admin SDK writes only; clients read through firestore.rules):
  *   orgs/{orgId}                 { name, plan, seats, status, domains[],
+ *                                  memberEditScope (all|own),
+ *                                  domainJoinRole (member|viewer),
  *                                  createdAt, createdBy, updatedAt }
  *   orgs/{orgId}/members/{uid}   { uid, email, displayName, role, joinedAt,
  *                                  invitedBy, via: invitation|domain|staff }
@@ -28,8 +30,12 @@ const EMAIL_TEMPLATES = require('./email/templates.js');
 const { appBaseForProject } = require('./pass-code-utils.js');
 const {
   ORG_PLANS,
+  MEMBER_EDIT_SCOPES,
+  DOMAIN_JOIN_ROLES,
   MAX_INVITES_PER_CALL,
   takesSeat,
+  memberEditScopeOf,
+  domainJoinRoleOf,
   normalizeEmail,
   isPlausibleEmail,
   emailDomain,
@@ -66,6 +72,7 @@ const REASON_TO_HTTPS = {
   'invalid-seats': ['invalid-argument', 'Invalid number of seats.'],
   'invalid-role': ['invalid-argument', 'Invalid role.'],
   'invalid-email': ['invalid-argument', 'Invalid email address.'],
+  'invalid-setting': ['invalid-argument', 'Invalid team setting.'],
   'too-many': ['invalid-argument', 'Too many invitations at once.'],
   'org-not-found': ['not-found', 'Organization not found.'],
   'not-member': ['permission-denied', 'You are not a member of this organization.'],
@@ -82,6 +89,7 @@ const REASON_TO_HTTPS = {
   'member-not-found': ['not-found', 'Member not found.'],
   // Team scenes and projects (team-scenes.js)
   'not-editor': ['permission-denied', 'Only owners, admins and members can do this.'],
+  'own-only': ['permission-denied', 'In this team, members can only change what they created.'],
   'not-author': ['permission-denied', 'Only the author of a personal scene can move it.'],
   'scene-not-found': ['not-found', 'Scene not found.'],
   'project-not-found': ['not-found', 'Project not found.'],
@@ -578,13 +586,41 @@ async function renameOrg({ actorUid, orgId, name }) {
   return { orgId, name: normalized };
 }
 
+/**
+ * Owners and admins set what members may edit (`memberEditScope`) and the
+ * role a domain auto-join gives (`domainJoinRole`). The domains themselves
+ * stay staff-set (orgUpdate): staff verify them.
+ */
+async function updateOrgSettings({ actorUid, orgId, memberEditScope, domainJoinRole }) {
+  const fields = {};
+  if (memberEditScope !== undefined) {
+    if (!MEMBER_EDIT_SCOPES.includes(memberEditScope)) throw new OrgError('invalid-setting');
+    fields.memberEditScope = memberEditScope;
+  }
+  if (domainJoinRole !== undefined) {
+    if (!DOMAIN_JOIN_ROLES.includes(domainJoinRole)) throw new OrgError('invalid-setting');
+    fields.domainJoinRole = domainJoinRole;
+  }
+  if (typeof orgId !== 'string' || !orgId || !Object.keys(fields).length) {
+    throw new OrgError('invalid-argument');
+  }
+  await db().runTransaction(async (tx) => {
+    requireOrg(await tx.get(orgRef(orgId)));
+    const actorRole = requireActorRole(await tx.get(memberRef(orgId, actorUid)));
+    if (!['owner', 'admin'].includes(actorRole)) throw new OrgError('not-manager');
+    tx.update(orgRef(orgId), { ...fields, updatedAt: FieldValue.serverTimestamp() });
+  });
+  return { orgId, ...fields };
+}
+
 // ---------------------------------------------------------------------------
 // Domain auto-join and entitlement
 // ---------------------------------------------------------------------------
 
 /**
- * Join the active orgs that claim the user's verified email domain, as
- * members, while seats last. Replaces the ALLOWED_PRO_TEAM_DOMAINS secret
+ * Join the active orgs that claim the user's verified email domain, with
+ * the org's domainJoinRole (member by default; a member needs a free seat,
+ * a viewer takes none). Replaces the ALLOWED_PRO_TEAM_DOMAINS secret
  * for the customers moved into orgs. Returns the orgIds joined.
  */
 async function autoJoinDomainOrgs(uid) {
@@ -600,7 +636,7 @@ async function autoJoinDomainOrgs(uid) {
   for (const doc of orgs.docs) {
     if ((await memberRef(doc.id, uid).get()).exists) continue;
     try {
-      await addMember({ orgId: doc.id, uid, role: 'member', via: 'domain' });
+      await addMember({ orgId: doc.id, uid, role: domainJoinRoleOf(doc.data()), via: 'domain' });
       joined.push(doc.id);
     } catch (error) {
       // No seat left: the org's managers can free one or ask for more.
@@ -612,8 +648,8 @@ async function autoJoinDomainOrgs(uid) {
 }
 
 /**
- * The user's orgs: [{ orgId, role, name, plan, status }]. Reads userOrgs,
- * then each org doc.
+ * The user's orgs: [{ orgId, role, name, plan, status, memberEditScope }].
+ * Reads userOrgs, then each org doc.
  */
 async function readUserOrgs(uid) {
   const snapshot = await userOrgsRef(uid).get();
@@ -623,7 +659,14 @@ async function readUserOrgs(uid) {
   return entries
     .map(([orgId, role], i) =>
       docs[i].exists
-        ? { orgId, role, name: docs[i].data().name, plan: docs[i].data().plan, status: docs[i].data().status }
+        ? {
+            orgId,
+            role,
+            name: docs[i].data().name,
+            plan: docs[i].data().plan,
+            status: docs[i].data().status,
+            memberEditScope: memberEditScopeOf(docs[i].data())
+          }
         : null
     )
     .filter(Boolean);
@@ -699,6 +742,15 @@ const orgRename = callable((data, context) =>
   renameOrg({ actorUid: requireAuth(context), orgId: data.orgId, name: data.name })
 );
 
+const orgUpdateSettings = callable((data, context) =>
+  updateOrgSettings({
+    actorUid: requireAuth(context),
+    orgId: data.orgId,
+    memberEditScope: data.memberEditScope,
+    domainJoinRole: data.domainJoinRole
+  })
+);
+
 const orgInvite = callable(
   async (data, context) => {
     const actorUid = requireAuth(context);
@@ -760,12 +812,14 @@ module.exports = {
   changeMemberRole,
   removeMember,
   renameOrg,
+  updateOrgSettings,
   autoJoinDomainOrgs,
   readUserOrgs,
   readOrgPlan,
   orgCreate,
   orgUpdate,
   orgRename,
+  orgUpdateSettings,
   orgInvite,
   orgResendInvitation,
   orgRevokeInvitation,

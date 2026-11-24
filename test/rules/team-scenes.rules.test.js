@@ -292,6 +292,54 @@ describe('rules — team scenes', () => {
       }
     });
 
+    it('members edit only their own scenes when the team says so; managers edit all', async () => {
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await updateDoc(doc(ctx.firestore(), 'orgs/org1'), {
+          memberEditScope: 'own'
+        });
+      });
+      // Another member's scene: no lock, so no save.
+      await assertFails(
+        updateDoc(sceneRef(as(MEMBER2), 'team-private'), {
+          editLock: lockFor(MEMBER2)
+        })
+      );
+      // Their own scene, and a manager on anyone's.
+      await assertSucceeds(
+        updateDoc(sceneRef(as(MEMBER), 'team-private'), {
+          editLock: lockFor(MEMBER)
+        })
+      );
+      await assertSucceeds(
+        updateDoc(sceneRef(as(MEMBER), 'team-private'), { title: 'Mine' })
+      );
+      await assertSucceeds(
+        updateDoc(sceneRef(as(OWNER), 'by-former'), {
+          editLock: lockFor(OWNER)
+        })
+      );
+    });
+
+    it('a lock taken before the team switched to "own" no longer saves', async () => {
+      await assertSucceeds(
+        updateDoc(sceneRef(as(MEMBER2), 'team-private'), {
+          editLock: lockFor(MEMBER2)
+        })
+      );
+      await testEnv.withSecurityRulesDisabled(async (ctx) => {
+        await updateDoc(doc(ctx.firestore(), 'orgs/org1'), {
+          memberEditScope: 'own'
+        });
+      });
+      await assertFails(
+        updateDoc(sceneRef(as(MEMBER2), 'team-private'), { title: 'Late' })
+      );
+      // Releasing it still works.
+      await assertSucceeds(
+        updateDoc(sceneRef(as(MEMBER2), 'team-private'), { editLock: null })
+      );
+    });
+
     it('a personal scene cannot be moved into a team from the client', async () => {
       await assertFails(
         updateDoc(sceneRef(as(MEMBER), 'personal'), { orgId: 'org1' })

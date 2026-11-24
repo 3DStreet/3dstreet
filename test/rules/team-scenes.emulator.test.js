@@ -251,6 +251,42 @@ describe('team scenes (emulator)', () => {
     });
   });
 
+  describe('moveScene, members editing only their own', () => {
+    it("refuses another member's scene; their own and a manager's moves pass", async () => {
+      const t = await setupOrg();
+      await db.doc(`orgs/${t.orgId}`).update({ memberEditScope: 'own' });
+      const { projectId } = await teamScenes.createProject({
+        actorUid: t.owner,
+        orgId: t.orgId,
+        name: 'P'
+      });
+      const byOwner = await scene({ author: t.owner, orgId: t.orgId });
+      const byMember = await scene({ author: t.member, orgId: t.orgId });
+      await expectReason(
+        teamScenes.moveScene({
+          actorUid: t.member,
+          sceneId: byOwner,
+          orgId: t.orgId,
+          projectId
+        }),
+        'own-only'
+      );
+      await teamScenes.moveScene({
+        actorUid: t.member,
+        sceneId: byMember,
+        orgId: t.orgId,
+        projectId
+      });
+      await teamScenes.moveScene({
+        actorUid: t.owner,
+        sceneId: byMember,
+        orgId: t.orgId,
+        projectId: null
+      });
+      expect((await sceneDoc(byMember)).projectId).toBe(null);
+    });
+  });
+
   describe('readSceneAccess (getScene)', () => {
     it('serves a team-only scene to its members, not to its author once gone', async () => {
       const t = await setupOrg();

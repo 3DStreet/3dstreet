@@ -4,6 +4,8 @@
  * test/core/team-assets-utils.test.js.
  */
 
+const { canEditTeamItem } = require('./org-utils.js');
+
 const MB = 1000 * 1000;
 const GB = 1000 * MB;
 
@@ -81,12 +83,19 @@ function contentFieldsOf(asset) {
 /**
  * Why `role` can't change a team asset, or null. Seats (owner, admin,
  * member) add assets and replace their file; owners and admins remove any,
- * members only those they added.
+ * members only those they added. In a team whose members edit only their
+ * own (`org.memberEditScope: 'own'`), a member replaces only those too.
  */
-function teamAssetRefusal({ role, action, addedBy, uid }) {
+function teamAssetRefusal({ role, action, addedBy, uid, org = null }) {
   if (!['owner', 'admin', 'member'].includes(role)) return 'not-editor';
   if (action === 'remove' && role === 'member' && addedBy !== uid) {
     return 'not-manager';
+  }
+  if (
+    action === 'replace' &&
+    !canEditTeamItem({ role, org, creatorUid: addedBy, uid })
+  ) {
+    return 'own-only';
   }
   return null;
 }

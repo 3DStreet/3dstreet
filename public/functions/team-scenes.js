@@ -12,21 +12,33 @@
 const admin = require('firebase-admin');
 const { FieldValue } = require('firebase-admin/firestore');
 const { OrgError, callable, requireAuth } = require('./orgs.js');
-const { normalizeOrgName, isValidOrgName, canManageOrg, takesSeat } = require('./org-utils.js');
+const {
+  normalizeOrgName,
+  isValidOrgName,
+  canManageOrg,
+  takesSeat,
+  canEditTeamItem
+} = require('./org-utils.js');
 
 const db = () => admin.firestore();
 const orgRef = (orgId) => db().collection('orgs').doc(orgId);
 const projectRef = (orgId, projectId) => orgRef(orgId).collection('projects').doc(projectId);
 
-/** The actor's role in an active org; refuses non-members and suspended orgs. */
-async function requireOrgRole(tx, orgId, uid) {
+/**
+ * The actor's role in an active org, and the org's data; refuses non-members
+ * and suspended orgs.
+ */
+async function requireOrgMember(tx, orgId, uid) {
   const org = await tx.get(orgRef(orgId));
   if (!org.exists) throw new OrgError('org-not-found');
   if (org.data().status !== 'active') throw new OrgError('org-suspended');
   const member = await tx.get(orgRef(orgId).collection('members').doc(uid));
   if (!member.exists) throw new OrgError('not-member');
-  return member.data().role;
+  return { role: member.data().role, org: org.data() };
 }
+
+const requireOrgRole = async (tx, orgId, uid) =>
+  (await requireOrgMember(tx, orgId, uid)).role;
 
 /** Owners, admins and members (not viewers) create projects. */
 async function createProject({ actorUid, orgId, name }) {
@@ -80,10 +92,14 @@ async function moveScene({ actorUid, sceneId, orgId, projectId = null }) {
     const snapshot = await tx.get(sceneRef);
     if (!snapshot.exists) throw new OrgError('scene-not-found');
     const scene = snapshot.data();
-    const role = await requireOrgRole(tx, orgId, actorUid);
+    const { role, org } = await requireOrgMember(tx, orgId, actorUid);
     if (!takesSeat(role)) throw new OrgError('not-editor');
     if (scene.orgId) {
       if (scene.orgId !== orgId) throw new OrgError('invalid-move');
+      // A team set to "members edit only their own" (docs/team-scenes.md).
+      if (!canEditTeamItem({ role, org, creatorUid: scene.author, uid: actorUid })) {
+        throw new OrgError('own-only');
+      }
     } else if (scene.author !== actorUid) {
       throw new OrgError('not-author');
     }

@@ -56,7 +56,7 @@ async function requireTeamRole({ uid, orgId, action, addedBy }) {
   if (!member.exists) throw new OrgError('not-member');
   if (org.data().status !== 'active') throw new OrgError('org-suspended');
   const role = member.data().role;
-  const refusal = teamAssetRefusal({ role, action, addedBy, uid });
+  const refusal = teamAssetRefusal({ role, action, addedBy, uid, org: org.data() });
   if (refusal) throw new OrgError(refusal);
   return { org: org.data(), member: member.data() };
 }
@@ -157,10 +157,16 @@ async function addAssetToTeam({ uid, orgId, assetId: sourceAssetId }) {
  * people outside the team still point at them.
  */
 async function replaceTeamAssetFile({ uid, orgId, assetId, sourceAssetId }) {
-  const { org } = await requireTeamRole({ uid, orgId, action: 'replace' });
+  if (typeof orgId !== 'string' || !orgId) throw new OrgError('invalid-argument');
   if (typeof assetId !== 'string' || !assetId) throw new OrgError('invalid-argument');
   const current = await teamAssetRef(orgId, assetId).get();
   if (!current.exists || current.data().deleted) throw new OrgError('asset-not-found');
+  const { org } = await requireTeamRole({
+    uid,
+    orgId,
+    action: 'replace',
+    addedBy: current.data().addedBy
+  });
   const source = await readSourceAsset(uid, sourceAssetId);
   if (source.type !== current.data().type) throw new OrgError('asset-type-mismatch');
   await checkStorage({

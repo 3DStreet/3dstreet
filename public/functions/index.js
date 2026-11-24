@@ -8,7 +8,6 @@ const { createStripeSession, checkActiveSubscriptions, createStripeBillingPortal
 const { redeemPassCode } = require('./pass-codes.js');
 const { generateFalImage } = require('./fal-proxy.js');
 const { generateFalMesh } = require('./fal-3d.js');
-const { assertAppCheck } = require('./app-check.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
 const { triggerLifecycleEmail, postmarkSubscriptionWebhook } = require('./email/lifecycle-email.js');
 const { sendWelcomeEmail } = require('./email/lifecycle-triggers.js');
@@ -27,6 +26,7 @@ const {
   orgCreate,
   orgUpdate,
   orgRename,
+  orgUpdateSettings,
   orgInvite,
   orgResendInvitation,
   orgRevokeInvitation,
@@ -133,6 +133,7 @@ exports.setSceneVisibility = setSceneVisibility;
 exports.orgCreate = orgCreate;
 exports.orgUpdate = orgUpdate;
 exports.orgRename = orgRename;
+exports.orgUpdateSettings = orgUpdateSettings;
 exports.orgInvite = orgInvite;
 exports.orgResendInvitation = orgResendInvitation;
 exports.orgRevokeInvitation = orgRevokeInvitation;
@@ -213,60 +214,5 @@ exports.getScene = functions
       }
     } catch {
       res.status(500).send({ error: 'Error retrieving scene' });
-    }
-  });
-
-// Discord webhook function for sharing scenes
-exports.shareToDiscord = functions
-  .runWith({ secrets: ['DISCORD_WEBHOOK_URL'] })
-  .https
-  .onCall(async (data, context) => {
-    // Verify user is authenticated
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to share scenes.');
-    }
-    assertAppCheck(context);
-
-    const { title, location, username, sceneUrl, imageUrl } = data;
-
-    // Validate required data
-    if (!title || !username || !sceneUrl) {
-      throw new functions.https.HttpsError('invalid-argument', 'Missing required scene data.');
-    }
-
-    // Create Discord message with embed for rich preview
-    const message = {
-      content: `🙋 **${username}** shared a new scene!`,
-      embeds: [{
-        title: title,
-        description: location ? `📍 ${location}` : undefined,
-        url: sceneUrl,
-        color: 0x6366F1, // Indigo color for the embed stripe
-        image: imageUrl ? {
-          url: imageUrl
-        } : undefined,
-        footer: {
-          text: '3DStreet',
-          icon_url: 'https://3dstreet.app/favicon-32x32.png'
-        },
-        timestamp: new Date().toISOString()
-      }]
-    };
-
-    try {
-      const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(message)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Discord API error: ${response.status}`);
-      }
-
-      return { success: true, message: 'Scene shared to Discord successfully!' };
-    } catch (error) {
-      console.error('Error sharing to Discord:', error);
-      throw new functions.https.HttpsError('internal', 'Failed to share scene to Discord.');
     }
   });
