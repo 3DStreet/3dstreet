@@ -20,7 +20,8 @@
     border: 1px solid rgba(237, 235, 239, 0.2);
     padding: 8px 8px 12px 8px;
     width: 272px;
-    height: 292px;
+    // Grows for a team project line; cards in a row stretch to match.
+    min-height: 292px;
     position: relative;
     cursor: pointer;
 
@@ -124,6 +125,16 @@
     overflow: hidden;
     white-space: nowrap;
     margin-bottom: 4px;
+  }
+
+  // The team project of a scene, in a team's "All projects" list.
+  .project {
+    margin-bottom: 4px;
+    color: #a5b4fc;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
   }
 
   .date {

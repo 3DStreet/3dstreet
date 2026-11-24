@@ -53,6 +53,7 @@ const messages = defineMessages({
 // showAuthor: the author's @username under each card (community and team
 // scenes). canRename / canDelete: the card menu's actions (your own scenes:
 // both; a team's scenes: delete for owners and admins, #1267).
+// projectNameOf(scene): the team project shown under the title, if any.
 const SceneCard = ({
   scenesData,
   handleSceneClick,
@@ -60,7 +61,8 @@ const SceneCard = ({
   isCommunityTabSelected,
   showAuthor = isCommunityTabSelected,
   canRename = !isCommunityTabSelected,
-  canDelete = !isCommunityTabSelected
+  canDelete = !isCommunityTabSelected,
+  projectNameOf
 }) => {
   const intl = useIntl();
   const locale = useStore((state) => state.locale);
@@ -273,7 +275,12 @@ const SceneCard = ({
                 onKeyDown={handleKeyDown}
               />
             ) : (
-              <p className={styles.title}>{scene.data().title}</p>
+              <>
+                <p className={styles.title}>{scene.data().title}</p>
+                {projectNameOf?.(scene) && (
+                  <p className={styles.project}>{projectNameOf(scene)}</p>
+                )}
+              </>
             )}
           </div>
           {editIndex !== index ? (

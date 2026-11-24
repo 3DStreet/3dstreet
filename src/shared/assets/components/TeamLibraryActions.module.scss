@@ -1,4 +1,5 @@
 @use '../../../editor/style/variables.scss';
+@use '../../styles/select';
 
 // Team asset library actions (#1267 Phase 4), in an asset's details.
 .block {
@@ -43,12 +44,7 @@
 }
 
 .select {
-  padding: 6px 8px;
-  border: 1px solid variables.$darkgray-500;
-  border-radius: 6px;
-  background: variables.$darkgray-800;
-  color: variables.$lightgray-100;
-  font-size: 13px;
+  @include select.select;
 }
 
 .status {

@@ -344,6 +344,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
           <TeamScenesPanel
             key={selectedTeam.orgId}
             org={selectedTeam}
+            isOpen={isOpen}
             handleSceneClick={handleSceneClick}
           />
         ) : isLoadingScenes ? (

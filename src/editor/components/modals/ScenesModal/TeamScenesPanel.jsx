@@ -2,7 +2,9 @@
  * A team's scenes in the scenes modal (#1267 Phase 2, docs/team-scenes.md):
  * filter by project, create a project, start a new scene in a project.
  * Owners and admins can delete scenes; renaming happens in the scene (it
- * needs the edit lock).
+ * needs the edit lock). The modal stays mounted while closed, so the
+ * projects and scenes are reloaded each time it opens (a scene saved
+ * meanwhile shows up).
  */
 import { useCallback, useEffect, useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -19,7 +21,7 @@ import styles from './ScenesModal.module.scss';
 const ALL = '__all__';
 const NONE = '__none__';
 
-export function TeamScenesPanel({ org, handleSceneClick }) {
+export function TeamScenesPanel({ org, isOpen, handleSceneClick }) {
   const intl = useIntl();
   const [projects, setProjects] = useState([]);
   const [filter, setFilter] = useState(ALL);
@@ -51,14 +53,15 @@ export function TeamScenesPanel({ org, handleSceneClick }) {
   );
 
   useEffect(() => {
+    if (!isOpen) return;
     listProjects(org.orgId)
       .then(setProjects)
       .catch((error) => console.error('Error loading projects:', error));
-  }, [org.orgId]);
+  }, [org.orgId, isOpen]);
 
   useEffect(() => {
-    loadScenes();
-  }, [loadScenes]);
+    if (isOpen) loadScenes();
+  }, [loadScenes, isOpen]);
 
   const handleCreateProject = async (e) => {
     e.preventDefault();
@@ -189,6 +192,12 @@ export function TeamScenesPanel({ org, handleSceneClick }) {
           setScenesData={setScenes}
           handleSceneClick={handleSceneClick}
           showAuthor
+          // Across projects, each card says which one it's in.
+          projectNameOf={
+            filter === ALL
+              ? (scene) => projectName(scene.data().projectId)
+              : undefined
+          }
           canRename={false}
           canDelete={isManager}
         />

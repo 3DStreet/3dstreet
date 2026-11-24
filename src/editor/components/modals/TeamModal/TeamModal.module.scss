@@ -1,3 +1,4 @@
+@use '../../../../shared/styles/select';
 .modalWrapper {
   position: absolute;
   top: 50%;
@@ -85,7 +86,10 @@
   color: #d4d4d4;
 }
 
-.roleSelect,
+.roleSelect {
+  @include select.select;
+}
+
 .input {
   padding: 6px 8px;
   border: 1px solid #4b4b4b;

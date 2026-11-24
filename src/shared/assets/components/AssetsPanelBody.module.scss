@@ -1,3 +1,4 @@
+@use '../../styles/select';
 /* AssetsPanelBody — shared body used by the editor's Assets panel and the
    generator's Assets sidebar. Colors are hardcoded (not pulled from editor
    variables.scss) so generator/bollardbuddy can use this without pulling in
@@ -321,10 +322,5 @@
 .librarySelect {
   width: calc(100% - 24px);
   margin: 8px 12px;
-  padding: 6px 8px;
-  border: 1px solid #4b4b4b;
-  border-radius: 6px;
-  background-color: #1f1f1f;
-  color: white;
-  font-size: 13px;
+  @include select.select;
 }

@@ -1,4 +1,5 @@
 @use '../../../style/variables.scss';
+@use '../../../../shared/styles/select';
 
 .shareModalWrapper {
   position: absolute;
@@ -322,10 +323,5 @@
 }
 
 .teamSelect {
-  padding: 6px 8px;
-  border: 1px solid #4b4b4b;
-  border-radius: 6px;
-  background-color: #1f1f1f;
-  color: white;
-  font-size: 13px;
+  @include select.select;
 }
