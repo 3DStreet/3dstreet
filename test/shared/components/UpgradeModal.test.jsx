@@ -115,12 +115,9 @@ describe('UpgradeModal', () => {
       await user.click(screen.getByRole('tab', { name: /Yearly/ }));
 
       expect(screen.getByText('$7')).toBeInTheDocument(); // Pro yearly
-      expect(screen.getByText('$35')).toBeInTheDocument(); // Max yearly
+      expect(screen.getByText('$50')).toBeInTheDocument(); // Max: monthly only
       expect(screen.getByText(/billed yearly, \$84\/year/)).toBeInTheDocument();
-      expect(
-        screen.getByText(/billed yearly, \$420\/year/)
-      ).toBeInTheDocument();
-      expect(screen.queryByText('billed monthly')).not.toBeInTheDocument();
+      expect(screen.getAllByText('billed monthly')).toHaveLength(1);
     });
 
     it('keeps each tier monthly token floor on both billing cycles', async () => {
@@ -137,9 +134,9 @@ describe('UpgradeModal', () => {
       expect(screen.getByText('500 AI tokens / month')).toBeInTheDocument();
     });
 
-    it('shows Save 30% pill on the yearly toggle', () => {
+    it('shows Save 30% on Pro pill on the yearly toggle', () => {
       renderModal();
-      expect(screen.getByText('Save 30%')).toBeInTheDocument();
+      expect(screen.getByText('Save 30% on Pro')).toBeInTheDocument();
     });
 
     it('shows Cancel anytime footer', () => {
@@ -232,13 +229,28 @@ describe('UpgradeModal', () => {
   });
 
   describe('Deep-link activation', () => {
-    // Opened via a tier-specific hash (e.g. docs "Go Max" → #payment-max-annual),
+    // Opened via a tier-specific hash (e.g. docs "Go Pro" → #payment-pro-annual),
     // the modal should skip card selection and go straight to that tier + cycle's
     // checkout — but never bypass the existing-subscriber / already-Pro guards.
-    it('auto-advances to checkout for the deep-linked tier + cycle', async () => {
+    it('an old yearly Max link shows a notice instead of starting checkout', async () => {
+      const user = userEvent.setup();
       const onCheckoutStart = vi.fn();
       renderModal({
         initialTier: 'max',
+        initialCycle: 'yearly',
+        onCheckoutStart
+      });
+      expect(screen.getByText(/Max is now billed monthly/)).toBeInTheDocument();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(onCheckoutStart).not.toHaveBeenCalled();
+      await user.click(screen.getByRole('button', { name: 'Go Max' }));
+      expect(onCheckoutStart).toHaveBeenCalledWith('monthly');
+    });
+
+    it('auto-advances to checkout for the deep-linked tier + cycle', async () => {
+      const onCheckoutStart = vi.fn();
+      renderModal({
+        initialTier: 'pro',
         initialCycle: 'yearly',
         onCheckoutStart
       });
@@ -255,7 +267,7 @@ describe('UpgradeModal', () => {
           data: { hasActiveSubscription: true, subscriptionCount: 1 }
         })
       );
-      renderModal({ initialTier: 'max', initialCycle: 'yearly' });
+      renderModal({ initialTier: 'pro', initialCycle: 'yearly' });
 
       await waitFor(() => {
         expect(
@@ -270,7 +282,7 @@ describe('UpgradeModal', () => {
     it('does not auto-advance an already-Pro user', async () => {
       const onAlreadyPro = vi.fn();
       renderModal(
-        { initialTier: 'max', initialCycle: 'yearly', onAlreadyPro },
+        { initialTier: 'pro', initialCycle: 'yearly', onAlreadyPro },
         {
           currentUser: {
             uid: 'pro-user',

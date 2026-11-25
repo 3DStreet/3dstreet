@@ -570,10 +570,17 @@ const SHARED_MESSAGES = {
     fr: 'Annuel'
   },
   savePill: {
-    en: 'Save 30%',
-    es: 'Ahorra 30%',
-    'pt-BR': 'Economize 30%',
-    fr: 'Économisez 30 %'
+    en: 'Save 30% on Pro',
+    es: 'Ahorra 30% en Pro',
+    'pt-BR': 'Economize 30% no Pro',
+    fr: 'Économisez 30 % sur Pro'
+  },
+  maxMonthlyOnly: {
+    en: 'Max is now billed monthly. Yearly billing is available for Pro.',
+    es: 'Max ahora se factura mensualmente. La facturación anual está disponible para Pro.',
+    'pt-BR':
+      'O Max agora é cobrado mensalmente. A cobrança anual está disponível para o Pro.',
+    fr: 'Max est désormais facturé mensuellement. La facturation annuelle est disponible pour Pro.'
   },
   cancelAnytime: {
     en: 'Cancel anytime',
