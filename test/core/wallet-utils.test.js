@@ -8,6 +8,7 @@ const assert = require('assert');
 const {
   monthKey,
   defaultMonthlyBudget,
+  budgetChange,
   refillWallet,
   memberAvailable,
   walletChargeRefusal,
@@ -23,6 +24,38 @@ describe('wallet-utils', () => {
     assert.strictEqual(defaultMonthlyBudget('PRO', 10), 1000);
     assert.strictEqual(defaultMonthlyBudget('MAX', 3), 1500);
     assert.strictEqual(defaultMonthlyBudget('FREE', 3), 0);
+  });
+
+  describe('budgetChange', () => {
+    const change = (wallet, plan = 'MAX', seats = 5) =>
+      budgetChange({ wallet, plan, seats, key: '2026-10' });
+
+    it('adds an increase right away after the top-up, else leaves it to the top-up', () => {
+      const wallet = { monthlyTokenBudget: 300, lastRefill: '2026-10' };
+      assert.deepStrictEqual(change(wallet), { budget: 2500, addNow: 2200 });
+      for (const lastRefill of ['2026-9', null]) {
+        assert.deepStrictEqual(change({ ...wallet, lastRefill }), {
+          budget: 2500,
+          addNow: 0
+        });
+      }
+    });
+
+    it('takes nothing back on a decrease', () => {
+      const wallet = { monthlyTokenBudget: 5000, lastRefill: '2026-10' };
+      assert.deepStrictEqual(change(wallet, 'MAX', 2), {
+        budget: 1000,
+        addNow: 0
+      });
+    });
+
+    it('leaves a custom or unchanged budget alone', () => {
+      assert.strictEqual(
+        change({ monthlyTokenBudget: 3000, customBudget: true }),
+        null
+      );
+      assert.strictEqual(change({ monthlyTokenBudget: 2500 }), null);
+    });
   });
 
   describe('refillWallet', () => {

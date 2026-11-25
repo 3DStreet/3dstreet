@@ -22,6 +22,24 @@ const monthKey = (date = new Date()) => `${date.getFullYear()}-${date.getMonth()
 const defaultMonthlyBudget = (plan, seats) => (BUDGET_PER_SEAT[plan] || 0) * (seats || 0);
 
 /**
+ * What changes in a wallet when its team's plan or seats change: { budget,
+ * addNow }, or null for nothing. The budget follows the plan and seats unless
+ * staff set a custom one. An increase is also added right away when this
+ * month's top-up already happened (else the top-up brings it); a decrease
+ * waits for the next month, taking nothing back.
+ */
+const budgetChange = ({ wallet = {}, plan, seats, key = monthKey() }) => {
+  if (wallet.customBudget) return null;
+  const budget = defaultMonthlyBudget(plan, seats);
+  const before = wallet.monthlyTokenBudget || 0;
+  if (budget === before) return null;
+  return {
+    budget,
+    addNow: wallet.lastRefill === key ? Math.max(0, budget - before) : 0
+  };
+};
+
+/**
  * The wallet after this month's top-up: genToken raised to monthlyTokenBudget
  * the first time the wallet is used in a new month, else unchanged.
  */
@@ -63,6 +81,7 @@ module.exports = {
   BUDGET_PER_SEAT,
   monthKey,
   defaultMonthlyBudget,
+  budgetChange,
   refillWallet,
   memberAvailable,
   walletChargeRefusal,

@@ -51,7 +51,7 @@ const {
   planFromMemberships,
   invitationExpiry
 } = require('./org-utils.js');
-const { defaultMonthlyBudget } = require('./wallet-utils.js');
+const { budgetChange, defaultMonthlyBudget } = require('./wallet-utils.js');
 
 const db = () => admin.firestore();
 const orgRef = (orgId) => db().collection('orgs').doc(orgId);
@@ -266,8 +266,42 @@ async function updateOrg({ orgId, patch = {} }) {
   validateOrgFields(fields);
   if (fields.name !== undefined) fields.name = normalizeOrgName(fields.name);
   if (fields.domains !== undefined) fields.domains = normalizeDomains(fields.domains);
-  requireOrg(await orgRef(orgId).get());
-  await orgRef(orgId).update({ ...fields, updatedAt: FieldValue.serverTimestamp() });
+  const walletRef = db().collection('orgWallets').doc(orgId);
+  const change = await db().runTransaction(async (tx) => {
+    const org = requireOrg(await tx.get(orgRef(orgId)));
+    const wallet = await tx.get(walletRef);
+    tx.update(orgRef(orgId), { ...fields, updatedAt: FieldValue.serverTimestamp() });
+    if (fields.plan === undefined && fields.seats === undefined) return null;
+    const result = budgetChange({
+      wallet: wallet.exists ? wallet.data() : {},
+      plan: fields.plan ?? org.plan,
+      seats: fields.seats ?? org.seats
+    });
+    if (!result) return null;
+    tx.set(
+      walletRef,
+      {
+        monthlyTokenBudget: result.budget,
+        ...(result.addNow > 0 && { genToken: FieldValue.increment(result.addNow) }),
+        updatedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
+    if (result.addNow > 0) {
+      tx.set(db().collection('tokenLog').doc(), {
+        orgId,
+        userId: null,
+        type: 'refill',
+        tokenCost: result.addNow,
+        source: 'org-budget-increase',
+        createdAt: FieldValue.serverTimestamp()
+      });
+    }
+    return result;
+  });
+  if (change) {
+    return { orgId, ...fields, monthlyTokenBudget: change.budget, tokensAdded: change.addNow };
+  }
   return { orgId, ...fields };
 }
 

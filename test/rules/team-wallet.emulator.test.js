@@ -356,6 +356,68 @@ describe('team wallets (emulator)', () => {
     });
   });
 
+  describe('budget and seats', () => {
+    it('follows the plan and seats, unless staff set a custom budget', async () => {
+      const { orgId, uid } = await setup({ budget: 500 }); // PRO, 5 seats
+      const update = (patch) => orgs.updateOrg({ orgId, patch });
+
+      // Before this month's top-up: the top-up brings the new amount, once.
+      await update({ seats: 6 });
+      expect(await walletOf(orgId)).toMatchObject({
+        monthlyTokenBudget: 600,
+        genToken: 0
+      });
+      await charge(uid, 10);
+      expect((await walletOf(orgId)).genToken).toBe(590);
+
+      // After it: the difference is added at once.
+      expect(await update({ plan: 'MAX' })).toMatchObject({
+        monthlyTokenBudget: 3000,
+        tokensAdded: 2400
+      });
+      expect((await walletOf(orgId)).genToken).toBe(2990);
+
+      // A decrease takes nothing back; a rename changes nothing.
+      await update({ seats: 2 });
+      await update({ name: 'Renamed' });
+      expect(await walletOf(orgId)).toMatchObject({
+        monthlyTokenBudget: 1000,
+        genToken: 2990
+      });
+
+      await wallet.updateWallet({
+        orgId,
+        monthlyTokenBudget: 3500,
+        actorUid: 'staff'
+      });
+      await update({ seats: 10 });
+      expect((await walletOf(orgId)).monthlyTokenBudget).toBe(3500);
+
+      // Adding tokens keeps it: the client sends the omitted budget as null.
+      await wallet.updateWallet({
+        orgId,
+        monthlyTokenBudget: null,
+        addTokens: 50,
+        actorUid: 'staff'
+      });
+      expect(await walletOf(orgId)).toMatchObject({
+        monthlyTokenBudget: 3500,
+        customBudget: true,
+        genToken: 3040
+      });
+
+      // Back to the plan's allowance per seat, and following it again.
+      await wallet.updateWallet({
+        orgId,
+        monthlyTokenBudget: 'default',
+        actorUid: 'staff'
+      });
+      expect((await walletOf(orgId)).monthlyTokenBudget).toBe(5000);
+      await update({ seats: 11 });
+      expect((await walletOf(orgId)).monthlyTokenBudget).toBe(5500);
+    });
+  });
+
   describe('settings', () => {
     it('managers set the member cap; staff set the budget and add tokens', async () => {
       const { orgId, uid } = await setup();

@@ -141,6 +141,8 @@ window.adminTools = {
    *
    * Usage:
    *   await adminTools.updateTeamWallet('orgId', { monthlyTokenBudget: 1000 })
+   *   // back to the plan's allowance per seat:
+   *   await adminTools.updateTeamWallet('orgId', { monthlyTokenBudget: 'default' })
    *   await adminTools.updateTeamWallet('orgId', { addTokens: 500 })
    */
   updateTeamWallet: async (orgId, { monthlyTokenBudget, addTokens } = {}) => {

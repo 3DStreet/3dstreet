@@ -5,6 +5,7 @@
  * Data (Admin SDK writes only):
  *   orgWallets/{orgId}                { genToken, monthlyTokenBudget,
  *                                       memberMonthlyCap (null = none),
+ *                                       customBudget (staff set the budget),
  *                                       lastRefill: 'YYYY-M', updatedAt }
  *   orgWallets/{orgId}/usage/{month}  { total, members: { [uid]: tokens } }
  *   userOrgs/{uid}.activeOrgId        the user's active team (the team
@@ -25,6 +26,7 @@ const { OrgError, callable, requireAuth } = require('./orgs.js');
 const { takesSeat, canManageOrg } = require('./org-utils.js');
 const {
   monthKey,
+  defaultMonthlyBudget,
   refillWallet,
   memberAvailable,
   walletChargeRefusal,
@@ -190,27 +192,38 @@ async function setMemberCap({ actorUid, orgId, memberMonthlyCap }) {
 }
 
 /**
- * Staff: set the monthly budget (what the team pays for) and/or add tokens
- * on top (a purchase). Logged in tokenLog.
+ * Staff: set a custom monthly budget (kept when the plan or seats change;
+ * 'default' goes back to the plan's allowance per seat) and/or add tokens on
+ * top (a purchase). null means unchanged, like undefined: the callable client
+ * sends an omitted value as null. Logged in tokenLog.
  */
 async function updateWallet({ orgId, monthlyTokenBudget, addTokens, actorUid }) {
-  if (monthlyTokenBudget !== undefined && !isValidBudget(monthlyTokenBudget)) {
+  const setsBudget = monthlyTokenBudget != null;
+  const addsTokens = addTokens != null;
+  if (setsBudget && monthlyTokenBudget !== 'default' && !isValidBudget(monthlyTokenBudget)) {
     throw new OrgError('invalid-argument');
   }
-  if (addTokens !== undefined && !(Number.isInteger(addTokens) && addTokens > 0 && addTokens <= 1000000)) {
+  if (addsTokens && !(Number.isInteger(addTokens) && addTokens > 0 && addTokens <= 1000000)) {
     throw new OrgError('invalid-argument');
   }
   const org = await db().collection('orgs').doc(orgId).get();
   if (!org.exists) throw new OrgError('org-not-found');
+  const budget =
+    monthlyTokenBudget === 'default'
+      ? defaultMonthlyBudget(org.data().plan, org.data().seats)
+      : monthlyTokenBudget;
   await walletRef(orgId).set(
     {
-      ...(monthlyTokenBudget !== undefined && { monthlyTokenBudget }),
-      ...(addTokens !== undefined && { genToken: FieldValue.increment(addTokens) }),
+      ...(setsBudget && {
+        monthlyTokenBudget: budget,
+        customBudget: monthlyTokenBudget !== 'default'
+      }),
+      ...(addsTokens && { genToken: FieldValue.increment(addTokens) }),
       updatedAt: FieldValue.serverTimestamp()
     },
     { merge: true }
   );
-  if (addTokens !== undefined) {
+  if (addsTokens) {
     await db().collection('tokenLog').add({
       orgId,
       userId: actorUid || null,
@@ -220,7 +233,11 @@ async function updateWallet({ orgId, monthlyTokenBudget, addTokens, actorUid }) 
       createdAt: FieldValue.serverTimestamp()
     });
   }
-  return { orgId, monthlyTokenBudget, addTokens };
+  return {
+    orgId,
+    ...(setsBudget && { monthlyTokenBudget: budget }),
+    ...(addsTokens && { addTokens })
+  };
 }
 
 const requireStaff = (context) => {

@@ -22,14 +22,17 @@ wallet, so what the team spends stays within the budget it pays for.
 
 ## The wallet
 
-`orgWallets/{orgId}` = { genToken, monthlyTokenBudget, memberMonthlyCap
+`orgWallets/{orgId}` = { genToken, monthlyTokenBudget, customBudget, memberMonthlyCap
 (null = no limit), lastRefill: 'YYYY-M' (month 0-based) } and
 `orgWallets/{orgId}/usage/{YYYY-M}` = { total, members: { [uid]: tokens } }.
 
 - **Monthly budget:** on the first charge of a month the balance is topped
   up to `monthlyTokenBudget` (never lowered: tokens added on top survive).
-  New teams get the plan's allowance per seat (Pro 100, Max 500). Staff
-  change it, or add tokens, with `orgUpdateWallet`
+  It's the plan's allowance per seat (Pro 100, Max 500) and follows the plan
+  and seats (`budgetChange`, in `updateOrg`): an increase is added right
+  away, a decrease waits for the next month. Staff set a custom budget
+  (`customBudget`, which plan and seat changes leave alone; `'default'` resets it),
+  or add tokens, with `orgUpdateWallet`
   (`adminTools.updateTeamWallet(orgId, { monthlyTokenBudget, addTokens })`).
 - **Limit per member:** owners and admins set `memberMonthlyCap`
   (`orgSetMemberCap`, team settings → AI tokens), which also lists each
