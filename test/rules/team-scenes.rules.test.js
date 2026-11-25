@@ -351,6 +351,13 @@ describe('rules — team scenes', () => {
     it('managers delete team scenes; members and viewers cannot', async () => {
       await assertFails(deleteDoc(sceneRef(as(MEMBER), 'team-private')));
       await assertFails(deleteDoc(sceneRef(as(VIEWER), 'team-private')));
+      await testEnv.withSecurityRulesDisabled((ctx) =>
+        updateDoc(doc(ctx.firestore(), 'orgs/org1'), { status: 'suspended' })
+      );
+      await assertFails(deleteDoc(sceneRef(as(OWNER), 'team-private')));
+      await testEnv.withSecurityRulesDisabled((ctx) =>
+        updateDoc(doc(ctx.firestore(), 'orgs/org1'), { status: 'active' })
+      );
       await assertSucceeds(deleteDoc(sceneRef(as(ADMIN), 'team-private')));
     });
   });

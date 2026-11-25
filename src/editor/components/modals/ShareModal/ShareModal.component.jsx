@@ -373,7 +373,7 @@ function ShareModal() {
     ? (currentUser?.orgs || []).find((org) => org.orgId === sceneData.orgId)
     : null;
   const canManageSharing = sceneData?.orgId
-    ? isTeamManagerRole(sceneTeam?.role)
+    ? isTeamManagerRole(sceneTeam?.role) && sceneTeam.status === 'active'
     : isAuthor;
 
   const openPrivateScenePaywall = (requested) => {
@@ -537,7 +537,7 @@ function ShareModal() {
                   teamName={sceneTeam?.name}
                 />
               )}
-              {sceneTeam && !canManageSharing && (
+              {sceneTeam?.status === 'active' && !canManageSharing && (
                 <p className={styles.privateLinkNote}>
                   <FormattedMessage
                     {...visibilityMessages.teamSharingManagersOnly}

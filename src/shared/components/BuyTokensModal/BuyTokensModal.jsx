@@ -26,6 +26,7 @@ import { functions } from '@shared/services/firebase';
 import EmbeddedCheckout from '@shared/components/EmbeddedCheckout';
 import { getTokenProfile } from '@shared/utils/tokens';
 import { formatCurrency } from '@shared/utils/format';
+import { captureTeamContact, teamContactHref } from '@shared/utils/teamContact';
 import { useSharedMessages } from '@shared/i18n/sharedMessages';
 import { TOKEN_PACKS } from '../UpgradeModal/pricing';
 import styles from '../UpgradeModal/UpgradeModal.module.scss';
@@ -158,6 +159,7 @@ const BuyTokensModal = ({
   // The user's team pays their generations (#1267 Phase 3): buying personal
   // tokens wouldn't be spent, so explain and offer to switch instead.
   const billing = tokenProfile?.billing || null;
+  const isTeamManager = ['owner', 'admin'].includes(billing?.role);
 
   const useOwnTokens = async () => {
     try {
@@ -197,15 +199,32 @@ const BuyTokensModal = ({
       {billing ? (
         <div className={styles.signInPrompt}>
           <p className={styles.signInCopy}>
-            {billing.memberMonthlyCap !== null &&
-            billing.usedThisMonth >= billing.memberMonthlyCap
-              ? t('teamTokensCapReached', {
-                  cap: billing.memberMonthlyCap,
-                  team: billing.teamName || ''
-                })
-              : t('teamTokensUsedUp', { team: billing.teamName || '' })}
+            {billing.inactive
+              ? t('teamInactive', { team: billing.teamName || '' })
+              : billing.memberMonthlyCap !== null &&
+                  billing.usedThisMonth >= billing.memberMonthlyCap
+                ? t('teamTokensCapReached', {
+                    cap: billing.memberMonthlyCap,
+                    team: billing.teamName || ''
+                  })
+                : t('teamTokensUsedUp', { team: billing.teamName || '' })}
           </p>
-          <p className={styles.signInCopy}>{t('teamTokensAskManagers')}</p>
+          {isTeamManager ? (
+            <p className={styles.signInCopy}>
+              <a
+                href={teamContactHref(
+                  `3DStreet: ${billing.teamName || 'team'}`
+                )}
+                onClick={() => captureTeamContact('team_tokens')}
+              >
+                {t('teamContactManager')}
+              </a>
+            </p>
+          ) : (
+            !billing.inactive && (
+              <p className={styles.signInCopy}>{t('teamTokensAskManagers')}</p>
+            )
+          )}
           <button
             type="button"
             className={styles.ctaButton}

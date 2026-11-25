@@ -46,10 +46,8 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
 
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'scenes');
-  // The user's active teams (#1267), each with its own tab.
-  const teams = (currentUser?.orgs || []).filter(
-    (org) => org.status === 'active'
-  );
+  // The user's teams (#1267), each with its own tab.
+  const teams = currentUser?.orgs || [];
   // Opening it shows the active team's scenes first (the team switcher,
   // docs/settings.md), or My scenes under Personal.
   const activeTeamId = teams.some(

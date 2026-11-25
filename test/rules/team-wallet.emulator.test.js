@@ -149,8 +149,8 @@ describe('team wallets (emulator)', () => {
       expect(await personal(small.uid)).toBe(7);
     });
 
-    it('falls back to personal tokens for viewers, removed members and suspended teams', async () => {
-      for (const options of [{ role: 'viewer' }, { status: 'suspended' }]) {
+    it('falls back to personal tokens for viewers and removed members', async () => {
+      for (const options of [{ role: 'viewer' }]) {
         const { orgId, uid } = await setup(options);
         const { result } = await charge(uid, 4);
         expect(result.chargedOrgId).toBe(null);
@@ -255,6 +255,28 @@ describe('team wallets (emulator)', () => {
       });
       expect(await active()).toBeUndefined();
       expect(await wallet.readActiveOrgId(member.uid)).toBe(null);
+    });
+
+    it('refuses, and never charges personal tokens, while the active team is suspended', async () => {
+      const { uid, orgId } = await setup({ status: 'suspended' });
+      const before = (await db.doc(`tokenProfile/${uid}`).get()).data();
+      const refusal = { details: { reason: 'org-suspended' } };
+      await expect(charge(uid, 1)).rejects.toMatchObject(refusal);
+      await expect(wallet.spendableGenTokens(uid, 7)).rejects.toMatchObject(
+        refusal
+      );
+      expect((await db.doc(`tokenProfile/${uid}`).get()).data()).toEqual(
+        before
+      );
+      // Switching to Personal is the user's choice to pay.
+      await wallet.setActiveOrg({ uid, orgId: null });
+      await charge(uid, 1);
+      expect((await db.doc(`tokenProfile/${uid}`).get()).data().genToken).toBe(
+        before.genToken - 1
+      );
+      expect((await db.doc(`orgs/${orgId}`).get()).data().status).toBe(
+        'suspended'
+      );
     });
 
     it('picking Personal sticks through role changes and new teams', async () => {

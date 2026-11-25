@@ -9,6 +9,7 @@ import { detectBrowserLocale } from '@shared/i18n/locales';
 import posthog from 'posthog-js';
 import {
   billingOrgOf,
+  inactiveBillingOrgOf,
   memberAvailable,
   monthKey,
   refillWallet
@@ -268,6 +269,7 @@ const AuthProvider = ({ children }) => {
   // The team paying the user's generations: their active team, when they
   // hold a seat in it and it's active (the server checks the same).
   const billingOrgId = billingOrgOf(currentUser);
+  const inactiveOrgId = inactiveBillingOrgOf(currentUser);
   const uid = currentUser?.uid || null;
   const [teamWallet, setTeamWallet] = useState(null);
   useEffect(() => {
@@ -305,6 +307,26 @@ const AuthProvider = ({ children }) => {
   // when it pays (genToken = what this member can still spend from it; the
   // personal balance stays in personalGenToken), else the user's own tokens.
   const effectiveTokenProfile = useMemo(() => {
+    if (inactiveOrgId) {
+      const team = (currentUser?.orgs || []).find(
+        (org) => org.orgId === inactiveOrgId
+      );
+      return {
+        ...(tokenProfile || {}),
+        genToken: 0,
+        personalGenToken: tokenProfile?.genToken ?? 0,
+        billing: {
+          orgId: inactiveOrgId,
+          teamName: team?.name || null,
+          role: team?.role || null,
+          inactive: true,
+          balance: 0,
+          monthlyTokenBudget: 0,
+          memberMonthlyCap: null,
+          usedThisMonth: 0
+        }
+      };
+    }
     if (!teamWallet || teamWallet.orgId !== billingOrgId) return tokenProfile;
     const wallet = refillWallet(teamWallet.wallet);
     const usedThisMonth = teamWallet.usage?.members?.[uid] || 0;
@@ -318,13 +340,21 @@ const AuthProvider = ({ children }) => {
       billing: {
         orgId: billingOrgId,
         teamName: team?.name || null,
+        role: team?.role || null,
         balance: wallet.genToken || 0,
         monthlyTokenBudget: wallet.monthlyTokenBudget || 0,
         memberMonthlyCap: wallet.memberMonthlyCap ?? null,
         usedThisMonth
       }
     };
-  }, [teamWallet, tokenProfile, billingOrgId, uid, currentUser?.orgs]);
+  }, [
+    teamWallet,
+    tokenProfile,
+    billingOrgId,
+    inactiveOrgId,
+    uid,
+    currentUser?.orgs
+  ]);
 
   // A membership change made in another auth context on the page (the
   // team switcher in the profile menu, while the generator's token counter

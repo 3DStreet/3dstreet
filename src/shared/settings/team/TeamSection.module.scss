@@ -186,3 +186,14 @@
     max-width: 100%;
   }
 }
+
+// The editor (#aframeInspector) hides native checkboxes: show this one.
+.checkbox {
+  visibility: visible !important;
+  appearance: auto;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}

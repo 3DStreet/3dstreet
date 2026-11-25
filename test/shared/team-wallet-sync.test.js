@@ -54,4 +54,18 @@ describe('billingOrgOf', () => {
     expect(billingOrgOf(user('member', 'active', 'gone'))).toBe(null);
     expect(billingOrgOf(null)).toBe(null);
   });
+
+  it('is refused, not personal, for a seat in a suspended active team', async () => {
+    const { inactiveBillingOrgOf } =
+      await import('@shared/utils/teamWallet.js');
+    const user = (role, status, activeOrgId = 'o1') => ({
+      activeOrgId,
+      orgs: [{ orgId: 'o1', role, status }]
+    });
+    expect(inactiveBillingOrgOf(user('member', 'suspended'))).toBe('o1');
+    expect(inactiveBillingOrgOf(user('viewer', 'suspended'))).toBe(null);
+    expect(inactiveBillingOrgOf(user('member', 'active'))).toBe(null);
+    expect(inactiveBillingOrgOf(user('member', 'suspended', null))).toBe(null);
+    expect(inactiveBillingOrgOf(null)).toBe(null);
+  });
 });

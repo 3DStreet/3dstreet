@@ -104,6 +104,14 @@ export const renameProject = (orgId, projectId, name) =>
 export const moveScene = (sceneId, orgId, projectId = null) =>
   call('orgMoveScene', { sceneId, orgId, projectId });
 
+/**
+ * Copy a team scene the user created to their own scenes; the team keeps
+ * the original. Without Pro the copy is public: refused ('would-be-public')
+ * unless acceptPublic.
+ */
+export const copySceneToPersonal = (sceneId, acceptPublic = false) =>
+  call('orgCopySceneToPersonal', { sceneId, acceptPublic });
+
 const toMillis = (value) =>
   typeof value?.toMillis === 'function' ? value.toMillis() : null;
 

@@ -11,10 +11,10 @@
  *                                     switcher), or null (Personal)
  *
  * The active team pays the user's AI generations. Who pays is checked at
- * charge time: the active team must still be active and the user hold a
- * seat in it (owner, admin, member); otherwise (Personal, a viewer, a
- * suspended team) the charge falls back to the user's personal tokens. A job charged to a team
- * records chargedOrgId and chargedMonth, so its refund goes back to that
+ * charge time: the user must hold a seat in the active team (owner, admin,
+ * member); otherwise (Personal, a viewer) the charge falls back to the user's
+ * personal tokens. A suspended team pays nothing, and the charge is refused
+ * rather than falling back. A job charged to a team records chargedOrgId and chargedMonth, so its refund goes back to that
  * wallet and that month's usage.
  */
 
@@ -37,9 +37,13 @@ const walletRef = (orgId) => db().collection('orgWallets').doc(orgId);
 const usageRef = (orgId, key) => walletRef(orgId).collection('usage').doc(key);
 const userOrgsRef = (uid) => db().collection('userOrgs').doc(uid);
 
+const ORG_INACTIVE_MESSAGE =
+  'Your team is inactive, so it can not pay for AI generations. Switch to Personal in the profile menu to use your own tokens.';
+
 /**
  * The team paying `uid`'s generations: their active team when they hold a
- * seat in it and it's active, else null. Reads through `tx` when given
+ * seat in it, else null. Refuses when that team is suspended: their own
+ * tokens pay only once they switch to Personal, never silently. Reads through `tx` when given
  * (inside a charge), else directly.
  */
 async function resolveBillingOrg(uid, tx = null) {
@@ -51,15 +55,21 @@ async function resolveBillingOrg(uid, tx = null) {
     get(db().collection('orgs').doc(orgId)),
     get(db().collection('orgs').doc(orgId).collection('members').doc(uid))
   ]);
-  if (!org.exists || org.data().status !== 'active') return null;
-  if (!member.exists || !takesSeat(member.data().role)) return null;
+  if (!org.exists || !member.exists || !takesSeat(member.data().role)) return null;
+  if (org.data().status !== 'active') {
+    throw new functions.https.HttpsError('failed-precondition', ORG_INACTIVE_MESSAGE, {
+      reason: 'org-suspended',
+      orgId
+    });
+  }
   return orgId;
 }
 
 /**
  * What `uid` can spend right now, for the pre-flight checks before a job:
  * { orgId, available } from their billing team's wallet, or
- * { orgId: null, available: personalBalance }.
+ * { orgId: null, available: personalBalance }. Refuses like
+ * resolveBillingOrg.
  */
 async function spendableGenTokens(uid, personalBalance) {
   try {
@@ -71,6 +81,7 @@ async function spendableGenTokens(uid, personalBalance) {
     const usedThisMonth = (usage.exists && usage.data().members?.[uid]) || 0;
     return { orgId, available: memberAvailable({ wallet: refilled, usedThisMonth }) };
   } catch (error) {
+    if (error instanceof functions.https.HttpsError) throw error;
     console.error(`spendableGenTokens failed for ${uid}:`, error);
     return { orgId: null, available: personalBalance || 0 };
   }

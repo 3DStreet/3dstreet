@@ -10,9 +10,10 @@ wallet, so what the team spends stays within the budget it pays for.
   Personal = null) with `orgSetActive`. The out-of-tokens modal's "Use my
   own tokens instead" switches to Personal.
 - It's re-checked at every charge (`resolveBillingOrg`): the active team
-  pays only while it's active and the user holds a seat in it (owner,
-  admin, member). Personal, a viewer's team or a suspended team: their own
-  tokens pay.
+  pays while the user holds a seat in it (owner, admin, member). Personal or
+  a viewer's team: their own tokens pay. A suspended team pays nothing, and
+  the charge is refused (`org-suspended`) instead of falling back: their own
+  tokens pay only once they switch to Personal.
 - Joining a first team makes it active, unless the user already picked a
   workspace; after that only they switch. Leaving the active team goes back
   to Personal (`userOrgsPatch` in `orgs.js`): the `activeOrgId` key is

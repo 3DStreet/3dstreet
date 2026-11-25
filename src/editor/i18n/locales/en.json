@@ -1145,6 +1145,9 @@
   "editLock.takeOver": {
     "defaultMessage": "Take over"
   },
+  "editLock.teamInactive": {
+    "defaultMessage": "This team is inactive: you can view its scenes, but changes are not saved."
+  },
   "editLock.viewerOnly": {
     "defaultMessage": "You can view this team scene, but not edit it. Changes you make here are not saved."
   },
@@ -2036,6 +2039,9 @@
   "newModal.title": {
     "defaultMessage": "Create a New Scene"
   },
+  "orgs.error.copyNotAllowed": {
+    "defaultMessage": "You can't copy this scene out of the team."
+  },
   "orgs.error.emailNotVerified": {
     "defaultMessage": "Your email address is not verified."
   },
@@ -2076,7 +2082,7 @@
     "defaultMessage": "Only owners and admins can do this."
   },
   "orgs.error.orgSuspended": {
-    "defaultMessage": "This team is suspended."
+    "defaultMessage": "This team is inactive."
   },
   "orgs.error.ownOnly": {
     "defaultMessage": "In this team, members can only change what they created."
@@ -2630,6 +2636,9 @@
   "segmentSidebar.width": {
     "defaultMessage": "Width"
   },
+  "settings.activeTeamInactive": {
+    "defaultMessage": "{team} is inactive. Switch to Personal in the profile menu to use these tokens."
+  },
   "settings.activeTeamPays": {
     "defaultMessage": "While {team} is your active team, it pays your AI generations."
   },
@@ -2663,8 +2672,14 @@
   "settings.planNotInStripe": {
     "defaultMessage": "Your plan isn't billed through Stripe. Contact 3DStreet to change it."
   },
+  "settings.proFromTeam": {
+    "defaultMessage": "Your Pro features come from {team}."
+  },
   "settings.rename": {
     "defaultMessage": "Rename"
+  },
+  "settings.teamInactive": {
+    "defaultMessage": "This team is inactive: its scenes can be viewed, not changed. Contact 3DStreet to reactivate it."
   },
   "settings.teamPlan": {
     "defaultMessage": "Plan: {plan} · {team}"
@@ -3047,6 +3062,33 @@
   "shareTeam.confirmTitle": {
     "defaultMessage": "Move this scene to {team}?"
   },
+  "shareTeam.copied": {
+    "defaultMessage": "Copied. The copy is in My scenes."
+  },
+  "shareTeam.copyAssets": {
+    "defaultMessage": "It uses models from the team's library, which will be missing if the team removes them."
+  },
+  "shareTeam.copyConfirm": {
+    "defaultMessage": "Copy"
+  },
+  "shareTeam.copyConfirmPublic": {
+    "defaultMessage": "Make a public copy"
+  },
+  "shareTeam.copyKeeps": {
+    "defaultMessage": "The team keeps the original."
+  },
+  "shareTeam.copyPrivate": {
+    "defaultMessage": "Only you can open the copy."
+  },
+  "shareTeam.copyPublic": {
+    "defaultMessage": "This copy will be public: your plan doesn't include private scenes."
+  },
+  "shareTeam.copyTitle": {
+    "defaultMessage": "Copy this scene to Personal?"
+  },
+  "shareTeam.copyToPersonal": {
+    "defaultMessage": "Copy to Personal"
+  },
   "shareTeam.inTeam": {
     "defaultMessage": "Team: {team}"
   },
@@ -3201,7 +3243,7 @@
     "defaultMessage": "Remove"
   },
   "teamModal.removeMessage": {
-    "defaultMessage": "{name} will lose access to {team} and its plan. You can invite them again later."
+    "defaultMessage": "{name} will lose access to {team}, its plan and its scenes, including the ones they created. You can invite them again later."
   },
   "teamModal.removeTitle": {
     "defaultMessage": "Remove this member?"
@@ -3226,6 +3268,12 @@
   },
   "teamModal.you": {
     "defaultMessage": "(you)"
+  },
+  "teamPermissions.copyToPersonal": {
+    "defaultMessage": "Members can copy the scenes they created to Personal"
+  },
+  "teamPermissions.copyToPersonalHint": {
+    "defaultMessage": "The team keeps the original. A copy is public when the member has no Pro plan."
   },
   "teamPermissions.domainJoinRole": {
     "defaultMessage": "People who join with an email on {domains} join as"

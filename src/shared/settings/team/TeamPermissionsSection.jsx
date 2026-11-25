@@ -88,6 +88,25 @@ export function TeamPermissionsSection({ org, canManage, onChanged }) {
           />
         )}
       </p>
+      <label className={styles.settingLabel}>
+        <input
+          type="checkbox"
+          className={styles.checkbox}
+          checked={org.memberCopyToPersonal === true}
+          disabled={busy || !canManage}
+          onChange={(e) => save({ memberCopyToPersonal: e.target.checked })}
+        />
+        <FormattedMessage
+          id="teamPermissions.copyToPersonal"
+          defaultMessage="Members can copy the scenes they created to Personal"
+        />
+      </label>
+      <p className={styles.muted}>
+        <FormattedMessage
+          id="teamPermissions.copyToPersonalHint"
+          defaultMessage="The team keeps the original. A copy is public when the member has no Pro plan."
+        />
+      </p>
       {canManage && hasDomains && (
         <label className={styles.settingLabel}>
           <FormattedMessage

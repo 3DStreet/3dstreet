@@ -24,15 +24,19 @@ describe('workspaceOf', () => {
     expect(
       workspaceOf({ plan: 'MAX', orgs: [team()], activeOrgId: null })
     ).toEqual({ team: null, plan: 'MAX' });
-    // A suspended active team falls back to Personal.
-    expect(
-      workspaceOf({
-        orgs: [team({ status: 'suspended' })],
-        activeOrgId: 'uo',
-        orgPlan: 'PRO',
-        isPro: true
-      })
-    ).toEqual({ team: null, plan: null });
+  });
+
+  it('is a suspended active team, without its plan', () => {
+    const user = {
+      plan: 'MAX',
+      orgs: [team({ status: 'suspended' })],
+      activeOrgId: 'uo'
+    };
+    expect(workspaceOf(user)).toEqual({
+      team: team({ status: 'suspended' }),
+      plan: null
+    });
+    expect(workspaceLabel(user)).toBe('INACTIVE · UO Urban Design 410');
   });
 });
 

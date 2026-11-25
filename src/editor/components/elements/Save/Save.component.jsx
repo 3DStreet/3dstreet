@@ -81,8 +81,11 @@ export const Save = ({ currentUser }) => {
   useStore((state) => state.sceneOrgId);
   const saveMode = currentUser ? sceneSaveMode(currentUser) : null;
   const isAuthor = () => saveMode === 'own' || saveMode === 'team';
-  const isBlockedTeamScene =
-    saveMode === 'team-locked' || saveMode === 'team-viewer';
+  const isBlockedTeamScene = [
+    'team-locked',
+    'team-viewer',
+    'team-inactive'
+  ].includes(saveMode);
 
   const handleSave = async (saveAs, doPromptTitle) => {
     try {

@@ -29,8 +29,10 @@ export function TeamScenesPanel({ org, isOpen, handleSceneClick }) {
   const [hasMore, setHasMore] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [newProjectName, setNewProjectName] = useState(null);
-  const isEditor = isTeamEditorRole(org.role);
-  const isManager = isTeamManagerRole(org.role);
+  // A suspended team's scenes are view only.
+  const isActive = org.status === 'active';
+  const isEditor = isActive && isTeamEditorRole(org.role);
+  const isManager = isActive && isTeamManagerRole(org.role);
 
   const projectId =
     filter === ALL ? undefined : filter === NONE ? null : filter;

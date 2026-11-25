@@ -206,9 +206,7 @@ const ProfileHoverCard = ({
   const userPhotoURL = currentUser?.photoURL || null;
   // Entitlement comes from checkUserProStatus (subscription, team or a
   // one-time pass, #1922) via the auth context — tokenProfile has no plan.
-  const teams = (currentUser?.orgs || []).filter(
-    (org) => org.status === 'active'
-  );
+  const teams = currentUser?.orgs || [];
 
   return (
     <Popover.Root open={isOpen} onOpenChange={setIsOpen}>
@@ -283,7 +281,9 @@ const ProfileHoverCard = ({
                             </span>
                             <span className={styles.workspaceMeta}>
                               {[
-                                plan || t('menuPlanFree'),
+                                org && org.status !== 'active'
+                                  ? t('teamInactiveLabel')
+                                  : plan || t('menuPlanFree'),
                                 org && t(ROLE_KEYS[org.role])
                               ]
                                 .filter(Boolean)

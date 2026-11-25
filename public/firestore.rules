@@ -17,6 +17,11 @@ service cloud.firestore {
       return isOrgMember(orgId) && orgMember(orgId).data.role in ['owner', 'admin'];
     }
 
+    function isActiveOrgManager(orgId) {
+      return isOrgManager(orgId)
+        && get(/databases/$(database)/documents/orgs/$(orgId)).data.status == 'active';
+    }
+
     // Owners, admins and members (not viewers) of an active org edit its
     // scenes.
     function isOrgEditor(orgId) {
@@ -170,7 +175,7 @@ service cloud.firestore {
 
       allow delete: if
         (sceneOrgId(resource.data) == null && isSceneAuthor(resource.data))
-        || (sceneOrgId(resource.data) != null && isOrgManager(resource.data.orgId));
+        || (sceneOrgId(resource.data) != null && isActiveOrgManager(resource.data.orgId));
     }
 
     // Projects: folders of a team's scenes. Members read them; the

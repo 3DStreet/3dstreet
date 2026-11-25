@@ -12,6 +12,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@shared/services/firebase';
 import { useAuthContext } from '@shared/contexts';
+import { TeamContactLink } from '@shared/components/TeamContactLink';
 import { Button } from '@shared/components/Button';
 import { TokenDisplayInner } from '@shared/auth/components';
 import { formatDate } from '@shared/utils/format';
@@ -69,6 +70,8 @@ function PersonalBilling() {
   const { onUpgrade, notify } = useSettingsHost();
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   const ownPlan = personalPlanOf(currentUser);
+  // The team whose seat gives Pro to a user without a plan of their own.
+  const seatTeam = !ownPlan && currentUser?.isPro ? currentUser.teamName : null;
   // A one-time pass (#1922) or a domain team has no subscription to manage.
   const hasSubscription = !!currentUser?.plan;
   // While the active team pays, tokenProfile.genToken is the team's; the
@@ -113,7 +116,8 @@ function PersonalBilling() {
     <>
       <div className={styles.card}>
         <span>{personalPlanLabel(intl, currentUser, ownPlan)}</span>
-        {!ownPlan && (
+        {/* With Pro from a team, upgrading would lead nowhere. */}
+        {!ownPlan && !seatTeam && (
           <Button variant="upgrade" onClick={() => onUpgrade('settings')}>
             <FormattedMessage {...settingsMessages.upgradeToPro} />
           </Button>
@@ -138,6 +142,19 @@ function PersonalBilling() {
           </Button>
         )}
       </div>
+
+      {seatTeam && (
+        <p className={styles.hint}>
+          <FormattedMessage
+            id="settings.proFromTeam"
+            defaultMessage="Your Pro features come from {team}."
+            values={{ team: seatTeam }}
+          />
+        </p>
+      )}
+      {!ownPlan && !seatTeam && (
+        <TeamContactLink source="personal_billing" className={styles.hint} />
+      )}
 
       {tokenProfile && (
         <>
@@ -166,7 +183,16 @@ function PersonalBilling() {
               </span>
             )}
           </div>
-          {tokenProfile.billing && (
+          {tokenProfile.billing?.inactive && (
+            <p className={styles.hint}>
+              <FormattedMessage
+                id="settings.activeTeamInactive"
+                defaultMessage="{team} is inactive. Switch to Personal in the profile menu to use these tokens."
+                values={{ team: tokenProfile.billing.teamName || '' }}
+              />
+            </p>
+          )}
+          {tokenProfile.billing && !tokenProfile.billing.inactive && (
             <p className={styles.hint}>
               <FormattedMessage
                 id="settings.activeTeamPays"
@@ -232,7 +258,12 @@ function TeamBilling({ team }) {
             />
           </span>
           <span className={styles.hint}>
-            {covers ? (
+            {team.status !== 'active' ? (
+              <FormattedMessage
+                id="settings.teamInactive"
+                defaultMessage="This team is inactive: its scenes can be viewed, not changed. Contact 3DStreet to reactivate it."
+              />
+            ) : covers ? (
               <FormattedMessage
                 id="settings.teamPlanHint"
                 defaultMessage="Your team's plan. Its owners and admins manage it with 3DStreet."
@@ -252,7 +283,7 @@ function TeamBilling({ team }) {
           <TeamLibraryUsage orgId={team.orgId} plan={team.plan} seats={seats} />
         </p>
       )}
-      {covers && (
+      {covers && team.status === 'active' && (
         <TeamWalletSection
           orgId={team.orgId}
           members={members}

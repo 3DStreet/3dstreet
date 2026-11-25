@@ -53,6 +53,11 @@ async function readOrgRole(orgId, uid) {
   return member.exists ? member.data().role : null;
 }
 
+async function readOrgIsActive(orgId) {
+  const org = await admin.firestore().collection('orgs').doc(orgId).get();
+  return org.exists && org.data().status === 'active';
+}
+
 /** canReadScene with the org membership looked up when it matters. */
 async function readSceneAccess(scene, uid) {
   if (canReadScene(scene, uid)) return true;
@@ -65,14 +70,16 @@ async function readSceneAccess(scene, uid) {
  * else a reason. `isPro` and `orgRole` are functions so their lookups only
  * run when needed (restricting a personal scene; a team scene).
  */
-async function visibilityChangeRefusal({ scene, uid, visibility, isPro, orgRole = async () => null }) {
+async function visibilityChangeRefusal({ scene, uid, visibility, isPro, orgRole = async () => null, orgIsActive = async () => true }) {
   if (!SCENE_VISIBILITIES.includes(visibility)) return 'invalid-visibility';
   if (!scene) return 'not-found';
   if (scene.orgId) {
     // Team scene: sharing is the managers' call; the org's plan covers
     // private (team-only), so no Pro check.
     const role = await orgRole();
-    return role === 'owner' || role === 'admin' ? null : 'not-manager';
+    if (role !== 'owner' && role !== 'admin') return 'not-manager';
+    // A suspended team is read-only.
+    return (await orgIsActive()) ? null : 'org-suspended';
   }
   if (scene.author !== uid) return 'not-author';
   // Lowering a private scene to unlisted needs no Pro: it may have lapsed.
@@ -153,6 +160,7 @@ const REASON_TO_HTTPS = {
   'not-found': ['not-found', 'Scene not found.'],
   'not-author': ['permission-denied', 'Only the scene author can change its visibility.'],
   'not-manager': ['permission-denied', "Only the team's owners and admins can change its sharing."],
+  'org-suspended': ['failed-precondition', 'This team is inactive.'],
   'pro-required': ['permission-denied', 'Unlisted and private scenes are a Pro feature.']
 };
 
@@ -180,7 +188,8 @@ const setSceneVisibility = functions
       uid,
       visibility,
       isPro: () => isUserProInternal(uid),
-      orgRole: () => readOrgRole(snapshot.data().orgId, uid)
+      orgRole: () => readOrgRole(snapshot.data().orgId, uid),
+      orgIsActive: () => readOrgIsActive(snapshot.data().orgId)
     });
     if (reason) {
       const [code, message] = REASON_TO_HTTPS[reason];

@@ -13,12 +13,17 @@ import useStore from '@/store';
 import { Button } from '../../elements';
 import {
   listProjects,
+  copySceneToPersonal,
   moveScene,
   orgErrorReason,
   refreshMembershipStatus
 } from '../../../api/orgs';
 import { orgErrorMessage } from '@shared/settings/team/orgMessages';
-import { canEditTeamScene, isTeamEditorRole } from '@/editor/lib/sceneAccess';
+import {
+  canEditTeamScene,
+  isTeamEditorRole,
+  isTeamManagerRole
+} from '@/editor/lib/sceneAccess';
 import { useAuthContext } from '../../../contexts';
 import styles from './ShareModal.module.scss';
 
@@ -61,7 +66,7 @@ export function ShareTeamSection({ sceneId, sceneData, currentUser, onMoved }) {
   // Moving between projects: the team's editors (only of their own scenes
   // when the team says so; the server checks too).
   const canMoveTeamScene =
-    !!sceneTeam &&
+    sceneTeam?.status === 'active' &&
     canEditTeamScene(currentUser, sceneData.orgId, sceneData.author);
   const canMoveIn = !sceneData.orgId && isAuthor && teams.length > 0;
   if (!sceneTeam && !canMoveIn) return null;
@@ -103,6 +108,83 @@ export function ShareTeamSection({ sceneId, sceneData, currentUser, onMoved }) {
     }
   };
 
+  // The creator's own copy, when the team allows it (or they manage it). The
+  // server decides; without Pro the copy is public and the user accepts it.
+  const canCopyOut =
+    !!sceneTeam &&
+    isAuthor &&
+    (sceneTeam.memberCopyToPersonal || isTeamManagerRole(sceneTeam.role));
+  const copyOut = async (acceptPublic) => {
+    setBusy(true);
+    try {
+      const copy = await copySceneToPersonal(sceneId, acceptPublic);
+      posthog.capture('team_scene_copied_to_personal', {
+        scene_id: sceneId,
+        visibility: copy.visibility
+      });
+      STREET.notify.successMessage(
+        intl.formatMessage({
+          id: 'shareTeam.copied',
+          defaultMessage: 'Copied. The copy is in My scenes.'
+        })
+      );
+    } catch (error) {
+      if (orgErrorReason(error) === 'would-be-public') {
+        askCopyOut(true);
+        return;
+      }
+      console.error('Error copying the scene:', error);
+      STREET.notify.errorMessage(orgErrorMessage(intl, orgErrorReason(error)));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const askCopyOut = (isPublic) => {
+    const usesTeamAssets = JSON.stringify(sceneData.data || '').includes(
+      `org:${sceneData.orgId}`
+    );
+    useStore.getState().showConfirm({
+      title: intl.formatMessage({
+        id: 'shareTeam.copyTitle',
+        defaultMessage: 'Copy this scene to Personal?'
+      }),
+      message: [
+        isPublic
+          ? intl.formatMessage({
+              id: 'shareTeam.copyPublic',
+              defaultMessage:
+                "This copy will be public: your plan doesn't include private scenes."
+            })
+          : intl.formatMessage({
+              id: 'shareTeam.copyPrivate',
+              defaultMessage: 'Only you can open the copy.'
+            }),
+        intl.formatMessage({
+          id: 'shareTeam.copyKeeps',
+          defaultMessage: 'The team keeps the original.'
+        }),
+        usesTeamAssets &&
+          intl.formatMessage({
+            id: 'shareTeam.copyAssets',
+            defaultMessage:
+              "It uses models from the team's library, which will be missing if the team removes them."
+          })
+      ]
+        .filter(Boolean)
+        .join(' '),
+      confirmLabel: isPublic
+        ? intl.formatMessage({
+            id: 'shareTeam.copyConfirmPublic',
+            defaultMessage: 'Make a public copy'
+          })
+        : intl.formatMessage({
+            id: 'shareTeam.copyConfirm',
+            defaultMessage: 'Copy'
+          }),
+      onConfirm: () => copyOut(isPublic)
+    });
+  };
+
   const projectSelect = (onChange, disabled) => (
     <select
       className={styles.teamSelect}
@@ -142,6 +224,18 @@ export function ShareTeamSection({ sceneId, sceneData, currentUser, onMoved }) {
           setProjectId(next);
           move(sceneData.orgId, next);
         }, busy || !canMoveTeamScene)}
+        {canCopyOut && (
+          <Button
+            variant="toolbtn"
+            disabled={busy}
+            onClick={() => askCopyOut(!currentUser.isPro)}
+          >
+            <FormattedMessage
+              id="shareTeam.copyToPersonal"
+              defaultMessage="Copy to Personal"
+            />
+          </Button>
+        )}
       </div>
     );
   }

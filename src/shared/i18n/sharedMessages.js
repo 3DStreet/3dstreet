@@ -2174,6 +2174,50 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Mudar para Pessoal (meus próprios tokens)',
     fr: 'Passer en Personnel (mes propres jetons)'
   },
+  teamInactive: {
+    en: "{team} is inactive, so it can't pay for AI generations.",
+    es: '{team} está inactivo, así que no puede pagar generaciones con IA.',
+    'pt-BR': '{team} está inativa, então não pode pagar gerações com IA.',
+    fr: '{team} est inactive et ne peut donc pas payer les générations IA.'
+  },
+  teamInactiveLabel: {
+    en: 'Inactive',
+    es: 'Inactivo',
+    'pt-BR': 'Inativa',
+    fr: 'Inactive'
+  },
+  teamInactiveNotSaved: {
+    en: "Not saved: {team} is inactive, so its scenes can't be changed.",
+    es: 'No se guardó: {team} está inactivo y sus escenas no se pueden cambiar.',
+    'pt-BR':
+      'Não foi salvo: {team} está inativa e suas cenas não podem ser alteradas.',
+    fr: 'Non enregistré : {team} est inactive, ses scènes ne peuvent pas être modifiées.'
+  },
+  teamInactiveNewScene: {
+    en: '{team} is inactive. Switch to Personal in the profile menu to save a new scene.',
+    es: '{team} está inactivo. Cambia a Personal en el menú del perfil para guardar una escena nueva.',
+    'pt-BR':
+      '{team} está inativa. Mude para Pessoal no menu do perfil para salvar uma nova cena.',
+    fr: '{team} est inactive. Passez en Personnel dans le menu du profil pour enregistrer une nouvelle scène.'
+  },
+  teamContactQuestion: {
+    en: 'Need this for a team?',
+    es: '¿Lo necesitas para un equipo?',
+    'pt-BR': 'Precisa disso para uma equipe?',
+    fr: 'Pour une équipe ?'
+  },
+  teamContactAction: {
+    en: 'Contact us',
+    es: 'Contáctanos',
+    'pt-BR': 'Fale conosco',
+    fr: 'Contactez-nous'
+  },
+  teamContactManager: {
+    en: 'Contact 3DStreet',
+    es: 'Contactar con 3DStreet',
+    'pt-BR': 'Falar com a 3DStreet',
+    fr: 'Contacter 3DStreet'
+  },
   teamTokensHint: {
     en: "Your active team pays your AI generations. For more tokens, ask your team's owners or admins, or switch to Personal in the profile menu to use your own.",
     es: 'Tu equipo activo paga tus generaciones con IA. Para obtener más tokens, pide a los propietarios o administradores de tu equipo, o cambia a Personal en el menú del perfil para usar los tuyos.',

@@ -9,6 +9,7 @@
  * its projects.
  */
 
+const { randomUUID } = require('crypto');
 const admin = require('firebase-admin');
 const { FieldValue } = require('firebase-admin/firestore');
 const { OrgError, callable, requireAuth } = require('./orgs.js');
@@ -19,6 +20,8 @@ const {
   takesSeat,
   canEditTeamItem
 } = require('./org-utils.js');
+
+const { isUserProInternal } = require('./token-management.js');
 
 const db = () => admin.firestore();
 const orgRef = (orgId) => db().collection('orgs').doc(orgId);
@@ -118,6 +121,58 @@ async function moveScene({ actorUid, sceneId, orgId, projectId = null }) {
   });
 }
 
+/**
+ * Copy a team scene to its creator's own scenes; the team keeps the
+ * original. Its creator only, still in the team (any role), when the team
+ * allows it (`memberCopyToPersonal`) or they manage it. Works while the team
+ * is suspended. The copy is private with Pro, else public, and then only
+ * when the caller accepted that (`acceptPublic`).
+ */
+async function copySceneToPersonal({ uid, sceneId, acceptPublic = false, isPro }) {
+  if (typeof sceneId !== 'string' || !sceneId) throw new OrgError('invalid-argument');
+  const snapshot = await db().collection('scenes').doc(sceneId).get();
+  if (!snapshot.exists) throw new OrgError('scene-not-found');
+  const scene = snapshot.data();
+  if (!scene.orgId) throw new OrgError('invalid-argument');
+  const [org, member] = await Promise.all([
+    orgRef(scene.orgId).get(),
+    orgRef(scene.orgId).collection('members').doc(uid).get()
+  ]);
+  if (!org.exists || !member.exists) throw new OrgError('not-member');
+  const allowed = canManageOrg(member.data().role) || org.data().memberCopyToPersonal === true;
+  if (scene.author !== uid || !allowed) throw new OrgError('copy-not-allowed');
+  const visibility = (await isPro()) ? 'private' : 'public';
+  if (visibility === 'public' && acceptPublic !== true) throw new OrgError('would-be-public');
+  const copyId = randomUUID();
+  const now = FieldValue.serverTimestamp();
+  await db().collection('scenes').doc(copyId).set({
+    author: uid,
+    orgId: null,
+    visibility,
+    title: scene.title || null,
+    version: scene.version || null,
+    data: scene.data || null,
+    memory: scene.memory || null,
+    copiedFrom: sceneId,
+    createTimestamp: now,
+    updateTimestamp: now
+  });
+  return { sceneId: copyId, visibility };
+}
+
+const orgCopySceneToPersonal = callable(
+  (data, context) => {
+    const uid = requireAuth(context);
+    return copySceneToPersonal({
+      uid,
+      sceneId: data.sceneId,
+      acceptPublic: data.acceptPublic,
+      isPro: () => isUserProInternal(uid)
+    });
+  },
+  { secrets: ['ALLOWED_PRO_TEAM_DOMAINS'] }
+);
+
 const orgCreateProject = callable((data, context) =>
   createProject({ actorUid: requireAuth(context), orgId: data.orgId, name: data.name })
 );
@@ -146,5 +201,7 @@ module.exports = {
   moveScene,
   orgCreateProject,
   orgRenameProject,
-  orgMoveScene
+  orgMoveScene,
+  copySceneToPersonal,
+  orgCopySceneToPersonal
 };

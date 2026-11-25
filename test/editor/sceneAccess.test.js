@@ -55,6 +55,13 @@ describe('sceneSaveMode', () => {
     expect(canSaveInPlace(user(team('viewer')))).toBe(false);
   });
 
+  it('saves nothing in a suspended team, even for its owner', () => {
+    openScene({ orgId: 'org1', lock: 'mine' });
+    const suspended = [{ ...team('owner')[0], status: 'suspended' }];
+    expect(sceneSaveMode(user(suspended))).toBe('team-inactive');
+    expect(canSaveInPlace(user(suspended))).toBe(false);
+  });
+
   it('treats a team scene of a team you are not in as someone else’s, even as its author', () => {
     openScene({ authorId: 'me', orgId: 'org1', lock: 'mine' });
     expect(sceneSaveMode(user())).toBe('copy');

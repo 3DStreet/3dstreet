@@ -16,6 +16,7 @@ import { Button } from '../Button';
 import {
   canEditTeamScene,
   isTeamEditorRole,
+  isTeamInactive,
   isTeamManagerRole,
   teamRoleOf
 } from '../../../lib/sceneAccess';
@@ -63,6 +64,7 @@ export function EditLockBanner() {
 
   const role = sceneOrgId ? teamRoleOf(currentUser, sceneOrgId) : null;
   const isEditor = isTeamEditorRole(role);
+  const isInactive = isTeamInactive(currentUser, sceneOrgId);
   // A member of a team whose members edit only their own scenes, on someone
   // else's: no lock; saving makes their own copy in the team.
   const canEdit =
@@ -73,7 +75,8 @@ export function EditLockBanner() {
     sceneId &&
     sceneOrgId &&
     currentUser &&
-    canEdit
+    canEdit &&
+    !isInactive
   );
 
   useEffect(() => {
@@ -120,6 +123,18 @@ export function EditLockBanner() {
 
   if (!isInspectorEnabled || !sceneId || !sceneOrgId || !role || isModalOpen) {
     return null;
+  }
+
+  if (isInactive) {
+    return createPortal(
+      <div className={styles.banner} role="status">
+        <FormattedMessage
+          id="editLock.teamInactive"
+          defaultMessage="This team is inactive: you can view its scenes, but changes are not saved."
+        />
+      </div>,
+      document.body
+    );
   }
 
   if (!isEditor) {

@@ -119,7 +119,7 @@ rules in `firestore.rules` only allow reads.
 
 | Document                     | Fields                                                                                                                                                              | Readable by                                         |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `orgs/{orgId}`               | name, plan, seats, status (`active`, `suspended`), domains, memberEditScope (`all`, `own`), domainJoinRole (`member`, `viewer`), createdAt, createdBy, updatedAt    | members                                             |
+| `orgs/{orgId}`               | name, plan, seats, status (`active`, `suspended`), domains, memberEditScope (`all`, `own`), domainJoinRole (`member`, `viewer`), memberCopyToPersonal (missing = off), createdAt, createdBy, updatedAt    | members                                             |
 | `orgs/{orgId}/members/{uid}` | uid, email, displayName, role, joinedAt, invitedBy, via (`invitation`, `domain`, `staff`)                                                                           | members                                             |
 | `orgs/{orgId}/departed/{uid}` | uid, removedBy, at: left or was removed; cleared on joining again | nobody (functions only) |
 | `orgInvitations/{id}`        | orgId, orgName, email (lowercase), role, status (`pending`, `accepted`, `declined`, `revoked`), invitedBy, inviterName, createdAt, expiresAt, lastSentAt, sendCount | the invitee (verified email) and the org's managers |
@@ -134,7 +134,7 @@ Every membership change updates `userOrgs` in the same transaction.
 | `orgCreate`                                   | staff (admin claim)                 | create an org; the owner is added, or invited when they have no account |
 | `orgUpdate`                                   | staff                               | name, plan, seats, status, domains                                      |
 | `orgRename`                                   | owner, admin                        | rename                                                                  |
-| `orgUpdateSettings`                           | owner, admin                        | memberEditScope, domainJoinRole                                         |
+| `orgUpdateSettings`                           | owner, admin                        | memberEditScope, domainJoinRole, memberCopyToPersonal                                         |
 | `orgInvite`                                   | owner, admin                        | invite emails with a role                                               |
 | `orgResendInvitation`, `orgRevokeInvitation`  | owner, admin                        |                                                                         |
 | `orgAcceptInvitation`, `orgDeclineInvitation` | the invitee                         |                                                                         |

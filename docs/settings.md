@@ -12,12 +12,14 @@ team settings modal.
 and the generator:
 
 - who is signed in;
-- **Working in**: Personal and each active team (plan · role), the active one
+- **Working in**: Personal and each team (plan or Inactive · role), the active one
   checked. Picking one saves `userOrgs/{uid}.activeOrgId` (`orgSetActive`)
   and refreshes the user's status (`refreshMembershipStatus`, whose
   `MEMBERSHIP_CHANGED_EVENT` updates every auth context on the page, e.g.
   the generator's token counter, a separate React root);
 - Settings;
+- "Need this for a team? Contact us" (an email, `TeamContactLink`) is in
+  Personal billing and the upgrade modal until teams are self-service;
 - Log Out and the language picker, the app's only one (the editor's
   `LocaleProvider` follows its `changeLocale` broadcast).
 

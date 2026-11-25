@@ -450,6 +450,15 @@ describe('organizations (emulator)', () => {
       expect((await member(orgId, first.uid)).via).toBe('domain');
     });
 
+    it('updateOrg refuses a field it does not save', async () => {
+      const { orgId } = await newOrg();
+      await expectReason(
+        orgs.updateOrg({ orgId, patch: { seats: 9, paidThrough: '2027' } }),
+        'unknown-field'
+      );
+      expect((await db.doc(`orgs/${orgId}`).get()).data().seats).toBe(3);
+    });
+
     it('never re-adds someone who was removed or left, until they accept an invitation', async () => {
       const domain = `d${uniq()}.test`;
       const { orgId, owner } = await newOrg({ seats: 5, domains: [domain] });

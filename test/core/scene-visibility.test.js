@@ -291,6 +291,22 @@ describe('scene visibility', () => {
       }
     });
 
+    it('on a suspended team, refuses every change', async () => {
+      for (const visibility of ['public', 'private']) {
+        assert.strictEqual(
+          await visibilityChangeRefusal({
+            scene: { author: AUTHOR, orgId: 'org1', visibility: 'private' },
+            uid: AUTHOR,
+            visibility,
+            isPro: notCalled,
+            orgRole: async () => 'owner',
+            orgIsActive: async () => false
+          }),
+          'org-suspended'
+        );
+      }
+    });
+
     it('refuses a missing scene and an unknown value', async () => {
       assert.strictEqual(
         await visibilityChangeRefusal({

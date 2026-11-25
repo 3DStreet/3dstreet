@@ -3,6 +3,7 @@
  * their active team, or Personal. The plan badge and the profile menu show
  * its plan, so the user sees whose plan they work under.
  */
+import { formatSharedMessage } from '../i18n/sharedMessages';
 
 /** The user's own plan, not a team's: 'MAX' | 'PRO' | 'PRO TEAM' | null. */
 export const personalPlanOf = (user) => {
@@ -15,16 +16,14 @@ export const personalPlanOf = (user) => {
 };
 
 /**
- * { team, plan }: the active team (when it's still active) and its plan, or
+ * { team, plan }: the active team and its plan (null when it's suspended), or
  * team null and the user's own plan (null = Free).
  */
 export const workspaceOf = (user) => {
   const team =
-    (user?.orgs || []).find(
-      (org) => org.orgId === user?.activeOrgId && org.status === 'active'
-    ) || null;
+    (user?.orgs || []).find((org) => org.orgId === user?.activeOrgId) || null;
   return team
-    ? { team, plan: team.plan || null }
+    ? { team, plan: team.status === 'active' ? team.plan || null : null }
     : { team: null, plan: personalPlanOf(user) };
 };
 
@@ -34,5 +33,10 @@ export const workspaceOf = (user) => {
  */
 export const workspaceLabel = (user) => {
   const { team, plan } = workspaceOf(user);
-  return team ? `${plan || 'PRO'} · ${team.name}` : plan || 'FREE';
+  if (!team) return plan || 'FREE';
+  const label =
+    team.status === 'active'
+      ? plan || 'PRO'
+      : formatSharedMessage('teamInactiveLabel').toUpperCase();
+  return `${label} · ${team.name}`;
 };

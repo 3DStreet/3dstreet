@@ -23,6 +23,19 @@ export const billingOrgOf = (currentUser) => {
     : null;
 };
 
+/**
+ * The user's active team when it's suspended and they hold a seat in it:
+ * their generations are refused (never charged to their own tokens) until
+ * they switch to Personal. Mirrors resolveBillingOrg.
+ */
+export const inactiveBillingOrgOf = (currentUser) => {
+  const orgId = currentUser?.activeOrgId;
+  const org = orgId && (currentUser.orgs || []).find((o) => o.orgId === orgId);
+  return org && org.status !== 'active' && SEAT_ROLES.includes(org.role)
+    ? orgId
+    : null;
+};
+
 /** 'YYYY-M' (month 0-based), as the server keys months. */
 export const monthKey = (date = new Date()) =>
   `${date.getFullYear()}-${date.getMonth()}`;

@@ -303,6 +303,80 @@ describe('team scenes (emulator)', () => {
     });
   });
 
+  describe('copySceneToPersonal', () => {
+    const copy = (uid, sceneId, { isPro = false, acceptPublic } = {}) =>
+      teamScenes.copySceneToPersonal({
+        uid,
+        sceneId,
+        acceptPublic,
+        isPro: async () => isPro
+      });
+    const allow = (orgId) =>
+      db.doc(`orgs/${orgId}`).update({ memberCopyToPersonal: true });
+
+    it('is for the creator, in the team, when the team allows it', async () => {
+      const t = await setupOrg();
+      const id = await scene({
+        author: t.member,
+        orgId: t.orgId,
+        visibility: 'private'
+      });
+      await expectReason(
+        copy(t.member, id, { isPro: true }),
+        'copy-not-allowed'
+      );
+      await allow(t.orgId);
+      await expectReason(
+        copy(t.owner, id, { isPro: true }),
+        'copy-not-allowed'
+      );
+      await expectReason(copy(t.outsider, id, { isPro: true }), 'not-member');
+      const result = await copy(t.member, id, { isPro: true });
+      expect(result.visibility).toBe('private');
+      expect(await sceneDoc(result.sceneId)).toMatchObject({
+        author: t.member,
+        orgId: null,
+        visibility: 'private',
+        copiedFrom: id
+      });
+      // The team keeps the original.
+      expect(await sceneDoc(id)).toMatchObject({
+        orgId: t.orgId,
+        visibility: 'private'
+      });
+    });
+
+    it('is public without Pro, only when accepted, also in a suspended team', async () => {
+      const t = await setupOrg({ status: 'suspended' });
+      await allow(t.orgId);
+      const id = await scene({
+        author: t.viewer,
+        orgId: t.orgId,
+        visibility: 'private'
+      });
+      await expectReason(copy(t.viewer, id), 'would-be-public');
+      await expectReason(
+        copy(t.viewer, id, { acceptPublic: 'yes' }),
+        'would-be-public'
+      );
+      const { sceneId } = await copy(t.viewer, id, { acceptPublic: true });
+      expect((await sceneDoc(sceneId)).visibility).toBe('public');
+    });
+
+    it('managers copy their own scenes without the setting; a removed creator cannot', async () => {
+      const t = await setupOrg();
+      const id = await scene({ author: t.owner, orgId: t.orgId });
+      expect((await copy(t.owner, id, { isPro: true })).visibility).toBe(
+        'private'
+      );
+      await allow(t.orgId);
+      const gone = await scene({ author: t.outsider, orgId: t.orgId });
+      await expectReason(copy(t.outsider, gone, { isPro: true }), 'not-member');
+      const personal = await scene({ author: t.owner });
+      await expectReason(copy(t.owner, personal), 'invalid-argument');
+    });
+  });
+
   describe('createRestrictedScene', () => {
     it('creates an empty personal scene, restricted from the start', async () => {
       for (const value of ['unlisted', 'private']) {

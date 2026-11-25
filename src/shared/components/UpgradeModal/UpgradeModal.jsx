@@ -24,6 +24,7 @@ import posthog from 'posthog-js';
 import { db, functions } from '@shared/services/firebase';
 import { useAuthContext } from '@shared/contexts';
 import EmbeddedCheckout from '@shared/components/EmbeddedCheckout';
+import { TeamContactLink } from '@shared/components/TeamContactLink';
 import { openBillingPortal } from '@shared/utils/billing';
 import { getPaywallSurface } from './paywallSurfaces';
 import { PRICING, TOKEN_FEATURE_KEY } from './pricing';
@@ -483,6 +484,10 @@ const UpgradeModal = ({
           {secondaryCta}
 
           <p className={styles.footerNote}>{t('cancelAnytime')}</p>
+          <TeamContactLink
+            source="upgrade_modal"
+            className={styles.footerNote}
+          />
         </>
       ) : (
         <div className={styles.signInPrompt}>

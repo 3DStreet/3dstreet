@@ -27,6 +27,17 @@ get a banner, no lock, and saving makes their own copy in the team
 - A personal scene moves into a team (by its author, an editor of that team,
   `orgMoveScene`); a private personal scene becomes team-only. A team scene
   never moves back out or to another team.
+- **A suspended team is read-only:** its members open and view its scenes; no
+  editing, sharing changes, deleting, new scenes or AI (`team-inactive` in
+  `sceneSaveMode`). Known gap: Storage rules can read only two documents per
+  check, so a member can still overwrite a scene's thumbnail files.
+- **Copy to Personal** (`orgCopySceneToPersonal`, Share modal): a scene's
+  creator, still in the team, copies it to their own scenes; the team keeps
+  the original. Owners and admins always can; others when the team allows it
+  (`memberCopyToPersonal`, off by default, "Members can copy the scenes they
+  created to Personal"). Also while the team is suspended. The copy is
+  private with Pro, else public, and only after the user accepts that. It
+  keeps referring to the team's library assets.
 - Copies: Save As by one of the team's editors stays in the team and
   project. A viewer can't copy a team-only scene out (it would publish it).
 
@@ -54,7 +65,7 @@ get a banner, no lock, and saving makes their own copy in the team
 
 `sceneSaveMode(currentUser)` (`src/editor/lib/sceneAccess.js`) is the one
 answer to "can this tab save the open scene": `own`, `team`, `team-locked`,
-`team-viewer`, `copy` or `new`. Autosave, the Save button, File > Save,
+`team-viewer`, `team-inactive`, `copy` or `new`. Autosave, the Save button, File > Save,
 thumbnails, the title and the unsaved-changes warning all use it.
 
 ## Lists

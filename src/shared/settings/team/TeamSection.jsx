@@ -194,7 +194,7 @@ function TeamSection({ orgId }) {
             {
               id: 'teamModal.removeMessage',
               defaultMessage:
-                '{name} will lose access to {team} and its plan. You can invite them again later.'
+                '{name} will lose access to {team}, its plan and its scenes, including the ones they created. You can invite them again later.'
             },
             { name: member.displayName || member.email, team: org?.name }
           ),

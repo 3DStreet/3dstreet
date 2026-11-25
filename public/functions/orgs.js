@@ -76,6 +76,7 @@ const REASON_TO_HTTPS = {
   'invalid-role': ['invalid-argument', 'Invalid role.'],
   'invalid-email': ['invalid-argument', 'Invalid email address.'],
   'invalid-setting': ['invalid-argument', 'Invalid team setting.'],
+  'unknown-field': ['invalid-argument', 'Unknown team field. Allowed: name, plan, seats, status, domains.'],
   'too-many': ['invalid-argument', 'Too many invitations at once.'],
   'org-not-found': ['not-found', 'Organization not found.'],
   'not-member': ['permission-denied', 'You are not a member of this organization.'],
@@ -83,7 +84,7 @@ const REASON_TO_HTTPS = {
   'owner-only': ['permission-denied', 'Only owners can do this.'],
   'last-owner': ['failed-precondition', 'An organization needs at least one owner.'],
   'no-seat-left': ['resource-exhausted', 'No seat left in this organization.'],
-  'org-suspended': ['failed-precondition', 'This organization is suspended.'],
+  'org-suspended': ['failed-precondition', 'This team is inactive.'],
   'invitation-not-found': ['not-found', 'Invitation not found.'],
   'invitation-expired': ['failed-precondition', 'This invitation has expired.'],
   'invitation-closed': ['failed-precondition', 'This invitation is no longer valid.'],
@@ -94,6 +95,8 @@ const REASON_TO_HTTPS = {
   'not-editor': ['permission-denied', 'Only owners, admins and members can do this.'],
   'own-only': ['permission-denied', 'In this team, members can only change what they created.'],
   'not-author': ['permission-denied', 'Only the author of a personal scene can move it.'],
+  'copy-not-allowed': ['permission-denied', 'You can not copy this scene out of the team.'],
+  'would-be-public': ['failed-precondition', 'Without Pro, the copy would be public.'],
   'scene-not-found': ['not-found', 'Scene not found.'],
   'project-not-found': ['not-found', 'Project not found.'],
   'invalid-move': ['failed-precondition', 'A team scene can only move between projects of its team.'],
@@ -255,6 +258,8 @@ async function createOrg({ name, plan, seats, domains = [], ownerEmail, actorUid
 /** Staff update: name, plan, seats, status, domains. */
 async function updateOrg({ orgId, patch = {} }) {
   const allowed = ['name', 'plan', 'seats', 'status', 'domains'];
+  // Never report success for a field that isn't saved.
+  if (Object.keys(patch).some((key) => !allowed.includes(key))) throw new OrgError('unknown-field');
   const fields = Object.fromEntries(
     Object.entries(patch).filter(([key]) => allowed.includes(key))
   );
@@ -613,7 +618,7 @@ async function renameOrg({ actorUid, orgId, name }) {
  * role a domain auto-join gives (`domainJoinRole`). The domains themselves
  * stay staff-set (orgUpdate): staff verify them.
  */
-async function updateOrgSettings({ actorUid, orgId, memberEditScope, domainJoinRole }) {
+async function updateOrgSettings({ actorUid, orgId, memberEditScope, domainJoinRole, memberCopyToPersonal }) {
   const fields = {};
   if (memberEditScope !== undefined) {
     if (!MEMBER_EDIT_SCOPES.includes(memberEditScope)) throw new OrgError('invalid-setting');
@@ -622,6 +627,10 @@ async function updateOrgSettings({ actorUid, orgId, memberEditScope, domainJoinR
   if (domainJoinRole !== undefined) {
     if (!DOMAIN_JOIN_ROLES.includes(domainJoinRole)) throw new OrgError('invalid-setting');
     fields.domainJoinRole = domainJoinRole;
+  }
+  if (memberCopyToPersonal !== undefined) {
+    if (typeof memberCopyToPersonal !== 'boolean') throw new OrgError('invalid-setting');
+    fields.memberCopyToPersonal = memberCopyToPersonal;
   }
   if (typeof orgId !== 'string' || !orgId || !Object.keys(fields).length) {
     throw new OrgError('invalid-argument');
@@ -691,7 +700,8 @@ async function readUserOrgs(uid) {
             name: docs[i].data().name,
             plan: docs[i].data().plan,
             status: docs[i].data().status,
-            memberEditScope: memberEditScopeOf(docs[i].data())
+            memberEditScope: memberEditScopeOf(docs[i].data()),
+            memberCopyToPersonal: docs[i].data().memberCopyToPersonal === true
           }
         : null
     )
@@ -773,7 +783,8 @@ const orgUpdateSettings = callable((data, context) =>
     actorUid: requireAuth(context),
     orgId: data.orgId,
     memberEditScope: data.memberEditScope,
-    domainJoinRole: data.domainJoinRole
+    domainJoinRole: data.domainJoinRole,
+    memberCopyToPersonal: data.memberCopyToPersonal
   })
 );
 

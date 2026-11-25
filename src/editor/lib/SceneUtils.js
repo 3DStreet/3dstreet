@@ -1,5 +1,6 @@
 import posthog from 'posthog-js';
 import useStore from '@/store.js';
+import { inactiveBillingOrgOf } from '@shared/utils/teamWallet';
 import { resolveSavedCameraStates } from '@/tested/scene-camera-pose.js';
 import {
   createScene,
@@ -295,6 +296,26 @@ export async function saveScene(currentUser, doSaveAs, doPromptTitle) {
   // team scene this tab holds the edit lock of, saves in place; anything
   // else saves as a copy, except a team scene you may not edit right now.
   const saveMode = sceneSaveMode(currentUser);
+  const teamNameOf = (orgId) =>
+    (currentUser.orgs || []).find((org) => org.orgId === orgId)?.name || '';
+  if (saveMode === 'team-inactive') {
+    STREET.notify.warningMessage(
+      formatSharedMessage('teamInactiveNotSaved', {
+        team: teamNameOf(store.sceneOrgId)
+      })
+    );
+    return;
+  }
+  // A new scene would land in Personal, and be public, without saying so.
+  const inactiveOrgId = inactiveBillingOrgOf(currentUser);
+  if (saveMode === 'new' && inactiveOrgId && !store.newSceneTarget) {
+    STREET.notify.warningMessage(
+      formatSharedMessage('teamInactiveNewScene', {
+        team: teamNameOf(inactiveOrgId)
+      })
+    );
+    return;
+  }
   const isTeamBlocked =
     saveMode === 'team-locked' || saveMode === 'team-viewer';
   if (isTeamBlocked && !doSaveAs) {

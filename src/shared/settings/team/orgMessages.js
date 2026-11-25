@@ -50,7 +50,11 @@ export const orgErrorMessages = defineMessages({
   },
   'org-suspended': {
     id: 'orgs.error.orgSuspended',
-    defaultMessage: 'This team is suspended.'
+    defaultMessage: 'This team is inactive.'
+  },
+  'copy-not-allowed': {
+    id: 'orgs.error.copyNotAllowed',
+    defaultMessage: "You can't copy this scene out of the team."
   },
   'invitation-not-found': {
     id: 'orgs.error.invitationNotFound',
