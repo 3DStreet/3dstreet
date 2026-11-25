@@ -28,7 +28,8 @@ describe('plan token amounts stay in sync across deployments', () => {
   it('PRICING uses one monthly floor per tier (annual carries no token bonus)', () => {
     // The discount-only model: tokens are identical across cycles within a tier.
     expect(PRICING.pro.monthly.tokens).toBe(PRICING.pro.yearly.tokens);
-    expect(PRICING.max.monthly.tokens).toBe(PRICING.max.yearly.tokens);
+    // Max has no yearly cycle for new buyers.
+    expect(PRICING.max.yearly).toBeUndefined();
     // Max is a superset of Pro, so its allowance must be the larger one.
     expect(PRICING.max.monthly.tokens).toBeGreaterThan(
       PRICING.pro.monthly.tokens

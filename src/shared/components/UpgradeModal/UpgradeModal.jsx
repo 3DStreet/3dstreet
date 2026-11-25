@@ -27,7 +27,7 @@ import EmbeddedCheckout from '@shared/components/EmbeddedCheckout';
 import { TeamContactLink } from '@shared/components/TeamContactLink';
 import { openBillingPortal } from '@shared/utils/billing';
 import { getPaywallSurface } from './paywallSurfaces';
-import { PRICING, TOKEN_FEATURE_KEY } from './pricing';
+import { cycleFor, PRICING, TOKEN_FEATURE_KEY } from './pricing';
 import { formatCurrency, getPeriodSuffix } from '@shared/utils/format';
 import { useSharedMessages } from '@shared/i18n/sharedMessages';
 import styles from './UpgradeModal.module.scss';
@@ -42,8 +42,7 @@ const PRICE_IDS = {
     yearly: process.env.STRIPE_YEARLY_PRICE_ID
   },
   max: {
-    monthly: process.env.STRIPE_MAX_MONTHLY_PRICE_ID,
-    yearly: process.env.STRIPE_MAX_YEARLY_PRICE_ID
+    monthly: process.env.STRIPE_MAX_MONTHLY_PRICE_ID
   }
 };
 
@@ -115,7 +114,7 @@ const UpgradeModal = ({
   successTitle,
   successMessage,
   successCta,
-  // Deep-link activation (e.g. docs pricing "Go Max" → #payment-max-annual):
+  // Deep-link activation (e.g. docs pricing "Go Max" → #payment-max):
   // preselect the billing cycle and auto-advance straight to that tier's
   // checkout, honoring the choice the user already made on the pricing page.
   // Parsed from the URL hash by the editor adapter. Defaults keep every in-app
@@ -149,6 +148,8 @@ const UpgradeModal = ({
   // than into a duplicate checkout. The ref makes it fire at most once per mount.
   const [subscriptionPrechecked, setSubscriptionPrechecked] = useState(false);
   const hasAutoStarted = useRef(false);
+  const isRetiredDeepLink =
+    !!initialTier && cycleFor(initialTier, initialCycle) !== initialCycle;
 
   const handleClose = useCallback(() => {
     onClose();
@@ -161,7 +162,7 @@ const UpgradeModal = ({
   }, [onClose, initialCycle]);
 
   const handleGoPro = (tier) => {
-    const plan = billingCycle; // 'monthly' | 'yearly'
+    const plan = cycleFor(tier, billingCycle); // 'monthly' | 'yearly'
     setSelectedTier(tier);
     setSelectedPlan(plan);
     setModalState('checkout');
@@ -273,7 +274,7 @@ const UpgradeModal = ({
   }, [isOpen, currentUser, source, trigger, modalState]);
 
   // Deep-link activation: when the modal was opened via a tier-specific hash
-  // (#payment-max-annual etc.), skip the card-selection step and go straight to
+  // (#payment-pro-annual etc.), skip the card-selection step and go straight to
   // that tier's checkout — honoring the choice already made on the pricing page.
   // Guards keep it from bypassing the already-Pro short-circuit or the
   // duplicate-subscription precheck, and the ref fires it at most once per mount
@@ -283,6 +284,8 @@ const UpgradeModal = ({
     if (!initialTier || hasAutoStarted.current) return;
     if (!currentUser || currentUser.isPro) return;
     if (!subscriptionPrechecked) return;
+    // Old link to a cycle no longer sold: show the notice, never charge another.
+    if (isRetiredDeepLink) return;
     hasAutoStarted.current = true;
     // handleGoPro reads billingCycle (initialized from initialCycle), so this
     // opens checkout on the right tier + cycle.
@@ -331,8 +334,8 @@ const UpgradeModal = ({
   // its own token count + storage (Pro vs Max), so drop the generic token line
   // here to avoid repeating it.
   const sharedFeatureIds = featureIds.filter((id) => id !== TOKEN_FEATURE_KEY);
-  const proPlan = PRICING.pro[billingCycle];
-  const maxPlan = PRICING.max[billingCycle];
+  const proPlan = PRICING.pro[cycleFor('pro', billingCycle)];
+  const maxPlan = PRICING.max[cycleFor('max', billingCycle)];
 
   // Success copy is tier-aware so a Max purchase doesn't read "Welcome to Pro!".
   // Pro keeps the caller-supplied copy (e.g. the generator's custom strings);
@@ -475,6 +478,12 @@ const UpgradeModal = ({
               <span className={styles.savePill}>{t('savePill')}</span>
             </button>
           </div>
+
+          {isRetiredDeepLink && (
+            <p className={styles.cycleNotice} role="status">
+              {t('maxMonthlyOnly')}
+            </p>
+          )}
 
           <div className={styles.planCards}>
             {renderPlanCard('pro', proPlan, [t('planStorage', { gb: 5 })])}

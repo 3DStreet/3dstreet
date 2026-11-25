@@ -11,6 +11,10 @@
  * a superset of PRO (all Pro features plus more storage and tokens). Prices
  * mirror the public pricing page (3dstreet.com/pricing).
  *
+ * MAX is monthly only for new buyers; the server still recognizes its yearly
+ * price (public/functions/stripe.js). Use cycleFor(tier, cycle), since a tier may lack
+ * a cycle.
+ *
  * Tokens are a monthly metered floor (PRO 100/mo, MAX 500/mo, no rollover) — the
  * same on monthly and annual. Annual's only advantage is the ~30% price discount;
  * there is no up-front token bonus on either cycle, so `tokens` is identical
@@ -22,7 +26,6 @@ import { formatSharedMessage } from '@shared/i18n/sharedMessages';
 
 // Local so cycleDetail and the exposed yearlyTotal fields can't drift.
 const PRO_YEARLY_TOTAL = 84;
-const MAX_YEARLY_TOTAL = 420;
 
 export const PRICING = {
   pro: {
@@ -55,20 +58,13 @@ export const PRICING = {
       get cycleDetail() {
         return formatSharedMessage('billedMonthly');
       }
-    },
-    yearly: {
-      pricePerMonth: 35,
-      yearlyTotal: MAX_YEARLY_TOTAL,
-      tokens: 500,
-      get cycleDetail() {
-        return formatSharedMessage('billedYearly', {
-          total: formatCurrency(MAX_YEARLY_TOTAL),
-          period: getPeriodSuffix('year')
-        });
-      }
     }
   }
 };
+
+/** The cycle a tier is sold on when the user picks `cycle`. */
+export const cycleFor = (tier, cycle) =>
+  PRICING[tier][cycle] ? cycle : 'monthly';
 
 // sharedMessages id for the monthly-token feature line, used across the modal
 // and surface registry feature lists. Exported as a constant so UpgradeModal
