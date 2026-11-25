@@ -38,6 +38,8 @@ const admin = require('firebase-admin');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('../app-check.js');
 const { isPaidPlanClaim } = require('../pro-pass.js');
+const { priceIdFromEnv } = require('../price-env.js');
+const { setPlanClaim } = require('../plan-claims.js');
 
 /**
  * Check if a user has domain-based pro status.
@@ -68,11 +70,11 @@ function isDomainBasedPro(email) {
 
 // The MAX-tier Stripe price IDs that actually resolve from the configured
 // secrets. Empty when the STRIPE_MAX_*_PRICE_ID secrets are unset.
-// Keep in sync with PRICE_CONFIG in index.js.
+// Keep in sync with SUBSCRIPTION_PLANS in subscription-plans.js.
 function getMaxPriceIds() {
   return [
-    process.env.STRIPE_MAX_YEARLY_PRICE_ID,
-    process.env.STRIPE_MAX_MONTHLY_PRICE_ID
+    priceIdFromEnv('STRIPE_MAX_YEARLY_PRICE_ID'),
+    priceIdFromEnv('STRIPE_MAX_MONTHLY_PRICE_ID')
   ].filter(Boolean);
 }
 
@@ -351,7 +353,7 @@ exports.auditUserSubscriptions = functions
           report.summary.proClaimNoStripe++;
 
           if (fixDiscrepancies) {
-            await getAuth().setCustomUserClaims(user.uid, { plan: '' });
+            await setPlanClaim(user.uid, '');
             report.fixes.claimsRemoved.push({
               uid: user.uid,
               email: user.email
@@ -374,7 +376,7 @@ exports.auditUserSubscriptions = functions
           report.summary.proClaimNoStripe++;
 
           if (fixDiscrepancies) {
-            await getAuth().setCustomUserClaims(user.uid, { plan: '' });
+            await setPlanClaim(user.uid, '');
             report.fixes.claimsRemoved.push({
               uid: user.uid,
               email: user.email
@@ -402,7 +404,7 @@ exports.auditUserSubscriptions = functions
             report.summary.claimTierMismatch++;
 
             if (fixDiscrepancies) {
-              await getAuth().setCustomUserClaims(user.uid, { plan: resolvedTier });
+              await setPlanClaim(user.uid, resolvedTier);
               report.fixes.claimsUpdated.push({
                 uid: user.uid,
                 email: user.email,
@@ -476,7 +478,7 @@ exports.auditUserSubscriptions = functions
           report.summary.stripeNoPROClaim++;
 
           if (fixDiscrepancies) {
-            await getAuth().setCustomUserClaims(userId, { plan: tier });
+            await setPlanClaim(userId, tier);
             report.fixes.claimsAdded.push({
               uid: userId,
               email: user.email,
@@ -616,7 +618,7 @@ async function runAudit(stripe, fixDiscrepancies = false) {
       report.summary.proClaimNoStripe++;
 
       if (fixDiscrepancies) {
-        await getAuth().setCustomUserClaims(user.uid, { plan: '' });
+        await setPlanClaim(user.uid, '');
         report.fixes.claimsRemoved.push({ uid: user.uid, email: user.email });
       }
       continue;
@@ -634,7 +636,7 @@ async function runAudit(stripe, fixDiscrepancies = false) {
       report.summary.proClaimNoStripe++;
 
       if (fixDiscrepancies) {
-        await getAuth().setCustomUserClaims(user.uid, { plan: '' });
+        await setPlanClaim(user.uid, '');
         report.fixes.claimsRemoved.push({ uid: user.uid, email: user.email });
       }
     } else {
@@ -654,7 +656,7 @@ async function runAudit(stripe, fixDiscrepancies = false) {
         report.summary.claimTierMismatch++;
 
         if (fixDiscrepancies) {
-          await getAuth().setCustomUserClaims(user.uid, { plan: resolvedTier });
+          await setPlanClaim(user.uid, resolvedTier);
           report.fixes.claimsUpdated.push({ uid: user.uid, email: user.email, from: claimedTier, to: resolvedTier });
         }
       } else {
@@ -710,7 +712,7 @@ async function runAudit(stripe, fixDiscrepancies = false) {
       report.summary.stripeNoPROClaim++;
 
       if (fixDiscrepancies) {
-        await getAuth().setCustomUserClaims(userId, { plan: tier });
+        await setPlanClaim(userId, tier);
         report.fixes.claimsAdded.push({ uid: userId, email: user.email, plan: tier });
       }
     }

@@ -13,6 +13,8 @@
  * it directly under mocha.
  */
 
+const { priceIdFromEnv } = require('./price-env.js');
+
 // `priceUsd` is informational (audit/log context); the amount actually charged
 // is whatever the Stripe price object says. The price IDs live in Secret
 // Manager (one secret per pack, resolved at call time via `priceIdEnv`) so the
@@ -61,7 +63,7 @@ const findTokenPackByPriceIds = (priceIds) => {
   if (!Array.isArray(priceIds) || priceIds.length === 0) return null;
   return (
     TOKEN_PACKS.find((pack) => {
-      const configuredId = process.env[pack.priceIdEnv];
+      const configuredId = priceIdFromEnv(pack.priceIdEnv);
       return configuredId && priceIds.includes(configuredId);
     }) || null
   );
