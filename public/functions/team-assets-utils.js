@@ -12,8 +12,12 @@ const GB = 1000 * MB;
 /** Per-seat storage of a team's library, by plan (the personal limits). */
 const STORAGE_PER_SEAT = { PRO: 5 * GB, MAX: 25 * GB };
 
-/** A team's library limit: its plan's personal storage limit per seat. */
-function teamStorageLimit(plan, seats) {
+/**
+ * A team's library limit: the limit staff set (`storageLimitGb`, always set
+ * for a site license), else its plan's personal storage limit per seat.
+ */
+function teamStorageLimit({ plan, seats, storageLimitGb }) {
+  if (storageLimitGb) return storageLimitGb * GB;
   const perSeat = STORAGE_PER_SEAT[plan] || STORAGE_PER_SEAT.PRO;
   return perSeat * Math.max(1, Number(seats) || 1);
 }

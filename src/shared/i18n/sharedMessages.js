@@ -397,11 +397,11 @@ const SHARED_MESSAGES = {
     fr: 'Vous avez déjà Pro avec votre abonnement. Ce pass ajoute {tokens} jetons IA maintenant et garde Pro pendant {days} jours si vous résiliez.'
   },
   projectPassTeamNote: {
-    en: 'You already have Pro through your organization ({domain}). A pass would only add {tokens} AI tokens.',
-    es: 'Ya tienes Pro a través de tu organización ({domain}). Un pase solo añadiría {tokens} tokens de IA.',
+    en: 'You already have Pro through {source}. A pass would only add {tokens} AI tokens.',
+    es: 'Ya tienes Pro a través de {source}. Un pase solo añadiría {tokens} tokens de IA.',
     'pt-BR':
-      'Você já tem o Pro pela sua organização ({domain}). Um passe só adicionaria {tokens} tokens de IA.',
-    fr: 'Vous avez déjà Pro grâce à votre organisation ({domain}). Un pass ajouterait seulement {tokens} jetons IA.'
+      'Você já tem o Pro por meio de {source}. Um passe só adicionaria {tokens} tokens de IA.',
+    fr: 'Vous avez déjà Pro grâce à {source}. Un pass ajouterait seulement {tokens} jetons IA.'
   },
   projectPassSeeTokenPacks: {
     en: 'Just need tokens? See token packs',
@@ -2186,6 +2186,21 @@ const SHARED_MESSAGES = {
     es: '{team} está inactivo, así que no puede pagar generaciones con IA.',
     'pt-BR': '{team} está inativa, então não pode pagar gerações com IA.',
     fr: '{team} est inactive et ne peut donc pas payer les générations IA.'
+  },
+  // Joined a team by email domain at sign-in (docs/orgs.md)
+  teamJoined: {
+    en: 'You joined {team} through your email domain. Pick it in the profile menu to work in it.',
+    es: 'Te uniste a {team} por el dominio de tu correo. Elígelo en el menú de perfil para trabajar en él.',
+    'pt-BR':
+      'Você entrou em {team} pelo domínio do seu e-mail. Escolha a equipe no menu do perfil para trabalhar nela.',
+    fr: 'Vous avez rejoint {team} grâce au domaine de votre e-mail. Choisissez cette équipe dans le menu du profil pour y travailler.'
+  },
+  teamJoinedActive: {
+    en: 'You joined {team} through your email domain. New work goes there. Switch in the profile menu.',
+    es: 'Te uniste a {team} por el dominio de tu correo. El trabajo nuevo va allí. Puedes cambiarlo en el menú de perfil.',
+    'pt-BR':
+      'Você entrou em {team} pelo domínio do seu e-mail. Os novos trabalhos vão para lá. Você pode mudar no menu do perfil.',
+    fr: 'Vous avez rejoint {team} grâce au domaine de votre e-mail. Vos nouveaux travaux y sont enregistrés. Vous pouvez changer dans le menu du profil.'
   },
   teamInactiveLabel: {
     en: 'Inactive',

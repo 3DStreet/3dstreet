@@ -13,9 +13,10 @@ describe('team library limit client/server sync', () => {
   it('computes the same limit', () => {
     for (const plan of ['PRO', 'MAX', 'OTHER']) {
       for (const seats of [0, 1, 3, 20]) {
-        expect(teamLibraryLimit(plan, seats)).toBe(
-          server.teamStorageLimit(plan, seats)
-        );
+        for (const storageLimitGb of [null, 200]) {
+          const org = { plan, seats, storageLimitGb };
+          expect(teamLibraryLimit(org)).toBe(server.teamStorageLimit(org));
+        }
       }
     }
   });

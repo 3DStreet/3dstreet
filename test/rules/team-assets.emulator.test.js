@@ -298,7 +298,7 @@ describe('team library uploads (emulator)', () => {
       planLimit: 50 * 1000 * 1000 * 1000,
       tier: 'MAX',
       membership: 'team',
-      planName: 'MAX TEAM'
+      planName: 'MAX'
     });
     const full = await quota.teamUploadQuota({
       uid,

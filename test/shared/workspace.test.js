@@ -45,12 +45,32 @@ describe('personalPlanOf', () => {
     expect(personalPlanOf({ plan: 'PRO' })).toBe('PRO');
     expect(personalPlanOf({ isProPass: true })).toBe('PRO');
     expect(personalPlanOf({ isProTeam: true, teamDomain: 'uo.edu' })).toBe(
-      'PRO TEAM'
+      'PRO'
     );
+    // A seat in a team doesn't hide it.
+    expect(
+      personalPlanOf({
+        isProTeam: true,
+        teamDomain: 'uo.edu',
+        teamName: 'LA Metro'
+      })
+    ).toBe('PRO');
     expect(
       personalPlanOf({ isProTeam: true, teamName: 'LA Metro', orgPlan: 'MAX' })
     ).toBe(null);
     expect(personalPlanOf(null)).toBe(null);
+  });
+});
+
+describe('a viewer', () => {
+  it("gets no plan from the team, whatever the team's plan", () => {
+    const user = {
+      plan: 'PRO',
+      orgs: [team({ role: 'viewer', plan: 'MAX' })],
+      activeOrgId: 'uo'
+    };
+    expect(workspaceOf(user).plan).toBe(null);
+    expect(workspaceLabel(user)).toBe('VIEWER · UO Urban Design 410');
   });
 });
 

@@ -631,7 +631,6 @@
     "profileModal.planFree": "Plan: Free",
     "profileModal.planMax": "Plan: Max",
     "profileModal.planPro": "Plan: Pro",
-    "profileModal.planProTeam": "Plan: Pro Team ({domain})",
     "profileModal.publicProfile": "Public Profile",
     "profileModal.signedInWith": "Signed in with {provider}",
     "profileModal.unlimitedGeoTokens": "Unlimited Geo Tokens",
@@ -667,7 +666,6 @@
     "rightPanel.planTooltipFree": "3DStreet Free Community Edition",
     "rightPanel.planTooltipMax": "3DStreet Max Plan",
     "rightPanel.planTooltipPro": "3DStreet Pro Plan",
-    "rightPanel.planTooltipTeam": "3DStreet Team Plan ({teamDomain})",
     "rightPanel.shareScene": "Share scene",
     "rightPanel.tabConsole": "Console",
     "rightPanel.tabProperties": "Properties",
@@ -1186,7 +1184,15 @@
     "shareTeam.copyTitle": "Copy this scene to Personal?",
     "shareTeam.copyToPersonal": "Copy to Personal",
     "teamPermissions.copyToPersonal": "Members can copy the scenes they created to Personal",
-    "teamPermissions.copyToPersonalHint": "The team keeps the original. A copy is public when the member has no Pro plan."
+    "teamPermissions.copyToPersonalHint": "The team keeps the original. A copy is public when the member has no Pro plan.",
+    "orgs.roleDescription.memberSite": "Uses the team's plan.",
+    "orgs.roleDescription.viewerSite": "Can view the team's work.",
+    "profileModal.planProDomain": "Plan: Pro (from {domain})",
+    "rightPanel.planTooltipActiveTeam": "Team: {team}",
+    "rightPanel.planTooltipDomain": "3DStreet Pro Plan (from {domain})",
+    "teamModal.siteLicense": "Site license",
+    "orgs.inviteResult.outsideDomain": "{email}: this team's site license only takes addresses on its domains.",
+    "orgs.error.outsideDomain": "This team's site license only takes email addresses on its domains."
   },
   "fr": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -1820,7 +1826,6 @@
     "profileModal.planFree": "Plan: Free",
     "profileModal.planMax": "Plan: Max",
     "profileModal.planPro": "Plan: Pro",
-    "profileModal.planProTeam": "Plan: Pro Team ({domain})",
     "profileModal.publicProfile": "Public Profile",
     "profileModal.signedInWith": "Signed in with {provider}",
     "profileModal.unlimitedGeoTokens": "Unlimited Geo Tokens",
@@ -1856,7 +1861,6 @@
     "rightPanel.planTooltipFree": "3DStreet Free Community Edition",
     "rightPanel.planTooltipMax": "3DStreet Max Plan",
     "rightPanel.planTooltipPro": "3DStreet Pro Plan",
-    "rightPanel.planTooltipTeam": "3DStreet Team Plan ({teamDomain})",
     "rightPanel.shareScene": "Share scene",
     "rightPanel.tabConsole": "Console",
     "rightPanel.tabProperties": "Properties",
@@ -2375,7 +2379,15 @@
     "shareTeam.copyTitle": "Copy this scene to Personal?",
     "shareTeam.copyToPersonal": "Copy to Personal",
     "teamPermissions.copyToPersonal": "Members can copy the scenes they created to Personal",
-    "teamPermissions.copyToPersonalHint": "The team keeps the original. A copy is public when the member has no Pro plan."
+    "teamPermissions.copyToPersonalHint": "The team keeps the original. A copy is public when the member has no Pro plan.",
+    "orgs.roleDescription.memberSite": "Uses the team's plan.",
+    "orgs.roleDescription.viewerSite": "Can view the team's work.",
+    "profileModal.planProDomain": "Plan: Pro (from {domain})",
+    "rightPanel.planTooltipActiveTeam": "Team: {team}",
+    "rightPanel.planTooltipDomain": "3DStreet Pro Plan (from {domain})",
+    "teamModal.siteLicense": "Site license",
+    "orgs.inviteResult.outsideDomain": "{email}: this team's site license only takes addresses on its domains.",
+    "orgs.error.outsideDomain": "This team's site license only takes email addresses on its domains."
   },
   "pt-BR": {
     "actionBar.handTool": "Hand Tool (h) - pan and rotate the view without selecting objects",
@@ -3009,7 +3021,6 @@
     "profileModal.planFree": "Plan: Free",
     "profileModal.planMax": "Plan: Max",
     "profileModal.planPro": "Plan: Pro",
-    "profileModal.planProTeam": "Plan: Pro Team ({domain})",
     "profileModal.publicProfile": "Public Profile",
     "profileModal.signedInWith": "Signed in with {provider}",
     "profileModal.unlimitedGeoTokens": "Unlimited Geo Tokens",
@@ -3045,7 +3056,6 @@
     "rightPanel.planTooltipFree": "3DStreet Free Community Edition",
     "rightPanel.planTooltipMax": "3DStreet Max Plan",
     "rightPanel.planTooltipPro": "3DStreet Pro Plan",
-    "rightPanel.planTooltipTeam": "3DStreet Team Plan ({teamDomain})",
     "rightPanel.shareScene": "Share scene",
     "rightPanel.tabConsole": "Console",
     "rightPanel.tabProperties": "Properties",
@@ -3564,6 +3574,14 @@
     "shareTeam.copyTitle": "Copy this scene to Personal?",
     "shareTeam.copyToPersonal": "Copy to Personal",
     "teamPermissions.copyToPersonal": "Members can copy the scenes they created to Personal",
-    "teamPermissions.copyToPersonalHint": "The team keeps the original. A copy is public when the member has no Pro plan."
+    "teamPermissions.copyToPersonalHint": "The team keeps the original. A copy is public when the member has no Pro plan.",
+    "orgs.roleDescription.memberSite": "Uses the team's plan.",
+    "orgs.roleDescription.viewerSite": "Can view the team's work.",
+    "profileModal.planProDomain": "Plan: Pro (from {domain})",
+    "rightPanel.planTooltipActiveTeam": "Team: {team}",
+    "rightPanel.planTooltipDomain": "3DStreet Pro Plan (from {domain})",
+    "teamModal.siteLicense": "Site license",
+    "orgs.inviteResult.outsideDomain": "{email}: this team's site license only takes addresses on its domains.",
+    "orgs.error.outsideDomain": "This team's site license only takes email addresses on its domains."
   }
 }

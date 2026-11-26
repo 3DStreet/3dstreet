@@ -22,9 +22,13 @@ describe('team-assets-utils', () => {
   });
 
   it('gives a team its plan’s personal storage per seat', () => {
-    assert.strictEqual(teamStorageLimit('PRO', 3), 15 * GB);
-    assert.strictEqual(teamStorageLimit('MAX', 2), 50 * GB);
-    assert.strictEqual(teamStorageLimit('UNKNOWN', 0), 5 * GB);
+    assert.strictEqual(teamStorageLimit({ plan: 'PRO', seats: 3 }), 15 * GB);
+    assert.strictEqual(teamStorageLimit({ plan: 'MAX', seats: 2 }), 50 * GB);
+    assert.strictEqual(teamStorageLimit({ plan: 'UNKNOWN', seats: 0 }), 5 * GB);
+    assert.strictEqual(
+      teamStorageLimit({ plan: 'PRO', seats: null, storageLimitGb: 200 }),
+      200 * GB
+    );
   });
 
   it('copies every file of the asset into its own folder of the team', () => {

@@ -2084,6 +2084,9 @@
   "orgs.error.orgSuspended": {
     "defaultMessage": "This team is inactive."
   },
+  "orgs.error.outsideDomain": {
+    "defaultMessage": "This team's site license only takes email addresses on its domains."
+  },
   "orgs.error.ownOnly": {
     "defaultMessage": "In this team, members can only change what they created."
   },
@@ -2114,6 +2117,9 @@
   "orgs.inviteResult.noSeatLeft": {
     "defaultMessage": "{email}: no seat left."
   },
+  "orgs.inviteResult.outsideDomain": {
+    "defaultMessage": "{email}: this team's site license only takes addresses on its domains."
+  },
   "orgs.role.admin": {
     "defaultMessage": "Admin"
   },
@@ -2132,11 +2138,17 @@
   "orgs.roleDescription.member": {
     "defaultMessage": "Uses the team's plan. Takes a seat."
   },
+  "orgs.roleDescription.memberSite": {
+    "defaultMessage": "Uses the team's plan."
+  },
   "orgs.roleDescription.owner": {
     "defaultMessage": "Manages the team, its members and its owners."
   },
   "orgs.roleDescription.viewer": {
     "defaultMessage": "Can view the team's work. Takes no seat."
+  },
+  "orgs.roleDescription.viewerSite": {
+    "defaultMessage": "Can view the team's work."
   },
   "playControls.brakeForce": {
     "defaultMessage": "Brake force"
@@ -2210,11 +2222,11 @@
   "profileModal.planPro": {
     "defaultMessage": "Plan: Pro"
   },
+  "profileModal.planProDomain": {
+    "defaultMessage": "Plan: Pro (from {domain})"
+  },
   "profileModal.planProPass": {
     "defaultMessage": "Plan: Pro (Project Pass) until {date}"
-  },
-  "profileModal.planProTeam": {
-    "defaultMessage": "Plan: Pro Team ({domain})"
   },
   "profileModal.publicProfile": {
     "defaultMessage": "Public Profile"
@@ -2315,6 +2327,12 @@
   "renderStyles.watercolor.name": {
     "defaultMessage": "Watercolor"
   },
+  "rightPanel.planTooltipActiveTeam": {
+    "defaultMessage": "Team: {team}"
+  },
+  "rightPanel.planTooltipDomain": {
+    "defaultMessage": "3DStreet Pro Plan (from {domain})"
+  },
   "rightPanel.planTooltipFree": {
     "defaultMessage": "3DStreet Free Community Edition"
   },
@@ -2326,9 +2344,6 @@
   },
   "rightPanel.planTooltipPro": {
     "defaultMessage": "3DStreet Pro Plan"
-  },
-  "rightPanel.planTooltipTeam": {
-    "defaultMessage": "3DStreet Team Plan ({teamDomain})"
   },
   "rightPanel.shareScene": {
     "defaultMessage": "Share scene"
@@ -3262,6 +3277,9 @@
   },
   "teamModal.seats": {
     "defaultMessage": "{used} of {total} seats used"
+  },
+  "teamModal.siteLicense": {
+    "defaultMessage": "Site license"
   },
   "teamModal.suspended": {
     "defaultMessage": "Suspended"

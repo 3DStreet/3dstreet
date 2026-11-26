@@ -29,6 +29,7 @@ import {
   inviteResultMessages,
   orgErrorMessage,
   roleDescriptionMessages,
+  siteLicenseRoleMessages,
   roleMessages
 } from './orgMessages';
 import { useSettingsHost } from '../SettingsHost';
@@ -231,6 +232,11 @@ function TeamSection({ orgId }) {
     }
   };
 
+  // A site license has no seats to take.
+  const describeRole = (role) =>
+    (org?.siteLicense && siteLicenseRoleMessages[role]) ||
+    roleDescriptionMessages[role];
+
   // Admins don't hand out or change the owner role (org-utils.js).
   const assignableRoles = myRole === 'owner' ? ROLES : ROLES.slice(1);
 
@@ -248,11 +254,18 @@ function TeamSection({ orgId }) {
                   them, so only managers get a seat count that adds up. */}
             {canManage && (
               <span>
-                <FormattedMessage
-                  id="teamModal.seats"
-                  defaultMessage="{used} of {total} seats used"
-                  values={{ used: seatsUsed, total: org.seats }}
-                />
+                {org.siteLicense ? (
+                  <FormattedMessage
+                    id="teamModal.siteLicense"
+                    defaultMessage="Site license"
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="teamModal.seats"
+                    defaultMessage="{used} of {total} seats used"
+                    values={{ used: seatsUsed, total: org.seats }}
+                  />
+                )}
               </span>
             )}
             {org.status !== 'active' && (
@@ -359,9 +372,7 @@ function TeamSection({ orgId }) {
                     ) : (
                       <span
                         className={styles.role}
-                        title={intl.formatMessage(
-                          roleDescriptionMessages[member.role]
-                        )}
+                        title={intl.formatMessage(describeRole(member.role))}
                       >
                         {intl.formatMessage(roleMessages[member.role])}
                       </span>
@@ -520,7 +531,7 @@ function TeamSection({ orgId }) {
                   onChange={setInviteRole}
                 />
                 <span className={styles.muted}>
-                  {intl.formatMessage(roleDescriptionMessages[inviteRole])}
+                  {intl.formatMessage(describeRole(inviteRole))}
                 </span>
                 <Button
                   type="submit"

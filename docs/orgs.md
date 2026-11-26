@@ -1,6 +1,6 @@
-# Organizations (teams, #1267 Phase 1)
+# Teams (organizations in the code, #1267 Phase 1)
 
-An organization ("team" in the UI) has a plan (`PRO` or `MAX`), a number of
+A team (`org` in the code; never "organization" in the UI) has a plan (`PRO` or `MAX`), a number of
 seats, and members with a role. This page covers membership and the plan it
 gives; team-owned scenes, projects and the edit lock are in
 [team-scenes.md](team-scenes.md).
@@ -57,6 +57,23 @@ seat role. Inviting, accepting and promoting a viewer are refused with
 members, nobody is removed; new invitations and acceptances are refused until
 seats free up. Only managers see the count (members can't read invitations).
 
+### Site license
+
+For a customer that covers a whole email domain (a university), staff set
+`siteLicense: true`: no seat cap, and everyone on its domains joins with the
+`domainJoinRole` (member by default). Its token budget and storage limit are
+never derived from seats, so both are required: a custom wallet budget
+(`monthlyTokenBudget` on `orgCreate`, or `orgUpdateWallet` first) and
+`storageLimitGb`, else `site-license-terms`. It only takes addresses on its
+domains (`siteLicenseTakes`): an invitation to any other address is
+refused (`outside-domain`), as is accepting one sent before the team became
+a site license. Staff can still invite an owner from anywhere (`byStaff` on
+the invitation). It's the team version of the `ALLOWED_PRO_TEAM_DOMAINS`
+allowlist, with shared scenes, a library, a wallet, managers and removal. Back to seats (`siteLicense: false`
+with `seats`) removes nobody. `storageLimitGb` also overrides a seat team's
+storage; null goes back to per seat. Check seats with `hasFreeSeat`
+(`org-utils.js`), never `seats` directly.
+
 ## Invitations
 
 - Managers invite by email with a role (up to 50 addresses per call). Each
@@ -85,12 +102,14 @@ enforce indexes, so the tests can't catch a missing one.
 An org's `domains` (set by staff) make users with a verified email on those
 domains join it when they sign in (`autoJoinDomainOrgs`, run by
 `checkUserProStatus`), with the org's `domainJoinRole` (missing = `member`):
-members while seats last, viewers (no seat) always. Owners and admins pick
+members while seats last (always, with a site license), viewers (no seat) always. Owners and admins pick
 the role in Team settings when the team has domains, so a school can let
 students in as viewers. Turning auto-join off is staff removing the
 domains, since staff verify them. Someone who left or was removed
 (`orgs/{orgId}/departed/{uid}`) is not joined again until they accept an
-invitation. This replaces the
+invitation. The call that adds them returns
+`joinedOrgIds`, once, and the editor or generator shows a notice
+(`src/shared/utils/teamsJoined.js`). This replaces the
 `ALLOWED_PRO_TEAM_DOMAINS` secret for customers moved into orgs; the secret
 still works for the others.
 
@@ -108,7 +127,9 @@ generations from its wallet, within its monthly budget
 ([team-wallet.md](team-wallet.md)).
 
 On the client, `currentUser.orgs`, `orgPlan` and `teamName` come from
-`src/shared/auth/api/user.js`. `plan` stays the user's own subscription
+`src/shared/auth/api/user.js`. `teamDomain` is Pro from the
+`ALLOWED_PRO_TEAM_DOMAINS` secret (`isDomainPro`), kept alongside a seat.
+`plan` stays the user's own subscription
 (billing UI keys off it); labels use `orgPlan` for Max and `teamName` for the
 team label.
 
@@ -119,7 +140,7 @@ rules in `firestore.rules` only allow reads.
 
 | Document                     | Fields                                                                                                                                                              | Readable by                                         |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `orgs/{orgId}`               | name, plan, seats, status (`active`, `suspended`), domains, memberEditScope (`all`, `own`), domainJoinRole (`member`, `viewer`), memberCopyToPersonal (missing = off), createdAt, createdBy, updatedAt    | members                                             |
+| `orgs/{orgId}`               | name, plan, seats (null = site license created without), siteLicense, storageLimitGb (null = per seat), status (`active`, `suspended`), domains, memberEditScope (`all`, `own`), domainJoinRole (`member`, `viewer`), memberCopyToPersonal (missing = off), createdAt, createdBy, updatedAt    | members                                             |
 | `orgs/{orgId}/members/{uid}` | uid, email, displayName, role, joinedAt, invitedBy, via (`invitation`, `domain`, `staff`)                                                                           | members                                             |
 | `orgs/{orgId}/departed/{uid}` | uid, removedBy, at: left or was removed; cleared on joining again | nobody (functions only) |
 | `orgInvitations/{id}`        | orgId, orgName, email (lowercase), role, status (`pending`, `accepted`, `declined`, `revoked`), invitedBy, inviterName, createdAt, expiresAt, lastSentAt, sendCount | the invitee (verified email) and the org's managers |
@@ -132,7 +153,7 @@ Every membership change updates `userOrgs` in the same transaction.
 | Callable                                      | Who                                 | Does                                                                    |
 | --------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------- |
 | `orgCreate`                                   | staff (admin claim)                 | create an org; the owner is added, or invited when they have no account |
-| `orgUpdate`                                   | staff                               | name, plan, seats, status, domains                                      |
+| `orgUpdate`                                   | staff                               | name, plan, seats, status, domains, siteLicense, storageLimitGb         |
 | `orgRename`                                   | owner, admin                        | rename                                                                  |
 | `orgUpdateSettings`                           | owner, admin                        | memberEditScope, domainJoinRole, memberCopyToPersonal                                         |
 | `orgInvite`                                   | owner, admin                        | invite emails with a role                                               |
@@ -148,7 +169,7 @@ Refusals are `HttpsError`s with `details.reason` (`not-manager`,
 
 Staff create and update orgs from the browser console while signed in with an
 admin account: `adminTools.createOrg({ name, plan, seats, ownerEmail,
-domains })` and `adminTools.updateOrg(orgId, patch)`
+domains, siteLicense, storageLimitGb, monthlyTokenBudget })` and `adminTools.updateOrg(orgId, patch)`
 (`src/shared/services/firebase.js`).
 
 ## UI
@@ -160,7 +181,8 @@ domains })` and `adminTools.updateOrg(orgId, patch)`
   pending invitations (resend, revoke), invite form, rename, leave.
   Managers see the seats.
 - The profile menu's team switcher picks the active team.
-- The plan badge and Settings show Max for a Max org and the team name.
+- The plan badge shows the active team's plan and name, or "VIEWER" instead of
+  the plan for its viewers, who get no plan from it.
 
 ## Tests
 

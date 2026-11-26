@@ -450,6 +450,111 @@ describe('organizations (emulator)', () => {
       expect((await member(orgId, first.uid)).via).toBe('domain');
     });
 
+    it('a site license has no seat cap and needs its own budget and storage', async () => {
+      const domain = `d${uniq()}.test`;
+      const { orgId, owner } = await newOrg({ seats: 2, domains: [domain] });
+      const early = await makeUser();
+      const earlyInvite = await invite(orgId, owner.uid, early.email);
+      const first = await makeUser({ domain });
+      expect(await orgs.autoJoinDomainOrgs(first.uid)).toEqual([]); // full
+
+      const patch = { siteLicense: true, storageLimitGb: 200 };
+      await expectReason(
+        orgs.updateOrg({ orgId, patch }),
+        'site-license-terms'
+      );
+      const teamWallet = functionsRequire('./team-wallet.js');
+      await teamWallet.updateWallet({ orgId, monthlyTokenBudget: 5000 });
+      await expectReason(
+        orgs.updateOrg({ orgId, patch: { siteLicense: true } }),
+        'site-license-terms'
+      );
+      await orgs.updateOrg({ orgId, patch });
+      await expectReason(
+        teamWallet.updateWallet({ orgId, monthlyTokenBudget: 'default' }),
+        'site-license-terms'
+      );
+      await expectReason(
+        orgs.updateOrg({ orgId, patch: { storageLimitGb: null } }),
+        'site-license-terms'
+      );
+
+      // Joining, inviting, accepting and promoting all pass the seat count.
+      expect(await orgs.autoJoinDomainOrgs(first.uid)).toEqual([orgId]);
+      const second = await makeUser({ domain });
+      const joined = await Promise.all([
+        orgs.autoJoinDomainOrgs(second.uid),
+        orgs.autoJoinDomainOrgs(second.uid)
+      ]);
+      expect(joined.flat()).toEqual([orgId]); // reported once
+      await expectReason(
+        orgs.acceptInvitation({
+          uid: early.uid,
+          invitationId: earlyInvite.invitationId
+        }),
+        'outside-domain'
+      );
+      const viewer = await makeUser({ domain });
+      const result = await invite(orgId, owner.uid, viewer.email, 'viewer');
+      await orgs.acceptInvitation({
+        uid: viewer.uid,
+        invitationId: result.invitationId
+      });
+      await orgs.changeMemberRole({
+        actorUid: owner.uid,
+        orgId,
+        targetUid: viewer.uid,
+        role: 'member'
+      });
+      expect((await member(orgId, viewer.uid)).role).toBe('member');
+
+      // Only addresses on its domains, also for invitations sent before.
+      const outsider = await makeUser();
+      expect((await invite(orgId, owner.uid, outsider.email)).status).toBe(
+        'outside-domain'
+      );
+
+      // The plan and seats never change its budget.
+      await orgs.updateOrg({ orgId, patch: { plan: 'MAX' } });
+      const wallet = (await db.doc(`orgWallets/${orgId}`).get()).data();
+      expect(wallet.monthlyTokenBudget).toBe(5000);
+
+      // Back to seats: nobody is removed, the cap applies again.
+      await orgs.updateOrg({ orgId, patch: { siteLicense: false, seats: 2 } });
+      const third = await makeUser({ domain });
+      expect(await orgs.autoJoinDomainOrgs(third.uid)).toEqual([]);
+      expect((await member(orgId, first.uid)).role).toBe('member');
+    });
+
+    it('creates a site license without seats', async () => {
+      const owner = await makeUser();
+      const terms = {
+        name: `Site ${uniq()}`,
+        plan: 'PRO',
+        siteLicense: true,
+        ownerEmail: owner.email,
+        actorUid: 'staff'
+      };
+      await expectReason(orgs.createOrg(terms), 'site-license-terms');
+      const { orgId } = await orgs.createOrg({
+        ...terms,
+        seats: null,
+        monthlyTokenBudget: 5000,
+        storageLimitGb: 200
+      });
+      expect((await db.doc(`orgs/${orgId}`).get()).data()).toMatchObject({
+        siteLicense: true,
+        seats: null,
+        storageLimitGb: 200
+      });
+      expect((await member(orgId, owner.uid)).role).toBe('owner');
+      // Switching to seats needs a seat count.
+      await expectReason(
+        orgs.updateOrg({ orgId, patch: { siteLicense: false } }),
+        'invalid-seats'
+      );
+    });
+
     it('updateOrg refuses a field it does not save', async () => {
       const { orgId } = await newOrg();
       await expectReason(

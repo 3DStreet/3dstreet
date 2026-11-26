@@ -28,6 +28,18 @@ export const roleDescriptionMessages = defineMessages({
   }
 });
 
+// Their site license wording (no seats, docs/orgs.md).
+export const siteLicenseRoleMessages = defineMessages({
+  member: {
+    id: 'orgs.roleDescription.memberSite',
+    defaultMessage: "Uses the team's plan."
+  },
+  viewer: {
+    id: 'orgs.roleDescription.viewerSite',
+    defaultMessage: "Can view the team's work."
+  }
+});
+
 // Server refusal reasons (public/functions/orgs.js) → message.
 export const orgErrorMessages = defineMessages({
   'not-manager': {
@@ -47,6 +59,11 @@ export const orgErrorMessages = defineMessages({
     id: 'orgs.error.noSeatLeft',
     defaultMessage:
       'No seat left in this team. Free a seat or contact 3DStreet for more.'
+  },
+  'outside-domain': {
+    id: 'orgs.error.outsideDomain',
+    defaultMessage:
+      "This team's site license only takes email addresses on its domains."
   },
   'org-suspended': {
     id: 'orgs.error.orgSuspended',
@@ -135,6 +152,11 @@ export const inviteResultMessages = defineMessages({
   'invalid-email': {
     id: 'orgs.inviteResult.invalidEmail',
     defaultMessage: '{email} is not a valid email address.'
+  },
+  'outside-domain': {
+    id: 'orgs.inviteResult.outsideDomain',
+    defaultMessage:
+      "{email}: this team's site license only takes addresses on its domains."
   },
   'no-seat-left': {
     id: 'orgs.inviteResult.noSeatLeft',

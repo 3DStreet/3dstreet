@@ -88,6 +88,20 @@ const countSeatsUsed = ({ members = [], invitations = [], nowMs = Date.now() }) 
     (inv) => takesSeat(inv.role) && invitationState(inv, nowMs) === 'pending'
   ).length;
 
+/**
+ * Whether one more seat fits. A site license (docs/orgs.md) has no seat cap,
+ * so callers can skip reading `state` for it.
+ */
+const hasFreeSeat = (org, state) =>
+  org.siteLicense === true || countSeatsUsed(state) < org.seats;
+
+/**
+ * Whether a site license (docs/orgs.md) takes `email`: only addresses on its
+ * domains, since it has no seats to limit who joins. A seat team takes anyone.
+ */
+const siteLicenseTakes = (org, email) =>
+  org.siteLicense !== true || (org.domains || []).includes(emailDomain(email));
+
 /** Stored status, with an expired pending invitation reported as 'expired'. */
 const invitationState = (invitation, nowMs = Date.now()) => {
   if (!invitation) return 'missing';
@@ -190,6 +204,8 @@ module.exports = {
   normalizeOrgName,
   isValidOrgName,
   countSeatsUsed,
+  hasFreeSeat,
+  siteLicenseTakes,
   invitationState,
   roleChangeRefusal,
   removalRefusal,

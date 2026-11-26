@@ -4,12 +4,13 @@
  * Hosts the shared Settings panel (src/shared/settings): the generator has
  * no react-intl, so Settings loads the editor's text catalogs on first open.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ProfileButton as SharedProfileButton,
   SignInModal,
   WorkspaceBadge
 } from '@shared/auth/components';
+import { onTeamsJoined } from '@shared/utils/teamsJoined';
 import { workspaceOf } from '@shared/utils/workspace';
 import { useAuthContext } from '../../editor/contexts';
 import { auth } from '@shared/services/firebase';
@@ -33,6 +34,12 @@ const ProfileButton = () => {
     initialSettings || { id: 'profile' }
   );
   const [isSettingsOpen, setIsSettingsOpen] = useState(!!initialSettings);
+
+  useEffect(
+    () =>
+      onTeamsJoined((message) => FluxUI.showNotification(message, 'success')),
+    []
+  );
 
   const openSettings = (section) => {
     setSettingsSection(section);

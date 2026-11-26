@@ -283,7 +283,10 @@ const ProfileHoverCard = ({
                               {[
                                 org && org.status !== 'active'
                                   ? t('teamInactiveLabel')
-                                  : plan || t('menuPlanFree'),
+                                  : // A viewer gets no plan from the team.
+                                    org?.role === 'viewer'
+                                    ? null
+                                    : plan || t('menuPlanFree'),
                                 org && t(ROLE_KEYS[org.role])
                               ]
                                 .filter(Boolean)

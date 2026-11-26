@@ -113,20 +113,46 @@ window.adminTools = {
    * Usage:
    *   await adminTools.createOrg({ name: 'LA Metro', plan: 'MAX', seats: 10,
    *     ownerEmail: 'owner@metro.net', domains: ['metro.net'] })
+   *   // A site license: no seat cap, everyone on the domains joins.
+   *   await adminTools.createOrg({ name: 'State U', plan: 'PRO',
+   *     siteLicense: true, monthlyTokenBudget: 5000, storageLimitGb: 200,
+   *     ownerEmail: 'owner@state.edu', domains: ['state.edu'] })
    */
-  createOrg: async ({ name, plan, seats, ownerEmail, domains = [] }) => {
+  createOrg: async ({
+    name,
+    plan,
+    seats,
+    ownerEmail,
+    domains = [],
+    siteLicense,
+    storageLimitGb,
+    monthlyTokenBudget
+  }) => {
     const create = httpsCallable(functions, 'orgCreate');
-    const result = await create({ name, plan, seats, ownerEmail, domains });
+    const result = await create({
+      name,
+      plan,
+      seats,
+      ownerEmail,
+      domains,
+      siteLicense,
+      storageLimitGb,
+      monthlyTokenBudget
+    });
     console.log(result.data);
     return result.data;
   },
 
   /**
    * Update an organization (staff only): name, plan ('PRO' | 'MAX'), seats,
-   * status ('active' | 'suspended'), domains.
+   * status ('active' | 'suspended'), domains, siteLicense, storageLimitGb (null =
+   * per seat).
    *
    * Usage:
    *   await adminTools.updateOrg('orgId', { seats: 20, status: 'active' })
+   *   // Move to a site license (its own token budget first):
+   *   await adminTools.updateTeamWallet('orgId', { monthlyTokenBudget: 5000 })
+   *   await adminTools.updateOrg('orgId', { siteLicense: true, storageLimitGb: 200 })
    */
   updateOrg: async (orgId, patch) => {
     const update = httpsCallable(functions, 'orgUpdate');
@@ -141,7 +167,7 @@ window.adminTools = {
    *
    * Usage:
    *   await adminTools.updateTeamWallet('orgId', { monthlyTokenBudget: 1000 })
-   *   // back to the plan's allowance per seat:
+   *   // back to the plan's allowance per seat (not a site license):
    *   await adminTools.updateTeamWallet('orgId', { monthlyTokenBudget: 'default' })
    *   await adminTools.updateTeamWallet('orgId', { addTokens: 500 })
    */

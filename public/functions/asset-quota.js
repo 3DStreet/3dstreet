@@ -14,11 +14,10 @@
  * Plan limits:
  *   FREE: 100 MB · PRO: 5 GB · MAX: 25 GB (reserved; no users today)
  *
- * Plan shape is split into two orthogonal dimensions so the UI can render
- * "PRO TEAM" vs "PRO" (and future "MAX TEAM") without another rename:
+ * Plan shape is split into two orthogonal dimensions:
  *   - tier:       FREE | PRO | MAX  (what storage you get)
  *   - membership: individual | team  (how you got it)
- * `planName` is the derived display label, kept for back-compat with callers.
+ * `planName` is the display label, kept for back-compat with callers.
  */
 
 const { teamStorageLimit } = require('./team-assets-utils.js');
@@ -111,9 +110,8 @@ async function resolvePlanForUser(uid) {
   return { tier: 'FREE', membership: 'individual' };
 }
 
-function derivePlanName(tier, membership) {
-  const tierLabel = PLAN_LIMITS[tier] ? tier : 'FREE';
-  return membership === 'team' ? `${tierLabel} TEAM` : tierLabel;
+function derivePlanName(tier) {
+  return PLAN_LIMITS[tier] ? tier : 'FREE';
 }
 
 /**
@@ -187,7 +185,7 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
 
   const { tier, membership } = await resolvePlanForUser(uid);
   const planLimit = getPlanLimit(tier);
-  const planName = derivePlanName(tier, membership);
+  const planName = derivePlanName(tier);
 
   const usageSnap = await admin
     .firestore()
@@ -241,7 +239,7 @@ async function teamUploadQuota({ uid, orgId, proposedBytes }) {
     );
   }
   const tier = PLAN_LIMITS[org.data().plan] ? org.data().plan : 'PRO';
-  const planLimit = teamStorageLimit(tier, org.data().seats);
+  const planLimit = teamStorageLimit(org.data());
   const bytesUsed = usage.exists ? Number(usage.data().bytesUsed) || 0 : 0;
   const perFileLimit = getMaxFileBytes(tier);
   const fileTooLarge = proposedBytes > perFileLimit;
@@ -252,7 +250,7 @@ async function teamUploadQuota({ uid, orgId, proposedBytes }) {
     perFileLimit,
     tier,
     membership: 'team',
-    planName: derivePlanName(tier, 'team'),
+    planName: derivePlanName(tier),
     orgId,
     allowed: !fileTooLarge && !overQuota,
     reason: fileTooLarge ? 'file_too_large' : overQuota ? 'over_limit' : null

@@ -4,6 +4,8 @@
  *
  * Data (Admin SDK writes only; clients read through firestore.rules):
  *   orgs/{orgId}                 { name, plan, seats, status, domains[],
+ *                                  siteLicense (true: no seat cap),
+ *                                  storageLimitGb (null = per seat),
  *                                  memberEditScope (all|own),
  *                                  domainJoinRole (member|viewer),
  *                                  createdAt, createdBy, updatedAt }
@@ -44,6 +46,8 @@ const {
   normalizeOrgName,
   isValidOrgName,
   countSeatsUsed,
+  hasFreeSeat,
+  siteLicenseTakes,
   invitationState,
   roleChangeRefusal,
   removalRefusal,
@@ -51,7 +55,7 @@ const {
   planFromMemberships,
   invitationExpiry
 } = require('./org-utils.js');
-const { budgetChange, defaultMonthlyBudget } = require('./wallet-utils.js');
+const { budgetChange, defaultMonthlyBudget, isValidBudget } = require('./wallet-utils.js');
 
 const db = () => admin.firestore();
 const orgRef = (orgId) => db().collection('orgs').doc(orgId);
@@ -70,20 +74,23 @@ class OrgError extends Error {
 
 const REASON_TO_HTTPS = {
   'invalid-argument': ['invalid-argument', 'Invalid request.'],
-  'invalid-name': ['invalid-argument', 'Invalid organization name.'],
+  'invalid-name': ['invalid-argument', 'Invalid team name.'],
   'invalid-plan': ['invalid-argument', 'Invalid plan.'],
   'invalid-seats': ['invalid-argument', 'Invalid number of seats.'],
   'invalid-role': ['invalid-argument', 'Invalid role.'],
   'invalid-email': ['invalid-argument', 'Invalid email address.'],
   'invalid-setting': ['invalid-argument', 'Invalid team setting.'],
-  'unknown-field': ['invalid-argument', 'Unknown team field. Allowed: name, plan, seats, status, domains.'],
+  'unknown-field': ['invalid-argument', 'Unknown team field. Allowed: name, plan, seats, status, domains, siteLicense, storageLimitGb.'],
+  'site-license-terms': ['failed-precondition', 'A site license needs its own monthly token budget and storage limit (storageLimitGb).'],
+  'outside-domain': ['permission-denied', "This team's site license only takes email addresses on its domains."],
+  'invalid-storage': ['invalid-argument', 'Invalid storage limit.'],
   'too-many': ['invalid-argument', 'Too many invitations at once.'],
-  'org-not-found': ['not-found', 'Organization not found.'],
-  'not-member': ['permission-denied', 'You are not a member of this organization.'],
+  'org-not-found': ['not-found', 'Team not found.'],
+  'not-member': ['permission-denied', 'You are not a member of this team.'],
   'not-manager': ['permission-denied', 'Only owners and admins can do this.'],
   'owner-only': ['permission-denied', 'Only owners can do this.'],
-  'last-owner': ['failed-precondition', 'An organization needs at least one owner.'],
-  'no-seat-left': ['resource-exhausted', 'No seat left in this organization.'],
+  'last-owner': ['failed-precondition', 'A team needs at least one owner.'],
+  'no-seat-left': ['resource-exhausted', 'No seat left in this team.'],
   'org-suspended': ['failed-precondition', 'This team is inactive.'],
   'invitation-not-found': ['not-found', 'Invitation not found.'],
   'invitation-expired': ['failed-precondition', 'This invitation has expired.'],
@@ -187,7 +194,7 @@ const describeUser = async (uid) => {
 // Staff: create and update orgs (Phase 1 orgs are set up by hand)
 // ---------------------------------------------------------------------------
 
-const validateOrgFields = ({ name, plan, seats, domains, status }) => {
+const validateOrgFields = ({ name, plan, seats, domains, status, siteLicense, storageLimitGb }) => {
   if (name !== undefined && !isValidOrgName(name)) throw new OrgError('invalid-name');
   if (plan !== undefined && !ORG_PLANS.includes(plan)) throw new OrgError('invalid-plan');
   if (seats !== undefined && !(Number.isInteger(seats) && seats >= 1 && seats <= 10000)) {
@@ -195,6 +202,15 @@ const validateOrgFields = ({ name, plan, seats, domains, status }) => {
   }
   if (domains !== undefined && !(Array.isArray(domains) && domains.every((d) => typeof d === 'string'))) {
     throw new OrgError('invalid-argument');
+  }
+  if (siteLicense !== undefined && typeof siteLicense !== 'boolean') throw new OrgError('invalid-argument');
+  // null = the plan's storage per seat.
+  if (
+    storageLimitGb !== undefined &&
+    storageLimitGb !== null &&
+    !(Number.isInteger(storageLimitGb) && storageLimitGb >= 1 && storageLimitGb <= 1000000)
+  ) {
+    throw new OrgError('invalid-storage');
   }
   if (status !== undefined && !['active', 'suspended'].includes(status)) {
     throw new OrgError('invalid-argument');
@@ -207,10 +223,33 @@ const normalizeDomains = (domains = []) => [
 
 /**
  * Create an org. Its first owner is added right away when `ownerEmail`
- * already has an account, otherwise invited by email.
+ * already has an account, otherwise invited by email. A site license has no
+ * seats: its token budget and storage limit are given explicitly. Omitted
+ * values may arrive as null (the callable client sends them so).
  */
-async function createOrg({ name, plan, seats, domains = [], ownerEmail, actorUid }) {
-  validateOrgFields({ name, plan, seats, domains });
+async function createOrg({
+  name,
+  plan,
+  seats,
+  domains = [],
+  siteLicense,
+  storageLimitGb,
+  monthlyTokenBudget,
+  ownerEmail,
+  actorUid
+}) {
+  const isSite = siteLicense ?? false;
+  validateOrgFields({
+    name,
+    plan,
+    seats: isSite ? undefined : seats,
+    domains,
+    siteLicense: isSite,
+    storageLimitGb
+  });
+  const customBudget = monthlyTokenBudget != null;
+  if (customBudget && !isValidBudget(monthlyTokenBudget)) throw new OrgError('invalid-argument');
+  if (isSite && (!customBudget || !storageLimitGb)) throw new OrgError('site-license-terms');
   const email = normalizeEmail(ownerEmail);
   if (!isPlausibleEmail(email)) throw new OrgError('invalid-email');
 
@@ -222,7 +261,8 @@ async function createOrg({ name, plan, seats, domains = [], ownerEmail, actorUid
     .doc(ref.id)
     .set({
       genToken: 0,
-      monthlyTokenBudget: defaultMonthlyBudget(plan, seats),
+      monthlyTokenBudget: customBudget ? monthlyTokenBudget : defaultMonthlyBudget(plan, seats),
+      customBudget,
       memberMonthlyCap: null,
       lastRefill: null,
       updatedAt: FieldValue.serverTimestamp()
@@ -230,7 +270,9 @@ async function createOrg({ name, plan, seats, domains = [], ownerEmail, actorUid
   await ref.set({
     name: normalizeOrgName(name),
     plan,
-    seats,
+    seats: isSite ? null : seats,
+    siteLicense: isSite,
+    storageLimitGb: storageLimitGb ?? null,
     status: 'active',
     domains: normalizeDomains(domains),
     createdAt: FieldValue.serverTimestamp(),
@@ -255,9 +297,14 @@ async function createOrg({ name, plan, seats, domains = [], ownerEmail, actorUid
   return { orgId: ref.id, owner: 'invited', invitation: result };
 }
 
-/** Staff update: name, plan, seats, status, domains. */
+/**
+ * Staff update: name, plan, seats, status, domains, siteLicense,
+ * storageLimitGb. A site license needs a custom token budget
+ * (orgUpdateWallet) and a storage limit first or in the same call; going back
+ * to seats needs a seat count.
+ */
 async function updateOrg({ orgId, patch = {} }) {
-  const allowed = ['name', 'plan', 'seats', 'status', 'domains'];
+  const allowed = ['name', 'plan', 'seats', 'status', 'domains', 'siteLicense', 'storageLimitGb'];
   // Never report success for a field that isn't saved.
   if (Object.keys(patch).some((key) => !allowed.includes(key))) throw new OrgError('unknown-field');
   const fields = Object.fromEntries(
@@ -270,12 +317,19 @@ async function updateOrg({ orgId, patch = {} }) {
   const change = await db().runTransaction(async (tx) => {
     const org = requireOrg(await tx.get(orgRef(orgId)));
     const wallet = await tx.get(walletRef);
+    const next = { ...org, ...fields };
+    if (next.siteLicense) {
+      if (!next.storageLimitGb || !wallet.data()?.customBudget) throw new OrgError('site-license-terms');
+    } else {
+      // Back from a site license created without seats.
+      validateOrgFields({ seats: next.seats });
+    }
     tx.update(orgRef(orgId), { ...fields, updatedAt: FieldValue.serverTimestamp() });
     if (fields.plan === undefined && fields.seats === undefined) return null;
     const result = budgetChange({
       wallet: wallet.exists ? wallet.data() : {},
-      plan: fields.plan ?? org.plan,
-      seats: fields.seats ?? org.seats
+      plan: next.plan,
+      seats: next.seats
     });
     if (!result) return null;
     tx.set(
@@ -306,22 +360,23 @@ async function updateOrg({ orgId, patch = {} }) {
 }
 
 /**
- * Add a member directly (staff, domain auto-join). Idempotent. A domain join
- * never re-adds someone who left or was removed.
+ * Add a member directly (staff, domain auto-join). Idempotent: returns
+ * whether they were added now. A domain join never re-adds someone who left
+ * or was removed.
  */
 async function addMember({ orgId, uid, role, via, invitedBy = null }) {
   const who = await describeUser(uid);
-  await db().runTransaction(async (tx) => {
+  return db().runTransaction(async (tx) => {
     const org = requireOrg(await tx.get(orgRef(orgId)));
     const existing = await tx.get(memberRef(orgId, uid));
-    if (existing.exists) return;
+    if (existing.exists) return false;
     if (via === 'domain' && (await tx.get(departedRef(orgId, uid))).exists) {
       throw new OrgError('departed');
     }
     const current = await readUserOrgsData(tx, uid);
-    if (takesSeat(role)) {
+    if (takesSeat(role) && !org.siteLicense) {
       const state = await readSeatState(tx, orgId);
-      if (countSeatsUsed(state) >= org.seats) throw new OrgError('no-seat-left');
+      if (!hasFreeSeat(org, state)) throw new OrgError('no-seat-left');
     }
     tx.set(memberRef(orgId, uid), {
       uid,
@@ -334,6 +389,7 @@ async function addMember({ orgId, uid, role, via, invitedBy = null }) {
     });
     tx.set(userOrgsRef(uid), userOrgsPatch(orgId, role, current), { merge: true });
     tx.delete(departedRef(orgId, uid));
+    return true;
   });
 }
 
@@ -380,7 +436,7 @@ async function sendInvitationEmail(id, invitation) {
 /**
  * Invite people to an org. One result per requested email:
  * { email, status: 'invited' | 'already-member' | 'already-invited' |
- *   'invalid-email' | 'no-seat-left', invitationId?, emailSent? }.
+ *   'invalid-email' | 'outside-domain' | 'no-seat-left', invitationId?, emailSent? }.
  * Seats are reserved in one transaction for the whole batch.
  */
 async function createInvitations({ orgId, actorUid, inviterName, invites, skipActorCheck = false }) {
@@ -411,7 +467,10 @@ async function createInvitations({ orgId, actorUid, inviterName, invites, skipAc
         out.push({ email, status: 'already-member' });
       } else if (pendingEmails.has(email)) {
         out.push({ email, status: 'already-invited' });
-      } else if (takesSeat(role) && seatsUsed >= org.seats) {
+      } else if (!skipActorCheck && !siteLicenseTakes(org, email)) {
+        // Staff (skipActorCheck) may invite an owner from anywhere.
+        out.push({ email, status: 'outside-domain' });
+      } else if (!org.siteLicense && takesSeat(role) && seatsUsed >= org.seats) {
         out.push({ email, status: 'no-seat-left' });
       } else {
         const ref = db().collection('orgInvitations').doc();
@@ -426,7 +485,8 @@ async function createInvitations({ orgId, actorUid, inviterName, invites, skipAc
           createdAt: Timestamp.now(),
           expiresAt: Timestamp.fromMillis(invitationExpiry()),
           lastSentAt: Timestamp.now(),
-          sendCount: 1
+          sendCount: 1,
+          byStaff: skipActorCheck
         };
         tx.set(ref, invitation);
         created.push({ id: ref.id, invitation });
@@ -462,8 +522,9 @@ async function resendInvitation({ actorUid, invitationId }) {
     if (state === 'expired' && takesSeat(inv.role)) {
       // An expired invitation gave its seat back: take one again.
       const org = requireOrg(await tx.get(orgRef(inv.orgId)));
-      const seatState = await readSeatState(tx, inv.orgId);
-      if (countSeatsUsed(seatState) >= org.seats) throw new OrgError('no-seat-left');
+      if (!org.siteLicense && !hasFreeSeat(org, await readSeatState(tx, inv.orgId))) {
+        throw new OrgError('no-seat-left');
+      }
     }
     const update = {
       expiresAt: Timestamp.fromMillis(invitationExpiry()),
@@ -516,10 +577,12 @@ async function acceptInvitation({ uid, invitationId }) {
     checkInvitee(inv, who);
     const org = requireOrg(await tx.get(orgRef(inv.orgId)));
     if (org.status !== 'active') throw new OrgError('org-suspended');
+    // Also an invitation sent before the team became a site license.
+    if (!inv.byStaff && !siteLicenseTakes(org, who.email)) throw new OrgError('outside-domain');
     const existing = await tx.get(memberRef(inv.orgId, uid));
     const current = await readUserOrgsData(tx, uid);
     if (!existing.exists) {
-      if (takesSeat(inv.role)) {
+      if (takesSeat(inv.role) && !org.siteLicense) {
         // This invitation already holds a seat, unless the seat count was
         // lowered since: count everyone else, then check one more fits.
         const state = await readSeatState(tx, inv.orgId);
@@ -527,7 +590,7 @@ async function acceptInvitation({ uid, invitationId }) {
           members: state.members,
           invitations: state.invitations.filter((i) => i.id !== invitationId)
         };
-        if (countSeatsUsed(others) >= org.seats) throw new OrgError('no-seat-left');
+        if (!hasFreeSeat(org, others)) throw new OrgError('no-seat-left');
       }
       tx.set(memberRef(inv.orgId, uid), {
         uid,
@@ -593,7 +656,7 @@ async function changeMemberRole({ actorUid, orgId, targetUid, role }) {
     });
     if (refusal) throw new OrgError(refusal);
     // A viewer moving to a seat role needs a free seat.
-    if (!takesSeat(targetRole) && takesSeat(role) && countSeatsUsed(state) >= org.seats) {
+    if (!takesSeat(targetRole) && takesSeat(role) && !hasFreeSeat(org, state)) {
       throw new OrgError('no-seat-left');
     }
     tx.update(memberRef(orgId, targetUid), { role });
@@ -705,8 +768,14 @@ async function autoJoinDomainOrgs(uid) {
     ]);
     if (existing.exists || departed.exists) continue;
     try {
-      await addMember({ orgId: doc.id, uid, role: domainJoinRoleOf(doc.data()), via: 'domain' });
-      joined.push(doc.id);
+      const added = await addMember({
+        orgId: doc.id,
+        uid,
+        role: domainJoinRoleOf(doc.data()),
+        via: 'domain'
+      });
+      // Not added: a concurrent call did, and reports it.
+      if (added) joined.push(doc.id);
     } catch (error) {
       // No seat left: the org's managers can free one or ask for more.
       if (!(error instanceof OrgError)) throw error;

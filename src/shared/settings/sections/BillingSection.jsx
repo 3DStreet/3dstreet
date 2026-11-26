@@ -17,7 +17,7 @@ import { Button } from '@shared/components/Button';
 import { TokenDisplayInner } from '@shared/auth/components';
 import { formatDate } from '@shared/utils/format';
 import { getOrg, listMembers } from '@shared/api/orgs';
-import { personalPlanOf } from '@shared/utils/workspace';
+import { isDomainPro, personalPlanOf } from '@shared/utils/workspace';
 import { TeamWalletSection } from '../team/TeamWalletSection';
 import { TeamLibraryUsage } from '../team/TeamLibraryUsage';
 import { useSettingsHost } from '../SettingsHost';
@@ -34,11 +34,11 @@ function personalPlanLabel(intl, currentUser, plan) {
       defaultMessage: 'Plan: Max'
     });
   }
-  if (plan === 'PRO TEAM') {
+  if (plan === 'PRO' && isDomainPro(currentUser)) {
     return intl.formatMessage(
       {
-        id: 'profileModal.planProTeam',
-        defaultMessage: 'Plan: Pro Team ({domain})'
+        id: 'profileModal.planProDomain',
+        defaultMessage: 'Plan: Pro (from {domain})'
       },
       { domain: currentUser?.teamDomain }
     );
@@ -72,7 +72,7 @@ function PersonalBilling() {
   const ownPlan = personalPlanOf(currentUser);
   // The team whose seat gives Pro to a user without a plan of their own.
   const seatTeam = !ownPlan && currentUser?.isPro ? currentUser.teamName : null;
-  // A one-time pass (#1922) or a domain team has no subscription to manage.
+  // A one-time pass (#1922) or Pro from an email domain has no subscription to manage.
   const hasSubscription = !!currentUser?.plan;
   // While the active team pays, tokenProfile.genToken is the team's; the
   // user's own balance is personalGenToken.
@@ -227,14 +227,14 @@ function PersonalBilling() {
 function TeamBilling({ team }) {
   const covers = SEAT_ROLES.includes(team.role);
   const canManage = MANAGER_ROLES.includes(team.role);
-  // The seat count (for the storage limit), and, for managers, the members
+  // The org (for the storage limit), and, for managers, the members
   // whose usage the wallet lists by name.
-  const [seats, setSeats] = useState(null);
+  const [org, setOrg] = useState(null);
   const [members, setMembers] = useState([]);
   useEffect(() => {
     let cancelled = false;
     getOrg(team.orgId)
-      .then((org) => !cancelled && setSeats(org?.seats ?? null))
+      .then((loaded) => !cancelled && setOrg(loaded))
       .catch((error) => console.error('Error loading the team:', error));
     if (canManage) {
       listMembers(team.orgId)
@@ -278,9 +278,9 @@ function TeamBilling({ team }) {
           </span>
         </div>
       </div>
-      {seats !== null && (
+      {org && (
         <p className={styles.muted}>
-          <TeamLibraryUsage orgId={team.orgId} plan={team.plan} seats={seats} />
+          <TeamLibraryUsage org={org} />
         </p>
       )}
       {covers && team.status === 'active' && (

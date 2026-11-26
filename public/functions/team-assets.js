@@ -86,7 +86,7 @@ async function readSourceAsset(uid, assetId) {
 async function checkStorage({ org, orgId, addedBytes }) {
   const usage = await usageRef(orgId).get();
   const bytesUsed = usage.exists ? Number(usage.data().bytesUsed) || 0 : 0;
-  if (addedBytes > 0 && bytesUsed + addedBytes > teamStorageLimit(org.plan, org.seats)) {
+  if (addedBytes > 0 && bytesUsed + addedBytes > teamStorageLimit(org)) {
     throw new OrgError('team-storage-full');
   }
 }

@@ -13,7 +13,11 @@ import { Button, Tabs } from '../elements';
 import { AwesomeIcon } from '../elements/AwesomeIcon';
 import AIChatPanel from './AIChatPanel';
 import styles from './RightPanel.module.scss';
-import { workspaceLabel, workspaceOf } from '@shared/utils/workspace';
+import {
+  isDomainPro,
+  workspaceLabel,
+  workspaceOf
+} from '@shared/utils/workspace';
 import { formatDate } from '@shared/utils/format';
 
 const TooltipWrapper = ({ children, content, side = 'bottom' }) => (
@@ -57,10 +61,10 @@ export default function RightPanel({ entity }) {
   const planTooltip = activeTeam
     ? intl.formatMessage(
         {
-          id: 'rightPanel.planTooltipTeam',
-          defaultMessage: '3DStreet Team Plan ({teamDomain})'
+          id: 'rightPanel.planTooltipActiveTeam',
+          defaultMessage: 'Team: {team}'
         },
-        { teamDomain: activeTeam.name }
+        { team: activeTeam.name }
       )
     : !workspacePlan
       ? intl.formatMessage({
@@ -72,13 +76,13 @@ export default function RightPanel({ entity }) {
             id: 'rightPanel.planTooltipMax',
             defaultMessage: '3DStreet Max Plan'
           })
-        : workspacePlan === 'PRO TEAM'
+        : isDomainPro(authUser)
           ? intl.formatMessage(
               {
-                id: 'rightPanel.planTooltipTeam',
-                defaultMessage: '3DStreet Team Plan ({teamDomain})'
+                id: 'rightPanel.planTooltipDomain',
+                defaultMessage: '3DStreet Pro Plan (from {domain})'
               },
-              { teamDomain: authUser?.teamDomain }
+              { domain: authUser?.teamDomain }
             )
           : authUser?.isProPass && !authUser?.plan
             ? intl.formatMessage(

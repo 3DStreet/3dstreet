@@ -193,7 +193,8 @@ async function setMemberCap({ actorUid, orgId, memberMonthlyCap }) {
 
 /**
  * Staff: set a custom monthly budget (kept when the plan or seats change;
- * 'default' goes back to the plan's allowance per seat) and/or add tokens on
+ * 'default' goes back to the plan's allowance per seat, not for a site
+ * license) and/or add tokens on
  * top (a purchase). null means unchanged, like undefined: the callable client
  * sends an omitted value as null. Logged in tokenLog.
  */
@@ -208,6 +209,10 @@ async function updateWallet({ orgId, monthlyTokenBudget, addTokens, actorUid }) 
   }
   const org = await db().collection('orgs').doc(orgId).get();
   if (!org.exists) throw new OrgError('org-not-found');
+  // A site license has no seats to derive a budget from.
+  if (monthlyTokenBudget === 'default' && org.data().siteLicense) {
+    throw new OrgError('site-license-terms');
+  }
   const budget =
     monthlyTokenBudget === 'default'
       ? defaultMonthlyBudget(org.data().plan, org.data().seats)

@@ -80,7 +80,8 @@ offered.
 ## Storage
 
 The library's limit is the plan's personal storage per seat (Pro 5 GB, Max
-25 GB, times the seats). `onTeamAssetWritten` keeps
+25 GB, times the seats), unless staff set `storageLimitGb` (always set for a
+site license). `onTeamAssetWritten` keeps
 `orgs/{orgId}/meta/usage.bytesUsed` (originals only, like the personal
 quota); the add and replace callables refuse past the limit
 (`team-storage-full`). Team settings show "Asset library: X of Y".

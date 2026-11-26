@@ -59,10 +59,13 @@ const GB = 1000 * 1000 * 1000;
 const STORAGE_PER_SEAT = { PRO: 5 * GB, MAX: 25 * GB };
 
 /**
- * A team library's storage limit: the plan's personal limit per seat.
+ * A team library's storage limit: the one staff set (a site license always
+ * has one), else the plan's personal limit per seat.
  * Mirrors teamStorageLimit in public/functions/team-assets-utils.js (drift
  * test: test/shared/assets/teamLibrary-sync.test.js).
  */
-export const teamLibraryLimit = (plan, seats) =>
-  (STORAGE_PER_SEAT[plan] || STORAGE_PER_SEAT.PRO) *
-  Math.max(1, Number(seats) || 1);
+export const teamLibraryLimit = ({ plan, seats, storageLimitGb }) =>
+  storageLimitGb
+    ? storageLimitGb * GB
+    : (STORAGE_PER_SEAT[plan] || STORAGE_PER_SEAT.PRO) *
+      Math.max(1, Number(seats) || 1);

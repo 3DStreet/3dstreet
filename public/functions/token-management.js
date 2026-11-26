@@ -378,9 +378,10 @@ const checkUserProStatus = functions
       // Organizations (#1267): this call runs on every sign-in, so it is
       // where a user joins the orgs claiming their verified email domain.
       // Best-effort: a failure never blocks the status check.
-      await autoJoinDomainOrgs(userId).catch((error) =>
-        console.error(`autoJoinDomainOrgs failed for ${userId}:`, error)
-      );
+      const joinedOrgIds = await autoJoinDomainOrgs(userId).catch((error) => {
+        console.error(`autoJoinDomainOrgs failed for ${userId}:`, error);
+        return [];
+      });
       const orgs = await readUserOrgs(userId).catch((error) => {
         console.error(`readUserOrgs failed for ${userId}:`, error);
         return [];
@@ -414,6 +415,8 @@ const checkUserProStatus = functions
         // team settings.
         orgPlan,
         orgs,
+        // The orgs this call just joined by email domain (the client says so).
+        joinedOrgIds,
         // The user's active team (the team switcher), or null for Personal.
         // It pays their AI generations when they hold a seat in it and it's
         // active (the client works that out from `orgs`, as the charge does).

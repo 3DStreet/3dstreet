@@ -27,11 +27,14 @@ wallet, so what the team spends stays within the budget it pays for.
 `orgWallets/{orgId}/usage/{YYYY-M}` = { total, members: { [uid]: tokens } }.
 
 - **Monthly budget:** on the first charge of a month the balance is topped
-  up to `monthlyTokenBudget` (never lowered: tokens added on top survive).
+  up to `monthlyTokenBudget` (never lowered). Like a personal refill, tokens
+  added on top are part of the same balance: they aren't kept apart, so a
+  top-up adds only what's missing to reach the budget.
   It's the plan's allowance per seat (Pro 100, Max 500) and follows the plan
   and seats (`budgetChange`, in `updateOrg`): an increase is added right
   away, a decrease waits for the next month. Staff set a custom budget
-  (`customBudget`, which plan and seat changes leave alone; `'default'` resets it),
+  (`customBudget`, which plan and seat changes leave alone; `'default'` resets it,
+  refused for a site license, which always has a custom budget),
   or add tokens, with `orgUpdateWallet`
   (`adminTools.updateTeamWallet(orgId, { monthlyTokenBudget, addTokens })`).
 - **Limit per member:** owners and admins set `memberMonthlyCap`

@@ -18,6 +18,7 @@
  * it's active (`billingOrgOf` in @shared/utils/teamWallet); otherwise their
  * own tokens do.
  */
+import { announceJoinedTeams } from '../../utils/teamsJoined.js';
 
 const FREE_USER = {
   isPro: false,
@@ -63,8 +64,10 @@ const isUserPro = async (user) => {
       proUntil,
       orgPlan = null,
       orgs = [],
-      activeOrgId = null
+      activeOrgId = null,
+      joinedOrgIds = []
     } = result.data;
+    announceJoinedTeams({ joinedOrgIds, orgs, activeOrgId });
     const teamOrg = orgPlan ? orgGivingPlan(orgs, orgPlan) : null;
 
     if (isPro) {
