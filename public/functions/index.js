@@ -37,6 +37,7 @@ const {
 } = require('./orgs.js');
 const { orgCreateProject, orgRenameProject, orgMoveScene, orgCopySceneToPersonal } = require('./team-scenes.js');
 const { orgSetActive, orgSetMemberCap, orgUpdateWallet } = require('./team-wallet.js');
+const { orgUpdateContract, orgRecordPayment, orgListTeams } = require('./org-contracts.js');
 const { orgAddAsset, orgReplaceAssetFile, orgRemoveAsset, onTeamAssetWritten } = require('./team-assets.js');
 
 // Re-export the getGeoidHeight function
@@ -153,6 +154,11 @@ exports.orgCopySceneToPersonal = orgCopySceneToPersonal;
 exports.orgSetActive = orgSetActive;
 exports.orgSetMemberCap = orgSetMemberCap;
 exports.orgUpdateWallet = orgUpdateWallet;
+
+// Contract terms, payments and the staff team list (docs/orgs.md#contract-terms).
+exports.orgUpdateContract = orgUpdateContract;
+exports.orgRecordPayment = orgRecordPayment;
+exports.orgListTeams = orgListTeams;
 
 // Team asset library (#1267 Phase 4, docs/team-assets.md).
 exports.orgAddAsset = orgAddAsset;

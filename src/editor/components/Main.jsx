@@ -24,7 +24,7 @@ import { ExportingSceneModal } from './modals/ExportingSceneModal';
 import { ConfirmModal } from './modals/ConfirmModal';
 import { EditLockBanner } from './elements/EditLockBanner';
 import AssetDeepLinkModal from './AssetDeepLinkModal.jsx';
-import JobHealthModal from './JobHealthModal.jsx';
+import AdminPages from './admin/AdminPages.jsx';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
@@ -240,7 +240,7 @@ export default function Main() {
       <ExportingSceneModal />
       <ConfirmModal />
       <AssetDeepLinkModal />
-      <JobHealthModal />
+      <AdminPages />
       <GeoModal />
       <ModalTextures
         isOpen={state.isModalTexturesOpen}

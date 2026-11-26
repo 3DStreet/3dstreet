@@ -496,6 +496,13 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // A team's contract terms and payments (docs/orgs.md#contract-terms):
+    // staff only, written by the org-contracts callables.
+    match /orgContracts/{orgId}/{document=**} {
+      allow read: if request.auth != null && request.auth.token.admin == true;
+      allow write: if false;
+    }
+
     // Background-job health heartbeats (System Health admin page).
     // Each scheduled function records its last run + status here via the Admin
     // SDK (writes bypass rules). Admin-only read; never client-writable.

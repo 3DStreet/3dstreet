@@ -163,16 +163,42 @@ Every membership change updates `userOrgs` in the same transaction.
 | `orgAcceptInvitation`, `orgDeclineInvitation` | the invitee                         |                                                                         |
 | `orgChangeRole`                               | owner, admin                        |                                                                         |
 | `orgRemoveMember`                             | owner, admin; anyone for themselves | remove or leave                                                         |
+| `orgUpdateContract`, `orgRecordPayment`       | staff                               | contract terms; record a payment ([Contract terms](#contract-terms))    |
+| `orgListTeams`                                | staff                               | every team with its contract, wallet, member count and payments         |
 
 Refusals are `HttpsError`s with `details.reason` (`not-manager`,
 `owner-only`, `last-owner`, `no-seat-left`, `wrong-account`,
 `invitation-expired`, ...), mapped to messages in
 `src/shared/settings/team/orgMessages.js`.
 
-Staff create and update orgs from the browser console while signed in with an
-admin account: `adminTools.createOrg({ name, plan, seats, ownerEmail,
+Staff manage teams on the staff page ([Staff page](#staff-page)), or from the
+browser console while signed in with an admin account: `adminTools.createOrg({ name, plan, seats, ownerEmail,
 domains, siteLicense, storageLimitGb, monthlyTokenBudget })` and `adminTools.updateOrg(orgId, patch)`
 (`src/shared/services/firebase.js`).
+
+## Contract terms
+
+What a customer agreed to, in `orgContracts/{orgId}` (staff read it; only
+the callables in `org-contracts.js` write it, validated by
+`contract-utils.js`): `billingSource` (`invoice`, `stripe`, `comp`), the
+agreed `price` { amount in cents, currency, interval `month` | `year` },
+which overrides the published price, `paidThrough`, `autoRenew`,
+`billingContact` { name, email }, `invoiceReference` and staff `notes`.
+Team members can't read it. The token budget override stays on the wallet
+([team-wallet.md](team-wallet.md)).
+
+`orgRecordPayment` adds `orgContracts/{orgId}/payments/{id}` { amount,
+currency, paidAt, paidThrough, reference, recordedBy } and extends the
+contract's `paidThrough` (never shortens it). A payment reactivates a
+suspended team.
+
+## Staff page
+
+`#admin/teams` in the editor (`src/editor/components/admin/StaffTeamsModal.jsx`,
+loaded only when opened, like `#admin/health`; `AdminPages.jsx`) lists every
+team and edits its terms, contract and tokens, creates teams and records
+payments, all through the staff callables. It's staff-only, so its text is
+English and not in the i18n catalogs.
 
 ## UI
 
@@ -191,3 +217,5 @@ domains, siteLicense, storageLimitGb, monthlyTokenBudget })` and `adminTools.upd
 - `test/core/org-utils.test.js`: the pure rules (roles, seats, plan).
 - `test/rules/orgs.emulator.test.js`: the transactions against the emulators.
 - `test/rules/orgs.rules.test.js`: the Firestore rules.
+- `test/core/contract-utils.test.js`, `test/rules/org-contracts.emulator.test.js`:
+  contract terms and payments.

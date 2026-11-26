@@ -106,6 +106,25 @@ describe('firestore.rules — organizations', () => {
     );
   });
 
+  it('only staff read contract terms and payments; nobody writes them', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), 'orgContracts/org1'), {
+        billingSource: 'invoice'
+      });
+      await setDoc(doc(ctx.firestore(), 'orgContracts/org1/payments/p1'), {
+        amount: 1
+      });
+    });
+    const staff = as('staff-uid', { admin: true });
+    await assertSucceeds(getDoc(doc(staff, 'orgContracts/org1')));
+    await assertSucceeds(getDoc(doc(staff, 'orgContracts/org1/payments/p1')));
+    await assertFails(getDoc(doc(as(OWNER), 'orgContracts/org1')));
+    await assertFails(getDoc(doc(as(OWNER), 'orgContracts/org1/payments/p1')));
+    await assertFails(
+      setDoc(doc(staff, 'orgContracts/org1'), { billingSource: 'comp' })
+    );
+  });
+
   it('nobody writes orgs or members from the client', async () => {
     await assertFails(updateDoc(doc(as(OWNER), 'orgs/org1'), { seats: 100 }));
     await assertFails(
