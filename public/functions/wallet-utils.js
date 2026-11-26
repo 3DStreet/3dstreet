@@ -19,6 +19,13 @@ const BUDGET_PER_SEAT = { PRO: 100, MAX: 500 };
 /** 'YYYY-M' (month 0-based), the key the personal refill already uses. */
 const monthKey = (date = new Date()) => `${date.getFullYear()}-${date.getMonth()}`;
 
+/**
+ * A site license's default limit per member per month (owners change it):
+ * what one personal subscription to its plan gives, so one member can't
+ * spend the whole shared budget.
+ */
+const siteLicenseMemberCap = (plan) => BUDGET_PER_SEAT[plan] || BUDGET_PER_SEAT.PRO;
+
 const defaultMonthlyBudget = (plan, seats) => (BUDGET_PER_SEAT[plan] || 0) * (seats || 0);
 
 /**
@@ -81,6 +88,7 @@ module.exports = {
   BUDGET_PER_SEAT,
   monthKey,
   defaultMonthlyBudget,
+  siteLicenseMemberCap,
   budgetChange,
   refillWallet,
   memberAvailable,

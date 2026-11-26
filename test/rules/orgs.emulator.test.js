@@ -514,10 +514,11 @@ describe('organizations (emulator)', () => {
         'outside-domain'
       );
 
-      // The plan and seats never change its budget.
+      // The plan and seats never change its budget. A member limit by default.
       await orgs.updateOrg({ orgId, patch: { plan: 'MAX' } });
       const wallet = (await db.doc(`orgWallets/${orgId}`).get()).data();
       expect(wallet.monthlyTokenBudget).toBe(5000);
+      expect(wallet.memberMonthlyCap).toBe(100);
 
       // Back to seats: nobody is removed, the cap applies again.
       await orgs.updateOrg({ orgId, patch: { siteLicense: false, seats: 2 } });
@@ -548,6 +549,8 @@ describe('organizations (emulator)', () => {
         storageLimitGb: 200
       });
       expect((await member(orgId, owner.uid)).role).toBe('owner');
+      const wallet = (await db.doc(`orgWallets/${orgId}`).get()).data();
+      expect(wallet.memberMonthlyCap).toBe(100);
       // Switching to seats needs a seat count.
       await expectReason(
         orgs.updateOrg({ orgId, patch: { siteLicense: false } }),

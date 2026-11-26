@@ -55,7 +55,7 @@ const {
   planFromMemberships,
   invitationExpiry
 } = require('./org-utils.js');
-const { budgetChange, defaultMonthlyBudget, isValidBudget } = require('./wallet-utils.js');
+const { budgetChange, defaultMonthlyBudget, isValidBudget, siteLicenseMemberCap } = require('./wallet-utils.js');
 
 const db = () => admin.firestore();
 const orgRef = (orgId) => db().collection('orgs').doc(orgId);
@@ -263,7 +263,7 @@ async function createOrg({
       genToken: 0,
       monthlyTokenBudget: customBudget ? monthlyTokenBudget : defaultMonthlyBudget(plan, seats),
       customBudget,
-      memberMonthlyCap: null,
+      memberMonthlyCap: isSite ? siteLicenseMemberCap(plan) : null,
       lastRefill: null,
       updatedAt: FieldValue.serverTimestamp()
     });
@@ -325,6 +325,14 @@ async function updateOrg({ orgId, patch = {} }) {
       validateOrgFields({ seats: next.seats });
     }
     tx.update(orgRef(orgId), { ...fields, updatedAt: FieldValue.serverTimestamp() });
+    // Becoming a site license: a member limit unless the team has one.
+    if (next.siteLicense && !org.siteLicense && wallet.data().memberMonthlyCap == null) {
+      tx.set(
+        walletRef,
+        { memberMonthlyCap: siteLicenseMemberCap(next.plan), updatedAt: FieldValue.serverTimestamp() },
+        { merge: true }
+      );
+    }
     if (fields.plan === undefined && fields.seats === undefined) return null;
     const result = budgetChange({
       wallet: wallet.exists ? wallet.data() : {},

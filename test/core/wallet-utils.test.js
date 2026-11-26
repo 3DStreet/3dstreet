@@ -8,6 +8,7 @@ const assert = require('assert');
 const {
   monthKey,
   defaultMonthlyBudget,
+  siteLicenseMemberCap,
   budgetChange,
   refillWallet,
   memberAvailable,
@@ -24,6 +25,8 @@ describe('wallet-utils', () => {
     assert.strictEqual(defaultMonthlyBudget('PRO', 10), 1000);
     assert.strictEqual(defaultMonthlyBudget('MAX', 3), 1500);
     assert.strictEqual(defaultMonthlyBudget('FREE', 3), 0);
+    assert.strictEqual(siteLicenseMemberCap('PRO'), 100);
+    assert.strictEqual(siteLicenseMemberCap('MAX'), 500);
   });
 
   describe('budgetChange', () => {

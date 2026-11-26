@@ -38,7 +38,8 @@ wallet, so what the team spends stays within the budget it pays for.
   or add tokens, with `orgUpdateWallet`
   (`adminTools.updateTeamWallet(orgId, { monthlyTokenBudget, addTokens })`).
 - **Limit per member:** owners and admins set `memberMonthlyCap`
-  (`orgSetMemberCap`, team settings → AI tokens), which also lists each
+  (`orgSetMemberCap`, team settings → AI tokens; a site license starts at
+  the plan's personal allowance, docs/orgs.md), which also lists each
   member's usage this month.
 - Members read their team's wallet and usage (the app shows what they can
   still spend); only functions write them.

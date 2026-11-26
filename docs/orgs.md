@@ -64,7 +64,10 @@ For a customer that covers a whole email domain (a university), staff set
 `domainJoinRole` (member by default). Its token budget and storage limit are
 never derived from seats, so both are required: a custom wallet budget
 (`monthlyTokenBudget` on `orgCreate`, or `orgUpdateWallet` first) and
-`storageLimitGb`, else `site-license-terms`. It only takes addresses on its
+`storageLimitGb`, else `site-license-terms`. It starts with a limit per
+member per month (`memberMonthlyCap`: Pro 100, Max 500, what one personal
+subscription gives) unless the wallet already has one; owners change it in
+Team settings. It only takes addresses on its
 domains (`siteLicenseTakes`): an invitation to any other address is
 refused (`outside-domain`), as is accepting one sent before the team became
 a site license. Staff can still invite an owner from anywhere (`byStaff` on
