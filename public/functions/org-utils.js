@@ -23,9 +23,6 @@ const ORG_PLANS = ['PRO', 'MAX'];
 // or added. Missing on an org = 'all'.
 const MEMBER_EDIT_SCOPES = ['all', 'own'];
 const DEFAULT_MEMBER_EDIT_SCOPE = 'all';
-// The role a domain auto-join gives. Missing on an org = 'member'.
-const DOMAIN_JOIN_ROLES = ['member', 'viewer'];
-const DEFAULT_DOMAIN_JOIN_ROLE = 'member';
 
 const INVITATION_TTL_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -40,11 +37,6 @@ const memberEditScopeOf = (org) =>
   MEMBER_EDIT_SCOPES.includes(org?.memberEditScope)
     ? org.memberEditScope
     : DEFAULT_MEMBER_EDIT_SCOPE;
-
-const domainJoinRoleOf = (org) =>
-  DOMAIN_JOIN_ROLES.includes(org?.domainJoinRole)
-    ? org.domainJoinRole
-    : DEFAULT_DOMAIN_JOIN_ROLE;
 
 /**
  * Can `role` edit a team scene or library asset that `creatorUid` created
@@ -69,6 +61,19 @@ const emailDomain = (email) => {
   const at = normalized.lastIndexOf('@');
   return at > 0 ? normalized.slice(at + 1) : '';
 };
+
+/**
+ * The domains a team can claim for an email domain: itself and each parent
+ * with at least two labels, so cs.univ.edu matches a team on univ.edu.
+ */
+const domainSuffixes = (domain) => {
+  const labels = domain ? domain.split('.') : [];
+  return labels.slice(0, -1).map((_, i) => labels.slice(i).join('.'));
+};
+
+/** Whether `email` is on one of the team's domains, subdomains included. */
+const isOnOrgDomain = (org, email) =>
+  domainSuffixes(emailDomain(email)).some((d) => (org.domains || []).includes(d));
 
 const normalizeOrgName = (name) =>
   typeof name === 'string' ? name.trim().replace(/\s+/g, ' ') : '';
@@ -99,8 +104,7 @@ const hasFreeSeat = (org, state) =>
  * Whether a site license (docs/orgs.md) takes `email`: only addresses on its
  * domains, since it has no seats to limit who joins. A seat team takes anyone.
  */
-const siteLicenseTakes = (org, email) =>
-  org.siteLicense !== true || (org.domains || []).includes(emailDomain(email));
+const siteLicenseTakes = (org, email) => org.siteLicense !== true || isOnOrgDomain(org, email);
 
 /** Stored status, with an expired pending invitation reported as 'expired'. */
 const invitationState = (invitation, nowMs = Date.now()) => {
@@ -188,7 +192,6 @@ module.exports = {
   SEAT_ROLES,
   ORG_PLANS,
   MEMBER_EDIT_SCOPES,
-  DOMAIN_JOIN_ROLES,
   INVITATION_TTL_DAYS,
   MAX_ORG_NAME_LENGTH,
   MAX_INVITES_PER_CALL,
@@ -196,11 +199,12 @@ module.exports = {
   canManageOrg,
   takesSeat,
   memberEditScopeOf,
-  domainJoinRoleOf,
   canEditTeamItem,
   normalizeEmail,
   isPlausibleEmail,
   emailDomain,
+  domainSuffixes,
+  isOnOrgDomain,
   normalizeOrgName,
   isValidOrgName,
   countSeatsUsed,

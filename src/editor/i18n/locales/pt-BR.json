@@ -1097,7 +1097,6 @@
   "teamModal.you": "(você)",
   "teamPermissions.copyToPersonal": "Os membros podem copiar para Pessoal as cenas que criaram",
   "teamPermissions.copyToPersonalHint": "A equipe mantém o original. A cópia é pública se o membro não tiver plano Pro.",
-  "teamPermissions.domainJoinRole": "Pessoas que entram com um e-mail em {domains} entram como",
   "teamPermissions.scopeAll": "Todas as cenas e recursos da biblioteca da equipe",
   "teamPermissions.scopeAllHint": "Os membros editam todas as cenas da equipe, uma pessoa por vez. Os leitores apenas visualizam.",
   "teamPermissions.scopeOwn": "Apenas as cenas e recursos que criaram",

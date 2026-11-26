@@ -3293,9 +3293,6 @@
   "teamPermissions.copyToPersonalHint": {
     "defaultMessage": "The team keeps the original. A copy is public when the member has no Pro plan."
   },
-  "teamPermissions.domainJoinRole": {
-    "defaultMessage": "People who join with an email on {domains} join as"
-  },
   "teamPermissions.scopeAll": {
     "defaultMessage": "All team scenes and library assets"
   },

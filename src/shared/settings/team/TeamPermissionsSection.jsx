@@ -1,15 +1,15 @@
 /**
  * What members can edit, in the team settings (docs/orgs.md): all team
- * scenes and library assets, or only those they created or added. Owners
- * and admins change it, and, for a team that people join by their email
- * domain, the role those people get. Everyone else reads the current rule.
+ * scenes and library assets, or only those they created or added, and
+ * whether they copy scenes to Personal. Owners and admins change it;
+ * everyone else reads the current rule.
  */
 import { useState } from 'react';
 import { FormattedMessage, useIntl } from 'react-intl';
 import posthog from 'posthog-js';
 import { memberEditScopeOf } from '@shared/utils/teamPermissions';
 import { orgErrorReason, updateOrgSettings } from '@shared/api/orgs';
-import { orgErrorMessage, roleMessages } from './orgMessages';
+import { orgErrorMessage } from './orgMessages';
 import { useSettingsHost } from '../SettingsHost';
 import styles from './TeamSection.module.scss';
 
@@ -18,8 +18,6 @@ export function TeamPermissionsSection({ org, canManage, onChanged }) {
   const { notify } = useSettingsHost();
   const [busy, setBusy] = useState(false);
   const scope = memberEditScopeOf(org);
-  const joinRole = org.domainJoinRole === 'viewer' ? 'viewer' : 'member';
-  const hasDomains = (org.domains || []).length > 0;
 
   const save = async (settings) => {
     setBusy(true);
@@ -107,27 +105,6 @@ export function TeamPermissionsSection({ org, canManage, onChanged }) {
           defaultMessage="The team keeps the original. A copy is public when the member has no Pro plan."
         />
       </p>
-      {canManage && hasDomains && (
-        <label className={styles.settingLabel}>
-          <FormattedMessage
-            id="teamPermissions.domainJoinRole"
-            defaultMessage="People who join with an email on {domains} join as"
-            values={{ domains: org.domains.map((d) => `@${d}`).join(', ') }}
-          />
-          <select
-            className={styles.roleSelect}
-            value={joinRole}
-            disabled={busy}
-            onChange={(e) => save({ domainJoinRole: e.target.value })}
-          >
-            {['member', 'viewer'].map((role) => (
-              <option key={role} value={role}>
-                {intl.formatMessage(roleMessages[role])}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
     </>
   );
 }

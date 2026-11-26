@@ -420,12 +420,10 @@ describe('organizations (emulator)', () => {
       await orgs.updateOrgSettings({
         actorUid: owner.uid,
         orgId,
-        memberEditScope: 'own',
-        domainJoinRole: 'viewer'
+        memberEditScope: 'own'
       });
       const data = (await db.doc(`orgs/${orgId}`).get()).data();
       expect(data.memberEditScope).toBe('own');
-      expect(data.domainJoinRole).toBe('viewer');
       // The client learns the setting with the user's orgs.
       const [entry] = await orgs.readUserOrgs(user.uid);
       expect(entry.memberEditScope).toBe('own');
@@ -612,18 +610,12 @@ describe('organizations (emulator)', () => {
       ).toBe(false);
     });
 
-    it('joins as a viewer, without a seat, when the team says so', async () => {
+    it('joins a team on a parent domain', async () => {
       const domain = `d${uniq()}.test`;
-      const { orgId, owner } = await newOrg({ seats: 1, domains: [domain] });
-      await orgs.updateOrgSettings({
-        actorUid: owner.uid,
-        orgId,
-        domainJoinRole: 'viewer'
-      });
-      const student = await makeUser({ domain });
-      // The owner fills the only seat; a viewer needs none.
+      const { orgId } = await newOrg({ domains: [domain] });
+      const student = await makeUser({ domain: `cs.${domain}` });
       expect(await orgs.autoJoinDomainOrgs(student.uid)).toEqual([orgId]);
-      expect((await member(orgId, student.uid)).role).toBe('viewer');
+      expect((await member(orgId, student.uid)).role).toBe('member');
     });
 
     it('gives seat roles the org plan, but not viewers or suspended orgs', async () => {

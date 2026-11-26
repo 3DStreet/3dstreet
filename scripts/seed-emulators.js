@@ -64,7 +64,7 @@ const USERS = [
 ];
 
 // Teams (docs/orgs.md). UO is a class: members edit only their own work,
-// people joining with a @uoregon.edu email come in as viewers. LA Metro is
+// people joining with a @uoregon.edu email come in as members. LA Metro is
 // a department: members edit everything (the default).
 const TEAMS = [
   {
@@ -73,7 +73,7 @@ const TEAMS = [
     plan: 'PRO',
     seats: 25,
     domains: ['uoregon.edu'],
-    settings: { memberEditScope: 'own', domainJoinRole: 'viewer' },
+    settings: { memberEditScope: 'own' },
     members: {
       'pro-user': 'owner',
       'free-user': 'member',

@@ -85,8 +85,8 @@ export const renameOrg = (orgId, name) => call('orgRename', { orgId, name });
 
 /**
  * Owners and admins: what members may edit (`memberEditScope`: 'all' |
- * 'own') and the role a domain auto-join gives (`domainJoinRole`: 'member'
- * | 'viewer'). Pass only the settings to change.
+ * 'own') and whether they copy scenes to Personal (`memberCopyToPersonal`).
+ * Pass only the settings to change.
  */
 export const updateOrgSettings = (orgId, settings) =>
   call('orgUpdateSettings', { orgId, ...settings });

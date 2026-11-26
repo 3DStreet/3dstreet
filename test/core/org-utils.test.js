@@ -21,7 +21,9 @@ const {
   higherPlan,
   invitationExpiry,
   memberEditScopeOf,
-  domainJoinRoleOf,
+  domainSuffixes,
+  isOnOrgDomain,
+  siteLicenseTakes,
   canEditTeamItem,
   INVITATION_TTL_DAYS
 } = require('../../public/functions/org-utils.js');
@@ -332,20 +334,31 @@ describe('org-utils', () => {
     });
   });
 
+  describe('team domains', () => {
+    it('match subdomains, never a bare top-level domain', () => {
+      assert.deepStrictEqual(domainSuffixes('cs.univ.edu'), [
+        'cs.univ.edu',
+        'univ.edu'
+      ]);
+      assert.deepStrictEqual(domainSuffixes(''), []);
+      const org = { domains: ['univ.edu'] };
+      assert.ok(isOnOrgDomain(org, 'a@cs.univ.edu'));
+      assert.ok(isOnOrgDomain(org, 'a@univ.edu'));
+      assert.ok(!isOnOrgDomain(org, 'a@notuniv.edu'));
+      assert.ok(!isOnOrgDomain(org, 'a@univ.edu.evil.test'));
+      assert.ok(siteLicenseTakes({ domains: [] }, 'a@x.test'));
+      assert.ok(!siteLicenseTakes({ siteLicense: true, ...org }, 'a@x.test'));
+      assert.ok(
+        siteLicenseTakes({ siteLicense: true, ...org }, 'a@cs.univ.edu')
+      );
+    });
+  });
+
   describe('team settings', () => {
-    it('defaults to members editing everything and joining as members', () => {
+    it('defaults to members editing everything', () => {
       assert.strictEqual(memberEditScopeOf({}), 'all');
       assert.strictEqual(memberEditScopeOf({ memberEditScope: 'own' }), 'own');
       assert.strictEqual(memberEditScopeOf({ memberEditScope: 'x' }), 'all');
-      assert.strictEqual(domainJoinRoleOf(null), 'member');
-      assert.strictEqual(
-        domainJoinRoleOf({ domainJoinRole: 'viewer' }),
-        'viewer'
-      );
-      assert.strictEqual(
-        domainJoinRoleOf({ domainJoinRole: 'owner' }),
-        'member'
-      );
     });
 
     it('lets members edit only their own under "own"; managers everything', () => {

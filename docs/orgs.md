@@ -60,8 +60,8 @@ seats free up. Only managers see the count (members can't read invitations).
 ### Site license
 
 For a customer that covers a whole email domain (a university), staff set
-`siteLicense: true`: no seat cap, and everyone on its domains joins with the
-`domainJoinRole` (member by default). Its token budget and storage limit are
+`siteLicense: true`: no seat cap, and everyone on its domains joins as a
+member. Its token budget and storage limit are
 never derived from seats, so both are required: a custom wallet budget
 (`monthlyTokenBudget` on `orgCreate`, or `orgUpdateWallet` first) and
 `storageLimitGb`, else `site-license-terms`. It starts with a limit per
@@ -98,16 +98,15 @@ storage; null goes back to per seat. Check seats with `hasFreeSeat`
 
 ## Domain auto-join
 
-The lookup (`domains` array-contains + `status ==`) needs the composite
+The lookup (`domains` array-contains-any + `status ==`) needs the composite
 index on `orgs` in `public/firestore.indexes.json`; the emulator doesn't
 enforce indexes, so the tests can't catch a missing one.
 
 An org's `domains` (set by staff) make users with a verified email on those
-domains join it when they sign in (`autoJoinDomainOrgs`, run by
-`checkUserProStatus`), with the org's `domainJoinRole` (missing = `member`):
-members while seats last (always, with a site license), viewers (no seat) always. Owners and admins pick
-the role in Team settings when the team has domains, so a school can let
-students in as viewers. Turning auto-join off is staff removing the
+domains, or subdomains of them (`cs.univ.edu` joins a team on `univ.edu`,
+`isOnOrgDomain`), join it as members when they sign in
+(`autoJoinDomainOrgs`, run by `checkUserProStatus`), while seats last
+(always, with a site license). Managers can still invite viewers. Turning auto-join off is staff removing the
 domains, since staff verify them. Someone who left or was removed
 (`orgs/{orgId}/departed/{uid}`) is not joined again until they accept an
 invitation. The call that adds them returns
@@ -143,7 +142,7 @@ rules in `firestore.rules` only allow reads.
 
 | Document                     | Fields                                                                                                                                                              | Readable by                                         |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `orgs/{orgId}`               | name, plan, seats (null = site license created without), siteLicense, storageLimitGb (null = per seat), status (`active`, `suspended`), domains, memberEditScope (`all`, `own`), domainJoinRole (`member`, `viewer`), memberCopyToPersonal (missing = off), createdAt, createdBy, updatedAt    | members                                             |
+| `orgs/{orgId}`               | name, plan, seats (null = site license created without), siteLicense, storageLimitGb (null = per seat), status (`active`, `suspended`), domains, memberEditScope (`all`, `own`), memberCopyToPersonal (missing = off), createdAt, createdBy, updatedAt    | members                                             |
 | `orgs/{orgId}/members/{uid}` | uid, email, displayName, role, joinedAt, invitedBy, via (`invitation`, `domain`, `staff`)                                                                           | members                                             |
 | `orgs/{orgId}/departed/{uid}` | uid, removedBy, at: left or was removed; cleared on joining again | nobody (functions only) |
 | `orgInvitations/{id}`        | orgId, orgName, email (lowercase), role, status (`pending`, `accepted`, `declined`, `revoked`), invitedBy, inviterName, createdAt, expiresAt, lastSentAt, sendCount | the invitee (verified email) and the org's managers |
@@ -158,7 +157,7 @@ Every membership change updates `userOrgs` in the same transaction.
 | `orgCreate`                                   | staff (admin claim)                 | create an org; the owner is added, or invited when they have no account |
 | `orgUpdate`                                   | staff                               | name, plan, seats, status, domains, siteLicense, storageLimitGb         |
 | `orgRename`                                   | owner, admin                        | rename                                                                  |
-| `orgUpdateSettings`                           | owner, admin                        | memberEditScope, domainJoinRole, memberCopyToPersonal                                         |
+| `orgUpdateSettings`                           | owner, admin                        | memberEditScope, memberCopyToPersonal                                                         |
 | `orgInvite`                                   | owner, admin                        | invite emails with a role                                               |
 | `orgResendInvitation`, `orgRevokeInvitation`  | owner, admin                        |                                                                         |
 | `orgAcceptInvitation`, `orgDeclineInvitation` | the invitee                         |                                                                         |

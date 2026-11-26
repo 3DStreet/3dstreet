@@ -7,7 +7,6 @@
  *                                  siteLicense (true: no seat cap),
  *                                  storageLimitGb (null = per seat),
  *                                  memberEditScope (all|own),
- *                                  domainJoinRole (member|viewer),
  *                                  createdAt, createdBy, updatedAt }
  *   orgs/{orgId}/members/{uid}   { uid, email, displayName, role, joinedAt,
  *                                  invitedBy, via: invitation|domain|staff }
@@ -35,14 +34,13 @@ const { appBaseForProject } = require('./pass-code-utils.js');
 const {
   ORG_PLANS,
   MEMBER_EDIT_SCOPES,
-  DOMAIN_JOIN_ROLES,
   MAX_INVITES_PER_CALL,
   takesSeat,
   memberEditScopeOf,
-  domainJoinRoleOf,
   normalizeEmail,
   isPlausibleEmail,
   emailDomain,
+  domainSuffixes,
   normalizeOrgName,
   isValidOrgName,
   countSeatsUsed,
@@ -719,19 +717,15 @@ async function renameOrg({ actorUid, orgId, name }) {
 }
 
 /**
- * Owners and admins set what members may edit (`memberEditScope`) and the
- * role a domain auto-join gives (`domainJoinRole`). The domains themselves
- * stay staff-set (orgUpdate): staff verify them.
+ * Owners and admins set what members may edit (`memberEditScope`) and
+ * whether they may copy scenes to Personal. The domains stay staff-set
+ * (orgUpdate): staff verify them.
  */
-async function updateOrgSettings({ actorUid, orgId, memberEditScope, domainJoinRole, memberCopyToPersonal }) {
+async function updateOrgSettings({ actorUid, orgId, memberEditScope, memberCopyToPersonal }) {
   const fields = {};
   if (memberEditScope !== undefined) {
     if (!MEMBER_EDIT_SCOPES.includes(memberEditScope)) throw new OrgError('invalid-setting');
     fields.memberEditScope = memberEditScope;
-  }
-  if (domainJoinRole !== undefined) {
-    if (!DOMAIN_JOIN_ROLES.includes(domainJoinRole)) throw new OrgError('invalid-setting');
-    fields.domainJoinRole = domainJoinRole;
   }
   if (memberCopyToPersonal !== undefined) {
     if (typeof memberCopyToPersonal !== 'boolean') throw new OrgError('invalid-setting');
@@ -754,18 +748,19 @@ async function updateOrgSettings({ actorUid, orgId, memberEditScope, domainJoinR
 // ---------------------------------------------------------------------------
 
 /**
- * Join the active orgs that claim the user's verified email domain, with
- * the org's domainJoinRole (member by default; a member needs a free seat,
- * a viewer takes none), except one they left or were removed from. Replaces the ALLOWED_PRO_TEAM_DOMAINS secret
- * for the customers moved into orgs. Returns the orgIds joined.
+ * Join the active orgs that claim the user's verified email domain or a
+ * parent of it (cs.univ.edu joins a team on univ.edu), as a member while
+ * seats last (always, with a site license), except one they left or were
+ * removed from. Replaces the ALLOWED_PRO_TEAM_DOMAINS secret for the
+ * customers moved into orgs. Returns the orgIds joined.
  */
 async function autoJoinDomainOrgs(uid) {
   const who = await describeUser(uid);
-  const domain = emailDomain(who.email);
-  if (!domain || !who.emailVerified) return [];
+  const suffixes = domainSuffixes(emailDomain(who.email));
+  if (!suffixes.length || !who.emailVerified) return [];
   const orgs = await db()
     .collection('orgs')
-    .where('domains', 'array-contains', domain)
+    .where('domains', 'array-contains-any', suffixes)
     .where('status', '==', 'active')
     .get();
   const joined = [];
@@ -779,7 +774,7 @@ async function autoJoinDomainOrgs(uid) {
       const added = await addMember({
         orgId: doc.id,
         uid,
-        role: domainJoinRoleOf(doc.data()),
+        role: 'member',
         via: 'domain'
       });
       // Not added: a concurrent call did, and reports it.
@@ -894,7 +889,6 @@ const orgUpdateSettings = callable((data, context) =>
     actorUid: requireAuth(context),
     orgId: data.orgId,
     memberEditScope: data.memberEditScope,
-    domainJoinRole: data.domainJoinRole,
     memberCopyToPersonal: data.memberCopyToPersonal
   })
 );
