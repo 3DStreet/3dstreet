@@ -4,6 +4,13 @@ const { FieldValue, Timestamp } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { computeMonthlyRefill } = require('./token-packs.js');
+const { readOrgPlan, autoJoinDomainOrgs, readUserOrgs } = require('./orgs.js');
+const {
+  resolveBillingOrg,
+  readActiveOrgId,
+  prepareWalletCharge,
+  spendableGenTokens
+} = require('./team-wallet.js');
 const {
   isPaidPlanClaim,
   toMillis,
@@ -112,6 +119,9 @@ const checkAndRefillImageTokens = functions
 
       // Use centralized domain validation
       const { isProDomain } = await validateUserDomain(userRecord.email);
+      // A team seat (#1267) gives no personal top-up: the team pays its
+      // members' AI usage from its wallet (team-wallet.js), within its
+      // monthly budget.
 
       // Subscription + team only: a one-time pass (proUntil) gets no monthly
       // top-up — its token lump sum replaces the drip (#1922).
@@ -242,6 +252,9 @@ const checkAndRefillImageTokensInternal = async (userId) => {
 
     // Use centralized domain validation
     const { isProDomain } = await validateUserDomain(userRecord.email);
+    // A team seat (#1267) gives no personal top-up: the team pays its
+    // members' AI usage from its wallet (team-wallet.js), within its
+    // monthly budget.
 
     // Subscription + team only — no monthly top-up for pass holders (#1922).
     const isProUser = isPro || isProDomain;
@@ -362,7 +375,25 @@ const checkUserProStatus = functions
       const proUntilMs = await readProUntil(userId);
       const isProPass = isProUntilActive(proUntilMs);
 
-      const isProUser = hasProEntitlement({ plan, isProDomain, proUntil: proUntilMs });
+      // Organizations (#1267): this call runs on every sign-in, so it is
+      // where a user joins the orgs claiming their verified email domain.
+      // Best-effort: a failure never blocks the status check.
+      const joinedOrgIds = await autoJoinDomainOrgs(userId).catch((error) => {
+        console.error(`autoJoinDomainOrgs failed for ${userId}:`, error);
+        return [];
+      });
+      const orgs = await readUserOrgs(userId).catch((error) => {
+        console.error(`readUserOrgs failed for ${userId}:`, error);
+        return [];
+      });
+      const orgPlan = await readOrgPlan(userId);
+
+      const isProUser = hasProEntitlement({
+        plan,
+        isProDomain,
+        proUntil: proUntilMs,
+        orgPlan
+      });
 
       return {
         isPro: isProUser,
@@ -379,6 +410,17 @@ const checkUserProStatus = functions
         // support/UI can say "your pass ended on …".
         isProPass,
         proUntil: proUntilMs !== null ? new Date(proUntilMs).toISOString() : null,
+        // The plan from the user's org seats ('PRO' | 'MAX' | null) and their
+        // orgs ([{ orgId, name, role, plan, status }]), for labels and the
+        // team settings.
+        orgPlan,
+        orgs,
+        // The orgs this call just joined by email domain (the client says so).
+        joinedOrgIds,
+        // The user's active team (the team switcher), or null for Personal.
+        // It pays their AI generations when they hold a seat in it and it's
+        // active (the client works that out from `orgs`, as the charge does).
+        activeOrgId: await readActiveOrgId(userId).catch(() => null),
         email: userRecord.email
       };
       
@@ -401,7 +443,28 @@ const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, r
   const tokenProfileRef = db.collection('tokenProfile').doc(userId);
   let remainingTokens = 0;
   let tokensBefore = 0;
+  // Team wallet (#1267 Phase 3, team-wallet.js): when the user's billing
+  // team is still valid, the team pays. The job records it so the refund
+  // goes back to the same wallet and month.
+  let chargedOrgId = null;
   await db.runTransaction(async (transaction) => {
+    chargedOrgId = await resolveBillingOrg(userId, transaction);
+    if (chargedOrgId) {
+      const charge = await prepareWalletCharge(transaction, {
+        orgId: chargedOrgId,
+        uid: userId,
+        cost: tokenCost
+      });
+      tokensBefore = charge.tokensBefore;
+      remainingTokens = charge.tokensAfter;
+      charge.commit();
+      transaction.update(jobRef, {
+        tokenCharged: true,
+        chargedOrgId,
+        chargedMonth: charge.monthKey
+      });
+      return;
+    }
     const tokenDoc = await transaction.get(tokenProfileRef);
     if (!tokenDoc.exists) {
       throw new functions.https.HttpsError('not-found', 'Token profile not found');
@@ -422,6 +485,8 @@ const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, r
   // Fire-and-forget: write token deduction audit log
   db.collection('tokenLog').add({
     userId,
+    // The team whose wallet paid (#1267), or null for personal tokens.
+    orgId: chargedOrgId,
     type: 'deduction',
     tokensBefore,
     tokensAfter: remainingTokens,
@@ -431,7 +496,7 @@ const chargeGenerationTokens = async (db, { userId, jobRef, tokenCost, source, r
     createdAt: FieldValue.serverTimestamp()
   }).catch(err => console.error('Failed to write tokenLog:', err));
 
-  return { tokensBefore, remainingTokens };
+  return { tokensBefore, remainingTokens, chargedOrgId };
 };
 
 // One-time gen-token pack purchase (#1374): credit the purchased tokens and
@@ -683,14 +748,15 @@ const grantProPassForCheckout = async ({ checkoutSession, summary }) => {
 
 // Internal helper function to check if user is pro (for other functions to use)
 // Same rule as checkUserProStatus (hasProEntitlement): subscription claim OR
-// team domain OR unexpired pass. The pass read is skipped when the cheaper
-// checks already answer yes.
+// team domain OR org seat OR unexpired pass. The org and pass reads are
+// skipped when the cheaper checks already answer yes.
 const isUserProInternal = async (userId) => {
   try {
     const userRecord = await getAuth().getUser(userId);
     const plan = userRecord.customClaims && userRecord.customClaims.plan;
     const { isProDomain } = await validateUserDomain(userRecord.email);
     if (hasProEntitlement({ plan, isProDomain })) return true;
+    if (isPaidPlanClaim(await readOrgPlan(userId))) return true;
     return isProUntilActive(await readProUntil(userId));
   } catch (error) {
     console.error('Error checking user pro status:', error);
@@ -708,5 +774,6 @@ module.exports = {
   readProUntil,
   validateUserDomain,
   checkUserProStatus,
-  isUserProInternal
+  isUserProInternal,
+  spendableGenTokens
 };

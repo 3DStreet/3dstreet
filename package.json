@@ -25,7 +25,7 @@
     "test:components": "vitest run --config vitest.components.config.js",
     "test:components:watch": "vitest --config vitest.components.config.js",
     "test:setup": "npx playwright install chromium-headless-shell",
-    "test:rules": "cd public && firebase emulators:exec --only firestore,auth --project demo-3dstreet-rules \"cd .. && vitest run --config vitest.rules.config.js\"",
+    "test:rules": "cd public && firebase emulators:exec --only firestore,auth,storage --project demo-3dstreet-rules \"cd .. && vitest run --config vitest.rules.config.js\"",
     "prettier": "prettier --write 'src/**/*.js' 'src/**/*.jsx' 'src/**/*.scss'",
     "assets:bounds": "node scripts/assets/compute-model-bounds.mjs",
     "assets:bounds:check": "node scripts/assets/compute-model-bounds.mjs --check",
@@ -36,6 +36,9 @@
     "deploy": "npm run dist && npm run prefirebase && cd public && firebase use dstreet-305604 && firebase deploy --only hosting:app3dstreet",
     "deploy:staging": "npm run dist:staging && npm run prefirebase && cd public && firebase use dev-3dstreet && firebase deploy --only hosting:dev-3dstreet",
     "emulator": "npm run dist:staging && npm run prefirebase && cd public && firebase emulators:start",
+    "emulators": "cd public && firebase emulators:start --only auth,firestore,storage,functions --project demo-3dstreet --import ../.emulator-data --export-on-exit ../.emulator-data",
+    "emulators:seed": "node scripts/seed-emulators.js",
+    "start:emulators": "FIREBASE_EMULATORS=true npm start",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

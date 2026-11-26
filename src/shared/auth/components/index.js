@@ -14,3 +14,4 @@ export {
 } from './TokenDisplay';
 export { default as TokenDetailsCard } from './TokenDetailsCard';
 export { default as ProfileHoverCard } from './ProfileHoverCard';
+export { WorkspaceBadge } from './WorkspaceBadge';

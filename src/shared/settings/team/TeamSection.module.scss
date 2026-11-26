@@ -1,0 +1,199 @@
+@use '../../styles/select';
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  width: 100%;
+  color: white;
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.planBadge {
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  background-color: rgba(50, 50, 50, 0.9);
+  border: 1px solid #6b6b6b;
+}
+
+.sectionTitle {
+  margin: 12px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+
+  & + & {
+    border-top: 1px solid #3a3a3a;
+  }
+}
+
+.who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.you {
+  margin-left: 6px;
+  color: #b4b4b4;
+}
+
+.role {
+  font-size: 13px;
+  color: #d4d4d4;
+}
+
+.roleSelect {
+  @include select.select;
+}
+
+.input {
+  padding: 6px 8px;
+  border: 1px solid #4b4b4b;
+  border-radius: 6px;
+  background-color: #1f1f1f;
+  color: white;
+  font-size: 13px;
+
+  &:focus {
+    outline: none;
+    border-color: #3b82f6;
+  }
+}
+
+.input {
+  width: 100%;
+  resize: vertical;
+}
+
+.inlineForm {
+  display: flex;
+  gap: 8px;
+}
+
+.inviteForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inviteControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+
+  > span {
+    flex: 1;
+  }
+}
+
+.results {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.muted {
+  font-size: 12px;
+  color: #b4b4b4;
+}
+
+.warning {
+  font-size: 12px;
+  color: #fbbf24;
+}
+
+.ok {
+  color: #86efac;
+}
+
+@media (max-width: 600px) {
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .who {
+    flex-basis: 100%;
+  }
+}
+
+// AI tokens (#1267 Phase 3, TeamWalletSection)
+.walletSummary {
+  margin: 0;
+  font-size: 14px;
+}
+
+.capLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.capInput {
+  width: 110px;
+  padding: 6px 8px;
+  border: 1px solid #4b4b4b;
+  border-radius: 6px;
+  background-color: #1f1f1f;
+  color: white;
+  font-size: 13px;
+}
+
+// What members can edit (TeamPermissionsSection): wraps, and its select
+// never runs past the modal at phone width.
+.settingLabel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+
+  select {
+    max-width: 100%;
+  }
+}
+
+// The editor (#aframeInspector) hides native checkboxes: show this one.
+.checkbox {
+  visibility: visible !important;
+  appearance: auto;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: pointer;
+}

@@ -20,6 +20,16 @@ export { default as assetsService } from './services/assetsService';
 // Hooks
 export { default as useAssets, assetToDisplayItem } from './hooks/useAssets';
 export { default as useStorageUsage } from './hooks/useStorageUsage';
+export { default as useTeamAssets } from './hooks/useTeamAssets';
+
+// Team asset library (#1267 Phase 4)
+export {
+  TEAM_OWNER_PREFIX,
+  teamAssetOwner,
+  teamIdOfOwner,
+  assetOwnerSegments
+} from './assetOwner';
+export * from './teamLibrary';
 
 // State
 export { default as useCurrentUploadStore } from './state/currentUploadStore';

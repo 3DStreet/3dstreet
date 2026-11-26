@@ -19,12 +19,22 @@ This is **sequencing step 2 — the manual one-shot**. The automatic trigger
 `POST /` with JSON:
 
 ```json
-{ "uid": "<owner uid>", "assetId": "<asset doc id>", "plyPath": "users/<uid>/assets/splats/<file>.ply", "jobId": "<optional generationJobs doc id>" }
+{
+  "uid": "<owner uid>",
+  "assetId": "<asset doc id>",
+  "plyPath": "users/<uid>/assets/splats/<file>.ply",
+  "jobId": "<optional generationJobs doc id>"
+}
 ```
 
 - `jobId` is **optional**. With it, the handler writes terminal status
   (`succeeded`/`failed`) to `users/{uid}/generationJobs/{jobId}` (queue path).
   Without it (the manual one-shot), it just converts + patches the asset doc.
+- `orgId` is **optional**: a splat uploaded straight into a team's asset
+  library (#1267, `docs/team-assets.md`). The handler then writes the `.rad`
+  to `orgs/{orgId}/assets/{assetId}/{assetId}-lod.rad` and patches
+  `orgs/{orgId}/assets/{assetId}`; `uid` is the uploader, whose
+  `generationJobs` hold the job. Without it, the user's asset as below.
 - `GET /` is a health check.
 
 On success the handler patches `users/{uid}/assets/{assetId}` with

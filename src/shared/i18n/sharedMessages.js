@@ -48,6 +48,56 @@ const SHARED_MESSAGES = {
     'pt-BR': 'Gerenciar conta',
     fr: 'Gérer le compte'
   },
+  // Profile menu: the team switcher and its links (docs/settings.md)
+  menuSettings: {
+    en: 'Settings',
+    es: 'Configuración',
+    'pt-BR': 'Configurações',
+    fr: 'Paramètres'
+  },
+  menuWorkspace: {
+    en: 'Working in',
+    es: 'Trabajando en',
+    'pt-BR': 'Trabalhando em',
+    fr: 'Travailler dans'
+  },
+  menuPersonal: {
+    en: 'Personal',
+    es: 'Personal',
+    'pt-BR': 'Pessoal',
+    fr: 'Personnel'
+  },
+  menuSwitchError: {
+    en: 'Could not switch teams. Try again.',
+    es: 'No se pudo cambiar de equipo. Inténtalo de nuevo.',
+    'pt-BR': 'Não foi possível trocar de equipe. Tente novamente.',
+    fr: "Impossible de changer d'équipe. Réessayez."
+  },
+  menuPlanFree: { en: 'Free', es: 'Gratis', 'pt-BR': 'Grátis', fr: 'Gratuit' },
+  menuRoleOwner: {
+    en: 'Owner',
+    es: 'Propietario',
+    'pt-BR': 'Proprietário',
+    fr: 'Propriétaire'
+  },
+  menuRoleAdmin: {
+    en: 'Admin',
+    es: 'Administrador',
+    'pt-BR': 'Administrador',
+    fr: 'Administrateur'
+  },
+  menuRoleMember: {
+    en: 'Member',
+    es: 'Miembro',
+    'pt-BR': 'Membro',
+    fr: 'Membre'
+  },
+  menuRoleViewer: {
+    en: 'Viewer',
+    es: 'Lector',
+    'pt-BR': 'Leitor',
+    fr: 'Lecteur'
+  },
   logOut: {
     en: 'Log Out',
     es: 'Cerrar sesión',
@@ -347,11 +397,11 @@ const SHARED_MESSAGES = {
     fr: 'Vous avez déjà Pro avec votre abonnement. Ce pass ajoute {tokens} jetons IA maintenant et garde Pro pendant {days} jours si vous résiliez.'
   },
   projectPassTeamNote: {
-    en: 'You already have Pro through your organization ({domain}). A pass would only add {tokens} AI tokens.',
-    es: 'Ya tienes Pro a través de tu organización ({domain}). Un pase solo añadiría {tokens} tokens de IA.',
+    en: 'You already have Pro through {source}. A pass would only add {tokens} AI tokens.',
+    es: 'Ya tienes Pro a través de {source}. Un pase solo añadiría {tokens} tokens de IA.',
     'pt-BR':
-      'Você já tem o Pro pela sua organização ({domain}). Um passe só adicionaria {tokens} tokens de IA.',
-    fr: 'Vous avez déjà Pro grâce à votre organisation ({domain}). Un pass ajouterait seulement {tokens} jetons IA.'
+      'Você já tem o Pro por meio de {source}. Um passe só adicionaria {tokens} tokens de IA.',
+    fr: 'Vous avez déjà Pro grâce à {source}. Un pass ajouterait seulement {tokens} jetons IA.'
   },
   projectPassSeeTokenPacks: {
     en: 'Just need tokens? See token packs',
@@ -506,6 +556,12 @@ const SHARED_MESSAGES = {
     es: 'Descarga instantáneas JPEG sin marca de agua',
     'pt-BR': "Baixe instantâneos JPEG sem marca d'água",
     fr: 'Téléchargez des instantanés JPEG sans filigrane'
+  },
+  featPrivateScenes: {
+    en: 'Private scenes only you can open',
+    es: 'Escenas privadas que solo tú puedes abrir',
+    'pt-BR': 'Cenas privadas que só você pode abrir',
+    fr: 'Scènes privées que vous seul pouvez ouvrir'
   },
   featGeoUnlimited: {
     en: 'Unlimited geospatial maps & location changes',
@@ -849,6 +905,31 @@ const SHARED_MESSAGES = {
     'pt-BR':
       'Renders com IA usam tokens de geração. Um plano pago renova seu saldo de tokens todo mês para você continuar gerando com todos os modelos de IA disponíveis.',
     fr: "Les rendus IA utilisent des jetons de génération. Un forfait payant renouvelle votre solde de jetons chaque mois pour continuer à générer avec tous les modèles d'IA disponibles."
+  },
+  surfacePrivateSceneTitle: {
+    en: 'Private scene',
+    es: 'Escena privada',
+    'pt-BR': 'Cena privada',
+    fr: 'Scène privée'
+  },
+  surfacePrivateSceneSubtitle: {
+    en: 'Only you can open it',
+    es: 'Solo tú puedes abrirla',
+    'pt-BR': 'Só você pode abri-la',
+    fr: "Vous seul pouvez l'ouvrir"
+  },
+  surfacePrivateSceneHeadline: {
+    en: 'Keep your scenes private',
+    es: 'Mantén tus escenas privadas',
+    'pt-BR': 'Mantenha suas cenas privadas',
+    fr: 'Gardez vos scènes privées'
+  },
+  surfacePrivateSceneDesc: {
+    en: 'Work on projects before they are public. A private scene opens only for you, is never listed in the community scenes and cannot be embedded. An unlisted scene opens for anyone with its link, without being listed.',
+    es: 'Trabaja en tus proyectos antes de hacerlos públicos. Una escena privada solo se abre para ti, nunca aparece en las escenas de la comunidad y no se puede insertar. Una escena no listada se abre para quien tenga el enlace, sin aparecer en la lista.',
+    'pt-BR':
+      'Trabalhe em seus projetos antes de torná-los públicos. Uma cena privada abre só para você, nunca aparece nas cenas da comunidade e não pode ser incorporada. Uma cena não listada abre para quem tiver o link, sem aparecer na lista.',
+    fr: "Travaillez sur vos projets avant de les rendre publics. Une scène privée ne s'ouvre que pour vous, n'apparaît jamais dans les scènes de la communauté et ne peut pas être intégrée. Une scène non listée s'ouvre pour quiconque a son lien, sans être listée."
   },
   surfaceGeoTitle: {
     en: 'Geospatial',
@@ -1757,6 +1838,464 @@ const SHARED_MESSAGES = {
     es: 'Ver origen',
     'pt-BR': 'Ver origem',
     fr: 'Voir la source'
+  },
+
+  // Cloud scene loading (json-utils_1.1.js): progress shown by
+  // LoadingSceneModal, errors shown in its dialog and as toasts.
+  sceneLoading: {
+    en: 'Loading scene...',
+    es: 'Cargando escena...',
+    'pt-BR': 'Carregando cena...',
+    fr: 'Chargement de la scène...'
+  },
+  sceneCreating: {
+    en: 'Creating scene...',
+    es: 'Creando escena...',
+    'pt-BR': 'Criando cena...',
+    fr: 'Création de la scène...'
+  },
+  sceneFinalizing: {
+    en: 'Finalizing...',
+    es: 'Finalizando...',
+    'pt-BR': 'Finalizando...',
+    fr: 'Finalisation...'
+  },
+  sceneLoaded: {
+    en: 'Scene loaded',
+    es: 'Escena cargada',
+    'pt-BR': 'Cena carregada',
+    fr: 'Scène chargée'
+  },
+  sceneInvalidData: {
+    en: 'Could not read scene data.',
+    es: 'No se pudieron leer los datos de la escena.',
+    'pt-BR': 'Não foi possível ler os dados da cena.',
+    fr: 'Impossible de lire les données de la scène.'
+  },
+  sceneInvalidDataToast: {
+    en: 'Error trying to load scene: invalid scene data.',
+    es: 'Error al cargar la escena: datos de escena no válidos.',
+    'pt-BR': 'Erro ao carregar a cena: dados de cena inválidos.',
+    fr: 'Erreur lors du chargement de la scène : données de scène non valides.'
+  },
+  sceneNotFound: {
+    en: 'Scene not found.',
+    es: 'Escena no encontrada.',
+    'pt-BR': 'Cena não encontrada.',
+    fr: 'Scène introuvable.'
+  },
+  sceneNotFoundToast: {
+    en: 'Error trying to load scene: Resource not found.',
+    es: 'Error al cargar la escena: recurso no encontrado.',
+    'pt-BR': 'Erro ao carregar a cena: recurso não encontrado.',
+    fr: 'Erreur lors du chargement de la scène : ressource introuvable.'
+  },
+  sceneConnectionError: {
+    en: 'Could not connect to server.',
+    es: 'No se pudo conectar con el servidor.',
+    'pt-BR': 'Não foi possível conectar ao servidor.',
+    fr: 'Impossible de se connecter au serveur.'
+  },
+  sceneFetchError: {
+    en: 'Could not fetch scene.',
+    es: 'No se pudo obtener la escena.',
+    'pt-BR': 'Não foi possível obter a cena.',
+    fr: 'Impossible de récupérer la scène.'
+  },
+
+  // Scenes and layers loaded from the URL hash (json-utils_1.1.js).
+  managedStreetLoadingFromUrl: {
+    en: 'Loading Managed Street JSON from URL',
+    es: 'Cargando el JSON de la calle gestionada desde la URL',
+    'pt-BR': 'Carregando o JSON da rua gerenciada a partir da URL',
+    fr: "Chargement du JSON de la rue gérée depuis l'URL"
+  },
+  parityFixtureLoading: {
+    en: 'Loading parity fixture: {slug}',
+    es: 'Cargando el fixture de paridad: {slug}',
+    'pt-BR': 'Carregando o fixture de paridade: {slug}',
+    fr: 'Chargement du fixture de parité : {slug}'
+  },
+  geojsonInvalidJson: {
+    en: 'Error parsing GeoJSON from URL: Invalid JSON format',
+    es: 'Error al analizar el GeoJSON de la URL: formato JSON no válido',
+    'pt-BR': 'Erro ao analisar o GeoJSON da URL: formato JSON inválido',
+    fr: "Erreur d'analyse du GeoJSON de l'URL : format JSON non valide"
+  },
+  geojsonNoFeatures: {
+    en: 'Invalid GeoJSON: No valid features found',
+    es: 'GeoJSON no válido: no se encontraron entidades válidas',
+    'pt-BR': 'GeoJSON inválido: nenhuma feição válida encontrada',
+    fr: 'GeoJSON non valide : aucune entité valide trouvée'
+  },
+  geojsonNoPolygons: {
+    en: 'No valid polygon features found in GeoJSON',
+    es: 'No se encontraron polígonos válidos en el GeoJSON',
+    'pt-BR': 'Nenhum polígono válido encontrado no GeoJSON',
+    fr: 'Aucun polygone valide trouvé dans le GeoJSON'
+  },
+  // {count} without a plural form: formatSharedMessage has no ICU plurals.
+  geojsonLoadedFromUrl: {
+    en: 'GeoJSON loaded from URL. Polygon features: {count}.',
+    es: 'GeoJSON cargado desde la URL. Polígonos: {count}.',
+    'pt-BR': 'GeoJSON carregado a partir da URL. Polígonos: {count}.',
+    fr: "GeoJSON chargé depuis l'URL. Polygones : {count}."
+  },
+
+  // Team asset library (#1267 Phase 4), in the Assets panel and asset details.
+  meshOwnerTeam: {
+    en: '{team} (team library)',
+    es: '{team} (biblioteca del equipo)',
+    'pt-BR': '{team} (biblioteca da equipe)',
+    fr: "{team} (bibliothèque de l'équipe)"
+  },
+  assetLibrary: {
+    en: 'Library',
+    es: 'Biblioteca',
+    'pt-BR': 'Biblioteca',
+    fr: 'Bibliothèque'
+  },
+  assetLibraryMine: {
+    en: 'My assets',
+    es: 'Mis recursos',
+    'pt-BR': 'Meus recursos',
+    fr: 'Mes ressources'
+  },
+  assetLibraryTeam: {
+    en: "{team}'s library",
+    es: 'Biblioteca de {team}',
+    'pt-BR': 'Biblioteca de {team}',
+    fr: 'Bibliothèque de {team}'
+  },
+  teamLibraryUsage: {
+    en: 'Team library: {used} used',
+    es: 'Biblioteca del equipo: {used} usados',
+    'pt-BR': 'Biblioteca da equipe: {used} usados',
+    fr: "Bibliothèque de l'équipe : {used} utilisés"
+  },
+  teamLibraryEmpty: {
+    en: "Nothing in this team's library yet. Upload an asset here, or open one of your assets and choose “Add to team library”.",
+    es: 'Aún no hay nada en la biblioteca de este equipo. Sube un recurso aquí, o abre uno de tus recursos y elige “Añadir a la biblioteca del equipo”.',
+    'pt-BR':
+      'Ainda não há nada na biblioteca desta equipe. Envie um recurso aqui, ou abra um dos seus recursos e escolha “Adicionar à biblioteca da equipe”.',
+    fr: "Rien dans la bibliothèque de cette équipe pour l'instant. Importez une ressource ici, ou ouvrez une de vos ressources et choisissez « Ajouter à la bibliothèque de l'équipe »."
+  },
+  teamLibraryAddTo: {
+    en: 'Add to team library',
+    es: 'Añadir a la biblioteca del equipo',
+    'pt-BR': 'Adicionar à biblioteca da equipe',
+    fr: "Ajouter à la bibliothèque de l'équipe"
+  },
+  teamLibraryAddToTeam: {
+    en: "Add to {team}'s library",
+    es: 'Añadir a la biblioteca de {team}',
+    'pt-BR': 'Adicionar à biblioteca de {team}',
+    fr: 'Ajouter à la bibliothèque de {team}'
+  },
+  teamLibraryAddHint: {
+    en: "Copies this asset into the team's library, where every member can use it. Your own copy stays.",
+    es: 'Copia este recurso en la biblioteca del equipo, donde todos los miembros pueden usarlo. Tu copia se queda.',
+    'pt-BR':
+      'Copia este recurso para a biblioteca da equipe, onde todos os membros podem usá-lo. Sua cópia continua com você.',
+    fr: "Copie cette ressource dans la bibliothèque de l'équipe, où chaque membre peut l'utiliser. Votre copie reste."
+  },
+  teamLibraryChooseTeam: {
+    en: 'Team',
+    es: 'Equipo',
+    'pt-BR': 'Equipe',
+    fr: 'Équipe'
+  },
+  teamLibraryAdded: {
+    en: "Added to {team}'s library.",
+    es: 'Añadido a la biblioteca de {team}.',
+    'pt-BR': 'Adicionado à biblioteca de {team}.',
+    fr: 'Ajouté à la bibliothèque de {team}.'
+  },
+  teamLibraryWorking: {
+    en: 'Working…',
+    es: 'Procesando…',
+    'pt-BR': 'Processando…',
+    fr: 'En cours…'
+  },
+  teamLibraryIn: {
+    en: "In {team}'s library",
+    es: 'En la biblioteca de {team}',
+    'pt-BR': 'Na biblioteca de {team}',
+    fr: 'Dans la bibliothèque de {team}'
+  },
+  teamLibraryAddedByCap: {
+    en: 'Added by {name}',
+    es: 'Añadido por {name}',
+    'pt-BR': 'Adicionado por {name}',
+    fr: 'Ajouté par {name}'
+  },
+  teamLibraryReplace: {
+    en: 'Replace file',
+    es: 'Reemplazar archivo',
+    'pt-BR': 'Substituir arquivo',
+    fr: 'Remplacer le fichier'
+  },
+  teamLibraryReplaceTitle: {
+    en: 'Choose the new file',
+    es: 'Elige el nuevo archivo',
+    'pt-BR': 'Escolha o novo arquivo',
+    fr: 'Choisissez le nouveau fichier'
+  },
+  teamLibraryReplaced: {
+    en: 'File replaced. Scenes using this asset show it the next time they open.',
+    es: 'Archivo reemplazado. Las escenas que usan este recurso lo mostrarán la próxima vez que se abran.',
+    'pt-BR':
+      'Arquivo substituído. As cenas que usam este recurso vão mostrá-lo na próxima vez que forem abertas.',
+    fr: 'Fichier remplacé. Les scènes qui utilisent cette ressource l’afficheront à leur prochaine ouverture.'
+  },
+  teamLibraryRemove: {
+    en: 'Remove from library',
+    es: 'Quitar de la biblioteca',
+    'pt-BR': 'Remover da biblioteca',
+    fr: 'Retirer de la bibliothèque'
+  },
+  teamLibraryRemoveConfirm: {
+    en: "Remove this asset from the team's library? Scenes already using it keep working for 30 days.",
+    es: '¿Quitar este recurso de la biblioteca del equipo? Las escenas que ya lo usan siguen funcionando durante 30 días.',
+    'pt-BR':
+      'Remover este recurso da biblioteca da equipe? As cenas que já o usam continuam funcionando por 30 dias.',
+    fr: "Retirer cette ressource de la bibliothèque de l'équipe ? Les scènes qui l'utilisent déjà continuent de fonctionner pendant 30 jours."
+  },
+  teamLibraryNotEditor: {
+    en: "Only the team's owners, admins and members can do this.",
+    es: 'Solo los propietarios, administradores y miembros del equipo pueden hacer esto.',
+    'pt-BR':
+      'Somente proprietários, administradores e membros da equipe podem fazer isso.',
+    fr: "Seuls les propriétaires, administrateurs et membres de l'équipe peuvent faire cela."
+  },
+  teamLibraryOwnOnly: {
+    en: 'In this team, members can only change the assets they added.',
+    es: 'En este equipo, los miembros solo pueden cambiar los recursos que añadieron.',
+    'pt-BR':
+      'Nesta equipe, os membros só podem alterar os recursos que adicionaram.',
+    fr: "Dans cette équipe, les membres ne peuvent modifier que les ressources qu'ils ont ajoutées."
+  },
+  teamLibraryNotManager: {
+    en: 'Only owners and admins, or the member who added it, can remove this asset.',
+    es: 'Solo los propietarios y administradores, o el miembro que lo añadió, pueden quitar este recurso.',
+    'pt-BR':
+      'Somente proprietários e administradores, ou o membro que o adicionou, podem remover este recurso.',
+    fr: "Seuls les propriétaires et administrateurs, ou le membre qui l'a ajoutée, peuvent retirer cette ressource."
+  },
+  teamLibraryAssetNotFound: {
+    en: 'This asset no longer exists.',
+    es: 'Este recurso ya no existe.',
+    'pt-BR': 'Este recurso não existe mais.',
+    fr: "Cette ressource n'existe plus."
+  },
+  teamLibraryConverting: {
+    en: 'This splat is still being optimized. Try again when it is done.',
+    es: 'Este splat aún se está optimizando. Inténtalo de nuevo cuando termine.',
+    'pt-BR':
+      'Este splat ainda está sendo otimizado. Tente novamente quando terminar.',
+    fr: "Ce splat est encore en cours d'optimisation. Réessayez quand ce sera fini."
+  },
+  teamLibraryTypeMismatch: {
+    en: 'Choose an asset of the same kind.',
+    es: 'Elige un recurso del mismo tipo.',
+    'pt-BR': 'Escolha um recurso do mesmo tipo.',
+    fr: 'Choisissez une ressource du même type.'
+  },
+  teamLibraryStorageFull: {
+    en: "The team library's storage is full. Ask 3DStreet for more, or remove assets.",
+    es: 'El almacenamiento de la biblioteca del equipo está lleno. Pide más a 3DStreet o quita recursos.',
+    'pt-BR':
+      'O armazenamento da biblioteca da equipe está cheio. Peça mais à 3DStreet ou remova recursos.',
+    fr: "Le stockage de la bibliothèque de l'équipe est plein. Demandez-en plus à 3DStreet ou retirez des ressources."
+  },
+  teamLibrarySuspended: {
+    en: 'This team is suspended.',
+    es: 'Este equipo está suspendido.',
+    'pt-BR': 'Esta equipe está suspensa.',
+    fr: 'Cette équipe est suspendue.'
+  },
+  teamLibraryFailed: {
+    en: "Something went wrong with the team's library. Please try again.",
+    es: 'Algo salió mal con la biblioteca del equipo. Inténtalo de nuevo.',
+    'pt-BR': 'Algo deu errado com a biblioteca da equipe. Tente novamente.',
+    fr: "Un problème est survenu avec la bibliothèque de l'équipe. Veuillez réessayer."
+  },
+
+  teamSceneNeedsTeamAsset: {
+    en: "This scene belongs to a team: it can only use assets from the team's library. Add the asset to the team library first.",
+    es: 'Esta escena pertenece a un equipo: solo puede usar recursos de la biblioteca del equipo. Primero añade el recurso a la biblioteca del equipo.',
+    'pt-BR':
+      'Esta cena pertence a uma equipe: ela só pode usar recursos da biblioteca da equipe. Primeiro adicione o recurso à biblioteca da equipe.',
+    fr: "Cette scène appartient à une équipe : elle ne peut utiliser que des ressources de la bibliothèque de l'équipe. Ajoutez d'abord la ressource à la bibliothèque de l'équipe."
+  },
+  teamSceneUsesTeamLibrary: {
+    en: "This scene belongs to {team}: only assets from {team}'s library can be placed in it. Open an asset and choose “Add to team library” to use it here.",
+    es: 'Esta escena pertenece a {team}: solo se pueden colocar recursos de la biblioteca de {team}. Abre un recurso y elige “Añadir a la biblioteca del equipo” para usarlo aquí.',
+    'pt-BR':
+      'Esta cena pertence a {team}: só recursos da biblioteca de {team} podem ser colocados nela. Abra um recurso e escolha “Adicionar à biblioteca da equipe” para usá-lo aqui.',
+    fr: "Cette scène appartient à {team} : seules les ressources de la bibliothèque de {team} peuvent y être placées. Ouvrez une ressource et choisissez « Ajouter à la bibliothèque de l'équipe » pour l'utiliser ici."
+  },
+  teamSceneAssetNotInLibrary: {
+    en: "This asset isn't in the team's library, so other members may not see it. Open Details and add it to the team library: the team's copy will take its place.",
+    es: 'Este recurso no está en la biblioteca del equipo, así que otros miembros podrían no verlo. Abre Detalles y añádelo a la biblioteca del equipo: la copia del equipo ocupará su lugar.',
+    'pt-BR':
+      'Este recurso não está na biblioteca da equipe, então outros membros podem não vê-lo. Abra Detalhes e adicione-o à biblioteca da equipe: a cópia da equipe vai substituí-lo.',
+    fr: "Cette ressource n'est pas dans la bibliothèque de l'équipe, d'autres membres risquent de ne pas la voir. Ouvrez Détails et ajoutez-la à la bibliothèque de l'équipe : la copie de l'équipe prendra sa place."
+  },
+
+  // Team AI token wallets (#1267 Phase 3), in the token card.
+  teamTokensPaidBy: {
+    en: 'Paid by {team}',
+    es: 'Pagado por {team}',
+    'pt-BR': 'Pago por {team}',
+    fr: 'Payé par {team}'
+  },
+  teamTokensMemberLimit: {
+    en: 'Your monthly limit: {used} of {cap} used',
+    es: 'Tu límite mensual: {used} de {cap} usados',
+    'pt-BR': 'Seu limite mensal: {used} de {cap} usados',
+    fr: 'Votre limite mensuelle : {used} sur {cap} utilisés'
+  },
+  teamTokensCapReached: {
+    en: "You've reached your monthly limit of {cap} AI tokens for {team}.",
+    es: 'Alcanzaste tu límite mensual de {cap} tokens de IA en {team}.',
+    'pt-BR': 'Você atingiu seu limite mensal de {cap} tokens de IA em {team}.',
+    fr: 'Vous avez atteint votre limite mensuelle de {cap} jetons IA pour {team}.'
+  },
+  teamTokensUsedUp: {
+    en: "{team}'s AI tokens are used up for this month.",
+    es: 'Los tokens de IA de {team} se agotaron este mes.',
+    'pt-BR': 'Os tokens de IA de {team} acabaram neste mês.',
+    fr: 'Les jetons IA de {team} sont épuisés pour ce mois-ci.'
+  },
+  teamTokensAskManagers: {
+    en: "Ask the team's owners or admins for more, or use your own tokens instead.",
+    es: 'Pide más a los propietarios o administradores del equipo, o usa tus propios tokens.',
+    'pt-BR':
+      'Peça mais aos proprietários ou administradores da equipe, ou use seus próprios tokens.',
+    fr: "Demandez-en davantage aux propriétaires ou aux administrateurs de l'équipe, ou utilisez vos propres jetons."
+  },
+  teamTokensUseMine: {
+    en: 'Switch to Personal (my own tokens)',
+    es: 'Cambiar a Personal (mis propios tokens)',
+    'pt-BR': 'Mudar para Pessoal (meus próprios tokens)',
+    fr: 'Passer en Personnel (mes propres jetons)'
+  },
+  teamInactive: {
+    en: "{team} is inactive, so it can't pay for AI generations.",
+    es: '{team} está inactivo, así que no puede pagar generaciones con IA.',
+    'pt-BR': '{team} está inativa, então não pode pagar gerações com IA.',
+    fr: '{team} est inactive et ne peut donc pas payer les générations IA.'
+  },
+  // Joined a team by email domain at sign-in (docs/orgs.md)
+  teamJoined: {
+    en: 'You joined {team} through your email domain. Pick it in the profile menu to work in it.',
+    es: 'Te uniste a {team} por el dominio de tu correo. Elígelo en el menú de perfil para trabajar en él.',
+    'pt-BR':
+      'Você entrou em {team} pelo domínio do seu e-mail. Escolha a equipe no menu do perfil para trabalhar nela.',
+    fr: 'Vous avez rejoint {team} grâce au domaine de votre e-mail. Choisissez cette équipe dans le menu du profil pour y travailler.'
+  },
+  teamJoinedActive: {
+    en: 'You joined {team} through your email domain. New work goes there. Switch in the profile menu.',
+    es: 'Te uniste a {team} por el dominio de tu correo. El trabajo nuevo va allí. Puedes cambiarlo en el menú de perfil.',
+    'pt-BR':
+      'Você entrou em {team} pelo domínio do seu e-mail. Os novos trabalhos vão para lá. Você pode mudar no menu do perfil.',
+    fr: 'Vous avez rejoint {team} grâce au domaine de votre e-mail. Vos nouveaux travaux y sont enregistrés. Vous pouvez changer dans le menu du profil.'
+  },
+  teamInactiveLabel: {
+    en: 'Inactive',
+    es: 'Inactivo',
+    'pt-BR': 'Inativa',
+    fr: 'Inactive'
+  },
+  teamInactiveNotSaved: {
+    en: "Not saved: {team} is inactive, so its scenes can't be changed.",
+    es: 'No se guardó: {team} está inactivo y sus escenas no se pueden cambiar.',
+    'pt-BR':
+      'Não foi salvo: {team} está inativa e suas cenas não podem ser alteradas.',
+    fr: 'Non enregistré : {team} est inactive, ses scènes ne peuvent pas être modifiées.'
+  },
+  teamInactiveNewScene: {
+    en: '{team} is inactive. Switch to Personal in the profile menu to save a new scene.',
+    es: '{team} está inactivo. Cambia a Personal en el menú del perfil para guardar una escena nueva.',
+    'pt-BR':
+      '{team} está inativa. Mude para Pessoal no menu do perfil para salvar uma nova cena.',
+    fr: '{team} est inactive. Passez en Personnel dans le menu du profil pour enregistrer une nouvelle scène.'
+  },
+  teamContactQuestion: {
+    en: 'Need this for a team?',
+    es: '¿Lo necesitas para un equipo?',
+    'pt-BR': 'Precisa disso para uma equipe?',
+    fr: 'Pour une équipe ?'
+  },
+  teamContactAction: {
+    en: 'Contact us',
+    es: 'Contáctanos',
+    'pt-BR': 'Fale conosco',
+    fr: 'Contactez-nous'
+  },
+  teamContactManager: {
+    en: 'Contact 3DStreet',
+    es: 'Contactar con 3DStreet',
+    'pt-BR': 'Falar com a 3DStreet',
+    fr: 'Contacter 3DStreet'
+  },
+  teamTokensHint: {
+    en: "Your active team pays your AI generations. For more tokens, ask your team's owners or admins, or switch to Personal in the profile menu to use your own.",
+    es: 'Tu equipo activo paga tus generaciones con IA. Para obtener más tokens, pide a los propietarios o administradores de tu equipo, o cambia a Personal en el menú del perfil para usar los tuyos.',
+    'pt-BR':
+      'Sua equipe ativa paga suas gerações com IA. Para obter mais tokens, peça aos proprietários ou administradores da equipe, ou mude para Pessoal no menu do perfil para usar os seus.',
+    fr: 'Votre équipe active paie vos générations IA. Pour plus de jetons, demandez aux propriétaires ou aux administrateurs de votre équipe, ou passez en Personnel dans le menu du profil pour utiliser les vôtres.'
+  },
+
+  // Team scenes (#1267 Phase 2), shown by saveScene (editor/lib/SceneUtils.js).
+  teamSceneLocked: {
+    en: 'Not saved: {name} is editing this scene.',
+    es: 'No se guardó: {name} está editando esta escena.',
+    'pt-BR': 'Não foi salvo: {name} está editando esta cena.',
+    fr: 'Non enregistré : {name} est en train de modifier cette scène.'
+  },
+  teamSceneViewOnly: {
+    en: 'Not saved: you can view this team scene, but not edit it.',
+    es: 'No se guardó: puedes ver esta escena del equipo, pero no editarla.',
+    'pt-BR':
+      'Não foi salvo: você pode ver esta cena da equipe, mas não editá-la.',
+    fr: "Non enregistré : vous pouvez voir cette scène de l'équipe, mais pas la modifier."
+  },
+  teamSceneNoCopy: {
+    en: "A viewer can't copy a team-only scene.",
+    es: 'Un lector no puede copiar una escena solo para el equipo.',
+    'pt-BR': 'Um leitor não pode copiar uma cena só da equipe.',
+    fr: "Un lecteur ne peut pas copier une scène réservée à l'équipe."
+  },
+
+  // Scene visibility (#1267), shown outside React: the scene loader
+  // (json-utils_1.1.js) and saveScene (editor/lib/SceneUtils.js).
+  privateSceneNotAuthor: {
+    en: 'This scene is private. Only its author can open it.',
+    es: 'Esta escena es privada. Solo su autor puede abrirla.',
+    'pt-BR': 'Esta cena é privada. Só o autor pode abri-la.',
+    fr: "Cette scène est privée. Seul son auteur peut l'ouvrir."
+  },
+  privateSceneNotMember: {
+    en: 'This scene is team-only. Only members of its team can open it.',
+    es: 'Esta escena es solo para el equipo. Solo los miembros de su equipo pueden abrirla.',
+    'pt-BR':
+      'Esta cena é só da equipe. Somente os membros da equipe podem abri-la.',
+    fr: "Cette scène est réservée à l'équipe. Seuls les membres de son équipe peuvent l'ouvrir."
+  },
+  privateSceneEmbed: {
+    en: 'This scene is private and cannot be embedded.',
+    es: 'Esta escena es privada y no se puede insertar.',
+    'pt-BR': 'Esta cena é privada e não pode ser incorporada.',
+    fr: 'Cette scène est privée et ne peut pas être intégrée.'
+  },
+  restrictedSceneCopyNeedsPro: {
+    en: 'Copying an unlisted or private scene requires Pro. Nothing was saved.',
+    es: 'Copiar una escena no listada o privada requiere Pro. No se guardó nada.',
+    'pt-BR':
+      'Copiar uma cena não listada ou privada requer o Pro. Nada foi salvo.',
+    fr: "Copier une scène non listée ou privée nécessite Pro. Rien n'a été enregistré."
   }
 };
 

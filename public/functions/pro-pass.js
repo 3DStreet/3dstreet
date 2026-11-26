@@ -106,9 +106,13 @@ const computeProUntil = (currentProUntil, nowMs, days) => {
 };
 
 // The one Pro rule: paid subscription claim OR Pro-team domain OR an
-// unexpired pass. Every server-side Pro check routes through this.
-const hasProEntitlement = ({ plan, isProDomain, proUntil, nowMs = Date.now() }) =>
-  isPaidPlanClaim(plan) || !!isProDomain || isProUntilActive(proUntil, nowMs);
+// unexpired pass OR a seat in an active org with a paid plan (orgPlan, see
+// orgs.js readOrgPlan). Every server-side Pro check routes through this.
+const hasProEntitlement = ({ plan, isProDomain, proUntil, orgPlan, nowMs = Date.now() }) =>
+  isPaidPlanClaim(plan) ||
+  !!isProDomain ||
+  isProUntilActive(proUntil, nowMs) ||
+  isPaidPlanClaim(orgPlan);
 
 // Sum every pass line item on a checkout session. Returns null when no line
 // item is a configured pass. Unknown items are ignored here (token packs are

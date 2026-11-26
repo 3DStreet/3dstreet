@@ -109,7 +109,12 @@ const config = {
       path: './config/.env.development'
     }),
     new rspack.DefinePlugin({
-      VERSION: JSON.stringify(buildVersion())
+      VERSION: JSON.stringify(buildVersion()),
+      // Local emulator mode (dev only, never in the prod config): set by
+      // `npm run start:emulators`, see src/shared/utils/emulators.js.
+      'process.env.FIREBASE_EMULATORS': JSON.stringify(
+        process.env.FIREBASE_EMULATORS || ''
+      )
     }),
     new rspack.CopyRspackPlugin({
       patterns: [

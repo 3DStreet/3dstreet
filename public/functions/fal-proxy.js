@@ -2,7 +2,7 @@ const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { FieldValue } = require('firebase-admin/firestore');
 const crypto = require('crypto');
-const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
+const { checkAndRefillImageTokensInternal, chargeGenerationTokens, spendableGenTokens } = require('./token-management.js');
 const { REPLICATE_MODELS } = require('./replicate-models.js');
 const { assertAppCheck } = require('./app-check.js');
 const { buildFalImagePayload } = require('./image-model-inputs.js');
@@ -90,8 +90,11 @@ const generateFalImage = functions
       throw new functions.https.HttpsError('internal', 'Failed to retrieve token information. Please try again.');
     }
 
-    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
-      throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData.genToken || 0}.`);
+    // What the user can spend: their billing team's wallet (#1267) or
+    // their own tokens.
+    const { available: spendable } = await spendableGenTokens(userId, tokenData.genToken);
+    if (!spendable || spendable < tokenCost) {
+      throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${spendable || 0}.`);
     }
 
     // Validate required data - prompt is always required, input_image is required for edit models

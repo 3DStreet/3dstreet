@@ -3,20 +3,42 @@ import {
   initializeAppCheck,
   ReCaptchaEnterpriseProvider
 } from 'firebase/app-check';
-import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
-import { getFirestore } from 'firebase/firestore';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import {
+  getFunctions,
+  httpsCallable,
+  connectFunctionsEmulator
+} from 'firebase/functions';
+import {
+  isEmulatorMode,
+  EMULATOR_PROJECT_ID,
+  EMULATOR_HOST,
+  EMULATOR_PORTS
+} from '../utils/emulators.js';
 
-const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID,
-  measurementId: process.env.FIREBASE_MEASUREMENT_ID
-};
+const useEmulators = isEmulatorMode();
+
+const firebaseConfig = useEmulators
+  ? // Local Emulator Suite: a demo- project needs no real keys and can never
+    // reach a deployed project (see src/shared/utils/emulators.js).
+    {
+      apiKey: 'demo-api-key',
+      authDomain: `${EMULATOR_PROJECT_ID}.firebaseapp.com`,
+      projectId: EMULATOR_PROJECT_ID,
+      storageBucket: `${EMULATOR_PROJECT_ID}.appspot.com`,
+      appId: 'demo-app-id'
+    }
+  : {
+      apiKey: process.env.FIREBASE_API_KEY,
+      authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+      appId: process.env.FIREBASE_APP_ID,
+      measurementId: process.env.FIREBASE_MEASUREMENT_ID
+    };
 
 const app = initializeApp(firebaseConfig);
 
@@ -27,7 +49,9 @@ const app = initializeApp(firebaseConfig);
 // set this up. In dev, set FIREBASE_APP_CHECK_DEBUG_TOKEN to register a debug
 // token (use `true` to have the SDK print one to register in the console).
 // Initialize before getAuth/getFunctions so early calls carry an App Check token.
-if (process.env.FIREBASE_APP_CHECK_SITE_KEY) {
+// Skipped in emulator mode: the emulators don't enforce App Check and the
+// reCAPTCHA key isn't registered for the demo project.
+if (process.env.FIREBASE_APP_CHECK_SITE_KEY && !useEmulators) {
   const debugToken = process.env.FIREBASE_APP_CHECK_DEBUG_TOKEN;
   if (debugToken) {
     self.FIREBASE_APPCHECK_DEBUG_TOKEN =
@@ -67,9 +91,93 @@ storage.maxUploadRetryTime = 30_000;
 const db = getFirestore(app);
 const functions = getFunctions(app);
 
+if (useEmulators) {
+  connectAuthEmulator(auth, `http://${EMULATOR_HOST}:${EMULATOR_PORTS.auth}`, {
+    disableWarnings: true
+  });
+  connectFirestoreEmulator(db, EMULATOR_HOST, EMULATOR_PORTS.firestore);
+  connectStorageEmulator(storage, EMULATOR_HOST, EMULATOR_PORTS.storage);
+  connectFunctionsEmulator(functions, EMULATOR_HOST, EMULATOR_PORTS.functions);
+  console.warn(
+    `[firebase] Emulator mode: using the local emulators (project ${EMULATOR_PROJECT_ID}), not a deployed project.`
+  );
+}
+
 // Admin utilities exposed on window for console access
 // Server-side functions still enforce admin claim check
 window.adminTools = {
+  /**
+   * Create an organization (teams, #1267; staff only). The owner is added
+   * right away when they have an account, otherwise invited by email.
+   *
+   * Usage:
+   *   await adminTools.createOrg({ name: 'LA Metro', plan: 'MAX', seats: 10,
+   *     ownerEmail: 'owner@metro.net', domains: ['metro.net'] })
+   *   // A site license: no seat cap, everyone on the domains joins.
+   *   await adminTools.createOrg({ name: 'State U', plan: 'PRO',
+   *     siteLicense: true, monthlyTokenBudget: 5000, storageLimitGb: 200,
+   *     ownerEmail: 'owner@state.edu', domains: ['state.edu'] })
+   */
+  createOrg: async ({
+    name,
+    plan,
+    seats,
+    ownerEmail,
+    domains = [],
+    siteLicense,
+    storageLimitGb,
+    monthlyTokenBudget
+  }) => {
+    const create = httpsCallable(functions, 'orgCreate');
+    const result = await create({
+      name,
+      plan,
+      seats,
+      ownerEmail,
+      domains,
+      siteLicense,
+      storageLimitGb,
+      monthlyTokenBudget
+    });
+    console.log(result.data);
+    return result.data;
+  },
+
+  /**
+   * Update an organization (staff only): name, plan ('PRO' | 'MAX'), seats,
+   * status ('active' | 'suspended'), domains, siteLicense, storageLimitGb (null =
+   * per seat).
+   *
+   * Usage:
+   *   await adminTools.updateOrg('orgId', { seats: 20, status: 'active' })
+   *   // Move to a site license (its own token budget first):
+   *   await adminTools.updateTeamWallet('orgId', { monthlyTokenBudget: 5000 })
+   *   await adminTools.updateOrg('orgId', { siteLicense: true, storageLimitGb: 200 })
+   */
+  updateOrg: async (orgId, patch) => {
+    const update = httpsCallable(functions, 'orgUpdate');
+    const result = await update({ orgId, patch });
+    console.log(result.data);
+    return result.data;
+  },
+
+  /**
+   * A team's AI token wallet (staff only, #1267 Phase 3): the monthly budget
+   * (the wallet is topped up to it each month) and/or tokens added on top.
+   *
+   * Usage:
+   *   await adminTools.updateTeamWallet('orgId', { monthlyTokenBudget: 1000 })
+   *   // back to the plan's allowance per seat (not a site license):
+   *   await adminTools.updateTeamWallet('orgId', { monthlyTokenBudget: 'default' })
+   *   await adminTools.updateTeamWallet('orgId', { addTokens: 500 })
+   */
+  updateTeamWallet: async (orgId, { monthlyTokenBudget, addTokens } = {}) => {
+    const update = httpsCallable(functions, 'orgUpdateWallet');
+    const result = await update({ orgId, monthlyTokenBudget, addTokens });
+    console.log(result.data);
+    return result.data;
+  },
+
   /**
    * Trigger scheduled emails (admin only)
    * @param {boolean} dryRun - If true (default), shows what would be sent without sending

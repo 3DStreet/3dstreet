@@ -205,6 +205,8 @@ export const renderProfileIcon = (currentUser, isLoading) => {
  * @param {string} [props.signedOutText] - Tooltip text when signed out (default: localized 'Sign in')
  * @param {boolean} [props.showHoverCard] - Show the click-toggle profile menu instead of a plain tooltip (default: false)
  * @param {Function} [props.onSignIn] - Called when a signed-out user picks "Sign in" from the menu (only used with showHoverCard)
+ * @param {Function} [props.onOpenSettings] - Opens a Settings section ({ id, orgId? }) from the menu (only used with showHoverCard)
+ * @param {Function} [props.onActiveTeamChange] - Told when the user switches team from the menu
  * @returns {JSX.Element}
  */
 export const ProfileButton = ({
@@ -216,7 +218,9 @@ export const ProfileButton = ({
   signedInText,
   signedOutText,
   showHoverCard = false,
-  onSignIn
+  onSignIn,
+  onOpenSettings,
+  onActiveTeamChange
 }) => {
   const t = useSharedMessages();
   const tooltipContent = currentUser
@@ -248,7 +252,12 @@ export const ProfileButton = ({
   // signed-out users (the menu offers sign-in + language when signed out).
   if (showHoverCard && !isLoading) {
     return (
-      <ProfileHoverCard showDetails onSignIn={onSignIn}>
+      <ProfileHoverCard
+        showDetails
+        onSignIn={onSignIn}
+        onOpenSettings={onOpenSettings}
+        onActiveTeamChange={onActiveTeamChange}
+      >
         {buttonElement}
       </ProfileHoverCard>
     );

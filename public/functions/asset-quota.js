@@ -14,19 +14,20 @@
  * Plan limits:
  *   FREE: 100 MB · PRO: 5 GB · MAX: 25 GB (reserved; no users today)
  *
- * Plan shape is split into two orthogonal dimensions so the UI can render
- * "PRO TEAM" vs "PRO" (and future "MAX TEAM") without another rename:
+ * Plan shape is split into two orthogonal dimensions:
  *   - tier:       FREE | PRO | MAX  (what storage you get)
  *   - membership: individual | team  (how you got it)
- * `planName` is the derived display label, kept for back-compat with callers.
+ * `planName` is the display label, kept for back-compat with callers.
  */
 
+const { teamStorageLimit } = require('./team-assets-utils.js');
 const functions = require('firebase-functions/v1');
 const admin = require('firebase-admin');
 const { FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { assertAppCheck } = require('./app-check.js');
 const { readProUntil } = require('./token-management.js');
+const { readOrgPlan } = require('./orgs.js');
 const { isProUntilActive } = require('./pro-pass.js');
 
 const MB = 1000 * 1000;
@@ -73,7 +74,11 @@ async function resolvePlanForUser(uid) {
     const record = await getAuth().getUser(uid);
     const claims = record.customClaims || {};
     if (claims.plan === 'MAX') return { tier: 'MAX', membership: 'individual' };
+    // An org seat gives the org's plan (#1267); a Max org beats a Pro claim.
+    const orgPlan = await readOrgPlan(uid);
+    if (orgPlan === 'MAX') return { tier: 'MAX', membership: 'team' };
     if (claims.plan === 'PRO') return { tier: 'PRO', membership: 'individual' };
+    if (orgPlan === 'PRO') return { tier: 'PRO', membership: 'team' };
 
     // Domain-based team access grants PRO at the team membership level.
     // Mirrors token-management.js validateUserDomain.
@@ -105,9 +110,8 @@ async function resolvePlanForUser(uid) {
   return { tier: 'FREE', membership: 'individual' };
 }
 
-function derivePlanName(tier, membership) {
-  const tierLabel = PLAN_LIMITS[tier] ? tier : 'FREE';
-  return membership === 'team' ? `${tierLabel} TEAM` : tierLabel;
+function derivePlanName(tier) {
+  return PLAN_LIMITS[tier] ? tier : 'FREE';
 }
 
 /**
@@ -173,9 +177,15 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
   const uid = context.auth.uid;
   const proposedBytes = Math.max(0, Number(data?.proposedBytes) || 0);
 
+  // Upload into a team's asset library (#1267 Phase 4, docs/team-assets.md):
+  // the team's storage, limit and plan, for its seats only.
+  if (data?.orgId) {
+    return teamUploadQuota({ uid, orgId: data.orgId, proposedBytes });
+  }
+
   const { tier, membership } = await resolvePlanForUser(uid);
   const planLimit = getPlanLimit(tier);
-  const planName = derivePlanName(tier, membership);
+  const planName = derivePlanName(tier);
 
   const usageSnap = await admin
     .firestore()
@@ -206,7 +216,49 @@ const getUploadQuota = functions.runWith({ secrets: ['ALLOWED_PRO_TEAM_DOMAINS']
   };
 });
 
+/** getUploadQuota for an upload into a team's library. */
+async function teamUploadQuota({ uid, orgId, proposedBytes }) {
+  if (typeof orgId !== 'string' || !orgId.match(/^[A-Za-z0-9_-]+$/)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid team.');
+  }
+  const db = admin.firestore();
+  const [org, member, usage] = await Promise.all([
+    db.collection('orgs').doc(orgId).get(),
+    db.collection('orgs').doc(orgId).collection('members').doc(uid).get(),
+    db.collection('orgs').doc(orgId).collection('meta').doc('usage').get()
+  ]);
+  if (
+    !org.exists ||
+    org.data().status !== 'active' ||
+    !member.exists ||
+    !['owner', 'admin', 'member'].includes(member.data().role)
+  ) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      "You can't upload to this team's library."
+    );
+  }
+  const tier = PLAN_LIMITS[org.data().plan] ? org.data().plan : 'PRO';
+  const planLimit = teamStorageLimit(org.data());
+  const bytesUsed = usage.exists ? Number(usage.data().bytesUsed) || 0 : 0;
+  const perFileLimit = getMaxFileBytes(tier);
+  const fileTooLarge = proposedBytes > perFileLimit;
+  const overQuota = bytesUsed + proposedBytes > planLimit;
+  return {
+    bytesUsed,
+    planLimit,
+    perFileLimit,
+    tier,
+    membership: 'team',
+    planName: derivePlanName(tier),
+    orgId,
+    allowed: !fileTooLarge && !overQuota,
+    reason: fileTooLarge ? 'file_too_large' : overQuota ? 'over_limit' : null
+  };
+}
+
 module.exports = {
+  teamUploadQuota,
   onAssetWritten,
   getUploadQuota,
   resolvePlanForUser,

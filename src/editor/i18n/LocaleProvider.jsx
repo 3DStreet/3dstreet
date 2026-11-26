@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
 import { IntlProvider } from 'react-intl';
 import useStore from '@/store';
+import { LOCALE_CHANGED_EVENT } from '@shared/i18n/sharedMessages';
+import { getActiveLocale } from '@shared/utils/format';
 import { MESSAGES } from './messages';
 import { DEFAULT_LOCALE } from './config';
 
@@ -12,6 +15,19 @@ import { DEFAULT_LOCALE } from './config';
  */
 export function LocaleProvider({ children }) {
   const locale = useStore((state) => state.locale);
+  // The shared profile menu switches language without the store
+  // (changeLocale: localStorage + a broadcast); follow it here so the editor
+  // re-renders in the new language. The choice is already persisted.
+  useEffect(() => {
+    const follow = () => {
+      const next = getActiveLocale();
+      if (next !== useStore.getState().locale) {
+        useStore.setState({ locale: next });
+      }
+    };
+    window.addEventListener(LOCALE_CHANGED_EVENT, follow);
+    return () => window.removeEventListener(LOCALE_CHANGED_EVENT, follow);
+  }, []);
   const messages = MESSAGES[locale] || MESSAGES[DEFAULT_LOCALE];
 
   return (

@@ -1,11 +1,19 @@
-import { createContext, useContext, useEffect, useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { auth, db } from '@shared/services/firebase';
 import PropTypes from 'prop-types';
 import { isUserPro } from '@shared/auth/api/user';
+import { MEMBERSHIP_CHANGED_EVENT, membershipFields } from '@shared/api/orgs';
 import { getTokenProfile, checkAndRefillProTokens } from '@shared/utils/tokens';
 import { detectBrowserLocale } from '@shared/i18n/locales';
 import posthog from 'posthog-js';
+import {
+  billingOrgOf,
+  inactiveBillingOrgOf,
+  memberAvailable,
+  monthKey,
+  refillWallet
+} from '@shared/utils/teamWallet';
 
 const AuthContext = createContext({
   currentUser: null,
@@ -145,6 +153,11 @@ const AuthProvider = ({ children }) => {
         // Paid tier ('PRO' | 'MAX' | null). Caches written before this field
         // existed simply lack it; Phase 2 backfills on the next enrich.
         plan: cachedProStatus?.plan ?? null,
+        // Organizations (#1267): see src/shared/auth/api/user.js.
+        teamName: cachedProStatus?.teamName ?? null,
+        orgPlan: cachedProStatus?.orgPlan ?? null,
+        orgs: cachedProStatus?.orgs ?? [],
+        activeOrgId: cachedProStatus?.activeOrgId ?? null,
         // One-time pass (#1922). The server re-evaluates expiry in Phase 2;
         // a cached pass that has since lapsed is dropped here already.
         isProPass: cachedPassActive,
@@ -177,7 +190,11 @@ const AuthProvider = ({ children }) => {
               isPro: false,
               isProTeam: false,
               teamDomain: null,
+              teamName: null,
               plan: null,
+              orgPlan: null,
+              orgs: [],
+              activeOrgId: null,
               isProPass: false,
               proUntil: null
             };
@@ -194,6 +211,10 @@ const AuthProvider = ({ children }) => {
         isProTeam: proStatus.isProTeam,
         teamDomain: proStatus.teamDomain,
         plan: proStatus.plan ?? null,
+        teamName: proStatus.teamName ?? null,
+        orgPlan: proStatus.orgPlan ?? null,
+        orgs: proStatus.orgs ?? [],
+        activeOrgId: proStatus.activeOrgId ?? null,
         isProPass: !!proStatus.isProPass,
         proUntil: proStatus.proUntil ?? null
       };
@@ -243,6 +264,117 @@ const AuthProvider = ({ children }) => {
     return () => unsubscribe();
   }, []);
 
+  // Team AI token wallet (#1267 Phase 3): while a team pays the user's
+  // generations, follow its wallet and this month's usage.
+  // The team paying the user's generations: their active team, when they
+  // hold a seat in it and it's active (the server checks the same).
+  const billingOrgId = billingOrgOf(currentUser);
+  const inactiveOrgId = inactiveBillingOrgOf(currentUser);
+  const uid = currentUser?.uid || null;
+  const [teamWallet, setTeamWallet] = useState(null);
+  useEffect(() => {
+    setTeamWallet(null);
+    if (!billingOrgId || !uid) return undefined;
+    let wallet = null;
+    let usage = null;
+    const update = () =>
+      wallet && setTeamWallet({ orgId: billingOrgId, wallet, usage });
+    const onError = (error) =>
+      console.error('Error following the team wallet:', error);
+    const unsubscribeWallet = onSnapshot(
+      doc(db, 'orgWallets', billingOrgId),
+      (snapshot) => {
+        wallet = snapshot.data() || {};
+        update();
+      },
+      onError
+    );
+    const unsubscribeUsage = onSnapshot(
+      doc(db, 'orgWallets', billingOrgId, 'usage', monthKey()),
+      (snapshot) => {
+        usage = snapshot.data() || {};
+        update();
+      },
+      onError
+    );
+    return () => {
+      unsubscribeWallet();
+      unsubscribeUsage();
+    };
+  }, [billingOrgId, uid]);
+
+  // What the app shows and checks before a generation: the team's wallet
+  // when it pays (genToken = what this member can still spend from it; the
+  // personal balance stays in personalGenToken), else the user's own tokens.
+  const effectiveTokenProfile = useMemo(() => {
+    if (inactiveOrgId) {
+      const team = (currentUser?.orgs || []).find(
+        (org) => org.orgId === inactiveOrgId
+      );
+      return {
+        ...(tokenProfile || {}),
+        genToken: 0,
+        personalGenToken: tokenProfile?.genToken ?? 0,
+        billing: {
+          orgId: inactiveOrgId,
+          teamName: team?.name || null,
+          role: team?.role || null,
+          inactive: true,
+          balance: 0,
+          monthlyTokenBudget: 0,
+          memberMonthlyCap: null,
+          usedThisMonth: 0
+        }
+      };
+    }
+    if (!teamWallet || teamWallet.orgId !== billingOrgId) return tokenProfile;
+    const wallet = refillWallet(teamWallet.wallet);
+    const usedThisMonth = teamWallet.usage?.members?.[uid] || 0;
+    const team = (currentUser?.orgs || []).find(
+      (org) => org.orgId === billingOrgId
+    );
+    return {
+      ...(tokenProfile || {}),
+      genToken: memberAvailable({ wallet, usedThisMonth }),
+      personalGenToken: tokenProfile?.genToken ?? 0,
+      billing: {
+        orgId: billingOrgId,
+        teamName: team?.name || null,
+        role: team?.role || null,
+        balance: wallet.genToken || 0,
+        monthlyTokenBudget: wallet.monthlyTokenBudget || 0,
+        memberMonthlyCap: wallet.memberMonthlyCap ?? null,
+        usedThisMonth
+      }
+    };
+  }, [
+    teamWallet,
+    tokenProfile,
+    billingOrgId,
+    inactiveOrgId,
+    uid,
+    currentUser?.orgs
+  ]);
+
+  // A membership change made in another auth context on the page (the
+  // team switcher in the profile menu, while the generator's token counter
+  // is its own React root): apply it here too, and keep the cache current
+  // so a reload doesn't show the previous team first.
+  useEffect(() => {
+    const apply = (event) => {
+      const { uid: changedUid, status } = event.detail || {};
+      if (!status || !changedUid) return;
+      setCachedProStatus(changedUid, status);
+      setCurrentUser((prev) =>
+        prev?.uid === changedUid
+          ? { ...prev, ...membershipFields(status) }
+          : prev
+      );
+    };
+    window.addEventListener(MEMBERSHIP_CHANGED_EVENT, apply);
+    return () => window.removeEventListener(MEMBERSHIP_CHANGED_EVENT, apply);
+  }, []);
+
   // Listen for token count changes (e.g., after image generation)
   useEffect(() => {
     const handleTokenCountChanged = () => {
@@ -262,7 +394,7 @@ const AuthProvider = ({ children }) => {
       value={{
         currentUser,
         setCurrentUser,
-        tokenProfile,
+        tokenProfile: effectiveTokenProfile,
         refreshTokenProfile,
         isLoading
       }}

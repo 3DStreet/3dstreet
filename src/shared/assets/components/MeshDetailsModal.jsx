@@ -6,6 +6,10 @@
  */
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import TeamLibraryActions from './TeamLibraryActions.jsx';
+import { useAuthContext } from '@shared/contexts';
+import { teamIdOfOwner } from '../assetOwner.js';
+import { canEditTeamItem } from '@shared/utils/teamPermissions.js';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -149,6 +153,7 @@ const MeshDetailsModal = ({
   onClose,
   onPlace,
   onCopied,
+  onAddedToTeam,
   currentIndex,
   totalItems,
   onNavigate
@@ -261,10 +266,23 @@ const MeshDetailsModal = ({
   // path), upload it so the gallery card stops showing a placeholder. Covers
   // splats and server-generated meshes (which skip the upload-time capture).
   // Best-effort, at most once per asset (assetUpdated then refreshes the card).
+  // The user's teams (#1267 Phase 4): to name a team asset's library, and
+  // because a seat in that team may rename it, edit its attribution and add
+  // its thumbnail (firestore.rules orgs/{orgId}/assets), unless the team lets
+  // members edit only the assets they added. Reoptimize and delete stay with
+  // personal owners; removal is TeamLibraryActions'.
+  const { currentUser } = useAuthContext();
+  const assetTeam = (currentUser?.orgs || []).find(
+    (org) => org.orgId === teamIdOfOwner(ownerUid)
+  );
+  const canEditDetails =
+    (!!auth.currentUser && auth.currentUser.uid === ownerUid) ||
+    (!!assetTeam &&
+      assetTeam.status === 'active' &&
+      canEditTeamItem(assetTeam, data?.addedBy, currentUser?.uid));
   const thumbUploadedRef = useRef(null);
   useEffect(() => {
-    const isOwnerNow = !!auth.currentUser && auth.currentUser.uid === ownerUid;
-    if (!data || !isOwnerNow) return;
+    if (!data || !canEditDetails) return;
     if (data.type !== 'splat' && data.type !== 'mesh') return;
     if (data.thumbnailUrl || thumbUploadedRef.current === assetId) return;
     const expectedSrc = getServedUrl(data);
@@ -301,7 +319,7 @@ const MeshDetailsModal = ({
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [data, assetId, ownerUid]);
+  }, [data, assetId, ownerUid, canEditDetails]);
 
   const iframeRef = useRef(null);
   const isOwner = !!auth.currentUser && auth.currentUser.uid === ownerUid;
@@ -366,7 +384,7 @@ const MeshDetailsModal = ({
   // whatever the live canvas currently shows. Must run while the modal is still
   // open — a ref read in an unmount effect would already be nulled.
   const captureCurrentFrame = () => {
-    if (!data || data.type !== 'splat' || !isOwner) return;
+    if (!data || data.type !== 'splat' || !canEditDetails) return;
     if (data.thumbnailUrl || thumbUploadedRef.current === assetId) return;
     uploadLiveCanvasThumbnail();
   };
@@ -381,9 +399,10 @@ const MeshDetailsModal = ({
   useEffect(() => {
     onCloseRef.current = handleClose;
   });
-  const nameDirty = isOwner && name.trim() !== savedName && name.trim() !== '';
+  const nameDirty =
+    canEditDetails && name.trim() !== savedName && name.trim() !== '';
   const attributionDirty =
-    isOwner && !attributionEquals(attribution, savedAttribution);
+    canEditDetails && !attributionEquals(attribution, savedAttribution);
   const dirty = nameDirty || attributionDirty;
 
   const onSave = async () => {
@@ -905,7 +924,7 @@ const MeshDetailsModal = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={onFieldKeyDown}
-                disabled={!isOwner || saving || !data}
+                disabled={!canEditDetails || saving || !data}
               />
             </div>
 
@@ -916,7 +935,7 @@ const MeshDetailsModal = ({
               onEnterEdit={() => setEditingAttribution(true)}
               onCancel={cancelAttributionEdit}
               onFieldKeyDown={onFieldKeyDown}
-              isOwner={isOwner && !!data}
+              isOwner={canEditDetails && !!data}
               disabled={saving || !data}
             />
 
@@ -1014,7 +1033,11 @@ const MeshDetailsModal = ({
               </div>
               <div>
                 <span className={styles.metaLabel}>{t('meshFieldOwner')}</span>
-                {isOwner ? t('meshOwnerYou') : t('meshOwnerOther')}
+                {isOwner
+                  ? t('meshOwnerYou')
+                  : teamIdOfOwner(ownerUid)
+                    ? t('meshOwnerTeam', { team: assetTeam?.name || '' })
+                    : t('meshOwnerOther')}
               </div>
             </div>
 
@@ -1040,6 +1063,20 @@ const MeshDetailsModal = ({
                 )}
                 <span>{copyStatusText}</span>
               </div>
+            )}
+
+            {!loading && data && (
+              <TeamLibraryActions
+                assetId={assetId}
+                type={data.type}
+                ownerUid={ownerUid}
+                deleted={!!data.deleted}
+                addedBy={data.addedBy}
+                addedByName={data.addedByName}
+                showLocation={false}
+                onAdded={onAddedToTeam}
+                onRemoved={handleClose}
+              />
             )}
 
             <Tooltip.Provider>
@@ -1413,6 +1450,7 @@ MeshDetailsModal.propTypes = {
   // the copy into the scene; the gallery leaves it undefined (nothing to
   // swap). A truthy return switches the success copy.
   onCopied: PropTypes.func,
+  onAddedToTeam: PropTypes.func,
   // Optional: when provided, renders a "Place in scene" CTA. Called with
   // { assetId, ownerUid, storageUrl, name, type } when the user clicks it;
   // the modal closes itself after invoking. Only the gallery card open

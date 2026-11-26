@@ -211,8 +211,13 @@ const createStripeBillingPortal = functions
     });
     // update data to include stripeCustomerID (data.customer)
 
+    // Paid without Stripe: invoiced, or a plan set by staff.
     if (!stripeCustomerId) {
-      return;
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'This plan is not billed through Stripe.',
+        { reason: 'no-stripe-customer' }
+      );
     }
 
     const session = await stripe.billingPortal.sessions.create({

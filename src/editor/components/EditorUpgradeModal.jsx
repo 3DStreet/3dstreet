@@ -104,6 +104,10 @@ const EditorUpgradeModal = () => {
     returnToPreviousModal();
   };
   const onSuccess = () => {
+    // Show the purchased tokens. Not as soon as the plan flips: the webhook
+    // grants them just after, and refreshing can run the monthly refill,
+    // which would then come on top of the grant.
+    window.dispatchEvent(new Event('tokenCountChanged'));
     setPendingPostCheckoutAction(null);
     consumeDeepLink();
     returnToPreviousModal();

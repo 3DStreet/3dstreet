@@ -50,6 +50,9 @@ const TokenDetailsCard = ({
     tokenType === 'geoToken'
       ? t('geoTokensDescription')
       : t('genTokensDescription');
+  // A team paying the user's generations (#1267 Phase 3): its wallet is what
+  // counts, and buying personal tokens wouldn't help.
+  const billing = tokenType === 'genToken' ? tokenProfile?.billing : null;
 
   return (
     <HoverCard.Root open={isOpen} onOpenChange={setIsOpen} openDelay={200}>
@@ -85,10 +88,29 @@ const TokenDetailsCard = ({
 
             <p className={styles.tokenDescription}>{tokenDescription}</p>
 
+            {billing && (
+              <div className={styles.tokenDescription}>
+                <p>
+                  <strong>
+                    {t('teamTokensPaidBy', { team: billing.teamName || '' })}
+                  </strong>
+                </p>
+                {billing.memberMonthlyCap !== null && (
+                  <p>
+                    {t('teamTokensMemberLimit', {
+                      used: billing.usedThisMonth,
+                      cap: billing.memberMonthlyCap
+                    })}
+                  </p>
+                )}
+                <p>{t('teamTokensHint')}</p>
+              </div>
+            )}
+
             {/* Actions Section — the purchase button is always available;
                 only the warning treatment is threshold-gated. */}
             <div className={styles.actionsSection}>
-              {tokenCount < 10 ? (
+              {billing ? null : tokenCount < 10 ? (
                 <div
                   className={
                     tokenCount < 1 ? styles.outOfTokens : styles.lowTokenWarning

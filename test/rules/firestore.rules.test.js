@@ -20,7 +20,11 @@ import {
   assertFails
 } from '@firebase/rules-unit-testing';
 import {
+  collection,
   doc,
+  getDocs,
+  query,
+  where,
   setDoc,
   getDoc,
   updateDoc,
@@ -219,6 +223,20 @@ describe('firestore.rules — users/{uid}/assets/{assetId} read (visibility)', (
   it('foreign user can read a public asset', async () => {
     await seed({ visibility: 'public' });
     await assertSucceeds(getDoc(assetRef(foreignDb())));
+  });
+
+  it('only the owner lists assets, whatever their visibility', async () => {
+    const list = (ctxDb) =>
+      getDocs(
+        query(
+          collection(ctxDb, 'users', UID, 'assets'),
+          where('visibility', '==', 'public')
+        )
+      );
+    await seed({ visibility: 'public' });
+    await assertSucceeds(list(ownerDb()));
+    await assertFails(list(foreignDb()));
+    await assertFails(list(testEnv.unauthenticatedContext().firestore()));
   });
 
   it('foreign user can read an unlisted asset (assetId known)', async () => {

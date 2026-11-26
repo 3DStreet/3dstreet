@@ -1,0 +1,30 @@
+.banner {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  // Above the side panels (rendered in a portal on document.body).
+  z-index: 10000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  box-sizing: border-box;
+  width: max-content;
+  // Stays over the 3D view, between the side panels; wraps when longer.
+  max-width: min(600px, calc(100vw - 32px));
+  padding: 10px 16px;
+  transform: translateX(-50%);
+  border: 1px solid #a16207;
+  border-radius: 8px;
+  background: rgba(66, 32, 6, 0.95);
+  color: #fef3c7;
+  font-size: 14px;
+  line-height: 1.4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}

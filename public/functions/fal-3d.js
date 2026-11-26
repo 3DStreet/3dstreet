@@ -4,7 +4,8 @@ const { FieldValue } = require('firebase-admin/firestore');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
-const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
+const { checkAndRefillImageTokensInternal, chargeGenerationTokens, spendableGenTokens } = require('./token-management.js');
+const { refundToWallet } = require('./team-wallet.js');
 const { REPLICATE_MODELS } = require('./replicate-models.js');
 const { assertAppCheck } = require('./app-check.js');
 
@@ -147,7 +148,7 @@ async function saveMeshToGallery(userId, glbUrl, job) {
       updatedAt: now,
       uploadedAt: now,
       publishedAt: now,
-      visibility: 'public',
+      visibility: 'unlisted',
       tags: [],
       collections: [],
       deleted: false
@@ -351,13 +352,28 @@ async function refundFalJobInline(db, userId, jobRef, tokenCost) {
     let refundedNow = false;
     let relatedModel = null;
     let refundSource = 'generation-failed';
+    let refundedOrgId = null;
     await db.runTransaction(async (tx) => {
       refundedNow = false; // reset — the transaction may retry
+      refundedOrgId = null;
       const jobDoc = await tx.get(jobRef);
       const job = jobDoc.exists ? jobDoc.data() : {};
       if (!job.tokenCharged || job.refunded) return;
       relatedModel = job.model || null;
       refundSource = `${job.kind || 'mesh'}-generation-failed`;
+      // Charged to a team's wallet (#1267 Phase 3): it goes back there.
+      if (job.chargedOrgId) {
+        refundToWallet(tx, {
+          orgId: job.chargedOrgId,
+          uid: userId,
+          cost: tokenCost,
+          chargedMonth: job.chargedMonth
+        });
+        refundedOrgId = job.chargedOrgId;
+        tx.update(jobRef, { refunded: true });
+        refundedNow = true;
+        return;
+      }
       const tokenProfileRef = db.collection('tokenProfile').doc(userId);
       const tokenDoc = await tx.get(tokenProfileRef);
       if (tokenDoc.exists) {
@@ -376,6 +392,7 @@ async function refundFalJobInline(db, userId, jobRef, tokenCost) {
       db.collection('tokenLog')
         .add({
           userId,
+          orgId: refundedOrgId,
           type: 'refund',
           tokenCost,
           source: refundSource,
@@ -457,10 +474,16 @@ const generateFalMesh = functions
         `Failed to retrieve token information: ${tokenError.message}`
       );
     }
-    if (!tokenData || !tokenData.genToken || tokenData.genToken < tokenCost) {
+    // What the user can spend: their billing team's wallet (#1267) or
+    // their own tokens.
+    const { available: spendable } = await spendableGenTokens(
+      userId,
+      tokenData?.genToken
+    );
+    if (!tokenData || !spendable || spendable < tokenCost) {
       throw new functions.https.HttpsError(
         'resource-exhausted',
-        `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData?.genToken || 0}.`
+        `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${spendable || 0}.`
       );
     }
 

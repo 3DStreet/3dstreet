@@ -1,3 +1,4 @@
+@use '../../styles/select';
 /* AssetsPanelBody — shared body used by the editor's Assets panel and the
    generator's Assets sidebar. Colors are hardcoded (not pulled from editor
    variables.scss) so generator/bollardbuddy can use this without pulling in
@@ -315,4 +316,11 @@
   &:hover {
     background: #8965ef;
   }
+}
+
+// Team asset library switch (#1267 Phase 4)
+.librarySelect {
+  width: calc(100% - 24px);
+  margin: 8px 12px;
+  @include select.select;
 }

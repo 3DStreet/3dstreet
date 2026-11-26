@@ -3,6 +3,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  increment,
   getDocs,
   limit,
   orderBy,
@@ -10,6 +11,7 @@ import {
   serverTimestamp,
   setDoc,
   startAfter,
+  Timestamp,
   updateDoc,
   where
 } from 'firebase/firestore';
@@ -32,7 +34,9 @@ const generateSceneId = async (authorId, isFirstScene = false) => {
   await setDoc(newSceneDocRef, {
     createTimestamp: serverTimestamp(),
     updateTimestamp: serverTimestamp(),
-    author: authorId
+    author: authorId,
+    visibility: 'public',
+    orgId: null
   });
 
   posthog.capture('scene_created', {
@@ -44,14 +48,49 @@ const generateSceneId = async (authorId, isFirstScene = false) => {
   return newSceneId;
 };
 
+const captureSceneCreated = (sceneId, authorId, title, isFirstScene) =>
+  posthog.capture('scene_created', {
+    scene_id: sceneId,
+    author_id: authorId,
+    scene_title: title,
+    is_first: isFirstScene
+  });
+
 const createScene = async (
   authorId,
   sceneData,
   title,
   version,
   memory,
-  isFirstScene = false
+  isFirstScene = false,
+  // Personal scene: the rules let clients create only public ones; an
+  // unlisted or private one (Pro) goes through the createRestrictedScene
+  // callable, which refuses with details.reason 'pro-required'. Team scene:
+  // any visibility.
+  visibility = 'public',
+  // A team scene (#1267 Phase 2): { orgId, projectId, lockName }. The
+  // creator holds its edit lock (src/editor/lib/editLock.js).
+  team = null
 ) => {
+  const content = { data: sceneData, title, version, memory };
+  if (!team && visibility !== 'public') {
+    const callable = httpsCallable(getFunctions(), 'createRestrictedScene');
+    const { sceneId } = (await callable({ visibility })).data;
+    const restrictedRef = doc(sceneRef, sceneId);
+    try {
+      await updateDoc(restrictedRef, {
+        ...content,
+        updateTimestamp: serverTimestamp()
+      });
+    } catch (error) {
+      // Don't leave an empty scene behind.
+      await deleteDoc(restrictedRef).catch(() => {});
+      throw error;
+    }
+    captureSceneCreated(sceneId, authorId, title, isFirstScene);
+    return sceneId;
+  }
+
   // Generate a new UUID
   const newSceneId = uuidv4();
   const newSceneDocRef = doc(sceneRef, newSceneId);
@@ -60,18 +99,21 @@ const createScene = async (
     createTimestamp: serverTimestamp(),
     updateTimestamp: serverTimestamp(),
     author: authorId,
-    data: sceneData,
-    title: title,
-    version: version,
-    memory: memory
+    visibility,
+    orgId: team ? team.orgId : null,
+    ...(team && {
+      projectId: team.projectId || null,
+      revision: 0,
+      editLock: {
+        uid: authorId,
+        name: team.lockName || null,
+        expiresAt: Timestamp.fromMillis(Date.now() + 2 * 60 * 1000)
+      }
+    }),
+    ...content
   });
 
-  posthog.capture('scene_created', {
-    scene_id: newSceneId,
-    author_id: authorId,
-    scene_title: title,
-    is_first: isFirstScene
-  });
+  captureSceneCreated(newSceneId, authorId, title, isFirstScene);
 
   return newSceneId;
 };
@@ -86,7 +128,15 @@ const deleteScene = async (sceneId) => {
   }
 };
 
-const updateScene = async (sceneId, sceneData, title, version, memory) => {
+const updateScene = async (
+  sceneId,
+  sceneData,
+  title,
+  version,
+  memory,
+  // A team scene's saves count revisions (#1267, see editLock.js).
+  { bumpRevision = false } = {}
+) => {
   try {
     const sceneDocRef = doc(sceneRef, sceneId);
     await updateDoc(sceneDocRef, {
@@ -94,7 +144,8 @@ const updateScene = async (sceneId, sceneData, title, version, memory) => {
       updateTimestamp: serverTimestamp(),
       title: title,
       version: version,
-      memory: memory
+      memory: memory,
+      ...(bumpRevision && { revision: increment(1) })
     });
   } catch (error) {
     throw new Error(error);
@@ -128,6 +179,8 @@ const getUserScenes = async (currentUserUID, isInitialFetch) => {
       const userScenesQuery = query(
         collection(db, 'scenes'),
         where('author', '==', currentUserUID),
+        // Personal scenes only: team scenes are listed per team (#1267).
+        where('orgId', '==', null),
         orderBy('updateTimestamp', 'desc'),
         limit(20)
       );
@@ -140,6 +193,8 @@ const getUserScenes = async (currentUserUID, isInitialFetch) => {
       const userScenesQuery = query(
         collection(db, 'scenes'),
         where('author', '==', currentUserUID),
+        // Personal scenes only: team scenes are listed per team (#1267).
+        where('orgId', '==', null),
         orderBy('updateTimestamp', 'desc'),
         startAfter(lastVisible),
         limit(20)
@@ -154,12 +209,28 @@ const getUserScenes = async (currentUserUID, isInitialFetch) => {
   }
 };
 
+// A team's scenes (#1267 Phase 2), newest first; projectId narrows to one
+// project. Pass the previous page's last doc to continue.
+const getTeamScenes = async (orgId, { projectId, after } = {}) => {
+  const constraints = [where('orgId', '==', orgId)];
+  if (projectId !== undefined) {
+    constraints.push(where('projectId', '==', projectId));
+  }
+  constraints.push(orderBy('updateTimestamp', 'desc'));
+  if (after) constraints.push(startAfter(after));
+  constraints.push(limit(20));
+  return (await getDocs(query(collection(db, 'scenes'), ...constraints))).docs;
+};
+
 let communityScenesSnapshot;
 const getCommunityScenes = async (isInitialFetch) => {
   try {
     if (isInitialFetch) {
       const communityScenesQuery = query(
         collection(db, 'scenes'),
+        // Only public scenes are listed (#1267); the rules refuse a query
+        // that isn't limited to them.
+        where('visibility', '==', 'public'),
         orderBy('updateTimestamp', 'desc'),
         limit(20)
       );
@@ -172,6 +243,9 @@ const getCommunityScenes = async (isInitialFetch) => {
 
       const communityScenesQuery = query(
         collection(db, 'scenes'),
+        // Only public scenes are listed (#1267); the rules refuse a query
+        // that isn't limited to them.
+        where('visibility', '==', 'public'),
         orderBy('updateTimestamp', 'desc'),
         startAfter(lastVisible),
         limit(20)
@@ -342,18 +416,15 @@ const uploadThumbnailImage = async (sceneDocId) => {
   }
 };
 
-// Share scene to Discord
-const shareSceneToDiscord = async (sceneData) => {
-  try {
-    const functions = getFunctions();
-    const shareToDiscord = httpsCallable(functions, 'shareToDiscord');
-
-    const result = await shareToDiscord(sceneData);
-    return result.data;
-  } catch (error) {
-    console.error('Error sharing to Discord:', error);
-    throw error;
-  }
+// Change a scene's visibility (#1267). Goes through the setSceneVisibility
+// callable: the only path allowed to make a scene unlisted or private (Pro
+// features checked server-side). Throws the callable's error, whose
+// details.reason is 'pro-required' | 'not-author' | 'not-found' |
+// 'invalid-visibility'.
+const setSceneVisibility = async (sceneId, visibility) => {
+  const callable = httpsCallable(getFunctions(), 'setSceneVisibility');
+  const result = await callable({ sceneId, visibility });
+  return result.data.visibility;
 };
 
 export {
@@ -363,10 +434,11 @@ export {
   generateSceneId,
   getCommunityScenes,
   getUserScenes,
+  getTeamScenes,
+  setSceneVisibility,
   updateScene,
   updateSceneIdAndTitle,
   uploadThumbnailImage,
   saveScreenshot,
-  takeScreenshotWithOptions,
-  shareSceneToDiscord
+  takeScreenshotWithOptions
 };

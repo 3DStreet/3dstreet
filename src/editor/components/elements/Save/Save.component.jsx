@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useIntl } from 'react-intl';
 import { saveSceneWithScreenshot } from '@/editor/lib/SceneUtils';
 import useStore from '@/store';
+import { canSaveInPlace, sceneSaveMode } from '@/editor/lib/sceneAccess';
 import { Button } from '@/editor/components/elements';
 import {
   CloudSavedIcon,
@@ -62,7 +63,8 @@ export const Save = ({ currentUser }) => {
   useEffect(() => {
     const autoSaveScene = debounce((cmd) => {
       if (cmd) {
-        if (currentUser && STREET.utils.getAuthorId() === currentUser.uid) {
+        // Your personal scene, or a team scene this tab holds the lock of.
+        if (currentUser && canSaveInPlace(currentUser)) {
           saveScene(false);
         }
       }
@@ -73,9 +75,17 @@ export const Save = ({ currentUser }) => {
     };
   }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isAuthor = () => {
-    return currentUser?.uid === STREET.utils.getAuthorId();
-  };
+  // Re-render when the team scene's lock or team changes (sceneSaveMode
+  // reads them from the store).
+  useStore((state) => state.editLock.status);
+  useStore((state) => state.sceneOrgId);
+  const saveMode = currentUser ? sceneSaveMode(currentUser) : null;
+  const isAuthor = () => saveMode === 'own' || saveMode === 'team';
+  const isBlockedTeamScene = [
+    'team-locked',
+    'team-viewer',
+    'team-inactive'
+  ].includes(saveMode);
 
   const handleSave = async (saveAs, doPromptTitle) => {
     try {
@@ -119,7 +129,21 @@ export const Save = ({ currentUser }) => {
               </TooltipWrapper>
             ) : (
               <>
-                {!isAuthor() ? (
+                {isBlockedTeamScene ? (
+                  // A team scene someone else is editing, or a viewer's:
+                  // nothing to save here (EditLockBanner says why).
+                  <TooltipWrapper
+                    content={intl.formatMessage({
+                      id: 'save.teamSceneNotEditable',
+                      defaultMessage:
+                        "Not saved: you can't edit this team scene right now"
+                    })}
+                  >
+                    <Button variant="save">
+                      <CloudNotSavedIcon />
+                    </Button>
+                  </TooltipWrapper>
+                ) : !isAuthor() ? (
                   <TooltipWrapper
                     content={intl.formatMessage({
                       id: 'save.notSavedSaveAs',

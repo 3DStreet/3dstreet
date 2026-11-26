@@ -13,6 +13,7 @@ import useStore from '../../../../store.js';
 import { fileJSON } from '@/editor/lib/SceneUtils';
 import { commonMessages } from '@/editor/i18n/commonMessages';
 import { scenePath } from '@/tested/scene-url-utils.js';
+import { TeamScenesPanel } from './TeamScenesPanel.jsx';
 
 const SCENES_PER_PAGE = 20;
 // Static descriptors so formatjs can extract the tab labels (a dynamic
@@ -45,6 +46,21 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
 
   const setModal = useStore((state) => state.setModal);
   const isOpen = useStore((state) => state.modal === 'scenes');
+  // The user's teams (#1267), each with its own tab.
+  const teams = currentUser?.orgs || [];
+  // Opening it shows the active team's scenes first (the team switcher,
+  // docs/settings.md), or My scenes under Personal.
+  const activeTeamId = teams.some(
+    (org) => org.orgId === currentUser?.activeOrgId
+  )
+    ? currentUser.activeOrgId
+    : null;
+  useEffect(() => {
+    if (isOpen) setSelectedTab(activeTeamId ? `team:${activeTeamId}` : 'owner');
+  }, [isOpen, activeTeamId]);
+  const selectedTeam = selectedTab.startsWith('team:')
+    ? teams.find((org) => `team:${org.orgId}` === selectedTab) || null
+    : null;
   const handleSceneClick = (scene, event) => {
     posthog.capture('scene_opened', {
       scene_id: scene.id,
@@ -100,6 +116,12 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       AFRAME.scenes[0].setAttribute('metadata', 'sceneId', sceneId);
       useStore.getState().setSceneTitle(sceneTitle);
       AFRAME.scenes[0].setAttribute('metadata', 'authorId', sceneData.author);
+      useStore.getState().setSceneVisibility(sceneData.visibility);
+      useStore.getState().setSceneTeam({
+        orgId: sceneData.orgId,
+        projectId: sceneData.projectId
+      });
+      useStore.getState().setSceneRevision(sceneData.revision);
 
       STREET.notify.successMessage(
         intl.formatMessage({
@@ -301,10 +323,20 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
           </div>
           <div className={styles.header}>
             <Tabs
-              tabs={tabs.map((tab) => {
+              tabs={[
+                tabs[0],
+                // One tab per team (#1267), between My Scenes and Community.
+                ...teams.map((org) => ({
+                  value: `team:${org.orgId}`,
+                  label: org.name
+                })),
+                tabs[1]
+              ].map((tab) => {
                 return {
                   ...tab,
-                  label: intl.formatMessage(tabMessages[tab.messageKey]),
+                  label:
+                    tab.label ??
+                    intl.formatMessage(tabMessages[tab.messageKey]),
                   isSelected: selectedTab === tab.value,
                   onClick: () => setSelectedTab(tab.value)
                 };
@@ -316,7 +348,14 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
       }
     >
       <div className={styles.contentWrapper}>
-        {isLoadingScenes ? (
+        {selectedTeam ? (
+          <TeamScenesPanel
+            key={selectedTeam.orgId}
+            org={selectedTeam}
+            isOpen={isOpen}
+            handleSceneClick={handleSceneClick}
+          />
+        ) : isLoadingScenes ? (
           <div className={styles.loadingSpinner}>
             <Loader className={styles.spinner} />
           </div>
@@ -353,7 +392,7 @@ const ScenesModal = ({ initialTab = 'owner', delay = undefined }) => {
             </div>
           </div>
         )}
-        {!isLoadingScenes && isLoading ? (
+        {selectedTeam ? null : !isLoadingScenes && isLoading ? (
           <div className={styles.loadingSpinner}>
             <Loader className={styles.spinner} />
           </div>

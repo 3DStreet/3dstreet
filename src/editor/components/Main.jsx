@@ -9,7 +9,8 @@ import { ShareModal } from './modals/ShareModal';
 import { ExportModal } from './modals/ExportModal';
 // import ViewportHUD from "./viewport/ViewportHUD";
 import { SignInModal } from './modals/SignInModal';
-import { ProfileModal } from './modals/ProfileModal';
+import { EditorSettingsModal } from './modals/SettingsModal';
+import { InvitationModal } from './modals/InvitationModal';
 import { GeoModal } from './modals/GeoModal';
 import { ScenesModal } from './modals/ScenesModal';
 import EditorUpgradeModal from './EditorUpgradeModal.jsx';
@@ -21,8 +22,9 @@ import { NewModal } from './modals/NewModal';
 import { LoadingSceneModal } from './modals/LoadingSceneModal';
 import { ExportingSceneModal } from './modals/ExportingSceneModal';
 import { ConfirmModal } from './modals/ConfirmModal';
+import { EditLockBanner } from './elements/EditLockBanner';
 import AssetDeepLinkModal from './AssetDeepLinkModal.jsx';
-import JobHealthModal from './JobHealthModal.jsx';
+import AdminPages from './admin/AdminPages.jsx';
 import { ToolbarWrapper } from './scenegraph/ToolbarWrapper.jsx';
 import { ActionBar } from './elements/ActionBar';
 import { PrimaryToolbar } from './elements/PrimaryToolbar';
@@ -183,6 +185,8 @@ export default function Main() {
   return (
     <div id="inspectorContainer">
       <UnofficialDeploymentBanner />
+      {/* One editor at a time on team scenes (#1267) */}
+      <EditLockBanner />
       <ToolbarWrapper />
       {!isInspectorEnabled && <PlayModeControls />}
       {!isInspectorEnabled && <FlyModeControls />}
@@ -224,18 +228,19 @@ export default function Main() {
       <ShareModal />
       <ExportModal />
       <SignInModal />
+      <InvitationModal />
       <EditorUpgradeModal />
       <EditorBuyTokensModal />
       <EditorProjectPassModal />
       <EditorRedeemPassModal />
       <ScenesModal />
-      <ProfileModal />
+      <EditorSettingsModal />
       <NewModal />
       <LoadingSceneModal />
       <ExportingSceneModal />
       <ConfirmModal />
       <AssetDeepLinkModal />
-      <JobHealthModal />
+      <AdminPages />
       <GeoModal />
       <ModalTextures
         isOpen={state.isModalTexturesOpen}

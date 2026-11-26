@@ -13,6 +13,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import posthog from 'posthog-js';
 import useStore from '@/store';
+import { canEditTeamScene } from '@/editor/lib/sceneAccess';
 import { useAuthContext } from '@/editor/contexts';
 import { useHasPlayable, useHasBuildArea } from '@/editor/hooks';
 import { openSceneInNewEditor } from '@/editor/lib/sceneHandoff';
@@ -242,7 +243,13 @@ function Toolbar() {
     };
   }, [currentUser]);
 
-  const isAuthor = !authorId || (currentUser && currentUser.uid === authorId);
+  // A team scene's editors count as its authors here (#1267): they edit it in
+  // place, one at a time (EditLockBanner), rather than on a copy.
+  const sceneOrgId = useStore((state) => state.sceneOrgId);
+  const isTeamEditor =
+    !!sceneOrgId && canEditTeamScene(currentUser, sceneOrgId, authorId);
+  const isAuthor =
+    !authorId || (currentUser && currentUser.uid === authorId) || isTeamEditor;
   // While Firebase is still restoring the session on a cloud scene we
   // can't tell a signed-out visitor from the scene's own author — hold
   // the Edit action (plain label, disabled) instead of bouncing an
@@ -274,8 +281,12 @@ function Toolbar() {
     // is that same fork completing — the user is about to own the copy,
     // so the "unsaved copy" warning would be wrong there too.
     const freshAuthorId = STREET.utils.getAuthorId() || null;
+    const freshOrgId = useStore.getState().sceneOrgId;
     const freshIsAuthor =
-      !freshAuthorId || (currentUser && currentUser.uid === freshAuthorId);
+      !freshAuthorId ||
+      (currentUser && currentUser.uid === freshAuthorId) ||
+      (!!freshOrgId &&
+        canEditTeamScene(currentUser, freshOrgId, freshAuthorId));
     if (!freshIsAuthor && !useStore.getState().isSavingScene) {
       STREET.notify.warningMessage(
         intl.formatMessage({
@@ -605,9 +616,16 @@ function Toolbar() {
             isLoading={isAuthLoading}
             onClick={() => {
               if (isAuthLoading) return;
-              setModal(currentUser ? 'profile' : 'signin');
+              posthog.capture('profile_button_clicked', {
+                is_logged_in: !!currentUser
+              });
             }}
             tooltipSide="bottom"
+            showHoverCard
+            onSignIn={() => setModal('signin')}
+            onOpenSettings={(section) =>
+              useStore.getState().openSettings(section)
+            }
           />
         )}
       </div>

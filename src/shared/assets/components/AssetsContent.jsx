@@ -10,6 +10,7 @@
 import { useMemo, useState } from 'react';
 import AssetsItem from './AssetsItem.jsx';
 import AssetDetailModal from './AssetDetailModal.jsx';
+import { teamIdOfOwner } from '../assetOwner.js';
 import PendingUploadCard from './PendingUploadCard.jsx';
 import PendingJobCard from './PendingJobCard.jsx';
 import useCurrentUploadStore from '../state/currentUploadStore.js';
@@ -139,7 +140,9 @@ const AssetsContent = ({
                 key={item.id}
                 item={item}
                 onItemClick={setSelectedItem}
-                onDelete={handleDelete}
+                // Team assets (#1267 Phase 4) are removed from their details,
+                // which checks who may.
+                onDelete={teamIdOfOwner(item.userId) ? undefined : handleDelete}
                 onDownload={handleDownload}
                 placeable={placeable}
                 isOptimizing={optimizingAssetIds.has(item.id)}
@@ -157,9 +160,11 @@ const AssetsContent = ({
           totalItems={items.length}
           onClose={() => setSelectedItem(null)}
           onNavigate={handleNavigate}
-          onPlace={onPlaceAsset}
+          onPlace={placeable ? onPlaceAsset : undefined}
           onDownload={handleDownload}
-          onDelete={handleDelete}
+          onDelete={
+            teamIdOfOwner(selectedItem.userId) ? undefined : handleDelete
+          }
           onUseForGenerator={onUseForGenerator}
           onUseForVideo={onUseForVideo}
           onFocusScene={onFocusScene}

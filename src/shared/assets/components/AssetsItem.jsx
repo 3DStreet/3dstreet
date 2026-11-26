@@ -187,13 +187,17 @@ const AssetsItem = ({
 
       {/* Action buttons: delete on bottom-left, download on bottom-right */}
       <div className={styles.itemOverlay}>
-        <button
-          className={`${styles.itemButton} ${styles.deleteBtn}`}
-          onClick={handleDelete}
-          title={`Delete ${typeLabel}`}
-        >
-          <TrashIcon />
-        </button>
+        {onDelete ? (
+          <button
+            className={`${styles.itemButton} ${styles.deleteBtn}`}
+            onClick={handleDelete}
+            title={`Delete ${typeLabel}`}
+          >
+            <TrashIcon />
+          </button>
+        ) : (
+          <span />
+        )}
 
         <button
           className={`${styles.itemButton} ${styles.downloadBtn}`}

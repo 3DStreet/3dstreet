@@ -8,7 +8,6 @@ const { createStripeSession, checkActiveSubscriptions, createStripeBillingPortal
 const { redeemPassCode } = require('./pass-codes.js');
 const { generateFalImage } = require('./fal-proxy.js');
 const { generateFalMesh } = require('./fal-3d.js');
-const { assertAppCheck } = require('./app-check.js');
 const { sendScheduledEmails, triggerScheduledEmails } = require('./scheduled/scheduledEmails.js');
 const { triggerLifecycleEmail, postmarkSubscriptionWebhook } = require('./email/lifecycle-email.js');
 const { sendWelcomeEmail } = require('./email/lifecycle-triggers.js');
@@ -20,8 +19,26 @@ const { reconcileAssetUsage, triggerReconcileAssetUsage } = require('./scheduled
 const { checkAssetUsageHealth, triggerCheckAssetUsageHealth } = require('./scheduled/asset-usage-health.js');
 const { cleanupOrphanedStorage, triggerCleanupOrphanedStorage } = require('./scheduled/asset-orphan-cleanup.js');
 const { reconcileGenerationJobs, triggerReconcileGenerationJobs } = require('./scheduled/generation-job-reconcile.js');
-const { onSplatAssetCreated } = require('./rad-dispatch.js');
+const { onSplatAssetCreated, onTeamSplatAssetCreated } = require('./rad-dispatch.js');
 const { generateEditorChat } = require('./ai-chat-proxy.js');
+const { setSceneVisibility, createRestrictedSceneCallable, canReadScene, readSceneAccess, uidFromAuthorizationHeader } = require('./scene-visibility.js');
+const {
+  orgCreate,
+  orgUpdate,
+  orgRename,
+  orgUpdateSettings,
+  orgInvite,
+  orgResendInvitation,
+  orgRevokeInvitation,
+  orgAcceptInvitation,
+  orgDeclineInvitation,
+  orgChangeRole,
+  orgRemoveMember
+} = require('./orgs.js');
+const { orgCreateProject, orgRenameProject, orgMoveScene, orgCopySceneToPersonal } = require('./team-scenes.js');
+const { orgSetActive, orgSetMemberCap, orgUpdateWallet } = require('./team-wallet.js');
+const { orgUpdateContract, orgRecordPayment, orgListTeams } = require('./org-contracts.js');
+const { orgAddAsset, orgReplaceAssetFile, orgRemoveAsset, onTeamAssetWritten } = require('./team-assets.js');
 
 // Re-export the getGeoidHeight function
 exports.getGeoidHeight = getGeoidHeight;
@@ -100,6 +117,8 @@ exports.triggerReconcileGenerationJobs = triggerReconcileGenerationJobs;
 
 // --- RAD conversion (splat optimized variant) -----------------------------
 exports.onSplatAssetCreated = onSplatAssetCreated;
+// Splats uploaded straight into a team's asset library (#1267 Phase 4).
+exports.onTeamSplatAssetCreated = onTeamSplatAssetCreated;
 
 // Editor AI Assistant — server-side gate for the Vertex/Gemini chat. The client
 // no longer calls Firebase AI Logic directly (model selection was abusable); all
@@ -107,11 +126,61 @@ exports.onSplatAssetCreated = onSplatAssetCreated;
 // callable. See ai-chat-proxy.js.
 exports.generateEditorChat = generateEditorChat;
 
+// Scene visibility (#1267): the only writer of visibility 'private'.
+exports.setSceneVisibility = setSceneVisibility;
+exports.createRestrictedScene = createRestrictedSceneCallable;
+
+// Organizations (#1267 Phase 1, docs/orgs.md). orgCreate / orgUpdate are
+// staff-only (admin claim); the rest check the caller's org role.
+exports.orgCreate = orgCreate;
+exports.orgUpdate = orgUpdate;
+exports.orgRename = orgRename;
+exports.orgUpdateSettings = orgUpdateSettings;
+exports.orgInvite = orgInvite;
+exports.orgResendInvitation = orgResendInvitation;
+exports.orgRevokeInvitation = orgRevokeInvitation;
+exports.orgAcceptInvitation = orgAcceptInvitation;
+exports.orgDeclineInvitation = orgDeclineInvitation;
+exports.orgChangeRole = orgChangeRole;
+exports.orgRemoveMember = orgRemoveMember;
+
+// Team scenes and projects (#1267 Phase 2, docs/team-scenes.md).
+exports.orgCreateProject = orgCreateProject;
+exports.orgRenameProject = orgRenameProject;
+exports.orgMoveScene = orgMoveScene;
+exports.orgCopySceneToPersonal = orgCopySceneToPersonal;
+
+// Team AI token wallets (#1267 Phase 3, docs/team-wallet.md).
+exports.orgSetActive = orgSetActive;
+exports.orgSetMemberCap = orgSetMemberCap;
+exports.orgUpdateWallet = orgUpdateWallet;
+
+// Contract terms, payments and the staff team list (docs/orgs.md#contract-terms).
+exports.orgUpdateContract = orgUpdateContract;
+exports.orgRecordPayment = orgRecordPayment;
+exports.orgListTeams = orgListTeams;
+
+// Team asset library (#1267 Phase 4, docs/team-assets.md).
+exports.orgAddAsset = orgAddAsset;
+exports.orgReplaceAssetFile = orgReplaceAssetFile;
+exports.orgRemoveAsset = orgRemoveAsset;
+exports.onTeamAssetWritten = onTeamAssetWritten;
+
 exports.getScene = functions
   .https
   .onRequest(async (req, res) => {
-    // Extract scene id from the path, remove the .json part
     res.set('Access-Control-Allow-Origin', '*');
+    // A private scene is fetched with an `Authorization: Bearer <ID token>`
+    // header, which makes a cross-origin request (localhost against the dev
+    // deployment) send a preflight first.
+    if (req.method === 'OPTIONS') {
+      res.set('Access-Control-Allow-Methods', 'GET');
+      res.set('Access-Control-Allow-Headers', 'Authorization');
+      res.set('Access-Control-Max-Age', '3600');
+      res.status(204).send('');
+      return;
+    }
+    // Extract scene id from the path, remove the .json part
     const documentId = req.path
       .split('/')
       .filter(Boolean)[1]
@@ -132,64 +201,26 @@ exports.getScene = functions
           .status(404)
           .send({ error: `Scene not found. DocumentID: ${documentId}` });
       } else {
-        res.send(doc.data());
+        const scene = doc.data();
+        if (!canReadScene(scene, null)) {
+          // Private: identified by the ID token. Never cached, and refused
+          // the same way whether signed out or not.
+          res.set('Cache-Control', 'private, no-store');
+          const uid = await uidFromAuthorizationHeader(req);
+          // The author of a personal scene, or a member of a team scene's org.
+          if (!(await readSceneAccess(scene, uid))) {
+            // `team`: a team-only scene, so the app can say who may open it.
+            res.status(403).send({
+              error: 'This scene is private.',
+              reason: 'private',
+              team: !!scene.orgId
+            });
+            return;
+          }
+        }
+        res.send(scene);
       }
     } catch {
       res.status(500).send({ error: 'Error retrieving scene' });
-    }
-  });
-
-// Discord webhook function for sharing scenes
-exports.shareToDiscord = functions
-  .runWith({ secrets: ['DISCORD_WEBHOOK_URL'] })
-  .https
-  .onCall(async (data, context) => {
-    // Verify user is authenticated
-    if (!context.auth) {
-      throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated to share scenes.');
-    }
-    assertAppCheck(context);
-
-    const { title, location, username, sceneUrl, imageUrl } = data;
-
-    // Validate required data
-    if (!title || !username || !sceneUrl) {
-      throw new functions.https.HttpsError('invalid-argument', 'Missing required scene data.');
-    }
-
-    // Create Discord message with embed for rich preview
-    const message = {
-      content: `🙋 **${username}** shared a new scene!`,
-      embeds: [{
-        title: title,
-        description: location ? `📍 ${location}` : undefined,
-        url: sceneUrl,
-        color: 0x6366F1, // Indigo color for the embed stripe
-        image: imageUrl ? {
-          url: imageUrl
-        } : undefined,
-        footer: {
-          text: '3DStreet',
-          icon_url: 'https://3dstreet.app/favicon-32x32.png'
-        },
-        timestamp: new Date().toISOString()
-      }]
-    };
-
-    try {
-      const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(message)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Discord API error: ${response.status}`);
-      }
-
-      return { success: true, message: 'Scene shared to Discord successfully!' };
-    } catch (error) {
-      console.error('Error sharing to Discord:', error);
-      throw new functions.https.HttpsError('internal', 'Failed to share scene to Discord.');
     }
   });

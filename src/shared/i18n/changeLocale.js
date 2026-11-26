@@ -10,10 +10,9 @@
  * it onto the user's profile so the preference follows the account across apps
  * and devices (the editor reads it back on sign-in via useProfileLocaleSync).
  *
- * The editor deliberately does NOT use this: its switcher goes through
- * store.setLocale so react-intl re-renders. Both paths converge on the same
- * localStorage key + profile field, so a choice made in any app is honored
- * everywhere.
+ * The editor uses it too (the profile menu is its only language picker):
+ * its LocaleProvider follows the broadcast into store.locale so react-intl
+ * re-renders. A choice made in any app is honored everywhere.
  */
 
 import posthog from 'posthog-js';

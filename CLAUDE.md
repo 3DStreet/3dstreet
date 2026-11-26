@@ -174,7 +174,11 @@ scene's render loop.
 
 **Functions:** getScene, createStripeSession, stripeWebhook, geoid, generateReplicateImage, generateFalImage, onAssetWritten, getUploadQuota, onSplatAssetCreated
 
-**Project Pass (#1922):** one-time time-boxed Pro. Pro = plan claim OR team domain OR `tokenProfile.proUntil > now` (`hasProEntitlement`, `public/functions/pro-pass.js`); never store pass state in claims. All pass fulfilment (Stripe checkout and `#redeem` pass codes) goes through `grantPass` (idempotency key per grant). Read [docs/project-pass.md](docs/project-pass.md) before touching Pro checks, checkout gating or the Stripe webhook.
+**Scene visibility (#1267):** `scenes.visibility` is `public` | `unlisted` | `private` (missing = public). Unlisted and private are Pro on personal scenes; private is author-only, enforced by the Firestore and Storage rules and by `getScene` (ID token). Clients can never raise a scene's visibility, only the `setSceneVisibility` and `createRestrictedScene` callables can. Scene list queries must filter on `visibility == 'public'` or `author == uid`. Read [docs/scene-visibility.md](docs/scene-visibility.md) before touching scene loading, saving, sharing or the `scenes` rules.
+
+**Organizations / teams (#1267):** `orgs/{orgId}` with `members/{uid}` (owner, admin, member, viewer), top-level `orgInvitations`, and `userOrgs/{uid}`, all written only by the org callables in `public/functions/orgs.js` (pure rules in `org-utils.js`). Owners, admins and members of an active org get its plan everywhere Pro or the plan is checked; viewers take no seat and get no plan; pending invitations hold a seat. A team's `memberEditScope` (`all` | `own`) limits members to the scenes and library assets they created; check it with `canEditTeamItem` / `canEditTeamScene`, never a bare role check. Invitations are accepted with the invited, verified email (`#invite=<id>` → `InvitationModal`). Read [docs/orgs.md](docs/orgs.md) before touching orgs, invitations, seats or plan resolution. A scene with an `orgId` belongs to that team: members read it (private = team-only), editors save it only while holding its `editLock`, a newer `revision` reloads before the lock is taken, and "can I save this?" is always `sceneSaveMode()` (`src/editor/lib/sceneAccess.js`), never an authorship check. Read [docs/team-scenes.md](docs/team-scenes.md) before touching team scenes, projects, the edit lock or scene saving. A team pays its members' AI generations from its wallet (`orgWallets/{orgId}`, monthly budget, per-member limit), when it's the user's active team (`userOrgs.activeOrgId`, the team switcher) and they hold a seat in it, re-checked at every charge in `chargeGenerationTokens`; a seat no longer refills personal tokens. Read [docs/team-wallet.md](docs/team-wallet.md) before touching token charges, refunds, token balances in the UI or team billing. A team's asset library (`orgs/{orgId}/assets`) is filled by direct uploads from its seats and server-side copies of members' assets; scenes reference a team asset with the owner key `org:<orgId>` in `data-asset-owner-uid`, so build asset paths with `assetOwnerSegments`, never `'users', ownerUid`. A team scene uses only its team's assets (`teamSceneAssets.js`). Read [docs/team-assets.md](docs/team-assets.md) before touching asset paths, the gallery, asset details or team assets.
+
+**Project Pass (#1922):** one-time time-boxed Pro. Pro = plan claim OR team domain OR `tokenProfile.proUntil > now` OR a seat in an active org with a paid plan (`hasProEntitlement`, `public/functions/pro-pass.js`; org plan from `readOrgPlan`, docs/orgs.md); never store pass state in claims. All pass fulfilment (Stripe checkout and `#redeem` pass codes) goes through `grantPass` (idempotency key per grant). Read [docs/project-pass.md](docs/project-pass.md) before touching Pro checks, checkout gating or the Stripe webhook.
 
 **Lifecycle emails:** one send path (`sendLifecycleEmail` in `public/functions/email/`) with per-stream Postmark routing, `emailPrefs` unsubscribe suppression, and transactional stop-rules on `emailLog`. Triggers: Auth onCreate (welcome), `redeemPassCode` (Project Pass activated), `stripeWebhook` (post-upgrade; failed-payment handler dormant — Stripe hosted dunning instead), hourly sweep (abandoned checkout, pricing nudge, geo-not-used), daily sweep (token exhaustion). Localized (en/es/pt-BR/fr, hand-written copy per locale in `templates.js`): recipient locale resolved from `socialProfile/{uid}` (`locale` explicit pick > `detectedLocale` captured at sign-in > en) via `email/locale.js`. Docs: [docs/email-lifecycle.md](docs/email-lifecycle.md).
 
@@ -229,7 +233,7 @@ Gate verbose per-area console output (navigation, batching, ...) on
 `isDebugEnabled()` / `debugLog()`; never add a per-feature debug flag.
 Warnings and errors for real problems stay ungated.
 
-**Firestore emulator tests:** `npm run test:rules` — local-only (boots the firestore + auth emulators via `firebase emulators:exec`, runs vitest against `test/rules/`). Covers security rules AND the lifecycle email send service (`sendLifecycleEmail`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules` or `public/functions/email/`. Requires JDK 21+ on `PATH` (emulator dependency; if `java -version` shows an older default, prefix with `JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"`).
+**Firestore emulator tests:** `npm run test:rules` — local-only (boots the firestore + auth + storage emulators via `firebase emulators:exec`, runs vitest against `test/rules/`). Covers Firestore and Storage security rules AND the lifecycle email send service (`sendLifecycleEmail`). Not wired into CI to keep CI cheap; run manually when touching `public/firestore.rules`, `public/storage.rules` or `public/functions/email/`. Requires JDK 21+ on `PATH` (emulator dependency; if `java -version` shows an older default, prefix with `JAVA_HOME=/opt/homebrew/opt/openjdk@21 PATH="/opt/homebrew/opt/openjdk@21/bin:$PATH"`).
 
 **Deploy:** `npm run deploy` or `npm run deploy:staging`
 
@@ -270,6 +274,14 @@ Because the app now runs at a nested path, every static asset reference must be 
 **Island Architecture:** React components mounted in vanilla JS via `createRoot()` + mount functions
 
 **Shared imports:** `import { ... } from '@shared/auth/components'` (uses barrel exports)
+
+**Settings and the team switcher:** the shared profile menu's team switcher
+sets `userOrgs.activeOrgId` (the defaults for new work, who pays AI, the
+plan shown) and opens the shared Settings modal (`src/shared/settings`:
+Profile, Usage and billing per workspace, Manage per team). Settings never
+reads an app's store; the app passes what's specific (`SettingsHost.js`).
+Read [docs/settings.md](docs/settings.md) before touching the profile menu,
+Settings, the active team or its defaults.
 
 ## External Integrations
 

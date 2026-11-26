@@ -243,7 +243,10 @@ const pickerPropTypes = {
   // disabled until it settles). The caller closes the modal.
   onConfirm: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-  onSignIn: PropTypes.func
+  onSignIn: PropTypes.func,
+  // List this team's library instead of the user's assets (#1267 Phase 4):
+  // a team scene uses only its team's assets.
+  orgId: PropTypes.string
 };
 
 AssetPickerModalView.propTypes = {
@@ -258,7 +261,7 @@ AssetPickerModalView.propTypes = {
 };
 
 const AssetPickerModal = (props) => {
-  const gallery = useAssetsOfType(props.type);
+  const gallery = useAssetsOfType(props.type, props.orgId || null);
   return <AssetPickerModalView {...props} gallery={gallery} />;
 };
 

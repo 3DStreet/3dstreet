@@ -148,8 +148,17 @@ function findRadOutput(workDir, assetId) {
 // `perf` is an accumulator the caller owns: we fill phaseMs/inputBytes/durationMs
 // as each phase completes, so even if a later phase throws, the handler still has
 // the timings for the phases that *did* run when it writes the failed status.
-async function convert({ uid, assetId, plyPath }, perf = {}) {
+async function convert({ uid, assetId, plyPath, orgId = null }, perf = {}) {
   validateUserId(uid);
+  // A splat uploaded straight into a team's asset library (#1267 Phase 4,
+  // docs/team-assets.md): its doc is orgs/{orgId}/assets/{assetId} and its
+  // files live in that asset's folder. Without orgId, the user's asset.
+  if (
+    orgId !== null &&
+    (typeof orgId !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(orgId))
+  ) {
+    throw new Error('Invalid orgId');
+  }
   if (!assetId || !/^[a-zA-Z0-9_-]+$/.test(assetId)) {
     throw new Error('Invalid assetId');
   }
@@ -196,7 +205,9 @@ async function convert({ uid, assetId, plyPath }, perf = {}) {
 
     // 3. Upload the .rad as the optimized artifact. Same path convention as the
     //    original splat (users/{uid}/assets/splats/), -lod.rad suffix.
-    const optimizedSourcePath = `users/${uid}/assets/splats/${assetId}-lod.rad`;
+    const optimizedSourcePath = orgId
+      ? `orgs/${orgId}/assets/${assetId}/${assetId}-lod.rad`
+      : `users/${uid}/assets/splats/${assetId}-lod.rad`;
     const downloadToken = randomUUID();
     mark = performance.now();
     await bucket.upload(localRad, {
@@ -230,38 +241,44 @@ async function convert({ uid, assetId, plyPath }, perf = {}) {
 
     // 5. Patch the asset doc. The renderer + placement already prefer
     //    optimizedSourceUrl ?? storageUrl, so this flips the splat to RAD.
-    await getFirestore()
-      .collection('users')
-      .doc(uid)
-      .collection('assets')
-      .doc(assetId)
-      .set(
-        {
-          optimizedSourceUrl,
-          optimizedSourcePath,
+    const assetDoc = orgId
+      ? getFirestore()
+          .collection('orgs')
+          .doc(orgId)
+          .collection('assets')
+          .doc(assetId)
+      : getFirestore()
+          .collection('users')
+          .doc(uid)
+          .collection('assets')
+          .doc(assetId);
+    await assetDoc.set(
+      {
+        optimizedSourceUrl,
+        optimizedSourcePath,
+        optimizedSourceSize,
+        optimizationMetadata: {
+          format: 'rad',
+          tool: 'build-lod',
+          sparkVersion: SPARK_VERSION,
+          lod: LOD_QUALITY,
+          // SH degree baked into this .rad (see MAX_SH). Older docs lack the
+          // field: those files carry the build-lod default, degree 3.
+          maxSh: MAX_SH,
+          // Perf subset mirrored onto the asset doc so it survives the
+          // generationJobs TTL (the job doc is the transient record; the asset
+          // is permanent). Mirrors the fields the handler writes on the job.
+          durationMs: perf.durationMs,
+          phaseMs: perf.phaseMs,
+          inputBytes: perf.inputBytes,
           optimizedSourceSize,
-          optimizationMetadata: {
-            format: 'rad',
-            tool: 'build-lod',
-            sparkVersion: SPARK_VERSION,
-            lod: LOD_QUALITY,
-            // SH degree baked into this .rad (see MAX_SH). Older docs lack the
-            // field: those files carry the build-lod default, degree 3.
-            maxSh: MAX_SH,
-            // Perf subset mirrored onto the asset doc so it survives the
-            // generationJobs TTL (the job doc is the transient record; the asset
-            // is permanent). Mirrors the fields the handler writes on the job.
-            durationMs: perf.durationMs,
-            phaseMs: perf.phaseMs,
-            inputBytes: perf.inputBytes,
-            optimizedSourceSize,
-            runtime: perf.runtime || runtimeInfo(),
-            completedAt: Timestamp.now()
-          },
-          updatedAt: FieldValue.serverTimestamp()
+          runtime: perf.runtime || runtimeInfo(),
+          completedAt: Timestamp.now()
         },
-        { merge: true }
-      );
+        updatedAt: FieldValue.serverTimestamp()
+      },
+      { merge: true }
+    );
 
     console.log(
       `[rad-converter] done: ${optimizedSourcePath} (${optimizedSourceSize} bytes)`
@@ -297,9 +314,9 @@ app.use(express.json({ limit: '1mb' }));
 app.get('/', (_req, res) => res.status(200).send('rad-converter ok'));
 
 app.post('/', async (req, res) => {
-  const { uid, assetId, plyPath, jobId } = req.body || {};
+  const { uid, assetId, plyPath, jobId, orgId = null } = req.body || {};
   console.log(
-    `[rad-converter] request uid=${uid} assetId=${assetId} jobId=${jobId || '(none)'}`
+    `[rad-converter] request uid=${uid} orgId=${orgId || '-'} assetId=${assetId} jobId=${jobId || '(none)'}`
   );
   // Owned by the handler, filled by convert() as phases complete, so the failure
   // path can still report partial timings + which runtime ran the job.
@@ -323,7 +340,7 @@ app.post('/', async (req, res) => {
       status: 'running',
       startedAt: FieldValue.serverTimestamp()
     });
-    const result = await convert({ uid, assetId, plyPath }, perf);
+    const result = await convert({ uid, assetId, plyPath, orgId }, perf);
     await writeJobStatus(uid, jobId, {
       status: 'succeeded',
       ...result,

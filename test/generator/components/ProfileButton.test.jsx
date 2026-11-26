@@ -43,7 +43,9 @@ vi.mock('@shared/auth/components', () => ({
         <p>{message}</p>
         <button onClick={onClose}>Close</button>
       </div>
-    ) : null
+    ) : null,
+  // The plan badge beside the profile button (docs/settings.md).
+  WorkspaceBadge: () => null
 }));
 
 // Helper to render ProfileButton with providers

@@ -44,6 +44,7 @@ const AssetDetailModal = ({
   onClose,
   onPlace,
   onCopied,
+  onAddedToTeam,
   onNavigate,
   currentIndex,
   totalItems,
@@ -132,6 +133,7 @@ const AssetDetailModal = ({
         onClose={onClose}
         onPlace={onPlace}
         onCopied={onCopied}
+        onAddedToTeam={onAddedToTeam}
         onNavigate={onNavigate}
         currentIndex={currentIndex}
         totalItems={totalItems}
@@ -150,6 +152,7 @@ const AssetDetailModal = ({
     <AssetsModal
       item={displayItem}
       onClose={onClose}
+      onAddedToTeam={onAddedToTeam}
       onNavigate={onNavigate}
       currentIndex={currentIndex}
       totalItems={totalItems}
@@ -172,6 +175,8 @@ AssetDetailModal.propTypes = {
   // 3D-viewer (mesh/splat) only:
   onPlace: PropTypes.func,
   onCopied: PropTypes.func,
+  // An asset added to a team's library from here ({ orgId, assetId }).
+  onAddedToTeam: PropTypes.func,
   // Both modals:
   onNavigate: PropTypes.func,
   currentIndex: PropTypes.number,

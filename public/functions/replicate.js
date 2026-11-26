@@ -5,7 +5,8 @@ const { FieldValue } = require('firebase-admin/firestore');
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
-const { checkAndRefillImageTokensInternal, chargeGenerationTokens } = require('./token-management.js');
+const { checkAndRefillImageTokensInternal, chargeGenerationTokens, spendableGenTokens } = require('./token-management.js');
+const { refundToWallet } = require('./team-wallet.js');
 const { AI_MODEL_NAMES, DEFAULT_MODEL_VERSION, REPLICATE_MODELS } = require('./replicate-models.js');
 const { buildReplicateImageInput, resolveOutputTier } = require('./image-model-inputs.js');
 const { assertAppCheck } = require('./app-check.js');
@@ -21,6 +22,7 @@ const { MODAL_SECRETS, enqueueModalJob, fetchModalPrediction } = require('./moda
 // authoritative status adapter used by the poll, falJobWebhook, and the
 // reconciler. One-directional require: fal-3d.js does NOT require this module,
 // so there's no cycle.
+const { readCommunityPostLevel, minimalCommunityMessage } = require('./scene-visibility.js');
 const { saveMeshToGallery, fetchFalPrediction, sanitizeGalleryMetadata, sanitizeNotifyBatch } = require('./fal-3d.js');
 // Real-time completion email: the webhook calls this the instant a job finishes
 // so the user isn't waiting on the 10-min reconciler sweep. Shared, idempotent
@@ -156,6 +158,27 @@ async function postAIVideoToDiscord(userId, videoUrl, prompt, modelName, duratio
   }
 }
 
+// What the community Discord shows depends on who paid and the scene
+// (docs/scene-visibility.md): everything (`postFull`), or only that a
+// generation happened. Never throws.
+async function postToCommunity(job, { kind, modelName, postFull }) {
+  if (!process.env.DISCORD_WEBHOOK_URL) return;
+  try {
+    if ((await readCommunityPostLevel(job)) === 'full') {
+      await postFull();
+      return;
+    }
+    const response = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(minimalCommunityMessage({ kind, modelName, source: job.source }))
+    });
+    if (!response.ok) console.error(`Discord API error: ${response.status}`);
+  } catch (error) {
+    console.error('Discord posting failed:', error);
+  }
+}
+
 // Replicate API function for image generation (nano-banana / seedream /
 // grok / kontext families). Asynchronous since #1835: the callable stages the input,
 // writes a `kind: 'image'` job to the async queue, charges at submit
@@ -241,8 +264,11 @@ const generateReplicateImage = functions
     }
 
 
-    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
-        throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData.genToken || 0}.`);
+    // What the user can spend: their billing team's wallet (#1267) or
+    // their own tokens.
+    const { available: spendable } = await spendableGenTokens(userId, tokenData.genToken);
+    if (!spendable || spendable < tokenCost) {
+        throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${spendable || 0}.`);
     }
 
     // Validate required data - prompt is always required, input_image is optional
@@ -639,8 +665,11 @@ const generateReplicateVideo = functions
     }
 
     // Check if user has enough tokens for this generation
-    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
-      throw new functions.https.HttpsError('resource-exhausted', `Insufficient tokens. This video requires ${tokenCost} tokens, but you have ${tokenData.genToken || 0}.`);
+    // What the user can spend: their billing team's wallet (#1267) or
+    // their own tokens.
+    const { available: spendable } = await spendableGenTokens(userId, tokenData.genToken);
+    if (!spendable || spendable < tokenCost) {
+      throw new functions.https.HttpsError('resource-exhausted', `Insufficient tokens. This video requires ${tokenCost} tokens, but you have ${spendable || 0}.`);
     }
 
     // Validate required data
@@ -988,8 +1017,11 @@ const generateReplicateSplat = functions
       throw new functions.https.HttpsError('internal', 'Failed to retrieve token information. Please try again.');
     }
 
-    if (!tokenData.genToken || tokenData.genToken < tokenCost) {
-      throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${tokenData.genToken || 0}.`);
+    // What the user can spend: their billing team's wallet (#1267) or
+    // their own tokens.
+    const { available: spendable } = await spendableGenTokens(userId, tokenData.genToken);
+    if (!spendable || spendable < tokenCost) {
+      throw new functions.https.HttpsError('resource-exhausted', `Not enough generation tokens. This model requires ${tokenCost} token(s), but you have ${spendable || 0}.`);
     }
 
     if (inputKind === 'video') {
@@ -1329,11 +1361,26 @@ async function refundSplatToken(db, userId, jobRef, job) {
   const tokenCost = job.tokenCost || 1;
   const tokenProfileRef = db.collection('tokenProfile').doc(userId);
   let remainingTokens;
+  let refundedOrgId = null;
   try {
     await db.runTransaction(async (transaction) => {
+      refundedOrgId = null; // the transaction may retry
       const jobDoc = await transaction.get(jobRef);
       if (jobDoc.exists && jobDoc.data().refunded) {
         return; // another poll already refunded
+      }
+      // Charged to a team's wallet (#1267 Phase 3): it goes back there.
+      const chargedOrgId = jobDoc.exists ? jobDoc.data().chargedOrgId : null;
+      if (chargedOrgId) {
+        refundToWallet(transaction, {
+          orgId: chargedOrgId,
+          uid: userId,
+          cost: tokenCost,
+          chargedMonth: jobDoc.data().chargedMonth
+        });
+        transaction.update(jobRef, { refunded: true });
+        refundedOrgId = chargedOrgId;
+        return;
       }
       const tokenDoc = await transaction.get(tokenProfileRef);
       if (!tokenDoc.exists) {
@@ -1352,9 +1399,10 @@ async function refundSplatToken(db, userId, jobRef, job) {
     console.error('Failed to refund splat token:', error);
     return undefined;
   }
-  if (typeof remainingTokens !== 'undefined') {
+  if (typeof remainingTokens !== 'undefined' || refundedOrgId) {
     db.collection('tokenLog').add({
       userId,
+      orgId: refundedOrgId,
       type: 'refund',
       tokenCost,
       source: `${job.kind || 'splat'}-generation-failed`,
@@ -1567,7 +1615,7 @@ async function saveSplatToGallery(userId, plyUrl, job) {
       updatedAt: now,
       uploadedAt: now,
       publishedAt: now,
-      visibility: 'public',
+      visibility: 'unlisted',
       tags: [],
       collections: [],
       deleted: false
@@ -1661,7 +1709,7 @@ async function saveVideoToGallery(userId, videoUrl, job) {
       updatedAt: now,
       uploadedAt: now,
       publishedAt: now,
-      visibility: 'public',
+      visibility: 'unlisted',
       tags: [],
       collections: [],
       deleted: false
@@ -1786,7 +1834,7 @@ async function saveImageToGallery(userId, imageUrl, job) {
       updatedAt: now,
       uploadedAt: now,
       publishedAt: now,
-      visibility: 'public',
+      visibility: 'unlisted',
       tags: [],
       collections: [],
       deleted: false
@@ -1972,14 +2020,19 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
         // Fire-and-forget: post the durable Storage URL (the replicate.delivery
         // URL is ephemeral). Errors never fail the (already-committed) save.
         const params = job.generationParams || {};
-        postAIVideoToDiscord(
-          userId,
-          storageUrl,
-          params.prompt || '',
-          SUPPORTED_VIDEO_MODELS[job.model] || job.model,
-          params.duration_seconds,
-          params.scene_id
-        ).catch(err => console.error('Discord posting failed:', err));
+        const modelName = SUPPORTED_VIDEO_MODELS[job.model] || job.model;
+        postToCommunity(job, {
+          kind: 'video',
+          modelName,
+          postFull: () => postAIVideoToDiscord(
+            userId,
+            storageUrl,
+            params.prompt || '',
+            modelName,
+            params.duration_seconds,
+            params.scene_id
+          )
+        });
 
         return { status: 'succeeded', video_url: storageUrl, assetId };
       } catch (saveError) {
@@ -2075,14 +2128,18 @@ async function processTerminalPrediction(db, userId, jobRef, prediction) {
           AI_MODEL_NAMES[params.model_version] ||
           AI_MODEL_NAMES[params.model_id] ||
           'AI Model';
-        postAIImageToDiscord(
-          userId,
-          storageUrl,
-          params.prompt || '',
-          displayName,
-          params.scene_id,
-          job.source
-        ).catch(err => console.error('Discord posting failed:', err));
+        postToCommunity(job, {
+          kind: 'image',
+          modelName: displayName,
+          postFull: () => postAIImageToDiscord(
+            userId,
+            storageUrl,
+            params.prompt || '',
+            displayName,
+            params.scene_id,
+            job.source
+          )
+        });
 
         return { status: 'succeeded', image_url: storageUrl, assetId };
       } catch (saveError) {

@@ -108,7 +108,7 @@ const ProjectPassModal = ({
   // isProPass is expiry-checked server-side (and on the cached status).
   const hasActivePass = !!currentUser?.isProPass && !!currentUser?.proUntil;
   const isSubscriber = !!currentUser?.plan;
-  // Pro through an allowlisted email domain (Pro Team): a pass adds nothing
+  // Pro through a team or an allowlisted email domain: a pass adds nothing
   // but tokens for them either.
   const isTeamPro = !isSubscriber && !!currentUser?.isProTeam;
 
@@ -255,7 +255,7 @@ const ProjectPassModal = ({
           {isTeamPro && (
             <p className={styles.signInCopy}>
               {t('projectPassTeamNote', {
-                domain: currentUser?.teamDomain || '',
+                source: currentUser?.teamName || currentUser?.teamDomain || '',
                 tokens: PROJECT_PASS.tokens
               })}
             </p>
